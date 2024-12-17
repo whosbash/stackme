@@ -1908,29 +1908,17 @@ email_test_hmtl() {
     </div>
     <div class='content'>
       <p>We are thrilled to have you onboard!</p>
-      <p>This email demonstrates how clean, engaging, and responsive HTML emails can be.</p>
-      <p>If you have any questions, feel free to reply to this email. We're here to help!</p>
+      <p>If you have any questions, feel free to submit an issue to 
+      <a href='https://github.com/whosbash/stackme/issues'>our repository</a>. We're here to help!
+      </p>
     </div>
     <div class='footer'>
       <p>Sent using a Shell Script and the Swaks tool.</p>
-      <div class='social-icons'>
-        <a href='https://facebook.com'>
-          <img src='https://via.placeholder.com/24x24' alt='Facebook'>
-        </a>
-        <a href='https://x.com'>
-          <img src='https://via.placeholder.com/24x24' alt='Twitter'>
-        </a>
-        <a href='https://linkedin.com'>
-          <img src='https://via.placeholder.com/24x24' alt='LinkedIn'>
-        </a>
-      </div>
-      <p><a href='https://www.stacksetup.com/unsubscribe'>Unsubscribe</a></p>
     </div>
   </div>
 </body>
 </html>"
 }
-
 
 ################################# END OF GENERAL UTILITARY FUNCTIONS ##############################
 
@@ -2877,8 +2865,8 @@ build_and_deploy_stack() {
     done
   fi
 
-  # Step 2: Execute setUp actions (if defined in the service JSON)
-  step_progress 2 $total_steps "[$stack_name] Executing setUp actions"
+  # Step 2: Gather setUp actions (if defined in the service JSON)
+  step_progress 2 $total_steps "[$stack_name] Gathering setUp actions"
   local setUp_actions
   setUp_actions=$(echo "$service_json" | jq -r '.setUp[]?')
 
@@ -2888,6 +2876,7 @@ build_and_deploy_stack() {
     exit 1
   fi
 
+  # Step 3: Run setUp actions individually
   if [ -n "$setUp_actions" ]; then
     # Iterate through each action, preserving newlines for better debugging
     IFS=$'\n' read -d '' -r -a actions_array <<<"$setUp_actions"
@@ -2904,7 +2893,7 @@ build_and_deploy_stack() {
     step_warning 3 $total_steps "[$stack_name] No setUp actions defined"
   fi
 
-  # Step 3: Build service-related file paths and Docker Compose template
+  # Step 4: Build service-related file paths and Docker Compose template
   step_progress 4 $total_steps "[$stack_name] Building file paths"
   stack_info="$(build_stack_info "$stack_name")"
   local config_path=$(echo "$stack_info" | awk '{print $1}')
@@ -2912,7 +2901,7 @@ build_and_deploy_stack() {
   local compose_template_func=$(echo "$stack_info" | awk '{print $3}')
   handle_exit $? 4 $total_steps "[$stack_name] File paths built" "success"
 
-  # Retrieve and substitute variables in Docker Compose template
+  # Step 5: Retrieve and substitute variables in Docker Compose template
   step_progress 5 $total_steps "[$stack_name] Creating Docker Compose template"
   local substituted_template
   substituted_template="$(\
@@ -2920,23 +2909,23 @@ build_and_deploy_stack() {
   )"
   handle_exit $? 5 $total_steps "[$stack_name] Docker Compose template created"
 
-  # Write the substituted template to the compose file
+  # Step 6: Write the substituted template to the compose file
   step_progress 6 $total_steps "[$stack_name] Writing Docker Compose template"
   compose_path="$(pwd)/$compose_filepath"
   echo "$substituted_template" >"$compose_path"
   handle_exit $? 6 $total_steps "[$stack_name] Writing file $compose_filepath"
 
-  # Step 5: Validate the Docker Compose file
+  # Step 7: Validate the Docker Compose file
   step_progress 7 $total_steps "[$stack_name] Validating Docker Compose file"
   validate_compose_file "$compose_path"
   handle_exit $? 7 $total_steps "[$stack_name] Validating Docker Compose file $compose_path"
 
-  # Step 6: Deploy the service on Docker Swarm
+  # Step 8: Deploy the service on Docker Swarm
   step_progress 8 $total_steps "[$stack_name] Deploying service on Docker Swarm"
   deploy_stack_on_swarm "$stack_name" "$compose_filepath"
   handle_exit $? 8 $total_steps "[$stack_name] Deploying stack $stack_name"
 
-  # Step 7: Save service-specific information to a configuration file
+  # Step 9: Save service-specific information to a configuration file
   step_progress 9 $total_steps "[$stack_name] Saving stack configuration"
   write_json "$config_path" "$stack_json"
   chmod 600 "$config_path"
