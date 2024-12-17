@@ -344,15 +344,6 @@ find_next_available_port() {
   done
 }
 
-# Function to retrieve the IP address
-get_ip() {
-    ip -4 addr show scope global | \
-    grep inet | \
-    awk '{print $2}' | \
-    cut -d/ -f1 | \
-    head -n 1
-}
-
 # Function to check if a package is already installed
 is_package_installed() {
   local package="$1"
@@ -2178,7 +2169,7 @@ get_api_url() {
 }
 
 # Function to check if Portainer credentials are correct
-is_portainer_credentials_correct() {
+is_portainer_credential_correct() {
   local portainer_url="$1"
   local username="$2"
   local password="$3"
@@ -2203,6 +2194,29 @@ is_portainer_credentials_correct() {
     return 0 # Exit with status 0 for success
   fi
 }
+
+signup_on_portainer(){
+  local portainer_url="$1"
+  local new_username="$2"
+  local new_password="$3"
+
+  local protocol="https"
+  local content_type="application/json"
+  local credentials="{\"Username\":\"$new_username\",\"Password\":\"$new_password\"}"
+  local resource='users/admin/init'
+
+  url="$(get_api_url $protocol $portainer_url $resource)"
+
+  response=$(curl -k -s -X POST "$url" -H "Content-Type: $content_type" -d "$credentials")
+
+  # Check if the response indicates an existing administrator
+  if [[ "$response" == *"An administrator user already exists"* ]]; then
+    warning "An administrator user already exists."
+  else 
+    success "Administrator user created successfully."
+  fi
+}
+
 
 # Function to retrieve a Portainer authentication token
 get_portainer_auth_token() {
@@ -3777,21 +3791,6 @@ get_server_ip() {
   echo "$server_ip"
 }
 
-# Function to generate a collection item for the server IP
-get_ip_collection_item() {
-
-  # Get current machine IP
-  machine_ip=$(get_ip)
-
-  # Generate the collection item JSON (using the values from the prompt and the IP)
-  collection_item=$(
-    create_prompt_item \
-      "server_ip" "Server IP" "IP string of the server" "$machine_ip" "yes"
-  )
-
-  echo "$collection_item"
-}
-
 # Function to merge server, network, and IP information
 get_server_info() {
   local server_array ip_object merged_result
@@ -3803,22 +3802,8 @@ get_server_info() {
     exit 1
   fi
 
-  # Get the IP object
-  ip_object="$(get_ip_collection_item)"
-
-  echo "$ip_object" >&2
-
-  # Merge the JSON objects
-  merged_result=$(echo "$server_array" | jq --argjson ip "$ip_object" '. + [$ip]')
-
-  # Check if the merge was successful
-  if [[ $? -ne 0 ]]; then
-    error "Failed to merge the server and IP information."
-    exit 1
-  fi
-
   # Print the merged result
-  echo "$merged_result"
+  echo "$server_array"
 }
 
 # Function to initialize the server information
@@ -4161,5 +4146,16 @@ main() {
   fi
 }
 
-# Call the main function
-main "$@"
+# # Call the main function
+# main "$@"
+
+portainer_url="portainer.conexxohub.com.br"
+username="conexxohub_portainer"
+password="ConexxoHub!54321"
+
+#token="$(get_portainer_auth_token "$portainer_url" "$username" "$password")"
+
+new_username="conexxohub_admin"
+new_password="senha_segura_12345"
+
+signup_on_portainer "$portainer_url" "$new_username" "$new_password"
