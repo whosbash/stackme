@@ -1685,6 +1685,7 @@ write_json() {
   # Write the JSON content to the specified file using a temporary file for safety
   local temp_file=$(mktemp)
   echo "$json_content" >"$temp_file" && mv "$temp_file" "$file_path"
+  chmod 600 "$file_path"
 
   return 0
 }
@@ -2834,6 +2835,22 @@ build_and_deploy_stack() {
 
   total_steps=9
 
+  stack_step(){
+    type="$1"
+    step="$2"
+    message="$3"
+    stack_message="[$stack_name] $message"
+    step_progress $step $total_steps "$stack_message"
+  }
+
+  stack_handle_exit(){
+    exit_code="$1" 
+    step="$2"
+    message="$3"
+    stack_message="[$stack_name] $message"
+    handle_exit "$exit_code" 1 $total_steps "$stack_message"
+  }
+
   # Declare an associative array to hold service variables
   declare -A stack_variables
 
@@ -2845,34 +2862,35 @@ build_and_deploy_stack() {
   highlight "Deploying stack '$stack_name'"
 
   # Step 1: Deploy Dependencies
-  message="[$stack_name] Checking and deploying dependencies"
+  stack_step 'progress' 1 "Checking and deploying dependencies"
   step_progress 1 $total_steps "$message"
   local dependencies=$(echo "$stack_json" | jq -r '.dependencies[]?')
 
   # Check if there are dependencies, and if none, display a message
   if [ -z "$dependencies" ]; then
-    step_warning 1 $total_steps "[$stack_name] No dependencies to deploy"
+    stack_step 'warning' 1 "No dependencies to deploy"
   else
     for dependency in $dependencies; do
-      step_progress 1 $total_steps "[$stack_name] Deploying dependency: $dependency"
+      dependency_message="Deploying dependency: $dependency"
+      stack_step 'progress' 1 "$dependency_message"
 
       # Fetch JSON for the dependency
       local dep_service_json
       dep_stack_json=$(fetch_service_json "$dependency")
 
       deploy_stack "$dep" "$dep_stack_json"
-      handle_exit "$?" 1 $total_steps "Deploying dependency $dependency"
+      stack_handle_exit "$?" 1 "$dependency_message"
     done
   fi
 
   # Step 2: Gather setUp actions (if defined in the service JSON)
-  step_progress 2 $total_steps "[$stack_name] Gathering setUp actions"
+  stack_step 'progress' 2 "Gathering setUp actions"
   local setUp_actions
   setUp_actions=$(echo "$service_json" | jq -r '.setUp[]?')
 
   # Debug: Check if jq returned an error
   if [[ $? -ne 0 ]]; then
-    step_error 2 $total_steps "[$service_name] Error parsing setUp actions: $setUp_actions"
+    stack_step 'error' 2 "Error parsing setUp actions: $setUp_actions"
     exit 1
   fi
 
@@ -2883,53 +2901,59 @@ build_and_deploy_stack() {
 
     for action in "${actions_array[@]}"; do
       # Perform the action (you can define custom functions to execute these steps)
-      step 3 $total_steps "[$service_name] Running setUp action: $action" "info"
+      message="Executing setUp action: $action"
+      stack_step 'error' 3 "$message"
 
       # Call an appropriate function to handle this setUp action
       execute_set_up_action "$action"
-      handle_exit $? 3 $total_steps "Executing setUp action $action"
+      stack_handle_exit $? 3 "$message"
     done
   else
-    step_warning 3 $total_steps "[$stack_name] No setUp actions defined"
+    stack_step 'warning' 3 "No setUp actions defined"
   fi
 
   # Step 4: Build service-related file paths and Docker Compose template
-  step_progress 4 $total_steps "[$stack_name] Building file paths"
+  message="Building stack filepaths"
+  stack_step 'progress' 4 "$message"
   stack_info="$(build_stack_info "$stack_name")"
   local config_path=$(echo "$stack_info" | awk '{print $1}')
   local compose_filepath=$(echo "$stack_info" | awk '{print $2}')
   local compose_template_func=$(echo "$stack_info" | awk '{print $3}')
-  handle_exit $? 4 $total_steps "[$stack_name] File paths built" "success"
+  stack_handle_exit $? 4 "$message"
 
   # Step 5: Retrieve and substitute variables in Docker Compose template
-  step_progress 5 $total_steps "[$stack_name] Creating Docker Compose template"
+  message="Creating Docker Compose template"
+  stack_step 'progress' 5 "$message"
   local substituted_template
   substituted_template="$(\
     replace_mustache_variables "$($compose_template_func)" stack_variables \
   )"
-  handle_exit $? 5 $total_steps "[$stack_name] Docker Compose template created"
+  stack_handle_exit $? 5 "$message"
 
   # Step 6: Write the substituted template to the compose file
-  step_progress 6 $total_steps "[$stack_name] Writing Docker Compose template"
+  message="Writing Docker Compose template"
+  stack_step 'progress' 6 
   compose_path="$(pwd)/$compose_filepath"
   echo "$substituted_template" >"$compose_path"
-  handle_exit $? 6 $total_steps "[$stack_name] Writing file $compose_filepath"
+  stack_handle_exit $? 6 "$message"
 
   # Step 7: Validate the Docker Compose file
-  step_progress 7 $total_steps "[$stack_name] Validating Docker Compose file"
+  message="Validating Docker Compose file"
+  stack_step 'progress' 7 
   validate_compose_file "$compose_path"
-  handle_exit $? 7 $total_steps "[$stack_name] Validating Docker Compose file $compose_path"
+  stack_handle_exit $? 7 "$message"
 
   # Step 8: Deploy the service on Docker Swarm
-  step_progress 8 $total_steps "[$stack_name] Deploying service on Docker Swarm"
+  message="Deploying stack on Docker Swarm"
+  stack_step 'progress' 8 
   deploy_stack_on_swarm "$stack_name" "$compose_filepath"
-  handle_exit $? 8 $total_steps "[$stack_name] Deploying stack $stack_name"
+  stack_handle_exit $? 8 "$message"
 
   # Step 9: Save service-specific information to a configuration file
-  step_progress 9 $total_steps "[$stack_name] Saving stack configuration"
+  message="Saving stack configuration"
+  stack_step_progress 9 "$message"
   write_json "$config_path" "$stack_json"
-  chmod 600 "$config_path"
-  handle_exit $? 9 $total_steps "[$stack_name] Saving information for stack $stack_name"
+  stack_handle_exit $? 9 "$message"
 
   # Final Success Message
   deploy_success_message "$stack_name"
