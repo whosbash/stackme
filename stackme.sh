@@ -626,30 +626,21 @@ display() {
 
 # Function to process all lines in parallel and maintain order
 display_parallel() {
-  local -n lines=$1  # Array passed by reference
+  local -n _lines=$1  # Array passed by reference
   local -a pids=()   # Array to hold process IDs
-  local -A output=() # Associative array to store output by index
 
-  for i in "${!lines[@]}"; do
-    line="${lines[i]}"
+  # Process each line in parallel
+  for i in "${!_lines[@]}"; do
+    line="${_lines[i]}"
     {
-      formatted_message=$(format 'highlight' "$line")
-      process_line "$i" "$formatted_message"
-    } &> "/tmp/output_$i" &  # Redirect each process output to a temporary file
-    pids+=($!)  # Store process ID
+      echo -e "$line"
+    } &
+    pids+=($!)  # Store the process ID for each background process
   done
 
   # Wait for all processes to finish
   for pid in "${pids[@]}"; do
     wait "$pid"
-  done
-
-  # Read and print the output in order
-  for i in "${!lines[@]}"; do
-    while IFS= read -r line; do
-      echo "${line#*|}"  # Strip the index metadata before printing
-    done < "/tmp/output_$i"
-    rm "/tmp/output_$i"  # Clean up the temporary file
   done
 }
 
@@ -717,7 +708,7 @@ important() {
 }
 
 # Function to display wait formatted messages
-wait() {
+holdon() {
   local message="$1"                     # Step message
   local timestamp="${2:-$HAS_TIMESTAMP}" # Optional timestamp flag
   display 'wait' "$message" $timestamp >&2
@@ -842,10 +833,16 @@ step_progress() {
 }
 
 boxed_text() {
-  local word=${1}          # Word to render
-  local style=${2:-simple}  # Default border style is 'simple'
-  local font=${3:-slant}  # Default font is 'slant'
-  local min_width=${4:-$(($(tput cols) - 28))}
+  local word=${1:-"Hello"}        # Default word to render
+  local style=${2:-"simple"}      # Default border style
+  local font=${3:-"slant"}        # Default font
+  local min_width=${4:-30}        # Default minimum width
+
+  # Ensure `figlet` exists
+  if ! command -v figlet &>/dev/null; then
+    error "'figlet' command not found. Please install it to use this function."
+    return 1
+  fi
 
   # Define the border styles
   declare -A border_styles=(
@@ -866,64 +863,54 @@ boxed_text() {
 
   # Extract the border characters
   IFS=' ' read -r \
-    top_fence \
-    bottom_fence \
-    left_fence \
-    right_fence \
-    top_left_corner \
-    top_right_corner \
-    bottom_left_corner \
-    bottom_right_corner <<< "${border_styles[$style]}"
+    top_fence bottom_fence left_fence right_fence \
+    top_left_corner top_right_corner \
+    bottom_left_corner bottom_right_corner <<< "${border_styles[$style]:-${border_styles["simple"]}}"
 
-  # Get the terminal width
-  terminal_width=$(tput cols)
+  # Generate ASCII art
+  local ascii_art=$(figlet -f "$font" "$word")
+  local art_width=$(echo "$ascii_art" | head -n 1 | wc -c)
+  art_width=$((art_width - 1))  # Subtract newline
 
-  # Generate the ASCII art
-  ascii_art=$(figlet -f "$font" "$word")
+  # Get terminal width and calculate box width
+  local terminal_width=$(tput cols)
+  local total_width=$((min_width > art_width ? min_width : art_width))
+  total_width=$((total_width > (terminal_width - 2) ? (terminal_width - 2) : total_width))
 
-  # Calculate the width of the ASCII art
-  art_width=$(echo "$ascii_art" | head -n 1 | wc -c)
+  # Generate borders
+  local top_border="${top_left_corner}$(\
+    printf "%-${total_width}s" | tr ' ' "$top_fence"\
+  )${top_right_corner}"
+  fmt_top_border="$(format "highlight" "$top_border")"
   
-  # Subtract 1 to account for the newline character
-  art_width=$((art_width - 1))
+  local bottom_border="${bottom_left_corner}$(\
+    printf "%-${total_width}s" | tr ' ' "$bottom_fence"\
+  )${bottom_right_corner}"
+  fmt_bottom_border="$(format "highlight" "$bottom_border")"
 
-  # Determine the maximum width for borders (account for left/right fences)
-  max_border_width=$((terminal_width - 2))  # Subtract 2 for left and right fences
-  total_width=$((min_width > art_width ? min_width : art_width))
+  # Buffer all lines to an array
+  local -a lines=()
 
-  # Ensure the total width does not exceed terminal width
-  total_width=$((total_width > max_border_width ? max_border_width : total_width))
+  # Add the top border
+  lines+=("$fmt_top_border")
 
-  # Generate the top and bottom borders
-  top_border=$(\
-    printf "%s%s%s" \
-    "$top_left_corner" "$(printf "%${total_width}s" | \
-    tr ' ' "$top_fence")" "$top_right_corner"
-  )
-  bottom_border=$(\
-    printf "%s%s%s" \
-    "$bottom_left_corner" "$(printf "%${total_width}s" | \
-    tr ' ' "$bottom_fence")" "$bottom_right_corner"
-  )
-
-  # Print the top border
-  highlight "$top_border"
-
-  # Print the ASCII art with left and right borders
-  while IFS= read -r art_content; do
-    art_length=${#art_content}
-    padding_left=$(( (total_width - art_length) / 2 ))
-    padding_right=$(( total_width - padding_left - art_length ))
-    padded_line=$(\
+  # Add the ASCII art with borders
+  while IFS= read -r line; do
+    local padding=$(( (total_width - ${#line}) / 2 ))
+    line="$(\
       printf "%s%*s%s%*s%s" \
-      "$left_fence" "$padding_left" "" "$art_content" "$padding_right" "" "$right_fence"
-    )
-
-    highlight "$padded_line"
+      "$left_fence" "$padding" "" "$line" "$padding" "" "$right_fence"\
+    )"
+    fmt_line="$(format "highlight" "$line")"
+    lines+=("$fmt_line")
   done <<< "$ascii_art"
 
-  # Print the bottom border
-  highlight "$bottom_border"
+  # Add the bottom border
+  fmt_bottom_border=$(format "highlight" "$bottom_border")
+  lines+=("$fmt_bottom_border")
+
+  # Display the lines in parallel
+  display_parallel lines
 }
 
 # Function to convert associative array to JSON format
@@ -4148,4 +4135,3 @@ main() {
 
 # Call the main function
 main "$@"
-
