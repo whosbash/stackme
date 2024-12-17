@@ -98,6 +98,3 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ---
 
 *Happy coding and stay curious!*
-```
-
-Feel free to customize the `README.md` file further to match the specifics of your project and its requirements.
