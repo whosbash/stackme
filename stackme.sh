@@ -633,6 +633,35 @@ display() {
   echo -e "$(format "$type" "$text" $timestamp)"
 }
 
+# Function to process all lines in parallel and maintain order
+display_parallel() {
+  local -n lines=$1  # Array passed by reference
+  local -a pids=()   # Array to hold process IDs
+  local -A output=() # Associative array to store output by index
+
+  for i in "${!lines[@]}"; do
+    line="${lines[i]}"
+    {
+      formatted_message=$(format 'highlight' "$line")
+      process_line "$i" "$formatted_message"
+    } &> "/tmp/output_$i" &  # Redirect each process output to a temporary file
+    pids+=($!)  # Store process ID
+  done
+
+  # Wait for all processes to finish
+  for pid in "${pids[@]}"; do
+    wait "$pid"
+  done
+
+  # Read and print the output in order
+  for i in "${!lines[@]}"; do
+    while IFS= read -r line; do
+      echo "${line#*|}"  # Strip the index metadata before printing
+    done < "/tmp/output_$i"
+    rm "/tmp/output_$i"  # Clean up the temporary file
+  done
+}
+
 # Function to display success formatted messages
 success() {
   local message="$1"                     # Step message
