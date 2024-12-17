@@ -4146,16 +4146,6 @@ main() {
   fi
 }
 
-# # Call the main function
-# main "$@"
+# Call the main function
+main "$@"
 
-portainer_url="portainer.conexxohub.com.br"
-username="conexxohub_portainer"
-password="ConexxoHub!54321"
-
-#token="$(get_portainer_auth_token "$portainer_url" "$username" "$password")"
-
-new_username="conexxohub_admin"
-new_password="senha_segura_12345"
-
-signup_on_portainer "$portainer_url" "$new_username" "$new_password"
