@@ -64,87 +64,6 @@ HEADER_LENGTH=120
 
 ################################ BEGIN OF GENERAL UTILITARY FUNCTIONS #############################
 
-boxed_text() {
-  local word=${1}          # Word to render
-  local font=${2:-slant}  # Default font is 'slant'
-  local min_width=${3:-$(($(tput cols) - 28))}  # Default minimum width is 80
-  local style=${4:-simple}  # Default border style is 'simple'
-
-  # Define the border styles
-  declare -A border_styles=(
-  ["simple"]="- - | | + + + +"
-  ["asterisk"]="* * * * * * * *"
-  ["equal"]="= = | | + + + +"
-  ["hash"]="# # # # # # # #"
-  ["dotted"]=". . . . . . . ."
-  ["starred"]="* * * * * * * *"
-  ["boxed-dashes"]="- - - - - - - -"
-  ["wave"]="~ ~ ~ ~ ~ ~ ~ ~"
-  ["none"]="         "
-  )
-
-  # Extract the border characters
-  IFS=' ' read -r \
-    top_fence \
-    bottom_fence \
-    left_fence \
-    right_fence \
-    top_left_corner \
-    top_right_corner \
-    bottom_left_corner \
-    bottom_right_corner <<< "${border_styles[$style]}"
-
-  # Get the terminal width
-  terminal_width=$(tput cols)
-
-  # Generate the ASCII art
-  ascii_art=$(figlet -f "$font" "$word")
-
-  # Calculate the width of the ASCII art
-  art_width=$(echo "$ascii_art" | head -n 1 | wc -c)
-  
-  # Subtract 1 to account for the newline character
-  art_width=$((art_width - 1))
-
-  # Determine the maximum width for borders (account for left/right fences)
-  max_border_width=$((terminal_width - 2))  # Subtract 2 for left and right fences
-  total_width=$((min_width > art_width ? min_width : art_width))
-
-  # Ensure the total width does not exceed terminal width
-  total_width=$((total_width > max_border_width ? max_border_width : total_width))
-
-  # Generate the top and bottom borders
-  top_border=$(\
-    printf "%s%s%s" \
-    "$top_left_corner" "$(printf "%${total_width}s" | \
-    tr ' ' "$top_fence")" "$top_right_corner"
-  )
-  bottom_border=$(\
-    printf "%s%s%s" \
-    "$bottom_left_corner" "$(printf "%${total_width}s" | \
-    tr ' ' "$bottom_fence")" "$bottom_right_corner"
-  )
-
-  # Print the top border
-  highlight "$top_border"
-
-  # Print the ASCII art with left and right borders
-  while IFS= read -r art_content; do
-    art_length=${#art_content}
-    padding_left=$(( (total_width - art_length) / 2 ))
-    padding_right=$(( total_width - padding_left - art_length ))
-    padded_line=$(\
-      printf "%s%*s%s%*s%s" \
-      "$left_fence" "$padding_left" "" "$art_content" "$padding_right" "" "$right_fence"
-    )
-
-    highlight "$padded_line"
-  done <<< "$ascii_art"
-
-  # Print the bottom border
-  highlight "$bottom_border"
-}
-
 # Function to decode JSON and base64
 query_json64() {
   local item="$1"
@@ -900,6 +819,91 @@ step_progress() {
   local has_timestamp=${4:-$HAS_TIMESTAMP}
 
   step $current $total "$message" "progress" $has_timestamp
+}
+
+boxed_text() {
+  local word=${1}          # Word to render
+  local style=${2:-simple}  # Default border style is 'simple'
+  local font=${3:-slant}  # Default font is 'slant'
+  local min_width=${4:-$(($(tput cols) - 28))}
+
+  # Define the border styles
+  declare -A border_styles=(
+  ["simple"]="- - | | + + + +"
+  ["asterisk"]="* * * * * * * *"
+  ["equal"]="= = | | + + + +"
+  ["hash"]="# # # # # # # #"
+  ["dotted"]=". . . . . . . ."
+  ["starred"]="* * * * * * * *"
+  ["boxed-dashes"]="- - - - - - - -"
+  ["wave"]="~ ~ ~ ~ ~ ~ ~ ~"
+  ["angled"]="/ / \\ \\ / \\ \\ /"
+  ["arrowed"]="< > ^ v < > ^ v"
+  ["zigzag"]="z z Z Z z Z Z z"
+  ["spiky"]="x x x x X X X X"
+  ["none"]="         "
+  )
+
+  # Extract the border characters
+  IFS=' ' read -r \
+    top_fence \
+    bottom_fence \
+    left_fence \
+    right_fence \
+    top_left_corner \
+    top_right_corner \
+    bottom_left_corner \
+    bottom_right_corner <<< "${border_styles[$style]}"
+
+  # Get the terminal width
+  terminal_width=$(tput cols)
+
+  # Generate the ASCII art
+  ascii_art=$(figlet -f "$font" "$word")
+
+  # Calculate the width of the ASCII art
+  art_width=$(echo "$ascii_art" | head -n 1 | wc -c)
+  
+  # Subtract 1 to account for the newline character
+  art_width=$((art_width - 1))
+
+  # Determine the maximum width for borders (account for left/right fences)
+  max_border_width=$((terminal_width - 2))  # Subtract 2 for left and right fences
+  total_width=$((min_width > art_width ? min_width : art_width))
+
+  # Ensure the total width does not exceed terminal width
+  total_width=$((total_width > max_border_width ? max_border_width : total_width))
+
+  # Generate the top and bottom borders
+  top_border=$(\
+    printf "%s%s%s" \
+    "$top_left_corner" "$(printf "%${total_width}s" | \
+    tr ' ' "$top_fence")" "$top_right_corner"
+  )
+  bottom_border=$(\
+    printf "%s%s%s" \
+    "$bottom_left_corner" "$(printf "%${total_width}s" | \
+    tr ' ' "$bottom_fence")" "$bottom_right_corner"
+  )
+
+  # Print the top border
+  highlight "$top_border"
+
+  # Print the ASCII art with left and right borders
+  while IFS= read -r art_content; do
+    art_length=${#art_content}
+    padding_left=$(( (total_width - art_length) / 2 ))
+    padding_right=$(( total_width - padding_left - art_length ))
+    padded_line=$(\
+      printf "%s%*s%s%*s%s" \
+      "$left_fence" "$padding_left" "" "$art_content" "$padding_right" "" "$right_fence"
+    )
+
+    highlight "$padded_line"
+  done <<< "$ascii_art"
+
+  # Print the bottom border
+  highlight "$bottom_border"
 }
 
 # Function to convert associative array to JSON format
