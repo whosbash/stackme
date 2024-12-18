@@ -351,13 +351,13 @@ is_package_installed() {
 }
 
 # Function to run a command and display its output
-run_command() {
+command() {
   local command="$1"
   local current_step="$2"
   local total_steps="$3"
   local step_message="$4"
 
-  local log_file="/tmp/command_log.txt"
+  local log_file="/tmp/log.txt"
   local allow_dangerous_commands="${5:no}"
 
   # Ensure we don't run any destructive commands unintentionally unless explicitly allowed
@@ -2608,7 +2608,7 @@ sanitize() {
     # Run commands with explicit permission for destructive operations
     message="Pruning unused containers, networks, volumes, and build cache"
     command="docker system prune --all --volumes -f"
-    run_command "$command" 1 $total_steps "$message" "yes"
+    command "$command" 1 $total_steps "$message" "yes"
 
     message="Removing dangling images"
 
@@ -2631,15 +2631,15 @@ sanitize() {
 
     message="Removing stopped containers"
     command="docker container prune -f"
-    run_command "$command" 3 $total_steps "$message" "yes"
+    command "$command" 3 $total_steps "$message" "yes"
 
     message="Removing unused Docker networks"
     command="docker network prune -f"
-    run_command "$command" 4 $total_steps "$message" "yes"
+    command "$command" 4 $total_steps "$message" "yes"
 
     message="Removing orphaned volumes"
     command="docker volume prune -f"
-    run_command "$command" 5 $total_steps "$message" "yes"
+    command "$command" 5 $total_steps "$message" "yes"
   else
     failure "Aborted by user."
   fi
@@ -3749,12 +3749,12 @@ update_and_install_packages() {
   # Step 1: Update the system
   step_message="Updating system and upgrading packages"
   step_progress 1 $total_steps "$step_message"
-  run_command "apt-get update -yq" 1 $total_steps "$step_message"
+  command "apt-get update -yq" 1 $total_steps "$step_message"
 
   # Step 3: Autoclean the system
   step_message="Cleaning up package cache"
   step_progress 2 $total_steps "$step_message"
-  run_command "apt-get autoclean -yq --allow-downgrades" 2 $total_steps "$step_message"
+  command "apt-get autoclean -yq --allow-downgrades" 2 $total_steps "$step_message"
 
   # Check for apt locks on installation
   wait_apt_lock 5 60
