@@ -615,6 +615,18 @@ format() {
   echo -e "$icon $timestamp$colorized_message"
 }
 
+# Function to format an array of messages
+format_array() {
+  local type="$1"
+  local -n arr="$2"  # Use reference to the array
+
+  for i in "${!arr[@]}"; do
+    # Apply format to each message in the array
+    arr[$i]=$(format "$type" "${arr[$i]}")
+  done
+}
+
+
 # Function to display a message with improved formatting
 display() {
   local type="$1"
@@ -641,6 +653,14 @@ display_parallel() {
   # Wait for all processes to finish
   for pid in "${pids[@]}"; do
     wait "$pid"
+  done
+}
+
+# Function to process all lines sequentially and ensure ordered output
+display_sequential() {
+  local -n _lines=$1  # Array passed by reference
+  for line in "${_lines[@]}"; do
+    echo -e "$line" >&2
   done
 }
 
@@ -833,10 +853,11 @@ step_progress() {
 }
 
 boxed_text() {
-  local word=${1:-"Hello"}        # Default word to render
-  local style=${2:-"simple"}      # Default border style
-  local font=${3:-"slant"}        # Default font
-  local min_width=${4:-30}        # Default minimum width
+  local word=${1:-"Hello"}                        # Default word to render
+  local text_style=${2:-"highlight"}              # Default text style
+  local border_style=${3:-"simple"}               # Default border style
+  local font=${4:-"slant"}                        # Default font
+  local min_width=${5:-$(($(tput cols) - 28))}    # Default minimum width
 
   # Ensure `figlet` exists
   if ! command -v figlet &>/dev/null; then
@@ -865,7 +886,8 @@ boxed_text() {
   IFS=' ' read -r \
     top_fence bottom_fence left_fence right_fence \
     top_left_corner top_right_corner \
-    bottom_left_corner bottom_right_corner <<< "${border_styles[$style]:-${border_styles["simple"]}}"
+    bottom_left_corner bottom_right_corner <<<\
+     "${border_styles[$border_style]:-${border_styles["simple"]}}"
 
   # Generate ASCII art
   local ascii_art=$(figlet -f "$font" "$word")
@@ -881,12 +903,12 @@ boxed_text() {
   local top_border="${top_left_corner}$(\
     printf "%-${total_width}s" | tr ' ' "$top_fence"\
   )${top_right_corner}"
-  fmt_top_border="$(format "highlight" "$top_border")"
+  fmt_top_border="$(format "$text_style" "$top_border")"
   
   local bottom_border="${bottom_left_corner}$(\
     printf "%-${total_width}s" | tr ' ' "$bottom_fence"\
   )${bottom_right_corner}"
-  fmt_bottom_border="$(format "highlight" "$bottom_border")"
+  fmt_bottom_border="$(format "$text_style" "$bottom_border")"
 
   # Buffer all lines to an array
   local -a lines=()
@@ -901,16 +923,28 @@ boxed_text() {
       printf "%s%*s%s%*s%s" \
       "$left_fence" "$padding" "" "$line" "$padding" "" "$right_fence"\
     )"
-    fmt_line="$(format "highlight" "$line")"
+    fmt_line="$(format "$text_style" "$line")"
     lines+=("$fmt_line")
   done <<< "$ascii_art"
 
   # Add the bottom border
-  fmt_bottom_border=$(format "highlight" "$bottom_border")
+  fmt_bottom_border=$(\
+    format "$text_style" "$bottom_border"\
+  )
   lines+=("$fmt_bottom_border")
 
   # Display the lines in parallel
   display_parallel lines
+}
+
+header() {
+  local word=${1:-"Hello"}                      # Default word to render
+  local text_style=${2:-"highlight"}            # Default text style
+  local border_style=${3:-"simple"}             # Default border style
+  local font=${4:-"slant"}                      # Default font
+  local min_width=${5:-$(($(tput cols) - 28))}  # Default minimum width
+
+  boxed_text "$word" "$text_style" "$border_style" "$font" "$min_width"
 }
 
 # Function to convert associative array to JSON format
@@ -3880,7 +3914,7 @@ declare -a stack_labels=("SMTP test" "Traefik" "Portainer" "Redis" "Postgres" "N
 declare -a stack_names=("smtp" "traefik" "portainer" "redis" "postgres" "n8n")
 declare -a stack_descriptions=(
   "A simple email service test."
-  "A modern reverse proxy and load balancer for microservices that integrates with Docker."
+  "A modern reverse proxy and load balancer for microservices."
   "A web-based management interface for Docker environments."
   "A powerful in-memory data structure store used as a database, cache, and message broker."
   "A relational database management system emphasizing extensibility and SQL compliance."
@@ -3893,32 +3927,32 @@ deploy_stack() {
   case "$option" in
   smtp)
     clear
-    boxed_text 'SMTP'
+    header 'SMTP'
     test_smtp_email
     ;;
   traefik)
     clear
-    boxed_text 'Traefik'
+    header 'Traefik'
     deploy_stack_traefik
     ;;
   portainer)
     clear
-    boxed_text 'Portainer'
+    header 'Portainer'
     deploy_stack_portainer
     ;;
   redis)
     clear
-    boxed_text 'Redis'
+    header 'Redis'
     deploy_stack_redis
     ;;
   postgres)
     clear
-    boxed_text 'Postgres'
+    header 'Postgres'
     deploy_stack_postgres
     ;;
   n8n)
     clear
-    boxed_text 'N8N'
+    header 'N8N'
     deploy_stack_n8n
     ;;
   *)
@@ -3930,22 +3964,31 @@ deploy_stack() {
 
 # Function to display a great farewell message
 farewell_message() {
-  celebrate ""
-  celebrate "🌟 Thank you for using the Deployment Tool OpenStack! 🌟"
-  celebrate ""
-  celebrate "Your journey doesn't end here:it's just a new beginning."
-  celebrate "Remember: Success is the sum of small efforts, repeated day in and day out. 🚀"
-  celebrate ""
-  celebrate "We hope to see you again soon. Until then, happy coding and stay curious! ✨"
-  celebrate ""
+  farewell_messages=(
+    ""
+    "🌟 Thank you for using the Deployment Tool OpenStack! 🌟"
+    ""
+    "Your journey doesn't end here:it's just a new beginning."
+    "Remember: Success is the sum of small efforts, repeated day in and day out. 🚀"
+    ""
+    "We hope to see you again soon. Until then, happy coding and stay curious! ✨"
+    ""
+  )
+
+  # Format the array of farewell messages
+  format_array "celebrate" farewell_messages
+
+  # Display the formatted messages
+  display_parallel farewell_messages
 }
 
 # Function to choose the stack to install
 choose_stack_to_install() {
   # Constants for pagination
   local total_items=${#stack_labels[@]}
-  local total_pages=$(((total_items + ITEMS_PER_PAGE - 1) / ITEMS_PER_PAGE)) # Round up
+  local total_pages=$(((total_items + ITEMS_PER_PAGE - 1) / ITEMS_PER_PAGE))
   local current_page=1
+  local type="highlight"
 
   # If total items fit within one page, disable pagination
   if ((total_items <= $ITEMS_PER_PAGE)); then
@@ -3954,14 +3997,24 @@ choose_stack_to_install() {
 
   while true; do
     clear
-    boxed_text 'Main menu'
+    header 'Main menu'
+
+    # Buffer all lines to an array
+    local -a menu_lines=()
 
     if ((total_pages > 1)); then
-      highlight "Select the stack to install (Page $current_page of $total_pages):"
+      page_message="$(\
+        format "$type" \
+        "Select the stack to install (Page $current_page of $total_pages):"\
+      )"
+      
     else
-      highlight "Select the stack to install:"
+      page_message="$(format "$type" "Select the stack to install:")"
     fi
-    highlight ""
+    menu_lines+=("$page_message")
+
+    fmt_space="$(format "$type" "")"
+    menu_lines+=("$fmt_space") 
 
     # Calculate start and end indices for the current page
     local start_index=$(((current_page - 1) * $ITEMS_PER_PAGE))
@@ -3974,22 +4027,27 @@ choose_stack_to_install() {
     for i in $(seq "$start_index" "$end_index"); do
       local label_with_padding=$(printf "%-10s" "${stack_labels[i]}")
       local option="$((i + 1)). $label_with_padding: ${stack_descriptions[i]}"
-      highlight "$option"
+      fmt_option="$(format "$type" "$option")"
+      
+      menu_lines+=("$fmt_option") 
     done
 
     # Navigation options
+    fmt_space="$(format "$type" "")"
+    menu_lines+=("$fmt_space")
     if ((total_pages > 1)); then
       local navigation_options="[p/P] Previous Page [n/N] Next Page [e/E] Exit"
-      highlight ""
-      highlight "$navigation_options"
     else
-      highlight ""
-      highlight "[e/E] Exit"
+      local navigation_options="[e/E] Exit"
     fi
+    fmt_nav_options="$(format "$type" "$navigation_options")"
+    menu_lines+=("$fmt_nav_options")
+
+    display_parallel menu_lines
 
     # Read user input
-    local choice_message="$(format "highlight" "Enter your choice: ")"
-    read -p "$choice_message" choice
+    local choice_message="$(format "$type" "Enter your choice: ")"
+    read -p "$choice_message" choice    
 
     options="between $((start_index + 1)) and $((end_index + 1)) or press 'e' to exit."
     explanation="Select an option $options"
@@ -4030,26 +4088,37 @@ choose_stack_to_install() {
 
 # Display help message
 usage() {
-  info "Usage: $0 [options]"
-  info "Options:"
-  info "  -i, --install           Install required packages."
-  info "  -c, --clean             Clean docker environment."
-  info "  -p, --prepare           Prepare the environment, same as '-i -c'."
-  info "  -u, --startup           Startup server information."
-  info "  -s, --stack STACK       Specify which stack to install: {${stack_names[*]}}."
-  info "  -h, --help              Display this help message and exit."
-  info 1
+  usage_messages=(
+    "Usage: $0 [options]"
+    "Options:"
+    "  -i, --install           Install required packages."
+    "  -c, --clean             Clean docker environment."
+    "  -p, --prepare           Prepare the environment, same as combination '-i -c'."
+    "  -u, --startup           Startup server information."
+    "  -s, --stack STACK       Specify which stack to install: {${stack_names[*]}}."
+    "  -h, --help              Display this help message and exit."
+  )
+  format_array "info" usage_messages
+
+  display_parallel usage_messages
+
+  exit 1
 }
 
 # Parse command-line arguments
 parse_args() {
-  # Get options
-  OPTIONS=$(getopt -o i,c,p,u,s:,h --long install,clean,prepare,startup,stack:,help -- "$@")
-
+  # Get options using getopt
+  OPTIONS=$(\
+    getopt \
+    -o i,c,p,u,s:,h \
+    --long install,clean,prepare,startup,stack:,help -- "$@" 2>/dev/null\
+  )
+  
   # Check if getopt failed (invalid option)
   if [ $? -ne 0 ]; then
-    info "Invalid option(s) provided."
+    echo "Invalid option(s) provided."
     usage
+    exit 1
   fi
 
   # Apply the options to positional parameters
@@ -4089,6 +4158,7 @@ parse_args() {
       # This will be triggered for any unrecognized option
       echo "Unknown option: $1"
       usage
+      return 1
       ;;
     esac
   done
