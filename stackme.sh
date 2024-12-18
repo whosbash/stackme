@@ -104,6 +104,26 @@ mask_string() {
   echo "${masked_part}${unmasked_part}"
 }
 
+free_space() {
+    # Get the used, available, and total space in bytes
+    read -r used avail total <<< "$(df --output=used,avail,size --block-size=1 / | tail -n1)"
+
+    # Calculate the percentage of space used with decimal precision
+    if [[ $total -gt 0 ]]; then
+        percentage=$(awk "BEGIN {printf \"%.2f\", ($used / $total) * 100}")
+    else
+        percentage="0.00"
+    fi
+
+    # Convert bytes to gigabytes (with two decimal places)
+    used_gb=$(awk "BEGIN {printf \"%.2f\", $used / (1024^3)}")
+    avail_gb=$(awk "BEGIN {printf \"%.2f\", $avail / (1024^3)}")
+    total_gb=$(awk "BEGIN {printf \"%.2f\", $total / (1024^3)}")
+
+    # Print the results in a structured format
+    echo "Used: ${used_gb}G, Available: ${avail_gb}G, Total: ${total_gb}G, Usage: ${percentage}%"
+}
+
 # Function to send a test email using swaks
 send_email() {
     local from_email=$1
@@ -887,7 +907,7 @@ boxed_text() {
     top_fence bottom_fence left_fence right_fence \
     top_left_corner top_right_corner \
     bottom_left_corner bottom_right_corner <<<\
-     "${border_styles[$border_style]:-${border_styles["simple"]}}"
+    "${border_styles[$border_style]:-${border_styles["simple"]}}"
 
   # Generate ASCII art
   local ascii_art=$(figlet -f "$font" "$word")
@@ -1472,7 +1492,6 @@ validate_json_recursive() {
       # Handle additional constraints
       handle_constraints "$value" "$sub_schema" "${parent_path}${key}" errors valid
     fi
-
   done
 
   # Handle additional properties when additionalProperties is false
@@ -1827,6 +1846,7 @@ wait_for_input() {
   read -rp "$prompt_message" user_input
 }
 
+# Function to generate HTML for an email
 email_test_hmtl() {
   echo "<!DOCTYPE html>
 <html lang='en'>
@@ -1960,7 +1980,7 @@ fetch_stable_tags_from_page() {
   echo "$1" | jq -r '.results[].name' | grep -E "$pattern"
 }
 
-# Determine if an image is official
+# Function to determine if an image is official
 is_official_image() {
   # Measure execution time
   local image_name=$1
@@ -1989,7 +2009,12 @@ is_official_image() {
   fi
 }
 
-# Get the latest stable version
+# Function to display a failed stack configuration message
+failed_stack_configuration_message(){
+  failure "Failed to generate the stack configuration for  $stack_name"
+}
+
+# Function to get the latest stable version
 get_latest_stable_version() {
   local image_name=$1
   local base_url=""
@@ -2216,6 +2241,7 @@ is_portainer_credential_correct() {
   fi
 }
 
+# Function to signup on portainer
 signup_on_portainer(){
   local portainer_url="$1"
   local new_username="$2"
@@ -2237,7 +2263,6 @@ signup_on_portainer(){
     success "Administrator user created successfully."
   fi
 }
-
 
 # Function to retrieve a Portainer authentication token
 get_portainer_auth_token() {
@@ -2337,7 +2362,7 @@ get_portainer_swarm_id() {
   echo "$swarm_id"
 }
 
-# Function to get stacks
+# Function to get stacks from Portainer
 get_portainer_swarm_stacks() {
   local portainer_url="$1"
   local token="$2"
@@ -2862,6 +2887,12 @@ test_smtp_email(){
     "$username" "$password" "$subject" "$body"
 }
 
+# Function to serve as free space checker
+check_free_space(){
+  _space="$(free_space)"
+  info "$_space"
+}
+
 # Function to deploy a service
 build_and_deploy_stack() {
   # Arguments
@@ -3155,12 +3186,12 @@ generate_config_portainer() {
   step_info 1 $total_steps "Retrieving Portainer agent version"
   local portainer_agent_version="$(get_latest_stable_version "portainer/agent")"
   info "Portainer agent version: $portainer_agent_version"
-  step_success 1 $total_steps "Retrieving Portainer agent version succeed"
+  step_success 1 $total_steps "Retrieving Portainer agent version succeeded"
   
   step_info 2 $total_steps "Retrieving Portainer ce version"
   local portainer_ce_version="$(get_latest_stable_version "portainer/portainer-ce")"
   info "Portainer ce version: $portainer_ce_version"
-  step_success 2 $total_steps "Retrieving Portainer ce version succeed"
+  step_success 2 $total_steps "Retrieving Portainer ce version succeeded"
 
   server_info_json="$(cat 'server_info.json')"
   local network_name="$(
@@ -3185,6 +3216,7 @@ generate_config_portainer() {
     step_error 3 $total_steps "Unable to prompt Portanier configuration."
     return 1
   fi
+
   portainer_url="$(\
     search_on_json_array "$collected_items" 'name' 'portainer_url' | \
     jq -r ".value"
@@ -3263,21 +3295,21 @@ generate_config_postgres() {
     --arg volume_name "${service_name}_data" \
     --arg network_name "$network_name" \
     '{
-            "name": $stack_name,
-            "variables": {
-                "stack_name": $stack_name,
-                "image_name": $image_name,
-                "image_version": $image_version,
-                "container_name": $container_name,
-                "container_port": $container_port,
-                "volume_name": $volume_name,
-                "network_name": $network_name,
-                "db_user": $db_user,
-                "db_password": $db_password
-            },
-            "dependencies": {},
-            "setUp": []
-        }'
+          "name": $stack_name,
+          "variables": {
+              "stack_name": $stack_name,
+              "image_name": $image_name,
+              "image_version": $image_version,
+              "container_name": $container_name,
+              "container_port": $container_port,
+              "volume_name": $volume_name,
+              "network_name": $network_name,
+              "db_user": $db_user,
+              "db_password": $db_password
+          },
+          "dependencies": {},
+          "setUp": []
+      }'
 }
 
 # Function to generate n8n config
@@ -3651,6 +3683,11 @@ deploy_stack_traefik() {
   local config_json
   config_json=$(generate_config_traefik)
 
+  if [ -z "$config_json" ]; then
+    failed_stack_configuration_message "traefik"
+    return 1
+  fi
+
   # Check required fields
   validate_stack_config "$stack_name" "$config_json"
 
@@ -3667,6 +3704,11 @@ deploy_stack_portainer() {
   # Generate the n8n service JSON configuration using the helper function
   local config_json
   config_json="$(generate_config_portainer)"
+
+  if [ -z "$config_json" ]; then
+    failed_stack_configuration_message "portainer"
+    return 1
+  fi
 
   # Check required fields
   validate_stack_config "$stack_name" "$config_json"
@@ -3686,6 +3728,11 @@ deploy_stack_postgres() {
   local config_json
   config_json=$(generate_config_postgres "$image_version" "$container_port" "$network_name")
 
+  if [ -z "$config_json" ]; then
+    failed_stack_configuration_message "postgres"
+    return 1
+  fi
+
   # Check required fields
   validate_stack_config "$stack_name" "$config_json"
 
@@ -3698,11 +3745,15 @@ deploy_stack_redis() {
   local stack_name='redis'
   local image_version="${1:-"6.2.5"}"         # Accept image version or default to 6.2.5
   local container_port="${2:-6379}"           # Accept container port or default to 6379
-  local network_name="${3:-$DEFAULT_NETWORK}" # Accept network or default to DEFAULT_NETWORK
 
   # Generate the Redis service JSON configuration using the helper function
   local redis_config_json
-  config_json=$(generate_config_redis "$image_version" "$container_port" "$network_name")
+  config_json=$(generate_config_redis)
+
+  if [ -z "$config_json" ]; then
+    failed_stack_configuration_message "redis"
+    return 1
+  fi
 
   # Check required fields
   validate_stack_config "$stack_name" "$config_json"
@@ -3718,13 +3769,18 @@ deploy_stack_n8n() {
 
   # Generate the n8n service JSON configuration using the helper function
   local n8n_config_json
-  n8n_config_json=$(generate_config_n8n)
+  config_json=$(generate_config_n8n)
+
+  if [ -z "$config_json" ]; then
+    failed_stack_configuration_message "n8n"
+    return 1
+  fi
 
   # Check required fields
   validate_stack_config "$stack_name" "$config_json"
 
   # Deploy the n8n service using the JSON
-  build_and_deploy_stack "$augmented_stack_name" "$n8n_config_json"
+  build_and_deploy_stack "$augmented_stack_name" "$config_json"
 
   important "You must create the login and password in the first access of the N8N"
 }
@@ -3738,13 +3794,13 @@ update_and_install_packages() {
   # Function constants
   local total_steps=3
 
-  highlight "Preparing environment"
-
   # Check if the script is running as root
   if [ "$EUID" -ne 0 ]; then
-    error "Please run this script as root or use sudo."
+    failure "Please run this script as root or use sudo."
     exit 1
   fi
+
+  highlight "Preparing environment"
 
   # Step 1: Update the system
   step_message="Updating system and upgrading packages"
@@ -3760,7 +3816,10 @@ update_and_install_packages() {
   wait_apt_lock 5 60
 
   # Install required apt packages quietly
-  packages=("sudo" "apt-utils" "apparmor-utils" "jq" "python3" "docker" "figlet" "swaks" "netcat")
+  packages=(
+    "sudo" "apt-utils" "apparmor-utils" "jq" 
+    "python3" "docker" "figlet" "swaks" "netcat"
+  )
   step_message="Installing required apt-get packages"
   step_progress 3 $total_steps "$step_message"
   install_all_packages "apt-get" "${packages[@]}"
@@ -3777,6 +3836,44 @@ clean_docker_environment() {
   sanitize
 
   wait_for_input
+}
+
+# Function to install Docker
+install_docker() {
+  # Ensure the script is running with elevated privileges
+  if [[ $EUID -ne 0 ]]; then
+    echo "Error: This script must be run as root or with sudo." >&2
+    return 1
+  fi
+
+  echo "Installing Docker..."
+
+  # Download and execute the Docker installation script
+  if curl -fsSL https://get.docker.com | bash > /dev/null 2>&1; then
+    echo "Docker installation script executed successfully."
+  else
+    echo "Failed to download or execute the Docker installation script." >&2
+    return 1
+  fi
+
+  # Enable Docker service
+  if systemctl enable docker > /dev/null 2>&1; then
+    echo "Docker service enabled to start on boot."
+  else
+    echo "Failed to enable Docker service." >&2
+    return 1
+  fi
+
+  # Start Docker service
+  if systemctl start docker > /dev/null 2>&1; then
+    echo "Docker service started successfully."
+  else
+    echo "Failed to start Docker service." >&2
+    return 1
+  fi
+
+  echo "Docker installation and setup completed successfully."
+  return 0
 }
 
 # Function to prompt for server information and process the response
@@ -3802,16 +3899,6 @@ prompt_server_info() {
   run_collection_process "$items"
 }
 
-# Function to retrieve the server IP address
-get_server_ip() {
-  local server_ip=$(hostname -I | awk '{print $1}')
-  if [[ -z "$server_ip" ]]; then
-    error "Unable to retrieve the server IP address."
-    exit 1
-  fi
-  echo "$server_ip"
-}
-
 # Function to merge server, network, and IP information
 get_server_info() {
   local server_array ip_object merged_result
@@ -3829,16 +3916,16 @@ get_server_info() {
 
 # Function to initialize the server information
 initialize_server_info() {
-  total_steps=5
+  total_steps=6
   server_filename="server_info.json"
 
   # Step 1: Check if server_info.json exists and is valid
-  message="Initialization of server information..."
+  message="Initialization of server information"
   step_progress 1 $total_steps "$message"
   if [[ -f "$server_filename" ]]; then
     server_info_json=$(cat "$server_filename" 2>/dev/null)
     if jq -e . >/dev/null 2>&1 <<<"$server_info_json"; then
-      step_info 1 $total_steps "Valid server_info.json found. Using existing information."
+      step_info 1 $total_steps "Valid $server_filename found. Using existing information."
     else
       step_error "Content on file $server_filename is invalid. Reinitializing..."
       server_info_json=$(get_server_info)
@@ -3870,50 +3957,92 @@ initialize_server_info() {
   # Set Hostname
   step_message="Set Hostname"
   step_progress 2 $total_steps "$step_message"
-  hostnamectl set-hostname "$server_name" >/dev/null 2>&1
+  hostnamectl set-hostname "$server_name" 2>&1
   handle_exit $? 2 $total_steps "$step_message"
 
   # Update /etc/hosts
   step_message="Add name to server name in hosts file at path /etc/hosts"
   step_progress 3 $total_steps "$step_message"
-  sed -i "s/127.0.0.1[[:space:]]localhost/127.0.0.1 $server_name/g" /etc/hosts >/dev/null 2>&1
+  sed -i "s/127.0.0.1[[:space:]]localhost/127.0.0.1 $server_name/g" /etc/hosts 2>&1
   handle_exit $? 3 $total_steps "$step_message"
+
+  # Install docker
+  step_message="Installing Docker"
+  step_progress 4 $total_steps "$step_message"
+  install_docker
+  handle_exit $? 4 $total_steps "$step_message"
 
   # Initialize Docker Swarm
   step_message="Docker Swarm initialization"
-  step_progress 4 $total_steps "$step_message"
+  step_progress 5 $total_steps "$step_message"
 
   if is_swarm_active; then
-    step_warning 4 $total_steps "Swarm is already active"
+    step_warning 5 $total_steps "Swarm is already active"
   else
     server_ip=$(
       echo "$server_info_json" | 
       jq -r '.[] | select(.name=="server_ip") | .value'
     )
 
-    docker swarm init  >/dev/null 2>&1
+    docker swarm init 2>&1
     
-    handle_exit $? 4 $total_steps "$step_message"
+    handle_exit $? 5 $total_steps "$step_message"
   fi
 
-    # Initialize Network
+  # Initialize Network
   message="Network initialization"
-  step_progress 5 $total_steps "$message"
+  step_progress 6 $total_steps "$message"
   create_network_if_not_exists "$network_name"
-  handle_exit $? 5 $total_steps "$step_message"
+  handle_exit $? 6 $total_steps "$step_message"
 
   success "Server initialization complete"
 
   wait_for_input
 }
 
+# Declare arrays for utilitary labels (user-friendly) and names (internal)
+# IMPORTANT: The order of the arrays should match
+# NOTE: Add new utilitaries here
+declare -a utils_labels=(
+  "SMTP test"
+  "Server free space"
+)
+declare -a utils_names=(
+  "smtp"
+  "free_space"
+)
+declare -a utils_descriptions=(
+  "A simple e-mail service to test the SMTP server."
+  "An utilitary to check free space on this machine."
+)
+
+# Function to deploy the selected stack based on input
+choose_utils() {
+  local option="$1"
+  
+  clear
+  case "$option" in
+  smtp)
+    header 'SMTP'
+    test_smtp_email
+    ;;
+  free_space)
+    header 'Free Space'
+    check_free_space
+    ;;
+  *)
+    error "Invalid utilitary. Provided option: $stack. Available options: ${stack_names[*]}. "
+    exit 1
+    ;;
+  esac
+}
+
 # Declare arrays for stack labels (user-friendly) and stack names (internal)
 # IMPORTANT: The order of the arrays should match
 # NOTE: Add new stacks here
-declare -a stack_labels=("SMTP test" "Traefik" "Portainer" "Redis" "Postgres" "N8N")
-declare -a stack_names=("smtp" "traefik" "portainer" "redis" "postgres" "n8n")
+declare -a stack_labels=("Traefik" "Portainer" "Redis" "Postgres" "N8N")
+declare -a stack_names=("traefik" "portainer" "redis" "postgres" "n8n")
 declare -a stack_descriptions=(
-  "A simple email service test."
   "A modern reverse proxy and load balancer for microservices."
   "A web-based management interface for Docker environments."
   "A powerful in-memory data structure store used as a database, cache, and message broker."
@@ -3924,34 +4053,26 @@ declare -a stack_descriptions=(
 # Function to deploy the selected stack based on input
 deploy_stack() {
   local option="$1"
+  
+  clear
   case "$option" in
-  smtp)
-    clear
-    header 'SMTP'
-    test_smtp_email
-    ;;
   traefik)
-    clear
     header 'Traefik'
     deploy_stack_traefik
     ;;
   portainer)
-    clear
     header 'Portainer'
     deploy_stack_portainer
     ;;
   redis)
-    clear
     header 'Redis'
     deploy_stack_redis
     ;;
   postgres)
-    clear
     header 'Postgres'
     deploy_stack_postgres
     ;;
   n8n)
-    clear
     header 'N8N'
     deploy_stack_n8n
     ;;
@@ -3968,7 +4089,7 @@ farewell_message() {
     ""
     "🌟 Thank you for using the Deployment Tool OpenStack! 🌟"
     ""
-    "Your journey doesn't end here:it's just a new beginning."
+    "Your journey doesn't end here: it's just a new beginning."
     "Remember: Success is the sum of small efforts, repeated day in and day out. 🚀"
     ""
     "We hope to see you again soon. Until then, happy coding and stay curious! ✨"
@@ -3997,7 +4118,7 @@ choose_stack_to_install() {
 
   while true; do
     clear
-    header 'Main menu'
+    header 'Stacks'
 
     # Buffer all lines to an array
     local -a menu_lines=()
@@ -4063,13 +4184,15 @@ choose_stack_to_install() {
         error "$choice_error_message"
         wait_secs 1
       fi
-    elif ((total_pages > 1)) && [[ "$choice" == "P" || "$choice" == "p" ]]; then
+    elif ((total_pages > 1)) && \
+      [[ "$choice" == "P" || "$choice" == "p" ]]; then
       if ((current_page > 1)); then
         current_page=$((current_page - 1))
       else
         current_page=$total_pages # Wrap to the last page
       fi
-    elif ((total_pages > 1)) && [[ "$choice" == "N" || "$choice" == "n" ]]; then
+    elif ((total_pages > 1)) && \
+      [[ "$choice" == "N" || "$choice" == "n" ]]; then
       if ((current_page < total_pages)); then
         current_page=$((current_page + 1))
       else
@@ -4111,7 +4234,7 @@ parse_args() {
   OPTIONS=$(\
     getopt \
     -o i,c,p,u,s:,h \
-    --long install,clean,prepare,startup,stack:,help -- "$@" 2>/dev/null\
+    --long install,clean,prepare,startup,stack:,help -- "$@" \
   )
   
   # Check if getopt failed (invalid option)
@@ -4168,24 +4291,22 @@ parse_args() {
 main() {
   parse_args "$@"
 
+  clear
+
   # Handle options based on parsed arguments
   if [[ $INSTALL == true ]]; then
-    clear
     update_and_install_packages
   fi
 
   if [[ $CLEAN == true ]]; then
-    clear
     clean_docker_environment
   fi
 
   if [[ $STARTUP == true ]]; then
-    clear
     initialize_server_info
   fi
 
   if [[ $PREPARE == true ]]; then
-    clear
     update_and_install_packages
     clean_docker_environment
     initialize_server_info
@@ -4193,8 +4314,6 @@ main() {
 
   # Set or choose the stack
   if [[ -n $STACK ]]; then
-    clear
-    
     deploy_stack "$STACK"
   else
     while true; do
