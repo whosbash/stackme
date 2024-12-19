@@ -80,8 +80,6 @@ requires_pagination() {
         wc -l
     )
 
-    echo "$total_options" >&2
-
     # If the number of options exceeds the page size, pagination is required
     if [[ $total_options -gt $page_size ]]; then
         return 0
@@ -94,8 +92,6 @@ requires_pagination() {
 get_current_indices() {
     local current_menu
     current_menu=$(get_current_menu)
-
-    echo "current_menu: $current_menu" >&2
 
     # Check if the current menu has set indices for pagination
     if requires_pagination "$current_menu" "$PAGE_SIZE" "$MENU_DELIMITER"; then
@@ -111,11 +107,6 @@ set_current_indices() {
     local menu_name=$1
     local start_idx=$2
     local end_idx=$3
-
-    echo "set_current_indices"
-    echo "menu_name: $menu_name" >&2
-    echo "start_idx: $start_idx" >&2
-    echo "end_idx: $end_idx" >&2
 
     # Check if pagination is required for the given menu
     if requires_pagination "$menu_name" "$page_size" "$MENU_DELIMITER"; then
