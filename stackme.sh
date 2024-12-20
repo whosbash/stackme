@@ -62,7 +62,7 @@ HEADER_LENGTH=120
 
 ########################################## END OF CONSTANTS #######################################
 
-################################ BEGIN OF GENERAL UTILITARY FUNCTIONS #############################
+################################# BEGIN OF DISPLAY-RELATED FUNCTIONS ###############################
 
 # Function to apply color and style to a string, even if it contains existing color codes
 colorize() {
@@ -519,6 +519,10 @@ header() {
 
   boxed_text "$word" "$text_style" "$border_style" "$font" "$min_width"
 }
+
+################################## END OF DISPLAY-RELATED FUNCTIONS ###############################
+
+################################## BEGIN OF JSON-RELATED FUNCTIONS ################################
 
 # Function to decode JSON and base64
 query_json64() {
@@ -1001,6 +1005,10 @@ load_or_fail_json() {
   echo "$config"
 }
 
+################################### END OF JSON-RELATED FUNCTIONS #################################
+
+################################ BEGIN OF GENERAL UTILITARY FUNCTIONS #############################
+
 # Function to generate a random string
 random_string() {
   local length="${1:-16}"
@@ -1114,149 +1122,6 @@ replace_mustache_variables() {
 
   # Output the substituted template
   echo "$template"
-}
-
-# Function to validate empty values
-validate_empty_value() {
-  local value="$1"
-  if [[ -z "$value" ]]; then
-    echo "The value is empty or not set."
-    return 1
-  else
-    return 0
-  fi
-}
-
-# Function to validate name values with extensive checks
-validate_name_value() {
-  local value="$1"
-
-  # Check if the name starts with a number
-  if [[ "$value" =~ ^[0-9] ]]; then
-    echo "The value '$value' should not start with a number."
-    return 1
-  fi
-
-  # Check if the name contains invalid characters
-  if [[ ! "$value" =~ ^[a-zA-Z0-9][a-zA-Z0-9@#\&*_-]*$ ]]; then
-    allowed_chars="'@', '#', '&', '*', '_', '-'"
-    criterium="Only letters, numbers, and the characters $allowed_chars are allowed."
-    error_message="The value '$value' contains invalid characters."
-    echo "$error_message $criterium"
-    return 1
-  fi
-
-  # Check if the name is too short (less than 3 characters)
-  if ((${#value} < 3)); then
-    echo "The value '$value' is too short. It must be at least 3 characters long."
-    return 1
-  fi
-
-  # Check if the name is too long (more than 50 characters)
-  if ((${#value} > 50)); then
-    echo "The value '$value' is too long. It must be at most 50 characters long."
-    return 1
-  fi
-
-  # Check for spaces in the name
-  if [[ "$value" =~ [[:space:]] ]]; then
-    echo "The value '$value' contains spaces. Spaces are not allowed."
-    return 1
-  fi
-
-  # If all validations pass
-  return 0
-}
-
-# Function to validate email values
-validate_email_value() {
-  local value="$1"
-
-  # Check if the value matches an email pattern
-  if [[ ! "$value" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
-    echo "The value '$value' is not a valid email address."
-    return 1
-  fi
-
-  return 0
-}
-
-# Function to validate url suffix
-validate_url_suffix() {
-  local value="$1"
-
-  # Regular expression to match the part after "https://"
-  local url_suffix_regex="^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(/.*)?$"
-
-  # Check if the value matches the suffix pattern
-  if [[ ! "$value" =~ $url_suffix_regex ]]; then
-    echo "The value '$value' is not a valid URL suffix (domain and optional path)."
-    return 1
-  fi
-
-  return 0
-}
-
-# Function to validate integer values
-validate_integer_value() {
-  local value="$1"
-
-  # Check if the value is an integer (allow negative and positive integers)
-  if [[ ! "$value" =~ ^-?[0-9]+$ ]]; then
-    echo "The value '$value' is not a valid integer."
-    return 1
-  fi
-
-  return 0
-}
-
-# Function to validate port availability
-validate_port_availability() {
-  local port="$1"
-
-  # Check if the port is a valid number between 1 and 65535
-  if [[ ! "$port" =~ ^[0-9]+$ ]] || ((port < 1 || port > 65535)); then
-    explanation="Port numbers must be between 1 and 65535."
-    echo "The value '$port' is not a valid port number. $explanation"
-    return 1
-  fi
-
-  # Use netcat (nc) to check if the port is open on localhost
-  # The -z flag checks if the port is open (without sending data)
-  # The -w1 flag specifies a timeout of 1 second
-  nc -z -w1 127.0.0.1 "$port" 2>/dev/null
-
-  # Check the result of the netcat command
-  if [[ $? -eq 0 ]]; then
-    echo "The port '$port' is already in use."
-    return 1
-  else
-    echo "The port '$port' is available."
-    return 0
-  fi
-}
-
-# Function to validate SMTP server connectivity
-validate_smtp_server() {
-    local server=$1
-    if ping -c 1 "$server" >/dev/null 2>&1; then
-        echo "SMTP server $server is reachable."
-    else
-        echo "Unable to reach SMTP server $server. Please check the server address."
-        exit 1
-    fi
-}
-
-# Function to validate SMTP port
-validate_smtp_port() {
-    local server=$1
-    local port=$2
-    if nc -z "$server" "$port" >/dev/null 2>&1; then
-        echo "SMTP port $port is open on $server."
-    else
-        echo "SMTP port $port is not reachable on $server. Please check the port."
-        exit 1
-    fi
 }
 
 # Function to find the next available port
@@ -1953,6 +1818,153 @@ email_test_hmtl() {
 }
 
 ################################# END OF GENERAL UTILITARY FUNCTIONS ##############################
+
+################################ BEGIN OF VALIDATION-RELATED FUNCTION #############################
+
+# Function to validate empty values
+validate_empty_value() {
+  local value="$1"
+  if [[ -z "$value" ]]; then
+    echo "The value is empty or not set."
+    return 1
+  else
+    return 0
+  fi
+}
+
+# Function to validate name values with extensive checks
+validate_name_value() {
+  local value="$1"
+
+  # Check if the name starts with a number
+  if [[ "$value" =~ ^[0-9] ]]; then
+    echo "The value '$value' should not start with a number."
+    return 1
+  fi
+
+  # Check if the name contains invalid characters
+  if [[ ! "$value" =~ ^[a-zA-Z0-9][a-zA-Z0-9@#\&*_-]*$ ]]; then
+    allowed_chars="'@', '#', '&', '*', '_', '-'"
+    criterium="Only letters, numbers, and the characters $allowed_chars are allowed."
+    error_message="The value '$value' contains invalid characters."
+    echo "$error_message $criterium"
+    return 1
+  fi
+
+  # Check if the name is too short (less than 3 characters)
+  if ((${#value} < 3)); then
+    echo "The value '$value' is too short. It must be at least 3 characters long."
+    return 1
+  fi
+
+  # Check if the name is too long (more than 50 characters)
+  if ((${#value} > 50)); then
+    echo "The value '$value' is too long. It must be at most 50 characters long."
+    return 1
+  fi
+
+  # Check for spaces in the name
+  if [[ "$value" =~ [[:space:]] ]]; then
+    echo "The value '$value' contains spaces. Spaces are not allowed."
+    return 1
+  fi
+
+  # If all validations pass
+  return 0
+}
+
+# Function to validate email values
+validate_email_value() {
+  local value="$1"
+
+  # Check if the value matches an email pattern
+  if [[ ! "$value" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+    echo "The value '$value' is not a valid email address."
+    return 1
+  fi
+
+  return 0
+}
+
+# Function to validate url suffix
+validate_url_suffix() {
+  local value="$1"
+
+  # Regular expression to match the part after "https://"
+  local url_suffix_regex="^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(/.*)?$"
+
+  # Check if the value matches the suffix pattern
+  if [[ ! "$value" =~ $url_suffix_regex ]]; then
+    echo "The value '$value' is not a valid URL suffix (domain and optional path)."
+    return 1
+  fi
+
+  return 0
+}
+
+# Function to validate integer values
+validate_integer_value() {
+  local value="$1"
+
+  # Check if the value is an integer (allow negative and positive integers)
+  if [[ ! "$value" =~ ^-?[0-9]+$ ]]; then
+    echo "The value '$value' is not a valid integer."
+    return 1
+  fi
+
+  return 0
+}
+
+# Function to validate port availability
+validate_port_availability() {
+  local port="$1"
+
+  # Check if the port is a valid number between 1 and 65535
+  if [[ ! "$port" =~ ^[0-9]+$ ]] || ((port < 1 || port > 65535)); then
+    explanation="Port numbers must be between 1 and 65535."
+    echo "The value '$port' is not a valid port number. $explanation"
+    return 1
+  fi
+
+  # Use netcat (nc) to check if the port is open on localhost
+  # The -z flag checks if the port is open (without sending data)
+  # The -w1 flag specifies a timeout of 1 second
+  nc -z -w1 127.0.0.1 "$port" 2>/dev/null
+
+  # Check the result of the netcat command
+  if [[ $? -eq 0 ]]; then
+    echo "The port '$port' is already in use."
+    return 1
+  else
+    echo "The port '$port' is available."
+    return 0
+  fi
+}
+
+# Function to validate SMTP server connectivity
+validate_smtp_server() {
+    local server=$1
+    if ping -c 1 "$server" >/dev/null 2>&1; then
+        echo "SMTP server $server is reachable."
+    else
+        echo "Unable to reach SMTP server $server. Please check the server address."
+        exit 1
+    fi
+}
+
+# Function to validate SMTP port
+validate_smtp_port() {
+    local server=$1
+    local port=$2
+    if nc -z "$server" "$port" >/dev/null 2>&1; then
+        echo "SMTP port $port is open on $server."
+    else
+        echo "SMTP port $port is not reachable on $server. Please check the port."
+        exit 1
+    fi
+}
+
+################################# END OF VALIDATION-RELATED FUNCTION ##############################
 
 ############################### BEGIN OF GENERAL DEPLOYMENT FUNCTIONS #############################
 
