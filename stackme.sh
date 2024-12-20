@@ -64,452 +64,6 @@ HEADER_LENGTH=120
 
 ################################ BEGIN OF GENERAL UTILITARY FUNCTIONS #############################
 
-# Function to decode JSON and base64
-query_json64() {
-  local item="$1"
-  local field="$2"
-  echo "$item" | base64 --decode | jq -r "$field" || {
-    error "Invalid JSON or base64 input!"
-    return 1
-  }
-}
-
-# Function to generate a random string
-random_string() {
-  local length="${1:-16}"
-
-  local word="$(openssl rand -hex $length)"
-  echo "$word"
-}
-
-mask_string() {
-  local input_string="$1"
-  local unmask_length="${2:-4}" # Default to showing last 4 characters
-  local mask_char="${3:-*}"    # Default mask character: '*'
-
-  if [[ -z "$input_string" ]]; then
-    echo "Input string is required."
-    return 1
-  fi
-
-  local masked_length=$(( ${#input_string} - unmask_length ))
-  if [[ $masked_length -le 0 ]]; then
-    echo "$input_string" # Return the original string if it's shorter than the unmask length
-    return 0
-  fi
-
-  local masked_part=$(printf "%${masked_length}s" | tr ' ' "$mask_char")
-  local unmasked_part="${input_string: -$unmask_length}"
-
-  echo "${masked_part}${unmasked_part}"
-}
-
-free_space() {
-    # Get the used, available, and total space in bytes
-    read -r used avail total <<< "$(df --output=used,avail,size --block-size=1 / | tail -n1)"
-
-    # Calculate the percentage of space used with decimal precision
-    if [[ $total -gt 0 ]]; then
-        percentage=$(awk "BEGIN {printf \"%.2f\", ($used / $total) * 100}")
-    else
-        percentage="0.00"
-    fi
-
-    # Convert bytes to gigabytes (with two decimal places)
-    used_gb=$(awk "BEGIN {printf \"%.2f\", $used / (1024^3)}")
-    avail_gb=$(awk "BEGIN {printf \"%.2f\", $avail / (1024^3)}")
-    total_gb=$(awk "BEGIN {printf \"%.2f\", $total / (1024^3)}")
-
-    # Print the results in a structured format
-    echo "Used: ${used_gb}G, Available: ${avail_gb}G, Total: ${total_gb}G, Usage: ${percentage}%"
-}
-
-# Function to send a test email using swaks
-send_email() {
-    local from_email=$1
-    local to_email=$2
-    local server=$3
-    local port=$4
-    local user=$5
-    local pass=$6
-    local subject=$7
-    local body=$8
-
-    info "Sending test email..."
-
-    # Attempt to send the email using swaks and capture output and error details
-    local output
-    output=$(swaks \
-        --to "$to_email" \
-        --from "$from_email" \
-        --server "$server" \
-        --port "$port" \
-        --auth LOGIN --auth-user "$user" \
-        --auth-password "$pass" \
-        --tls \
-        --header "Subject: $subject" \
-        --header "Content-Type: text/html; charset=UTF-8" \
-        --data "Content-Type: text/html; charset=UTF-8\n\n$body" 2>&1)
-
-    # Capture the exit status of the swaks command
-    local status=$?
-
-    # Check if the email was sent successfully
-    if [ $status -eq 0 ]; then
-        success "Test email sent successfully to $to_email."
-    else
-        error "Failed to send test email. Details: $output"
-        exit $status
-    fi
-}
-
-# Function to extract variables from a string without curly braces
-extract_variables() {
-  local compose_string="$1"
-  echo "$compose_string" | grep -oE '\{\{[a-zA-Z0-9_]+\}\}' | sed 's/[{}]//g' | sort -u
-}
-
-# Function to replace variables in a template
-replace_mustache_variables() {
-  local template="$1"
-  declare -n variables="$2" # Associative array passed by reference
-
-  # Iterate over the variables and replace each instance of {{KEY}} in the template
-  for key in "${!variables[@]}"; do
-    value="${variables[$key]}"
-    
-    # Escape special characters in the value to prevent issues with sed (if needed)
-    value_escaped=$(printf '%s' "$value" | sed 's/[&/\]/\\&/g')
-
-    # Replace instances of {{KEY}} in the template
-    template="${template//\{\{$key\}\}/$value_escaped}"
-  done
-
-  # Output the substituted template
-  echo "$template"
-}
-
-# Function to validate empty values
-validate_empty_value() {
-  local value="$1"
-  if [[ -z "$value" ]]; then
-    echo "The value is empty or not set."
-    return 1
-  else
-    return 0
-  fi
-}
-
-# Function to validate name values with extensive checks
-validate_name_value() {
-  local value="$1"
-
-  # Check if the name starts with a number
-  if [[ "$value" =~ ^[0-9] ]]; then
-    echo "The value '$value' should not start with a number."
-    return 1
-  fi
-
-  # Check if the name contains invalid characters
-  if [[ ! "$value" =~ ^[a-zA-Z0-9][a-zA-Z0-9@#\&*_-]*$ ]]; then
-    allowed_chars="'@', '#', '&', '*', '_', '-'"
-    criterium="Only letters, numbers, and the characters $allowed_chars are allowed."
-    error_message="The value '$value' contains invalid characters."
-    echo "$error_message $criterium"
-    return 1
-  fi
-
-  # Check if the name is too short (less than 3 characters)
-  if ((${#value} < 3)); then
-    echo "The value '$value' is too short. It must be at least 3 characters long."
-    return 1
-  fi
-
-  # Check if the name is too long (more than 50 characters)
-  if ((${#value} > 50)); then
-    echo "The value '$value' is too long. It must be at most 50 characters long."
-    return 1
-  fi
-
-  # Check for spaces in the name
-  if [[ "$value" =~ [[:space:]] ]]; then
-    echo "The value '$value' contains spaces. Spaces are not allowed."
-    return 1
-  fi
-
-  # If all validations pass
-  return 0
-}
-
-# Function to validate email values
-validate_email_value() {
-  local value="$1"
-
-  # Check if the value matches an email pattern
-  if [[ ! "$value" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
-    echo "The value '$value' is not a valid email address."
-    return 1
-  fi
-
-  return 0
-}
-
-# Function to validate url suffix
-validate_url_suffix() {
-  local value="$1"
-
-  # Regular expression to match the part after "https://"
-  local url_suffix_regex="^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(/.*)?$"
-
-  # Check if the value matches the suffix pattern
-  if [[ ! "$value" =~ $url_suffix_regex ]]; then
-    echo "The value '$value' is not a valid URL suffix (domain and optional path)."
-    return 1
-  fi
-
-  return 0
-}
-
-# Function to validate integer values
-validate_integer_value() {
-  local value="$1"
-
-  # Check if the value is an integer (allow negative and positive integers)
-  if [[ ! "$value" =~ ^-?[0-9]+$ ]]; then
-    echo "The value '$value' is not a valid integer."
-    return 1
-  fi
-
-  return 0
-}
-
-# Function to validate port availability
-validate_port_availability() {
-  local port="$1"
-
-  # Check if the port is a valid number between 1 and 65535
-  if [[ ! "$port" =~ ^[0-9]+$ ]] || ((port < 1 || port > 65535)); then
-    explanation="Port numbers must be between 1 and 65535."
-    echo "The value '$port' is not a valid port number. $explanation"
-    return 1
-  fi
-
-  # Use netcat (nc) to check if the port is open on localhost
-  # The -z flag checks if the port is open (without sending data)
-  # The -w1 flag specifies a timeout of 1 second
-  nc -z -w1 127.0.0.1 "$port" 2>/dev/null
-
-  # Check the result of the netcat command
-  if [[ $? -eq 0 ]]; then
-    echo "The port '$port' is already in use."
-    return 1
-  else
-    echo "The port '$port' is available."
-    return 0
-  fi
-}
-
-# Function to validate SMTP server connectivity
-validate_smtp_server() {
-    local server=$1
-    if ping -c 1 "$server" >/dev/null 2>&1; then
-        echo "SMTP server $server is reachable."
-    else
-        echo "Unable to reach SMTP server $server. Please check the server address."
-        exit 1
-    fi
-}
-
-# Function to validate SMTP port
-validate_smtp_port() {
-    local server=$1
-    local port=$2
-    if nc -z "$server" "$port" >/dev/null 2>&1; then
-        echo "SMTP port $port is open on $server."
-    else
-        echo "SMTP port $port is not reachable on $server. Please check the port."
-        exit 1
-    fi
-}
-
-# Function to find the next available port
-find_next_available_port() {
-  local trigger_port="$1"
-  local current_port="$trigger_port"
-
-  # Check if the trigger port is valid
-  validate_port_availability "$current_port" >/dev/null 2>&1
-  if [[ $? -eq 0 ]]; then
-    # Return the trigger port if it's available
-    echo "$current_port"
-    return 0
-  fi
-
-  # If trigger port is in use, try subsequent ports
-  while true; do
-    ((current_port++)) # Increment the port number
-
-    # Ensure the port number stays within the valid range (1-65535)
-    if ((current_port > 65535)); then
-      echo "No available ports found in the valid range."
-      return 1
-    fi
-
-    # Check if the current port is available
-    validate_port_availability "$current_port"
-    if [[ $? -eq 0 ]]; then
-      echo "$current_port" # Return the first available port
-      return 0
-    fi
-  done
-}
-
-# Function to check if a package is already installed
-is_package_installed() {
-  local package="$1"
-  dpkg -l | grep -q "$package"
-}
-
-# Function to run a command and display its output
-command() {
-  local command="$1"
-  local current_step="$2"
-  local total_steps="$3"
-  local step_message="$4"
-
-  local log_file="/tmp/log.txt"
-  local allow_dangerous_commands="${5:no}"
-
-  # Ensure we don't run any destructive commands unintentionally unless explicitly allowed
-  if [[ "$allow_dangerous_commands" != "yes" && "$command" =~ (rm|mv|dd|reboot|shutdown) ]]; then
-    error "This function does not support potentially destructive commands."
-    return 1
-  fi
-
-  # Format and display step message
-  step_info $current_step $total_steps "$step_message"
-
-  # Run the command and process its output line by line, logging both stdout and stderr
-  {
-    DEBIAN_FRONTEND=noninteractive $command
-  } 2>&1 | while IFS= read -r line; do
-    # Format and display each line as it is outputted
-    if [[ "$line" =~ ^(Hit|Reading|Fetched|Get|Reading|Building|Done|Fetched).* ]]; then
-      format "info" "$line"
-    else
-      format "normal" "$line"
-    fi
-  done | tee "$log_file"
-
-  # Get the exit status of the last command run
-  exit_code=$?
-  handle_exit $? $current_step $total_steps "$step_message"
-
-  # Clean up the log file if needed
-  rm -f "$log_file"
-
-  return $exit_code
-}
-
-# Function to wait for a specified number of seconds
-wait_secs() {
-  local seconds=$1
-  sleep "$seconds"
-}
-
-# Function to extract values from the collection output
-extract_value_from_json() {
-  local json_data="$1"
-  local key="$2"
-  echo "$json_data" | jq -r ".[] | select(.name == \"$key\") | .value"
-}
-
-# Function to clear previous line
-clear_line() {
-  tput cuu1 # Move the cursor up one line
-  tput el   # Clear the current line
-}
-
-# Function to clear multiple previous lines
-clear_lines() {
-  # Number of lines to clear
-  local lines=$1
-  for i in $(seq 1 "$lines"); do
-    clear_line
-  done
-}
-
-# Function to install a package
-install_package() {
-  local command="$1"
-  local package="$2"
-
-  # Check if the package is already installed
-  if is_package_installed "$package"; then
-    warning "Package '$package' is already installed, skipping..."
-  else
-    info "Starting installation of package: $package"
-
-    # Try to install the package and check for success
-    if ! DEBIAN_FRONTEND=noninteractive $command install "$package" -yq >/dev/null 2>&1; then
-      error "Failed to install package: $package. Check logs for more details."
-      exit 1
-    else
-      success "Successfully installed package: $package"
-    fi
-  fi
-}
-
-# Function to install all packages and track progress
-install_all_packages() {
-  # The list of packages to install (passed as arguments)
-  local command="$1"
-  shift
-  local packages=("$@")
-  local total_packages=${#packages[@]}
-  local installed_count=0
-
-  # Install each package
-  for package in "${packages[@]}"; do
-    install_package "$command" "$package"
-    installed_count=$((installed_count + 1))
-  done
-}
-
-# Function to wait apt process lock to free
-wait_apt_lock() {
-  local attempt_interval=${1-5}
-  local max_wait_time=${2-60}
-
-  # Wait for the lock to be released or forcefully remove it if needed
-  wait_time=0
-  while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
-    if [ "$wait_time" -ge "$max_wait_time" ]; then
-      error "APT lock held for too long. Attempting to kill process."
-      lock_pid=$(lsof /var/lib/dpkg/lock-frontend | awk 'NR==2 {print $2}')
-      if [[ -n "$lock_pid" ]]; then
-        kill -9 "$lock_pid"
-        info "Killed process $lock_pid holding APT lock."
-      fi
-    fi
-    info "Waiting for APT lock to be released..."
-    sleep $WAIT_INTERVAL
-    wait_time=$((wait_time + attempt_interval))
-  done
-}
-
-# Function to strip existing ANSI escape sequences (colors and styles) from a string
-strip_ansi() {
-  pattern='s/\x1b\[[0-9;]*[mK]//g'
-  echo -e "$1" | sed "$pattern"
-}
-
-# Function to trim leading/trailing spaces
-trim() {
-  pattern='s/^ *//;s/ *$//'
-  echo "$1" | sed "$pattern"
-}
-
 # Function to apply color and style to a string, even if it contains existing color codes
 colorize() {
   local text="$1"
@@ -635,18 +189,6 @@ format() {
   echo -e "$icon $timestamp$colorized_message"
 }
 
-# Function to format an array of messages
-format_array() {
-  local type="$1"
-  local -n arr="$2"  # Use reference to the array
-
-  for i in "${!arr[@]}"; do
-    # Apply format to each message in the array
-    arr[$i]=$(format "$type" "${arr[$i]}")
-  done
-}
-
-
 # Function to display a message with improved formatting
 display() {
   local type="$1"
@@ -681,6 +223,17 @@ display_sequential() {
   local -n _lines=$1  # Array passed by reference
   for line in "${_lines[@]}"; do
     echo -e "$line" >&2
+  done
+}
+
+# Function to format an array of messages
+format_array() {
+  local type="$1"
+  local -n arr="$2"  # Use reference to the array
+
+  for i in "${!arr[@]}"; do
+    # Apply format to each message in the array
+    arr[$i]=$(format "$type" "${arr[$i]}")
   done
 }
 
@@ -967,6 +520,23 @@ header() {
   boxed_text "$word" "$text_style" "$border_style" "$font" "$min_width"
 }
 
+# Function to decode JSON and base64
+query_json64() {
+  local item="$1"
+  local field="$2"
+  echo "$item" | base64 --decode | jq -r "$field" || {
+    error "Invalid JSON or base64 input!"
+    return 1
+  }
+}
+
+# Function to extract values from the collection output
+extract_value_from_json() {
+  local json_data="$1"
+  local key="$2"
+  echo "$json_data" | jq -r ".[] | select(.name == \"$key\") | .value"
+}
+
 # Function to convert associative array to JSON format
 convert_array_to_json() {
   # Use reference to the associative array
@@ -1020,358 +590,6 @@ search_on_json_array() {
       return 1
     fi
   fi
-}
-
-# Function to validate the input and return errors for invalid fields
-validate_value() {
-  local value="$1"
-  local validate_fn="${2-validate_empty_value}"
-
-  # Capture the output from the validation function
-  error_message=$($validate_fn "$value")
-
-  # Check the return code of the validation function
-  if [[ $? -ne 0 ]]; then
-    # If validation failed, capture and print the error message
-    echo "$error_message"
-    return 1
-  fi
-  return 0
-}
-
-create_error_item() {
-  local name="$1"
-  local message="$2"
-  local validate_fn="$3"
-
-  # Find the line number of the function definition by parsing the current script
-  local line_number
-  pattern="^[[:space:]]*(function[[:space:]]+|)[[:space:]]*$validate_fn[[:space:]]*\(\)"
-  line_number=$(grep -n -E "$pattern" "$BASH_SOURCE" | cut -d: -f1)
-
-  # Escape the message for jq
-  local escaped_message
-  escaped_message=$(printf '%s' "$message" | jq -R .)
-
-  # Create the error object using jq
-  jq -n \
-    --arg name "$name" \
-    --arg value "$value" \
-    --arg message "$escaped_message" \
-    --arg line_number "$line_number" \
-    --arg validate_fn "$validate_fn" \
-    '{
-        name: $name,
-        message: ($message | fromjson),
-        value: $value,
-        line_number: $line_number,
-        function: $validate_fn
-    }'
-}
-
-# Function to create a collection item
-create_prompt_item() {
-  local name="$1"
-  local label="$2"
-  local description="$3"
-  local value="$4"
-  local required="$5"
-  local validate_fn="${6-validate_empty_value}"
-
-  # Check if the item is required and the value is empty
-  if [[ "$required" == "yes" && -z "$value" ]]; then
-    error_message="The value for '$name' is required but is empty."
-    error_obj=$(create_error_item "$name" "$error_message" "${FUNCNAME[0]}")
-    echo "$error_obj"
-    return 1
-  fi
-
-  # Validate the value using the provided validation function
-  validation_output=$(validate_value "$value" "$validate_fn" 2>&1)
-
-  # If validation failed, capture the validation message
-  if [[ $? -ne 0 ]]; then
-    # Validation failed, use the validation message captured in validation_output
-    error_obj=$(create_error_item "$name" "$validation_output" "$validate_fn")
-    echo "$error_obj"
-    return 1
-  fi
-
-  # Build the JSON object by echoing the data and piping it to jq for proper escaping
-  item_json=$(echo "
-    {
-        \"name\": \"$name\",
-        \"label\": \"$label\",
-        \"description\": \"$description\",
-        \"value\": \"$value\",
-        \"required\": \"$required\",
-        \"validate_fn\": \"$validate_fn\"
-    }" | jq .)
-
-  # Check if jq creation was successful
-  if [[ $? -ne 0 ]]; then
-    echo "Failed to create JSON object"
-    return 1 # Return an error code
-  fi
-
-  # Return the JSON object
-  echo "$item_json"
-}
-
-# Function to prompt for user input
-prompt_for_input() {
-  local item="$1"
-
-  name=$(query_json64 "$item" '.name')
-  label=$(query_json64 "$item" '.label')
-  description=$(query_json64 "$item" '.description')
-  required=$(query_json64 "$item" '.required')
-  default_value=$(query_json64 "$item" '.default_value')
-
-  # Assign the 'required' label based on the 'required' field value
-  if [[ "$required" == "yes" ]]; then
-    required_label="required"
-  else
-    required_label="optional"
-  fi
-
-  local general_info="Prompting $required_label variable $name: $description"
-  local explanation="Enter a value, type 'q' to quit"
-
-  # Notify the user if a default value is provided, only if it is non-empty
-  if [[ -n "$default_value" && "$default_value" != "null" ]]; then
-    explanation="$explanation or Enter to use the default value '$default_value'"
-  fi
-
-  local prompt="$explanation: "
-  question "$general_info"
-  fmt_prompt=$(format 'question' "$prompt")
-
-  while true; do
-    read -rp "$fmt_prompt" value
-    if [[ "$value" == "q" ]]; then
-      echo "q"
-      return
-    fi
-
-    # Use default value if input is empty and default is provided
-    if [[ -z "$value" && -n "$default_value" && "$default_value" != "null" ]]; then
-      value="$default_value"
-    fi
-
-    if [[ -n "$value" || "$required" == "no" ]]; then
-      echo "$value"
-      return
-    else
-      warning "$label is a required field. Please enter a value."
-    fi
-  done
-}
-
-# Function to collect and validate information
-collect_prompt_info() {
-  local items="$1"
-  json_array="[]"
-
-  for item in $(convert_json_array_to_base64_array "$items"); do
-    value=$(prompt_for_input "$item")
-    if [[ "$value" == "q" ]]; then
-      echo "[]"
-      return 0
-    fi
-
-    json_object=$(
-      create_prompt_item \
-        "$(query_json64 "$item" '.name')" \
-        "$(query_json64 "$item" '.label')" \
-        "$(query_json64 "$item" '.description')" \
-        "$value" \
-        "$(query_json64 "$item" '.required')" \
-        "$(query_json64 "$item" '.validate_fn')"
-    )
-
-    json_array=$(append_to_json_array "$json_array" "$json_object")
-  done
-
-  echo "$json_array"
-}
-
-confirm_and_modify_prompt_info() {
-  local json_array="$1"
-
-  while true; do
-    # Display collected information to stderr (for terminal)
-    info "Provided values: "
-    max_length=$(
-      echo "$json_array" |
-        jq -r '.[] | .name' |
-        awk '{ print length }' |
-        sort -nr | head -n1
-    )
-
-    formatted_length=$((max_length + PADDING))
-
-    # Display the collected information with normalized name length
-    echo "$json_array" |
-      jq -r '.[] | "\(.name): \(.value)"' |
-      while IFS=: read -r name value; do
-        printf "  %-*s: %s\n" "$formatted_length" "$name" "$value" >&2
-      done
-
-    # Ask for confirmation (stderr)
-    options="y) Yes, n) No, q) Quit, ? Show options"
-    confirmation_msg="$(
-      format "question" "Is the information correct? ($options) "
-    )"
-    read -rp "$confirmation_msg" confirmation
-
-    case "$confirmation" in
-    y)
-      # Validate the confirmed data before returning
-      for item in $(echo "$json_array" | jq -r '.[] | @base64'); do
-        _jq() {
-          echo "$item" | base64 --decode | jq -r "$1"
-        }
-
-        value=$(_jq '.value')
-        validate_fn=$(_jq '.validate_fn')
-
-        # Call validate_value function (ensure you have this function implemented)
-        validation_output=$(validate_value "$value" "$validate_fn" 2>&1)
-
-        if [[ $? -ne 0 ]]; then
-          warning "Validation failed for '$value': $validation_output"
-          echo "$json_array" | jq -r ".[] | select(.value == \"$value\")"
-          continue # Continue looping to re-modify the invalid value
-        fi
-      done
-
-      # If no validation failed, output the final JSON to stdout (for file capture)
-      echo "$json_array"
-      break
-      ;;
-    n)
-      # Ask for the field to modify (stderr)
-      field_query="$(
-        format "question" "Which field would you like to modify? "
-      )"
-      read -rp "$field_query" field_to_modify
-
-      # Check if the field exists in the JSON and ask for modification
-      current_value=$(
-        echo "$json_array" |
-          jq -r \
-            --arg field "$field_to_modify" \
-            '.[] | select(.name == $field) | .value'
-      )
-
-      if [[ -n "$current_value" ]]; then
-        info "Current value for $field_to_modify: $current_value"
-
-        new_value_query="$(format "question" "Enter new value: ")"
-        read -rp "$new_value_query" new_value
-
-        if [[ -n "$new_value" ]]; then
-          # Validate new value
-          pattern=".[] | select(.name == \"$field_to_modify\") | .validate_fn"
-          validate_fn=$(echo "$json_array" | jq -r "$pattern")
-          validation_output=$(validate_value "$new_value" "$validate_fn" 2>&1)
-
-          if [[ $? -ne 0 ]]; then
-            warning "Validation failed for '$new_value': $validation_output"
-            continue
-          fi
-
-          # Modify the JSON by updating the value of the specified field
-          json_array=$(
-            echo "$json_array" |
-              jq \
-                --arg field "$field_to_modify" \
-                --arg value "$new_value" \
-                '(.[] | select(.name == $field) | .value) = $value'
-          )
-        else
-          error "Value cannot be empty."
-        fi
-      else
-        warning "Field '$field_to_modify' not found."
-      fi
-      ;;
-    q)
-      exit 0
-      ;;
-    ?)
-      # Show the options description again
-      info "Options:"
-      info "  y) Yes - Confirm the information is correct"
-      info "  n) No - Modify a field in the information"
-      info "  q) Quit - Exit the program"
-      info "  ?) Show options - Display available options"
-      ;;
-    *)
-      error "Invalid input. Please enter 'y', 'n', or 'q'."
-      ;;
-    esac
-  done
-}
-
-# Function to collect and validate information, then re-trigger collection for errors
-run_collection_process() {
-  local items="$1"
-  local all_collected_info="[]"
-  local has_errors=true
-
-  # Keep collecting and re-requesting info for errors
-  while [[ "$has_errors" == true ]]; do
-    collected_info="$(collect_prompt_info "$items")"
-
-    # If no values were collected, exit early
-    handle_empty_collection "$collected_info"
-
-    # Define the filter functions in jq format
-    labels='.name and .label and .description and .value and .required'
-    collection_item_filter=".[] | select($labels)"
-    error_item_filter='.[] | select(.message and .function)'
-
-    # Separate valid collection items and error objects
-    valid_items=$(filter_items "$collected_info" "$collection_item_filter")
-    error_items=$(filter_items "$collected_info" "$error_item_filter")
-
-    # Ensure valid JSON formatting by stripping any unwanted characters
-    valid_items_json=$(echo "$valid_items" | jq -c .)
-    all_collected_info_json=$(echo "$all_collected_info" | jq -c .)
-
-    # Merge valid items with previously collected information
-    all_collected_info=$(add_json_objects "$all_collected_info" "$valid_items")
-
-    # Step 1: Extract the names of items with errors from error_items
-    error_names=$(echo "$error_items" | jq -r '.[].name' | jq -R -s .)
-
-    # Step 2: Filter the original items to keep only those whose names match the error items
-    pattern='[.[] | select(.name as $item_name | $error_names | index($item_name))]'
-    items_with_errors=$(echo "$items" | jq --argjson error_names "$error_names" "$pattern")
-
-    # Check if there are still errors left
-    if [[ "$(echo "$error_items" | jq 'length')" -eq 0 ]]; then
-      has_errors=false
-    else
-      # If there are still errors, re-trigger the collection process for error items only
-      warning "Re-collecting information for items with errors..."
-      display_error_items "$error_items"
-
-      items="$items_with_errors"
-    fi
-  done
-
-  # Step to sort the collected information by the original order (using 'name' for sorting)
-  all_collected_info="$(
-    sort_array_according_to_other_array "$all_collected_info" "$items" "name"
-  )"
-
-  # Return all collected and validated information
-  confirmed_info="$(confirm_and_modify_prompt_info "$all_collected_info")"
-
-  echo "$confirmed_info"
 }
 
 # Recursive function to validate JSON against a schema
@@ -1781,6 +999,787 @@ load_or_fail_json() {
   fi
 
   echo "$config"
+}
+
+# Function to generate a random string
+random_string() {
+  local length="${1:-16}"
+
+  local word="$(openssl rand -hex $length)"
+  echo "$word"
+}
+
+mask_string() {
+  local input_string="$1"
+  local unmask_length="${2:-4}" # Default to showing last 4 characters
+  local mask_char="${3:-*}"    # Default mask character: '*'
+
+  if [[ -z "$input_string" ]]; then
+    echo "Input string is required."
+    return 1
+  fi
+
+  local masked_length=$(( ${#input_string} - unmask_length ))
+  if [[ $masked_length -le 0 ]]; then
+    echo "$input_string" # Return the original string if it's shorter than the unmask length
+    return 0
+  fi
+
+  local masked_part=$(printf "%${masked_length}s" | tr ' ' "$mask_char")
+  local unmasked_part="${input_string: -$unmask_length}"
+
+  echo "${masked_part}${unmasked_part}"
+}
+
+free_space() {
+    # Get the used, available, and total space in bytes
+    read -r used avail total <<< "$(df --output=used,avail,size --block-size=1 / | tail -n1)"
+
+    # Calculate the percentage of space used with decimal precision
+    if [[ $total -gt 0 ]]; then
+        percentage=$(awk "BEGIN {printf \"%.2f\", ($used / $total) * 100}")
+    else
+        percentage="0.00"
+    fi
+
+    # Convert bytes to gigabytes (with two decimal places)
+    used_gb=$(awk "BEGIN {printf \"%.2f\", $used / (1024^3)}")
+    avail_gb=$(awk "BEGIN {printf \"%.2f\", $avail / (1024^3)}")
+    total_gb=$(awk "BEGIN {printf \"%.2f\", $total / (1024^3)}")
+
+    # Print the results in a structured format
+    echo "Used: ${used_gb}G, Available: ${avail_gb}G, Total: ${total_gb}G, Usage: ${percentage}%"
+}
+
+# Function to send a test email using swaks
+send_email() {
+    local from_email=$1
+    local to_email=$2
+    local server=$3
+    local port=$4
+    local user=$5
+    local pass=$6
+    local subject=$7
+    local body=$8
+
+    info "Sending test email..."
+
+    # Attempt to send the email using swaks and capture output and error details
+    local output
+    output=$(swaks \
+        --to "$to_email" \
+        --from "$from_email" \
+        --server "$server" \
+        --port "$port" \
+        --auth LOGIN --auth-user "$user" \
+        --auth-password "$pass" \
+        --tls \
+        --header "Subject: $subject" \
+        --header "Content-Type: text/html; charset=UTF-8" \
+        --data "Content-Type: text/html; charset=UTF-8\n\n$body" 2>&1)
+
+    # Capture the exit status of the swaks command
+    local status=$?
+
+    # Check if the email was sent successfully
+    if [ $status -eq 0 ]; then
+        success "Test email sent successfully to $to_email."
+    else
+        error "Failed to send test email. Details: $output"
+        exit $status
+    fi
+}
+
+# Function to extract variables from a string without curly braces
+extract_variables() {
+  local compose_string="$1"
+  echo "$compose_string" | grep -oE '\{\{[a-zA-Z0-9_]+\}\}' | sed 's/[{}]//g' | sort -u
+}
+
+# Function to replace variables in a template
+replace_mustache_variables() {
+  local template="$1"
+  declare -n variables="$2" # Associative array passed by reference
+
+  # Iterate over the variables and replace each instance of {{KEY}} in the template
+  for key in "${!variables[@]}"; do
+    value="${variables[$key]}"
+    
+    # Escape special characters in the value to prevent issues with sed (if needed)
+    value_escaped=$(printf '%s' "$value" | sed 's/[&/\]/\\&/g')
+
+    # Replace instances of {{KEY}} in the template
+    template="${template//\{\{$key\}\}/$value_escaped}"
+  done
+
+  # Output the substituted template
+  echo "$template"
+}
+
+# Function to validate empty values
+validate_empty_value() {
+  local value="$1"
+  if [[ -z "$value" ]]; then
+    echo "The value is empty or not set."
+    return 1
+  else
+    return 0
+  fi
+}
+
+# Function to validate name values with extensive checks
+validate_name_value() {
+  local value="$1"
+
+  # Check if the name starts with a number
+  if [[ "$value" =~ ^[0-9] ]]; then
+    echo "The value '$value' should not start with a number."
+    return 1
+  fi
+
+  # Check if the name contains invalid characters
+  if [[ ! "$value" =~ ^[a-zA-Z0-9][a-zA-Z0-9@#\&*_-]*$ ]]; then
+    allowed_chars="'@', '#', '&', '*', '_', '-'"
+    criterium="Only letters, numbers, and the characters $allowed_chars are allowed."
+    error_message="The value '$value' contains invalid characters."
+    echo "$error_message $criterium"
+    return 1
+  fi
+
+  # Check if the name is too short (less than 3 characters)
+  if ((${#value} < 3)); then
+    echo "The value '$value' is too short. It must be at least 3 characters long."
+    return 1
+  fi
+
+  # Check if the name is too long (more than 50 characters)
+  if ((${#value} > 50)); then
+    echo "The value '$value' is too long. It must be at most 50 characters long."
+    return 1
+  fi
+
+  # Check for spaces in the name
+  if [[ "$value" =~ [[:space:]] ]]; then
+    echo "The value '$value' contains spaces. Spaces are not allowed."
+    return 1
+  fi
+
+  # If all validations pass
+  return 0
+}
+
+# Function to validate email values
+validate_email_value() {
+  local value="$1"
+
+  # Check if the value matches an email pattern
+  if [[ ! "$value" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+    echo "The value '$value' is not a valid email address."
+    return 1
+  fi
+
+  return 0
+}
+
+# Function to validate url suffix
+validate_url_suffix() {
+  local value="$1"
+
+  # Regular expression to match the part after "https://"
+  local url_suffix_regex="^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(/.*)?$"
+
+  # Check if the value matches the suffix pattern
+  if [[ ! "$value" =~ $url_suffix_regex ]]; then
+    echo "The value '$value' is not a valid URL suffix (domain and optional path)."
+    return 1
+  fi
+
+  return 0
+}
+
+# Function to validate integer values
+validate_integer_value() {
+  local value="$1"
+
+  # Check if the value is an integer (allow negative and positive integers)
+  if [[ ! "$value" =~ ^-?[0-9]+$ ]]; then
+    echo "The value '$value' is not a valid integer."
+    return 1
+  fi
+
+  return 0
+}
+
+# Function to validate port availability
+validate_port_availability() {
+  local port="$1"
+
+  # Check if the port is a valid number between 1 and 65535
+  if [[ ! "$port" =~ ^[0-9]+$ ]] || ((port < 1 || port > 65535)); then
+    explanation="Port numbers must be between 1 and 65535."
+    echo "The value '$port' is not a valid port number. $explanation"
+    return 1
+  fi
+
+  # Use netcat (nc) to check if the port is open on localhost
+  # The -z flag checks if the port is open (without sending data)
+  # The -w1 flag specifies a timeout of 1 second
+  nc -z -w1 127.0.0.1 "$port" 2>/dev/null
+
+  # Check the result of the netcat command
+  if [[ $? -eq 0 ]]; then
+    echo "The port '$port' is already in use."
+    return 1
+  else
+    echo "The port '$port' is available."
+    return 0
+  fi
+}
+
+# Function to validate SMTP server connectivity
+validate_smtp_server() {
+    local server=$1
+    if ping -c 1 "$server" >/dev/null 2>&1; then
+        echo "SMTP server $server is reachable."
+    else
+        echo "Unable to reach SMTP server $server. Please check the server address."
+        exit 1
+    fi
+}
+
+# Function to validate SMTP port
+validate_smtp_port() {
+    local server=$1
+    local port=$2
+    if nc -z "$server" "$port" >/dev/null 2>&1; then
+        echo "SMTP port $port is open on $server."
+    else
+        echo "SMTP port $port is not reachable on $server. Please check the port."
+        exit 1
+    fi
+}
+
+# Function to find the next available port
+find_next_available_port() {
+  local trigger_port="$1"
+  local current_port="$trigger_port"
+
+  # Check if the trigger port is valid
+  validate_port_availability "$current_port" >/dev/null 2>&1
+  if [[ $? -eq 0 ]]; then
+    # Return the trigger port if it's available
+    echo "$current_port"
+    return 0
+  fi
+
+  # If trigger port is in use, try subsequent ports
+  while true; do
+    ((current_port++)) # Increment the port number
+
+    # Ensure the port number stays within the valid range (1-65535)
+    if ((current_port > 65535)); then
+      echo "No available ports found in the valid range."
+      return 1
+    fi
+
+    # Check if the current port is available
+    validate_port_availability "$current_port"
+    if [[ $? -eq 0 ]]; then
+      echo "$current_port" # Return the first available port
+      return 0
+    fi
+  done
+}
+
+# Function to run a command and display its output
+command() {
+  local command="$1"
+  local current_step="$2"
+  local total_steps="$3"
+  local step_message="$4"
+
+  local log_file="/tmp/log.txt"
+  local allow_dangerous_commands="${5:no}"
+
+  # Ensure we don't run any destructive commands unintentionally unless explicitly allowed
+  if [[ "$allow_dangerous_commands" != "yes" && "$command" =~ (rm|mv|dd|reboot|shutdown) ]]; then
+    error "This function does not support potentially destructive commands."
+    return 1
+  fi
+
+  # Format and display step message
+  step_info $current_step $total_steps "$step_message"
+
+  # Run the command and process its output line by line, logging both stdout and stderr
+  {
+    DEBIAN_FRONTEND=noninteractive $command
+  } 2>&1 | while IFS= read -r line; do
+    # Format and display each line as it is outputted
+    if [[ "$line" =~ ^(Hit|Reading|Fetched|Get|Reading|Building|Done|Fetched).* ]]; then
+      format "info" "$line"
+    else
+      format "normal" "$line"
+    fi
+  done | tee "$log_file"
+
+  # Get the exit status of the last command run
+  exit_code=$?
+  handle_exit $? $current_step $total_steps "$step_message"
+
+  # Clean up the log file if needed
+  rm -f "$log_file"
+
+  return $exit_code
+}
+
+# Function to wait for a specified number of seconds
+wait_secs() {
+  local seconds=$1
+  sleep "$seconds"
+}
+
+# Function to clear previous line
+clear_line() {
+  tput cuu1 # Move the cursor up one line
+  tput el   # Clear the current line
+}
+
+# Function to clear multiple previous lines
+clear_lines() {
+  # Number of lines to clear
+  local lines=$1
+  for i in $(seq 1 "$lines"); do
+    clear_line
+  done
+}
+
+# Function to check if a package is already installed
+is_package_installed() {
+  local package="$1"
+  dpkg -l | grep -q "$package"
+}
+
+# Function to install a package
+install_package() {
+  local command="$1"
+  local package="$2"
+
+  # Check if the package is already installed
+  if is_package_installed "$package"; then
+    warning "Package '$package' is already installed, skipping..."
+  else
+    info "Starting installation of package: $package"
+
+    # Try to install the package and check for success
+    if ! DEBIAN_FRONTEND=noninteractive $command install "$package" -yq >/dev/null 2>&1; then
+      error "Failed to install package: $package. Check logs for more details."
+      exit 1
+    else
+      success "Successfully installed package: $package"
+    fi
+  fi
+}
+
+# Function to install all packages and track progress
+install_all_packages() {
+  # The list of packages to install (passed as arguments)
+  local command="$1"
+  shift
+  local packages=("$@")
+  local total_packages=${#packages[@]}
+  local installed_count=0
+
+  # Install each package
+  for package in "${packages[@]}"; do
+    install_package "$command" "$package"
+    installed_count=$((installed_count + 1))
+  done
+}
+
+# Function to wait apt process lock to free
+wait_apt_lock() {
+  local attempt_interval=${1-5}
+  local max_wait_time=${2-60}
+
+  # Wait for the lock to be released or forcefully remove it if needed
+  wait_time=0
+  while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+    if [ "$wait_time" -ge "$max_wait_time" ]; then
+      error "APT lock held for too long. Attempting to kill process."
+      lock_pid=$(lsof /var/lib/dpkg/lock-frontend | awk 'NR==2 {print $2}')
+      if [[ -n "$lock_pid" ]]; then
+        kill -9 "$lock_pid"
+        info "Killed process $lock_pid holding APT lock."
+      fi
+    fi
+    info "Waiting for APT lock to be released..."
+    sleep $WAIT_INTERVAL
+    wait_time=$((wait_time + attempt_interval))
+  done
+}
+
+# Function to strip existing ANSI escape sequences (colors and styles) from a string
+strip_ansi() {
+  pattern='s/\x1b\[[0-9;]*[mK]//g'
+  echo -e "$1" | sed "$pattern"
+}
+
+# Function to trim leading/trailing spaces
+trim() {
+  pattern='s/^ *//;s/ *$//'
+  echo "$1" | sed "$pattern"
+}
+
+# Function to validate the input and return errors for invalid fields
+validate_value() {
+  local value="$1"
+  local validate_fn="${2-validate_empty_value}"
+
+  # Capture the output from the validation function
+  error_message=$($validate_fn "$value")
+
+  # Check the return code of the validation function
+  if [[ $? -ne 0 ]]; then
+    # If validation failed, capture and print the error message
+    echo "$error_message"
+    return 1
+  fi
+  return 0
+}
+
+create_error_item() {
+  local name="$1"
+  local message="$2"
+  local validate_fn="$3"
+
+  # Find the line number of the function definition by parsing the current script
+  local line_number
+  pattern="^[[:space:]]*(function[[:space:]]+|)[[:space:]]*$validate_fn[[:space:]]*\(\)"
+  line_number=$(grep -n -E "$pattern" "$BASH_SOURCE" | cut -d: -f1)
+
+  # Escape the message for jq
+  local escaped_message
+  escaped_message=$(printf '%s' "$message" | jq -R .)
+
+  # Create the error object using jq
+  jq -n \
+    --arg name "$name" \
+    --arg value "$value" \
+    --arg message "$escaped_message" \
+    --arg line_number "$line_number" \
+    --arg validate_fn "$validate_fn" \
+    '{
+        name: $name,
+        message: ($message | fromjson),
+        value: $value,
+        line_number: $line_number,
+        function: $validate_fn
+    }'
+}
+
+# Function to create a collection item
+create_prompt_item() {
+  local name="$1"
+  local label="$2"
+  local description="$3"
+  local value="$4"
+  local required="$5"
+  local validate_fn="${6-validate_empty_value}"
+
+  # Check if the item is required and the value is empty
+  if [[ "$required" == "yes" && -z "$value" ]]; then
+    error_message="The value for '$name' is required but is empty."
+    error_obj=$(create_error_item "$name" "$error_message" "${FUNCNAME[0]}")
+    echo "$error_obj"
+    return 1
+  fi
+
+  # Validate the value using the provided validation function
+  validation_output=$(validate_value "$value" "$validate_fn" 2>&1)
+
+  # If validation failed, capture the validation message
+  if [[ $? -ne 0 ]]; then
+    # Validation failed, use the validation message captured in validation_output
+    error_obj=$(create_error_item "$name" "$validation_output" "$validate_fn")
+    echo "$error_obj"
+    return 1
+  fi
+
+  # Build the JSON object by echoing the data and piping it to jq for proper escaping
+  item_json=$(echo "
+    {
+        \"name\": \"$name\",
+        \"label\": \"$label\",
+        \"description\": \"$description\",
+        \"value\": \"$value\",
+        \"required\": \"$required\",
+        \"validate_fn\": \"$validate_fn\"
+    }" | jq .)
+
+  # Check if jq creation was successful
+  if [[ $? -ne 0 ]]; then
+    echo "Failed to create JSON object"
+    return 1 # Return an error code
+  fi
+
+  # Return the JSON object
+  echo "$item_json"
+}
+
+# Function to prompt for user input
+prompt_for_input() {
+  local item="$1"
+
+  name=$(query_json64 "$item" '.name')
+  label=$(query_json64 "$item" '.label')
+  description=$(query_json64 "$item" '.description')
+  required=$(query_json64 "$item" '.required')
+  default_value=$(query_json64 "$item" '.default_value')
+
+  # Assign the 'required' label based on the 'required' field value
+  if [[ "$required" == "yes" ]]; then
+    required_label="required"
+  else
+    required_label="optional"
+  fi
+
+  local general_info="Prompting $required_label variable $name: $description"
+  local explanation="Enter a value, type 'q' to quit"
+
+  # Notify the user if a default value is provided, only if it is non-empty
+  if [[ -n "$default_value" && "$default_value" != "null" ]]; then
+    explanation="$explanation or Enter to use the default value '$default_value'"
+  fi
+
+  local prompt="$explanation: "
+  question "$general_info"
+  fmt_prompt=$(format 'question' "$prompt")
+
+  while true; do
+    read -rp "$fmt_prompt" value
+    if [[ "$value" == "q" ]]; then
+      echo "q"
+      return
+    fi
+
+    # Use default value if input is empty and default is provided
+    if [[ -z "$value" && -n "$default_value" && "$default_value" != "null" ]]; then
+      value="$default_value"
+    fi
+
+    if [[ -n "$value" || "$required" == "no" ]]; then
+      echo "$value"
+      return
+    else
+      warning "$label is a required field. Please enter a value."
+    fi
+  done
+}
+
+# Function to collect and validate information
+collect_prompt_info() {
+  local items="$1"
+  json_array="[]"
+
+  for item in $(convert_json_array_to_base64_array "$items"); do
+    value=$(prompt_for_input "$item")
+    if [[ "$value" == "q" ]]; then
+      echo "[]"
+      return 0
+    fi
+
+    json_object=$(
+      create_prompt_item \
+        "$(query_json64 "$item" '.name')" \
+        "$(query_json64 "$item" '.label')" \
+        "$(query_json64 "$item" '.description')" \
+        "$value" \
+        "$(query_json64 "$item" '.required')" \
+        "$(query_json64 "$item" '.validate_fn')"
+    )
+
+    json_array=$(append_to_json_array "$json_array" "$json_object")
+  done
+
+  echo "$json_array"
+}
+
+confirm_and_modify_prompt_info() {
+  local json_array="$1"
+
+  while true; do
+    # Display collected information to stderr (for terminal)
+    info "Provided values: "
+    max_length=$(
+      echo "$json_array" |
+        jq -r '.[] | .name' |
+        awk '{ print length }' |
+        sort -nr | head -n1
+    )
+
+    formatted_length=$((max_length + PADDING))
+
+    # Display the collected information with normalized name length
+    echo "$json_array" |
+      jq -r '.[] | "\(.name): \(.value)"' |
+      while IFS=: read -r name value; do
+        printf "  %-*s: %s\n" "$formatted_length" "$name" "$value" >&2
+      done
+
+    # Ask for confirmation (stderr)
+    options="y) Yes, n) No, q) Quit, ? Show options"
+    confirmation_msg="$(
+      format "question" "Is the information correct? ($options) "
+    )"
+    read -rp "$confirmation_msg" confirmation
+
+    case "$confirmation" in
+    y)
+      # Validate the confirmed data before returning
+      for item in $(echo "$json_array" | jq -r '.[] | @base64'); do
+        _jq() {
+          echo "$item" | base64 --decode | jq -r "$1"
+        }
+
+        value=$(_jq '.value')
+        validate_fn=$(_jq '.validate_fn')
+
+        # Call validate_value function (ensure you have this function implemented)
+        validation_output=$(validate_value "$value" "$validate_fn" 2>&1)
+
+        if [[ $? -ne 0 ]]; then
+          warning "Validation failed for '$value': $validation_output"
+          echo "$json_array" | jq -r ".[] | select(.value == \"$value\")"
+          continue # Continue looping to re-modify the invalid value
+        fi
+      done
+
+      # If no validation failed, output the final JSON to stdout (for file capture)
+      echo "$json_array"
+      break
+      ;;
+    n)
+      # Ask for the field to modify (stderr)
+      field_query="$(
+        format "question" "Which field would you like to modify? "
+      )"
+      read -rp "$field_query" field_to_modify
+
+      # Check if the field exists in the JSON and ask for modification
+      current_value=$(
+        echo "$json_array" |
+          jq -r \
+            --arg field "$field_to_modify" \
+            '.[] | select(.name == $field) | .value'
+      )
+
+      if [[ -n "$current_value" ]]; then
+        info "Current value for $field_to_modify: $current_value"
+
+        new_value_query="$(format "question" "Enter new value: ")"
+        read -rp "$new_value_query" new_value
+
+        if [[ -n "$new_value" ]]; then
+          # Validate new value
+          pattern=".[] | select(.name == \"$field_to_modify\") | .validate_fn"
+          validate_fn=$(echo "$json_array" | jq -r "$pattern")
+          validation_output=$(validate_value "$new_value" "$validate_fn" 2>&1)
+
+          if [[ $? -ne 0 ]]; then
+            warning "Validation failed for '$new_value': $validation_output"
+            continue
+          fi
+
+          # Modify the JSON by updating the value of the specified field
+          json_array=$(
+            echo "$json_array" |
+              jq \
+                --arg field "$field_to_modify" \
+                --arg value "$new_value" \
+                '(.[] | select(.name == $field) | .value) = $value'
+          )
+        else
+          error "Value cannot be empty."
+        fi
+      else
+        warning "Field '$field_to_modify' not found."
+      fi
+      ;;
+    q)
+      exit 0
+      ;;
+    ?)
+      # Show the options description again
+      info "Options:"
+      info "  y) Yes - Confirm the information is correct"
+      info "  n) No - Modify a field in the information"
+      info "  q) Quit - Exit the program"
+      info "  ?) Show options - Display available options"
+      ;;
+    *)
+      error "Invalid input. Please enter 'y', 'n', or 'q'."
+      ;;
+    esac
+  done
+}
+
+# Function to collect and validate information, then re-trigger collection for errors
+run_collection_process() {
+  local items="$1"
+  local all_collected_info="[]"
+  local has_errors=true
+
+  # Keep collecting and re-requesting info for errors
+  while [[ "$has_errors" == true ]]; do
+    collected_info="$(collect_prompt_info "$items")"
+
+    # If no values were collected, exit early
+    handle_empty_collection "$collected_info"
+
+    # Define the filter functions in jq format
+    labels='.name and .label and .description and .value and .required'
+    collection_item_filter=".[] | select($labels)"
+    error_item_filter='.[] | select(.message and .function)'
+
+    # Separate valid collection items and error objects
+    valid_items=$(filter_items "$collected_info" "$collection_item_filter")
+    error_items=$(filter_items "$collected_info" "$error_item_filter")
+
+    # Ensure valid JSON formatting by stripping any unwanted characters
+    valid_items_json=$(echo "$valid_items" | jq -c .)
+    all_collected_info_json=$(echo "$all_collected_info" | jq -c .)
+
+    # Merge valid items with previously collected information
+    all_collected_info=$(add_json_objects "$all_collected_info" "$valid_items")
+
+    # Step 1: Extract the names of items with errors from error_items
+    error_names=$(echo "$error_items" | jq -r '.[].name' | jq -R -s .)
+
+    # Step 2: Filter the original items to keep only those whose names match the error items
+    pattern='[.[] | select(.name as $item_name | $error_names | index($item_name))]'
+    items_with_errors=$(echo "$items" | jq --argjson error_names "$error_names" "$pattern")
+
+    # Check if there are still errors left
+    if [[ "$(echo "$error_items" | jq 'length')" -eq 0 ]]; then
+      has_errors=false
+    else
+      # If there are still errors, re-trigger the collection process for error items only
+      warning "Re-collecting information for items with errors..."
+      display_error_items "$error_items"
+
+      items="$items_with_errors"
+    fi
+  done
+
+  # Step to sort the collected information by the original order (using 'name' for sorting)
+  all_collected_info="$(
+    sort_array_according_to_other_array "$all_collected_info" "$items" "name"
+  )"
+
+  # Return all collected and validated information
+  confirmed_info="$(confirm_and_modify_prompt_info "$all_collected_info")"
+
+  echo "$confirmed_info"
 }
 
 # Function to display each error item with custom formatting
