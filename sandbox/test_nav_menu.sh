@@ -47,7 +47,7 @@ render_menu() {
     clean_screen                    # Clear screen
     display_header "$header"        # Display header
     echo -e "${faded_color}Keyboard Shortcuts:${reset_color}" >&2
-    echo -e "  ↑/↓: Navigate  ◀/▶: Switch Pages  Enter: Select  q: Quit\n" >&2
+    echo -e "  ↗/↘: Navigate  ◁/▷: Switch Pages  ↵: Select  q: Quit\n" >&2
 
     local start=$((current_idx / page_size * page_size))
     local end=$((start + page_size))
@@ -221,7 +221,7 @@ generate_dynamic_options() {
     done
 }
 
-header="\033[1;36m=== My Custom Menu ===\033[0m"
+header="${title_color}=== My Custom Menu ===${reser_color}"
 page_size=5
 generate_dynamic_options "Dynamic" 12  # Generate 12 dynamic options
 selected_option=$(navigate_menu "$header" "$page_size" "${options[@]}")
