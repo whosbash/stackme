@@ -408,7 +408,6 @@ navigate_menu() {
 
 # Settings Menu
 item_1="$(build_menu_item "Option 1" "Description 1" "echo 'Option 1 selected'")"
-
 item_2="$(build_menu_item "Option 2" "Description 2" "echo \"Option 2 selected\"")"
 item_3="$(build_menu_item "Option 3" "Description 3" "echo \"Option 3 selected\"")"
 item_4="$(build_menu_item "Option 4" "Description 4" "echo \"Option 4 selected\"")"

@@ -5,7 +5,7 @@ MENU_DELIMITER='|'
 NAVIGATION_DELIMITER=' | '
 
 # Default page size
-PAGE_SIZE=2
+PAGE_SIZE=5
 
 # Color and formatting variables
 BOLD="\033[1m"
@@ -25,41 +25,68 @@ declare -A pagination_indices
 declare -A MENU_OPTIONS
 declare -A MENU_ACTIONS
 declare -A MENU_DESCRIPTIONS
+declare -A MENUS
 
-define_menu_item() {
-    if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-        reason="Missing argument(s)."
-        advice="All three arguments (label, action, description) are required."
-        echo "Error: $reason $advice"
-        return 1
-    fi
+# Build a JSON array of menu items
+build_array_from_items() {
+    # Capture all arguments as an array
+    local items=("$@")
 
-    # Create the JSON-like string for this menu item
-    json='{"label":"'"$1"'","description":"'"$3"'","action":"'"$2"'"}'
-    
-    # Return the JSON string
-    echo "$json"
+    echo "["$(join_array "," "${items[@]}")"]"
 }
 
-# Append menu items to the MENUS array under a specific key
-define_menu() {
-    local key=$1
+build_menu_item() {
+  local label="$1"
+  local description="$2"
+  local action="$3"
+
+  # Validate inputs
+  if [ -z "$label" ] || [ -z "$description" ] || [ -z "$action" ]; then
+    echo "Error: Missing argument(s). All arguments (label, description, action) are required."
+    return 1
+  fi
+
+  # Generate JSON object using jq directly
+  jq -n \
+    --arg label_ "$label" \
+    --arg description_ "$description" \
+    --arg action_ "$action" \
+    '{
+        label: $label_,
+        description: $description_,
+        action: $action_
+    }'
+}
+
+# Append a JSON menu array to the MENUS array under a specific key
+build_menu() {
+    local header=$1
     shift
+    local page_size=$1
+    shift
+    local json_array
 
     if [ $# -eq 0 ]; then
         echo "Error: At least one menu item is required."
         return 1
     fi
 
-    # Append items to the MENUS array, using a newline as a delimiter
-    for item in "$@"; do
-        if [ -n "${MENUS["$key"]}" ]; then
-            MENUS["$key"]+=$'\n'
-        fi
-        MENUS["$key"]+="$item"
-    done
+    # Build the menu as a JSON array
+    menu_items=$(build_array_from_items "$@")
+
+    # Create final menu object
+    jq -n --arg header "$header" --arg page_size "$page_size" --argjson items "$menu_items" '{
+        header: $header,
+        page_size: $page_size,
+        items: $items
+    }'
 }
 
+define_menu() {
+    local key="$1"
+    local menu_object="$2   "
+    MENUS["$key"]+="$menu_object"
+}
 
 # Modify push_menu to accept multiple levels of nesting
 push_menu() { 
@@ -592,32 +619,42 @@ define_menu_substacks_a(){
     deploy_substack_a() { echo "Deploying Substack A..."; }
     deploy_substack_b() { echo "Deploying Substack B..."; }
 
-    item1=$(define_menu_item "Substack A" "deploy_substack_a" "Deploy")
-    item2=$(define_menu_item "Substack B" "deploy_substack_b" "Deploy")
+    menu_name="Stack A Substacks"
 
-    define_menu "Stack A Substacks" "$item1" "$item2"
+    item1=$(build_menu_item "Substack A" "Deploy" "deploy_substack_a")
+    item2=$(build_menu_item "Substack B" "Deploy" "deploy_substack_b")
+
+    substacks_a_obj="$(build_menu "$menu_name" "$item1" "$item2")"
+
+    define_menu "$menu_name"  "$stacks_menu_obj"
 }
 
 # Stacks Menu
 define_menu_stacks(){
+    # Functions of menu Stacks
     stacks_menu() { navigate_menu "Stacks"; }
     deploy_stack_b() { echo "Deploying Stack B..."; }
     deploy_stack_c() { echo "Deploying Stack C..."; }
 
+    # 
+    menu_name="Stacks"
+
     # Substacks A menu items
     item1=$(
-        define_menu_item \
-            "Stack A substacks" "substacks_a_menu" "Show available subtacks of stack A"
+        build_menu_item \
+            "Stack A substacks" "Show available subtacks of stack A" "substacks_a_menu"
     )
     item2=$(
-        define_menu_item \
-            "Stack B" "deploy_stack_b" "Deploy"
+        build_menu_item \
+            "Stack B" "Deploy" "deploy_stack_b" 
     )
     item3=$(
-        define_menu_item "Stack C" "deploy_stack_c" "Deploy"
+        build_menu_item "Stack C" "Deploy" "deploy_stack_c" 
     )
 
-    define_menu "Stacks" "$item1" "$item2" "$item3"
+    stacks_menu_obj="$(build_menu "$menu_name" "$PAGE_SIZE" "$item1" "$item2" "$item3")"
+
+    define_menu "$menu_name" "$stacks_menu_obj"
 }
 
 # Settings Menu
@@ -626,31 +663,39 @@ define_menus_setings(){
     change_setting_1() { echo "Changing Setting 1..."; }
     change_setting_2() { echo "Changing Setting 2..."; }
 
+    menu_name="Settings"
+
     item1=$(
-        define_menu_item "Setting 1" "change_setting_1" "Apply"
+        build_menu_item "Setting 1" "Apply" "change_setting_1" 
     )
     item2=$(
-        define_menu_item "Setting 2" "change_setting_2" "Apply"
+        build_menu_item "Setting 2" "Apply" "change_setting_2" 
     )
 
-    define_menu "Settings" "$item1" "$item2"
+    settings_menu_obj="$(build_menu "$menu_name" "$PAGE_SIZE" "$item1" "$item2")"
+
+    define_menu "$menu_name" "$settings_menu_obj"
 }
 
 main_menu() { navigate_menu "Main"; }
 
 define_menu_main(){
+    menu_name="Main"
+
     # Main menu items
-    item1=$(define_menu_item "Stacks" "stacks_menu" "Show available stacks")
-    item2=$(define_menu_item "Settings" "settings_menu" "Show settings")
+    item1=$(build_menu_item "Stacks" "Show available stacks" "stacks_menu" )
+    item2=$(build_menu_item "Settings" "Show settings" "settings_menu")
 
     # Main Menu
-    define_menu "Main" "$item1" "$item2"
+    main_menu_object="$(build_menu "$menu_name" "$PAGE_SIZE" "$item1" "$item2")"
+
+    define_menu "$menu_name" "$main_menu_object"
 }
 
 define_menus(){
     define_menu_main
-    define_menu_stacks
     define_menus_setings
+    define_menu_stacks
     define_menu_substacks_a
 }
 
@@ -661,5 +706,12 @@ start_main_menu(){
 # Populate MENUS
 define_menus
 
-# Start the main menu
-start_main
+# Print all menu items in MENUS
+echo "MENUS content:"
+for menu_key in "${!MENUS[@]}"; do
+    echo "Menu Key: $menu_key"
+    echo "Menu Value: ${MENUS[$menu_key]}"
+done
+
+# # Start the main menu
+# start_main_menu
