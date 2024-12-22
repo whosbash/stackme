@@ -132,23 +132,6 @@ set_current_indices() {
     fi
 }
 
-# Simplified function to calculate indices for pagination
-calculate_indices() {
-    local direction=$1
-    local start_idx=$2
-    local total_options=$3
-    if [[ "$direction" == "previous" ]]; then
-        start_idx=$((start_idx - PAGE_SIZE))
-        start_idx=$((start_idx < 0 ? 0 : start_idx))
-    elif [[ "$direction" == "next" ]]; then
-        start_idx=$((start_idx + PAGE_SIZE))
-        start_idx=$((start_idx >= total_options ? total_options - PAGE_SIZE : start_idx))
-    fi
-    local end_idx=$((start_idx + PAGE_SIZE - 1))
-    end_idx=$((end_idx >= total_options ? total_options - 1 : end_idx))
-    echo "$start_idx,$end_idx"
-}
-
 # Function to clear the current menu
 clean_current_menu() {
     local menu_lines=$1  # Number of lines in the current menu
@@ -169,7 +152,6 @@ clean_current_menu() {
         tput cuu1
     done
 }
-
 
 # Custom function to join an array into a single string with a delimiter
 join_array() {
@@ -256,124 +238,6 @@ show_navigation() {
     fi
 }
 
-
-# Function to navigate pages (next/previous)
-navigate_page() {
-    local direction=$1
-    local menu_name=$2
-    local start_idx=$3
-    local options=("${!4}")
-    local total_options=${#options[@]}
-
-    # Calculate the new start and end indices based on the direction
-    local indices
-    indices=$(calculate_indices "$direction" "$start_idx" "$total_options")
-    IFS=',' read -r new_start_idx new_end_idx <<<"$indices"
-
-    # Update the current indices with the new start and end
-    set_current_indices "$menu_name" "$new_start_idx" "$new_end_idx"
-
-    show_page \
-        "$menu_name" "$new_start_idx" "$new_end_idx" \
-        options[@] menu_actions[@] menu_descriptions[@]
-}
-
-# Function to return to the current page after showing history
-to_current_page() {
-    local menu_name=$1
-    local options=("${!2}")
-    local actions=("${!3}")
-    local descriptions=("${!4}")
-
-    # Retrieve the current indices to maintain the current page state
-    local indices
-    indices="$(get_current_indices)"
-
-    local start_idx end_idx
-    IFS=',' read -r start_idx end_idx <<<"$indices"
-
-    # Display the current menu page again
-    show_page \
-        "$menu_name" "$start_idx" "$end_idx" \
-        options[@] actions[@] descriptions[@]
-}
-
-# Show the history of visited menus with fancy formatting
-show_history() {
-    # Define HEADER_WIDTH for dynamic header and separator length
-    local HEADER_WIDTH=${HEADER_WIDTH:-30}  # Default width to 30 if not provided
-    local separator=$(printf '%*s' $HEADER_WIDTH '' | tr ' ' '-')
-
-    # Print header
-    echo -e "\n${YELLOW}${separator}${RESET}"
-    echo -e "${BOLD}History of Visited Menus:${RESET}"
-    echo -e "${YELLOW}${separator}${RESET}"
-
-    # Print the menu history with numbering
-    if [[ ${#menu_navigation_history[@]} -gt 0 ]]; then
-        for ((i = 0; i < ${#menu_navigation_history[@]}; i++)); do
-            echo -e "${CYAN}$((i + 1)). ${menu_navigation_history[i]}${RESET}"
-        done
-    else
-        echo -e "${RED}No history available.${RESET}"
-    fi
-
-    # Print footer separator
-    echo -e "\n${YELLOW}${separator}${RESET}"
-}
-
-# Function to handle user choice
-handle_user_choice() {
-    local choice=$1
-    local menu_name=$2
-    local start_idx=$3
-    local end_idx=$4
-    local menu_options=("${!5}")
-    local menu_actions=("${!6}")
-
-    local total_options="${#menu_options[@]}"
-
-    # Validate the user choice and capture the reason for invalid choice
-    if ! reason=$(validate_choice "$choice" "$total_options"); then
-        echo "Invalid choice: '$choice'. Reason: $reason Please try again." >&2
-        to_current_page "$menu_name" menu_options[@] menu_actions[@] menu_descriptions[@]
-        return
-    fi
-
-
-    case "$choice" in
-        p) navigate_page "previous" "$menu_name" $start_idx menu_options[@] menu_actions[@] ;;
-        n) navigate_page "next" "$menu_name" $start_idx menu_options[@] menu_actions[@] ;;
-        b) return_to_parent_menu ;;
-        h) show_history; to_current_page "$menu_name" menu_options[@] menu_actions[@] menu_descriptions[@] ;;
-        e) exit_gracefully ;;
-        *)
-            # Ensure we treat the selected option and action as strings
-            local selected_option="${menu_options[$((choice - 1))]}"
-            local action_function="${menu_actions[$((choice - 1))]}"
-
-            # Call the function if it exists, otherwise show an error
-            if type "$action_function" &>/dev/null; then
-                "$action_function"
-
-                echo ""
-
-                # After action execution, stay on the same page
-                show_page \
-                    "$menu_name" "$start_idx" "$end_idx" \
-                    menu_options[@] menu_actions[@] menu_descriptions[@]
-
-            else
-                echo "Error: Function '$action_function' does not exist for option $choice."
-                to_current_page "$menu_name" menu_options[@] menu_actions[@] menu_descriptions[@]
-            fi
-            ;;
-    esac
-}
-
-# Function to exit the program
-exit_gracefully() { echo "Exiting program."; exit 0; }
-
 # Helper function to display a page of options
 show_page() {
     local menu_name=$1
@@ -419,6 +283,134 @@ show_page() {
         "$start_idx" "$end_idx" \
         menu_options[@] menu_actions[@]
 }
+
+# Simplified function to calculate indices for pagination
+calculate_indices() {
+    local direction=$1
+    local start_idx=$2
+    local total_options=$3
+    if [[ "$direction" == "previous" ]]; then
+        start_idx=$((start_idx - PAGE_SIZE))
+        start_idx=$((start_idx < 0 ? 0 : start_idx))
+    elif [[ "$direction" == "next" ]]; then
+        start_idx=$((start_idx + PAGE_SIZE))
+        start_idx=$((start_idx >= total_options ? total_options - PAGE_SIZE : start_idx))
+    fi
+    local end_idx=$((start_idx + PAGE_SIZE - 1))
+    end_idx=$((end_idx >= total_options ? total_options - 1 : end_idx))
+    echo "$start_idx,$end_idx"
+}
+
+# Function to navigate pages (next/previous)
+navigate_page() {
+    local direction=$1
+    local menu_name=$2
+    local start_idx=$3
+    local menu_options=("${!4}")
+    local menu_actions=("${!5}")
+    local menu_descriptions=("${!6}")
+
+    local total_options=${#options[@]}
+
+    # Calculate the new start and end indices based on the direction
+    local indices
+    indices=$(calculate_indices "$direction" "$start_idx" "$total_options")
+    IFS=',' read -r new_start_idx new_end_idx <<<"$indices"
+
+    # If the direction is 'current', we do not need to update the indices
+    if [[ "$direction" != "current" ]]; then
+        # Update the current indices with the new start and end
+        set_current_indices "$menu_name" "$new_start_idx" "$new_end_idx"
+    else
+        # Retrieve the current indices to maintain the current page state
+        indices="$(get_current_indices)"
+        IFS=',' read -r new_start_idx new_end_idx <<<"$indices"
+    fi
+
+    show_page \
+        "$menu_name" "$new_start_idx" "$new_end_idx" \
+        options[@] menu_actions[@] menu_descriptions[@]
+}
+
+# Show the history of visited menus with fancy formatting
+show_history() {
+    # Define HEADER_WIDTH for dynamic header and separator length
+    local HEADER_WIDTH=${HEADER_WIDTH:-30}  # Default width to 30 if not provided
+    local separator=$(printf '%*s' $HEADER_WIDTH '' | tr ' ' '-')
+
+    # Print header
+    echo -e "\n${YELLOW}${separator}${RESET}"
+    echo -e "${BOLD}History of Visited Menus:${RESET}"
+    echo -e "${YELLOW}${separator}${RESET}"
+
+    # Print the menu history with numbering
+    if [[ ${#menu_navigation_history[@]} -gt 0 ]]; then
+        for ((i = 0; i < ${#menu_navigation_history[@]}; i++)); do
+            echo -e "${CYAN}$((i + 1)). ${menu_navigation_history[i]}${RESET}"
+        done
+    else
+        echo -e "${RED}No history available.${RESET}"
+    fi
+
+    # Print footer separator
+    echo -e "${YELLOW}${separator}${RESET}"
+}
+
+# Function to handle user choice
+handle_user_choice() {
+    local choice=$1
+    local menu_name=$2
+    local start_idx=$3
+    local end_idx=$4
+    local menu_options=("${!5}")
+    local menu_actions=("${!6}")
+
+    local total_options="${#menu_options[@]}"
+
+    # Validate the user choice and capture the reason for invalid choice
+    if ! reason=$(validate_choice "$choice" "$total_options"); then
+        echo "Invalid choice: '$choice'. Reason: $reason Please try again." >&2
+        navigate_page "current" "$menu_name" "$start_idx" \
+            menu_options[@] menu_actions[@] menu_descriptions[@]
+        return
+    fi
+
+
+    case "$choice" in
+        p) navigate_page "previous" "$menu_name" $start_idx \
+            menu_options[@] menu_actions[@] menu_descriptions[@] ;;
+        n) navigate_page "next" "$menu_name" $start_idx \
+            menu_options[@] menu_actions[@] menu_descriptions[@] ;;
+        b) return_to_parent_menu ;;
+        h) show_history; navigate_page "current" "$menu_name" "$start_idx" \
+            menu_options[@] menu_actions[@] menu_descriptions[@] ;;
+        e) exit_gracefully ;;
+        *)
+            # Ensure we treat the selected option and action as strings
+            local selected_option="${menu_options[$((choice - 1))]}"
+            local action_function="${menu_actions[$((choice - 1))]}"
+
+            # Call the function if it exists, otherwise show an error
+            if type "$action_function" &>/dev/null; then
+                "$action_function"
+
+                echo ""
+
+                # After action execution, stay on the same page
+                show_page \
+                    "$menu_name" "$start_idx" "$end_idx" \
+                    menu_options[@] menu_actions[@] menu_descriptions[@]
+
+            else
+                echo "Error: Function '$action_function' does not exist for option $choice."
+                to_current_page "$menu_name" menu_options[@] menu_actions[@] menu_descriptions[@]
+            fi
+            ;;
+    esac
+}
+
+# Function to exit the program
+exit_gracefully() { echo "Exiting program."; exit 0; }
 
 validate_menus() {
     for menu_name in "${!MENUS[@]}"; do
@@ -501,7 +493,7 @@ validate_choice() {
                 reason="Choice $choice is not the valid option $((start_idx+1))."
             else
                 # Check if the choice is within the indices of the current page
-                if (( choice >= start_idx && choice <= end_idx )); then
+                if (( choice >= start_idx + 1 && choice <= end_idx + 1 )); then
                     return 0  # Valid choice
                 else
                     local range
@@ -540,19 +532,6 @@ display_menu_options() {
     done
 }
 
-
-
-# Return to the parent menu (previous menu)
-return_to_parent_menu() {
-    if [ ${#menu_navigation_history[@]} -gt 1 ]; then
-        pop_menu
-        local parent_menu=$(get_current_menu)
-        navigate_menu "$parent_menu"
-    else
-        navigate_menu "Main"
-    fi
-}
-
 # Manage navigation to different menus
 navigate_menu() {
     local menu_name=$1
@@ -582,6 +561,17 @@ navigate_menu() {
     show_page "$menu_name" 0 "$end_idx" options[@] actions[@] descriptions[@]
 }
 
+# Return to the parent menu (previous menu)
+return_to_parent_menu() {
+    if [ ${#menu_navigation_history[@]} -gt 1 ]; then
+        pop_menu
+        local parent_menu=$(get_current_menu)
+        navigate_menu "$parent_menu"
+    else
+        navigate_menu "Main"
+    fi
+}
+
 # Subtacks Menu
 define_menu \
     "Stack A Substacks" \
@@ -598,7 +588,7 @@ define_menu \
     "Stacks" \
     "Stack A substacks|Stack B|Stack C" \
     "substacks_a_menu|deploy_stack_b|deploy_stack_c" \
-    "List|Deploy|Deploy"
+    "Show available subtacks of stack A|Deploy|Deploy"
 
 stacks_menu() { navigate_menu "Stacks"; }
 deploy_stack_b() { echo "Deploying Stack B..."; }
@@ -620,7 +610,7 @@ define_menu \
     "Main" \
     "Stacks|Settings" \
     "stacks_menu|settings_menu" \
-    "Go to Menu with stacks|Go to Menu with settings"
+    "Show available stacks|Show settings"
 
 main_menu() { navigate_menu "Main"; }
 
