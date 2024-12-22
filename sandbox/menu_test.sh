@@ -26,24 +26,38 @@ declare -A MENU_OPTIONS
 declare -A MENU_ACTIONS
 declare -A MENU_DESCRIPTIONS
 
+define_menu_item() {
+    if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+        reason="Missing argument(s)."
+        advice="All three arguments (label, action, description) are required."
+        echo "Error: $reason $advice"
+        return 1
+    fi
+
+    # Create the JSON-like string for this menu item
+    json='{"label":"'"$1"'","description":"'"$3"'","action":"'"$2"'"}'
+    
+    # Return the JSON string
+    echo "$json"
+}
+
+# Append menu items to the MENUS array under a specific key
 define_menu() {
-    if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
-        echo "Missing argument(s). All four arguments are required."
+    local key=$1
+    shift
+
+    if [ $# -eq 0 ]; then
+        echo "Error: At least one menu item is required."
         return 1
     fi
 
-    MENU_OPTIONS["$1"]="$2"
-    MENU_ACTIONS["$1"]="$3"
-    MENU_DESCRIPTIONS["$1"]="$4"
-
-    # Ensure that all arrays have the same cardinality
-    if [[ ${#MENU_OPTIONS[@]} -ne ${#MENU_ACTIONS[@]} ]] || \
-        [[ ${#MENU_OPTIONS[@]} -ne ${#MENU_DESCRIPTIONS[@]} ]]; then
-        remark="Arrays have inconsistent lengths."
-        advice="Ensure MENUS, MENU_ACTIONS, and MENU_DESCRIPTIONS have the same number of elements."
-        echo "$remark $advice"
-        return 1
-    fi
+    # Append items to the MENUS array, using a newline as a delimiter
+    for item in "$@"; do
+        if [ -n "${MENUS["$key"]}" ]; then
+            MENUS["$key"]+=$'\n'
+        fi
+        MENUS["$key"]+="$item"
+    done
 }
 
 
@@ -573,46 +587,79 @@ return_to_parent_menu() {
 }
 
 # Subtacks Menu
-define_menu \
-    "Stack A Substacks" \
-    "Substack A|Substack B" \
-    "deploy_substack_a|deploy_substack_b" \
-    "Deploy|Deploy "
+define_menu_substacks_a(){
+    substacks_a_menu() { navigate_menu "Stack A Substacks"; }
+    deploy_substack_a() { echo "Deploying Substack A..."; }
+    deploy_substack_b() { echo "Deploying Substack B..."; }
 
-substacks_a_menu() { navigate_menu "Stack A Substacks"; }
-deploy_substack_a() { echo "Deploying Substack A..."; }
-deploy_substack_b() { echo "Deploying Substack B..."; }
+    item1=$(define_menu_item "Substack A" "deploy_substack_a" "Deploy")
+    item2=$(define_menu_item "Substack B" "deploy_substack_b" "Deploy")
+
+    define_menu "Stack A Substacks" "$item1" "$item2"
+}
 
 # Stacks Menu
-define_menu \
-    "Stacks" \
-    "Stack A substacks|Stack B|Stack C" \
-    "substacks_a_menu|deploy_stack_b|deploy_stack_c" \
-    "Show available subtacks of stack A|Deploy|Deploy"
+define_menu_stacks(){
+    stacks_menu() { navigate_menu "Stacks"; }
+    deploy_stack_b() { echo "Deploying Stack B..."; }
+    deploy_stack_c() { echo "Deploying Stack C..."; }
 
-stacks_menu() { navigate_menu "Stacks"; }
-deploy_stack_b() { echo "Deploying Stack B..."; }
-deploy_stack_c() { echo "Deploying Stack C..."; }
+    # Substacks A menu items
+    item1=$(
+        define_menu_item \
+            "Stack A substacks" "substacks_a_menu" "Show available subtacks of stack A"
+    )
+    item2=$(
+        define_menu_item \
+            "Stack B" "deploy_stack_b" "Deploy"
+    )
+    item3=$(
+        define_menu_item "Stack C" "deploy_stack_c" "Deploy"
+    )
+
+    define_menu "Stacks" "$item1" "$item2" "$item3"
+}
 
 # Settings Menu
-define_menu \
-    "Settings" \
-    "Setting 1|Setting 2" \
-    "change_setting_1|change_setting_2" \
-    "Apply|Apply"
+define_menus_setings(){
+    settings_menu() { navigate_menu "Settings"; }
+    change_setting_1() { echo "Changing Setting 1..."; }
+    change_setting_2() { echo "Changing Setting 2..."; }
 
-settings_menu() { navigate_menu "Settings"; }
-change_setting_1() { echo "Changing Setting 1..."; }
-change_setting_2() { echo "Changing Setting 2..."; }
+    item1=$(
+        define_menu_item "Setting 1" "change_setting_1" "Apply"
+    )
+    item2=$(
+        define_menu_item "Setting 2" "change_setting_2" "Apply"
+    )
 
-# Main Menu
-define_menu \
-    "Main" \
-    "Stacks|Settings" \
-    "stacks_menu|settings_menu" \
-    "Show available stacks|Show settings"
+    define_menu "Settings" "$item1" "$item2"
+}
 
 main_menu() { navigate_menu "Main"; }
 
+define_menu_main(){
+    # Main menu items
+    item1=$(define_menu_item "Stacks" "stacks_menu" "Show available stacks")
+    item2=$(define_menu_item "Settings" "settings_menu" "Show settings")
+
+    # Main Menu
+    define_menu "Main" "$item1" "$item2"
+}
+
+define_menus(){
+    define_menu_main
+    define_menu_stacks
+    define_menus_setings
+    define_menu_substacks_a
+}
+
+start_main_menu(){
+    main_menu
+}
+
+# Populate MENUS
+define_menus
+
 # Start the main menu
-main_menu
+start_main
