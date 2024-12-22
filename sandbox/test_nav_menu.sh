@@ -56,11 +56,11 @@ get_menu_item_action(){
 request_input() {
     local message="$1"
     local cursor_move="$2"
-    local prompt="$3"
+    local variable_name="$3"
     
     echo -ne "$message" >&2
     tput cub "$cursor_move"  # Move cursor back to where the message started
-    read -rsn1 "$prompt"  # Read a single character input from the user
+    read -rsn1 "$variable_name"  # Read a single character input into the specified variable
 }
 
 # Function to request confirmation (yes/no)
@@ -68,18 +68,32 @@ request_confirmation() {
     local message="$1"
     local confirm_variable_name="$2"
     local default_value="${3:-false}"
-    
-    # Request input with confirmation message
-    request_input "$message" 0 "$confirm_variable_name" "$default_value"
-    
+
+    local user_input=""
+    request_input "$message" 0 user_input
+
+    # Use default value if input is empty
+    if [[ -z "$user_input" && "$default_value" != "false" ]]; then
+        user_input="$default_value"
+    fi
+
+    local error_message
+    local reason
+
     # Validate the input
-    while [[ ! "${!confirm_variable_name}" =~ ^[yYnN]$ ]]; do
-        invalid_message="${faded_color}\nInvalid input \"${!confirm_variable_name}\". Please enter 'y' for yes or 'n' for no.\n${reset_color}"
+    while [[ ! "$user_input" =~ ^[yYnN]$ ]]; do
+        error_message="\nInvalid input \"$user_input\"."
+        reason="Please enter 'y' for yes or 'n' for no.\n${reset_color}"
+        local invalid_message="${faded_color} "
         echo -ne "$invalid_message" >&2
         tput cub ${#invalid_message}
-        request_input "$message" 0 "$confirm_variable_name" "$default_value"
+        request_input "$message" 0 user_input
     done
+
+    # Assign the validated input to the confirmation variable
+    printf -v "$confirm_variable_name" "%s" "$user_input"
 }
+
 
 # Function to truncate option text to a max length
 truncate_option() {
@@ -112,22 +126,30 @@ join_array() {
 
 # Define individual menu item
 build_menu_item() {
-    if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-        reason="Missing argument(s)."
-        advice="All three arguments (label, action, description) are required."
-        echo "Error: $reason $advice"
-        return 1
-    fi
+  local label="$1"
+  local description="$2"
+  local action="$3"
 
-    # Create the JSON-like string for this menu item
-    json='{"label":"'"$1"'","description":"'"$3"'","action":"'"$2"'"}'
-    
-    # Return the JSON string
-    echo "$json"
+  # Validate inputs
+  if [ -z "$label" ] || [ -z "$description" ] || [ -z "$action" ]; then
+    echo "Error: Missing argument(s). All arguments (label, description, action) are required."
+    return 1
+  fi
+
+  # Generate JSON object using jq directly
+  jq -n \
+    --arg label_ "$label" \
+    --arg description_ "$description" \
+    --arg action_ "$action" \
+    '{
+        label: $label_,
+        description: $description_,
+        action: $action_
+    }'
 }
 
 # Build a JSON array of menu items
-build_menu_array() {
+build_array_from_items() {
     # Capture all arguments as an array
     local items=("$@")
 
@@ -135,8 +157,10 @@ build_menu_array() {
 }
 
 # Append a JSON menu array to the MENUS array under a specific key
-define_menu() {
-    local key=$1
+build_menu() {
+    local header=$1
+    shift
+    local page_size=$1
     shift
     local json_array
 
@@ -146,8 +170,14 @@ define_menu() {
     fi
 
     # Build the menu as a JSON array
-    json_array=$(build_menu_array "$@")
-    MENUS["$key"]="$json_array"
+    menu_items=$(build_array_from_items "$@")
+
+    # Create final menu object
+    jq -n --arg header "$header" --arg page_size "$page_size" --argjson items "$menu_items" '{
+        header: $header,
+        page_size: $page_size,
+        items: $items
+    }'
 }
 
 # Function to process all lines in parallel and maintain order
@@ -179,6 +209,8 @@ render_menu() {
     local page_size="$3"
     local menu_options=("${@:4}")
     local num_options=${#menu_options[@]}
+
+    echo "$menu_options"
 
     tput cup 0 0                    # Move cursor to top-left
     clean_screen                    # Clear screen
@@ -229,14 +261,24 @@ render_menu() {
     display_parallel menu_lines
 }
 
-# Main navigation loop
 navigate_menu() {
-    default_message="${title_color}=== Navigation Menu ===${reset_color}"
-    local header="${1:-$default_message}"
-    shift
-    local page_size="$1"
-    shift
-    local menu_options=("$@")
+    local menu_json="$1"
+
+    # Parse JSON to extract header, page size, and items
+    local header
+    local page_size
+    local menu_items_json
+
+    header=$(jq -r '.header' <<<"$menu_json")
+    page_size=$(jq -r '.page_size' <<<"$menu_json")
+    menu_items_json=$(jq -r '.items' <<<"$menu_json")
+
+    # Convert JSON array to Bash array
+    local menu_options=()
+    while IFS= read -r item; do
+        menu_options+=("$item")
+    done < <(jq -r '.[] | @json' <<<"$menu_items_json")
+
     local original_menu_options=("${menu_options[@]}")
     local num_options=${#menu_options[@]}
     local current_idx=0
@@ -280,6 +322,7 @@ navigate_menu() {
                     current_idx=$((num_options - 1))
                 fi
                 ;;
+
             esac
             ;;
 
@@ -354,6 +397,7 @@ navigate_menu() {
             echo -e "$message" >&2
             sleep 1
             ;;
+
         esac
     done
 
@@ -361,26 +405,23 @@ navigate_menu() {
     tput cnorm 
 }
 
-# Example dynamic menu array generation
-generate_dynamic_options() {
-    local base="$1"
-    local count="$2"
-    options=()
-    for i in $(seq 1 "$count"); do
-        options+=("${base} Option $i")
-    done
-}
 
-menu_items=(
-    '{"label": "Option 1", "description": "Description 1", "action": "echo \"Option 1 selected\""}'
-    '{"label": "Option 2", "description": "Description 2", "action": "echo \"Option 2 selected\""}'
-    '{"label": "Option 3", "description": "Description 3", "action": "echo \"Option 3 selected\""}'
-    '{"label": "Option 4", "description": "Description 4", "action": "echo \"Option 4 selected\""}'
-    '{"label": "Option 5", "description": "Description 5", "action": "echo \"Option 5 selected\""}'
-    '{"label": "Option 6", "description": "Description 6", "action": "echo \"Option 6 selected\""}'
-    '{"label": "Option 7", "description": "Description 7", "action": "echo \"Option 7 selected\""}'
-    '{"label": "Option 8", "description": "Description 8", "action": "echo \"Option 8 selected\""}'
-)
+# Settings Menu
+item_1="$(build_menu_item "Option 1" "Description 1" "echo 'Option 1 selected'")"
 
-page_size=8
-navigate_menu "My Menu" $page_size "${menu_items[@]}"
+item_2="$(build_menu_item "Option 2" "Description 2" "echo \"Option 2 selected\"")"
+item_3="$(build_menu_item "Option 3" "Description 3" "echo \"Option 3 selected\"")"
+item_4="$(build_menu_item "Option 4" "Description 4" "echo \"Option 4 selected\"")"
+item_5="$(build_menu_item "Option 5" "Description 5" "echo \"Option 5 selected\"")"
+item_6="$(build_menu_item "Option 6" "Description 6" "echo \"Option 6 selected\"")"
+item_7="$(build_menu_item "Option 7" "Description 7" "echo \"Option 7 selected\"")"
+item_8="$(build_menu_item "Option 8" "Description 8" "echo \"Option 8 selected\"")"
+
+page_size=5
+
+menu_object="$(
+    build_menu "Main" $page_size \
+    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" "$item_6" "$item_7" "$item_8"
+)"
+
+navigate_menu "$menu_object"

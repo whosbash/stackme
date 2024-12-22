@@ -543,21 +543,22 @@ extract_value_from_json() {
 
 # Function to convert associative array to JSON format
 convert_array_to_json() {
-  # Use reference to the associative array
-  local -n dict=$1
-  json_output="{"
+  local -n dict=$1  # Use a reference to the associative array
+  local json_output="{"
 
   for key in "${!dict[@]}"; do
-    value="${dict[$key]}"
-    json_output+="\"$key\": \"$value\", "
+    local escaped_key=$(printf '%s' "$key" | jq -R .)
+    local escaped_value=$(printf '%s' "${dict[$key]}" | jq -R .)
+    json_output+="$escaped_key: $escaped_value, "
   done
 
-  # Remove trailing comma if present
+  # Remove trailing comma and space
   json_output="${json_output%, }"
   json_output+="}"
 
   echo "$json_output"
 }
+
 
 # Function to convert each element of a JSON array to base64
 convert_json_array_to_base64_array() {
