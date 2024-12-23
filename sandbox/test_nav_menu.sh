@@ -186,7 +186,7 @@ build_array_from_items() {
 
 # Append a JSON menu array to the MENUS array under a specific key
 build_menu() {
-    local header=$1
+    local title=$1
     shift
     local page_size=$1
     shift
@@ -201,8 +201,8 @@ build_menu() {
     menu_items=$(build_array_from_items "$@")
 
     # Create final menu object
-    jq -n --arg header "$header" --arg page_size "$page_size" --argjson items "$menu_items" '{
-        header: $header,
+    jq -n --arg title "$title" --arg page_size "$page_size" --argjson items "$menu_items" '{
+        title: $title,
         page_size: $page_size,
         items: $items
     }'
@@ -233,7 +233,7 @@ render_menu() {
     # Hide cursor
     tput civis
 
-    local header="$1"
+    local title="$1"
     local current_idx="$2"
     local page_size="$3"
     local menu_options=("${@:4}")
@@ -242,14 +242,13 @@ render_menu() {
     # Prepare static part of the menu (Header and Instructions)
     tput cup 0 0  # Move cursor to top-left
     clean_screen  # Optional, clear screen only if needed
-    echo "$(display_text "$header" --center)" >&2
+    echo "$(display_text "$title" --center)" >&2
 
     echo -e "${faded_color}Keyboard Shortcuts:${reset_color}" >&2
-    
     keyboard_options="  ↗/↘: Navigate  ◁/▷: Switch Pages  ↵: Select  q: Quit\n"
     echo -e "$keyboard_options" >&2
 
-    # Determine the range of options to display based on current index
+    # Determine the range of options to display based on the current index
     local start=$((current_idx / page_size * page_size))
     local end=$((start + page_size))
     end=$((end > num_options ? num_options : end))
@@ -257,18 +256,13 @@ render_menu() {
     # Array to hold the lines for menu options
     local menu_lines=()
 
-    # Collect options with label, description, and additional blank lines for spacing
+    # Collect options with label and description
     for i in $(seq $start $((end - 1))); do
         option_label=$(get_menu_item_label "${menu_options[i]}")
         option_desc=$(get_menu_item_description "${menu_options[i]}")
 
-        # Highlight the current option with an arrow
-        if [[ $i -eq $current_idx ]]; then
-            option="${highlight_color}→${reset_color} ${option_label}: ${option_desc}"
-            menu_lines+=("$option")
-        else
-            menu_lines+=("  ${option_label}: ${option_desc}")
-        fi
+        # Add the option (label + description) to the menu
+        menu_lines+=("  ${option_label}: ${option_desc}")
     done
 
     # Fill remaining space if fewer items than page size
@@ -277,34 +271,40 @@ render_menu() {
         menu_lines+=("")  # Add empty lines to keep layout consistent
     done
 
-    # Render the rest of the page, i.e., page number and static info
+    # Render menu lines and calculate arrow position
+    for i in "${!menu_lines[@]}"; do
+        # Determine if this is the highlighted option
+        local menu_line="${menu_lines[$i]}"
+        if [[ $((start + i)) -eq $current_idx ]]; then
+            # Add the arrow next to the line
+            echo -e "${highlight_color}→${reset_color} ${menu_line}"
+        else
+            # Render line without an arrow
+            echo -e "   ${menu_line}"
+        fi
+    done
+
+    # Render the page navigation footer
     local total_pages=$(((num_options + page_size - 1) / page_size))
     local current_page=$(((start / page_size) + 1))
-    local page_text="${faded_color}Page $current_page/$total_pages${reset_color}"
+    local page_text="Page $current_page/$total_pages"
 
-    # Add the centered page text to the menu lines
-    menu_lines+=("\n$(display_text "$page_text" --center)")
-
-    # Render only the dynamic parts (menu options and page number)
-    for line in "${menu_lines[@]}"; do
-        echo -e "$line"
-    done
+    # Add the centered page text to the menu
+    echo -e "\n$(display_text "$page_text" --center)"
 
     # Ensure the cursor is visible at the end
     tput cnorm
 }
 
-
-
 navigate_menu() {
     local menu_json="$1"
 
     # Parse JSON to extract header, page size, and items
-    local header
+    local title
     local page_size
     local menu_items_json
 
-    header=$(jq -r '.header' <<<"$menu_json")
+    title=$(jq -r '.title' <<<"$menu_json")
     page_size=$(jq -r '.page_size' <<<"$menu_json")
     menu_items_json=$(jq -r '.items' <<<"$menu_json")
 
@@ -319,12 +319,13 @@ navigate_menu() {
     local current_idx=0
 
     if [[ $num_options -eq 0 ]]; then
-        echo -e "${error_color}Error: No options provided to the menu!${reset_color}" >&2
+        message="${error_color}Error: No options provided to the menu!${reset_color}"
+        echo -e "$message" >&2
         exit 1
     fi
 
     while true; do
-        render_menu "$header" $current_idx "$page_size" "${menu_options[@]}"
+        render_menu "$title" $current_idx "$page_size" "${menu_options[@]}"
         read -rsn1 key
         case "$key" in
         $'\x1B') # Start of escape sequence
@@ -415,11 +416,13 @@ navigate_menu() {
 
         "q")  # q key to exit
             # Ask for confirmation
-            request_confirmation "${faded_color}Are you sure you want to exit the menu? (y/n)${reset_color}" confirm_exit false
+            message="${faded_color}Are you sure you want to exit the menu? (y/n)${reset_color}"
+            request_confirmation "$message" confirm_exit false
             
             # Proceed with exit if confirmed
             if [[ "${confirm_exit}" == "y" || "${confirm_exit}" == "Y" ]]; then
-                echo -e "${faded_color}Exiting the menu... Goodbye!${reset_color}" >&2
+                message="${faded_color}Exiting the menu... Goodbye!${reset_color}"
+                echo -e "$message" >&2
                 clean_screen
                 break
             fi
