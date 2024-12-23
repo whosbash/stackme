@@ -202,22 +202,23 @@ display_parallel() {
 
 # Render the menu with page navigation and options
 render_menu() {
-    tput civis  # Hide cursor
-    
+    # Hide cursor
+    tput civis
+
     local header="$1"
     local current_idx="$2"
     local page_size="$3"
     local menu_options=("${@:4}")
     local num_options=${#menu_options[@]}
 
-    echo "$menu_options"
-
-    tput cup 0 0                    # Move cursor to top-left
-    clean_screen                    # Clear screen
-    display_header "$header"        # Display header
+    # Prepare static part of the menu (Header and Instructions)
+    tput cup 0 0  # Move cursor to top-left
+    clean_screen  # Optional, clear screen only if needed
+    display_header "$header"  # Display header
     echo -e "${faded_color}Keyboard Shortcuts:${reset_color}" >&2
     echo -e "  ↗/↘: Navigate  ◁/▷: Switch Pages  ↵: Select  q: Quit\n" >&2
 
+    # Determine the range of options to display based on current index
     local start=$((current_idx / page_size * page_size))
     local end=$((start + page_size))
     end=$((end > num_options ? num_options : end))
@@ -230,8 +231,9 @@ render_menu() {
         option_label=$(get_menu_item_label "${menu_options[i]}")
         option_desc=$(get_menu_item_description "${menu_options[i]}")
 
+        # Highlight the current option with an arrow
         if [[ $i -eq $current_idx ]]; then
-            option="${highlight_color}→ ${option_label}: ${option_desc}${reset_color}"
+            option="${highlight_color}→${reset_color} ${option_label}: ${option_desc}"
             menu_lines+=("$option")
         else
             menu_lines+=("  ${option_label}: ${option_desc}")
@@ -244,22 +246,21 @@ render_menu() {
         menu_lines+=("")  # Add empty lines to keep layout consistent
     done
 
-    # Display current page and total pages
+    # Display current page and total pages (this will be updated dynamically)
     local total_pages=$(((num_options + page_size - 1) / page_size))
     local current_page=$(((start / page_size) + 1))
-    menu_lines+=("\nPage $current_page of $total_pages${reset_color}")
+    menu_lines+=("\n${fade_color}Page $current_page/$total_pages${reset_color}")
 
-    # Display navigation indicators
-    if ((start > 0 && num_options > page_size)); then
-        menu_lines+=("${faded_color}... More options above ...${reset_color}")
-    fi
-    if ((end < num_options)); then
-        menu_lines+=("${faded_color}... More options below ...${reset_color}")
-    fi
+    # Render only the dynamic parts (menu options and page number)
+    for line in "${menu_lines[@]}"; do
+        echo -e "$line"
+    done
 
-    # Render all collected lines in parallel
-    display_parallel menu_lines
+    # Ensure the cursor is visible at the end
+    tput cnorm
 }
+
+
 
 navigate_menu() {
     local menu_json="$1"
@@ -404,7 +405,6 @@ navigate_menu() {
     # Show cursor
     tput cnorm 
 }
-
 
 # Settings Menu
 item_1="$(build_menu_item "Option 1" "Description 1" "echo 'Option 1 selected'")"
