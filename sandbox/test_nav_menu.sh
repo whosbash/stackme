@@ -6,58 +6,113 @@ declare -A MENUS
 # Highlight and color variables for styling
 highlight_color="\033[1;32m"   # Highlight color (Bright Green)
 faded_color="\033[2m"          # Faded color (Dark gray)
+select_color="\033[1;34m"      # Blue for select (↵)
+return_color="\033[1;35m"      # Magenta for return (r)
+quit_color="\033[1;31m"        # Red for quit (q)
 error_color="\033[1;31m"       # Error color (Dark red)
 title_color="\033[1;36m"       # Title color (Cyan)
+goto_color="\033[1;36m"        # Go-to page color (Cyan)
+help_color="\033[1;35m"        # Help color (Magenta)
 reset_color="\033[0m"          # Reset color
 
+# Define arrow keys for navigation
 up_key="[A"                    # Up Arrow
 down_key="[B"                  # Down Arrow
 left_key="[D"                  # Left Arrow
 right_key="[C"                 # Right Arrow
 
 # Disable canonical mode, set immediate input
-stty -icanon min 1 time 0      
-trap "stty sane" EXIT          # Ensure terminal settings are restored on script exit
+stty -icanon min 1 time 0
+
+# Ensure terminal settings are restored on script exit
+trap "stty sane" EXIT
 
 # Function to clean the terminal screen
 clean_screen(){
     echo -ne "\033[H\033[J" >&2
 }
 
-# Function to display styled and optionally centered text
+# Function to strip ANSI escape sequences from a string
+strip_ansi() {
+    pattern='s/\x1b\[[0-9;]*[mK]//g'
+    echo -e "$1" | sed "$pattern"
+}
+
+# Function to show help
+show_help() {
+    echo "Help Menu:"
+    echo "↗↘  - Navigate down- and upwards"
+    echo "◁▷ - Navigate down- and upwards"
+    echo "↵   - Select current option"
+    echo "r   - Return to begin of menu"
+    echo "/   - Search on current menu"
+    echo "q   - Quit the application"
+    echo "h   - Show this help menu"
+}
+
+ud_nav_option="${highlight_color}↗↘${reset_color}: Nav"
+lr_nav_option="${highlight_color}◁▷${reset_color}: Pages"
+sel_nav_option="${select_color}↵${reset_color}: Sel"
+goto_nav_option="${goto_color}g${reset_color}: Go to Page"
+back_option="${return_color}r${reset_color}: Back"
+search_option="${quit_color}/${reset_color}: Search"
+quit_option="${quit_color}q${reset_color}: Quit"
+
+# Function to display styled and optionally centered text with custom or terminal width
 display_text() {
     local text="$1"               # The text to display
-    local term_width=$(tput cols) # Get terminal width
+    local custom_width="$2"       # Custom width for the text
     local padding=0               # Optional padding around the text
     local center=false            # Set to true to center the text
     local style="${bold_color}"   # Optional style (e.g., bold or colored)
 
     # Check if additional options are provided
-    while [[ $# -gt 1 ]]; do
-        case "$2" in
+    shift 2  # Skip the first two arguments (text and custom_width)
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
             --center) center=true ;;
-            --style) style="$3"; shift ;;
-            --padding) padding="$3"; shift ;;
+            --style) style="$2"; shift ;;
+            --padding) padding="$2"; shift ;;
+            *) echo "Unknown option: $1" >&2; return 1 ;;
         esac
         shift
     done
 
-    # Add padding
+    # If custom width is not provided, use terminal width (tput cols)
+    if [[ -z "$custom_width" ]]; then
+        custom_width=$(tput cols)
+    fi
+
+    # Ensure padding is valid
+    if (( padding < 0 )); then
+        echo "Padding must be non-negative." >&2
+        return 1
+    fi
+
+    # Calculate text length with padding
     local padded_text=$(printf "%${padding}s%s%${padding}s" "" "$text" "")
+    local text_length=${#padded_text}
+
+    # Ensure the custom width is at least the length of the text
+    if (( custom_width < text_length )); then
+        echo "Error: Custom width ($custom_width) is smaller than text length ($text_length)." >&2
+        return 1
+    fi
 
     # Center the text if needed
     if [[ "$center" == true ]]; then
-        local text_length=${#padded_text}
-        local left_padding=$(( (term_width - text_length) / 2 ))
+        local left_padding=$(( (custom_width - text_length) / 2 ))
         padded_text=$(printf "%${left_padding}s%s" "" "$padded_text")
     fi
 
+    # Ensure the text fits within the custom width
+    local final_text=$(printf "%-${custom_width}s" "$padded_text")
+
     # Apply styling and display
-    echo -e "${style}${padded_text}${reset_color}"
+    echo -e "${style}${final_text}${reset_color}"
 }
 
-
-
+# Function to get a specific value from a JSON object
 query_json_value(){
     local menu_item="$1"
     local query="$2"
@@ -65,6 +120,19 @@ query_json_value(){
     echo "$menu_item" | jq -r "$query"
 }
 
+# Function to check the key and set the boolean
+set_move_boolean() {
+    local key_to_check="$1"
+    local key_value="$2"
+    
+    if [[ "$key_to_check" = "$key_value" ]]; then
+        echo true
+    else
+        echo false
+    fi
+}
+
+# 
 get_menu_item_label(){
     local menu_item="$1"
     query_json_value "$menu_item" ".label"
@@ -87,7 +155,7 @@ request_input() {
     local variable_name="$3"
     
     echo -ne "$message" >&2
-    tput cub "$cursor_move"  # Move cursor back to where the message started
+    tput cuf "$cursor_move"  # Move cursor forward by the specified number of characters
     read -rsn1 "$variable_name"  # Read a single character input into the specified variable
 }
 
@@ -98,41 +166,84 @@ request_confirmation() {
     local default_value="${3:-false}"
 
     local user_input=""
-    request_input "$message" 0 user_input
+    request_input "$message" 1 user_input  # Move 1 character forward
 
     # Use default value if input is empty
     if [[ -z "$user_input" && "$default_value" != "false" ]]; then
         user_input="$default_value"
     fi
 
-    local error_message
-    local reason
-
     # Validate the input
     while [[ ! "$user_input" =~ ^[yYnN]$ ]]; do
-        error_message="\nInvalid input \"$user_input\"."
-        reason="Please enter 'y' for yes or 'n' for no.\n${reset_color}"
-        local invalid_message="${faded_color} "
-        echo -ne "$invalid_message" >&2
-        tput cub ${#invalid_message}
-        request_input "$message" 0 user_input
+        # Display the error message and prompt again on a new line
+        echo -e "${faded_color}\nInvalid input \"$user_input\"." >&2
+        echo -e "Please enter 'y' for yes or 'n' for no.${reset_color}" >&2
+
+        # Re-prompt the user
+        request_input "$message" 1 user_input  # Move 1 character forward
     done
 
     # Assign the validated input to the confirmation variable
     printf -v "$confirm_variable_name" "%s" "$user_input"
 }
 
-
 # Function to truncate option text to a max length
 truncate_option() {
     local option="$1"
-    local max_length=30
+    local max_length="${2-50}"
     if [[ ${#option} -gt $max_length ]]; then
         echo "${option:0:$((max_length - 3))}..."
     else
         echo "$option"
     fi
 }
+
+# Function to calculate total pages
+calculate_total_pages() {
+    local total_items="$1"   # Total number of items
+    local items_per_page="$2" # Number of items per page
+
+    # Calculate total pages, rounding up if necessary
+    total_pages=$(( (total_items + items_per_page - 1) / items_per_page ))
+
+    echo "$total_pages"
+}
+
+# Function to check if the current item is the last item on the page
+is_last_page_item() {
+    local current_item="$1"   # Current item number (1-based index)
+    local items_per_page="$2" # Number of items per page
+    local total_items="$3"    # Total number of items
+
+    # Calculate the last item number for the current page
+    last_item_on_page=$(( current_item / items_per_page * items_per_page ))
+
+    # Adjust if the current page isn't full (for the last page)
+    if [ "$current_item" -gt "$last_item_on_page" ]; then
+        last_item_on_page=$(( (total_items + items_per_page - 1) / items_per_page * items_per_page ))
+    fi
+
+    # Check if the current item is the last item on the page
+    if [ "$current_item" -eq "$last_item_on_page" ]; then
+        echo "true"
+    else
+        echo "false"
+    fi
+}
+
+# Function to check if the current item is the first item on the page
+is_first_page_item() {
+    local current_item="$1"   # Current item number (1-based index)
+    local items_per_page="$2" # Number of items per page
+
+    # Check if the current item is the first item on the page
+    if [ "$current_item" -eq 1 ]; then
+        echo "true"
+    else
+        echo "false"
+    fi
+}
+
 
 # Custom function to join an array into a single string with a delimiter
 join_array() {
@@ -154,18 +265,18 @@ join_array() {
 
 # Define individual menu item
 build_menu_item() {
-  local label="$1"
-  local description="$2"
-  local action="$3"
+    local label="$1"
+    local description="$2"
+    local action="$3"
 
-  # Validate inputs
-  if [ -z "$label" ] || [ -z "$description" ] || [ -z "$action" ]; then
-    echo "Error: Missing argument(s). All arguments (label, description, action) are required."
-    return 1
-  fi
+    # Validate inputs
+    if [ -z "$label" ] || [ -z "$description" ] || [ -z "$action" ]; then
+        echo "Error: Missing argument(s). All arguments (label, description, action) are required."
+        return 1
+    fi
 
-  # Generate JSON object using jq directly
-  jq -n \
+    # Generate JSON object using jq directly
+    jq -n \
     --arg label_ "$label" \
     --arg description_ "$description" \
     --arg action_ "$action" \
@@ -228,6 +339,21 @@ display_parallel() {
     done
 }
 
+# Function to calculate the arrow position in the terminal
+get_arrow_position() {
+    local current_idx="$1"
+    local page_size="$2"
+    local header_lines="$3"
+
+    # Calculate the start index for the current page
+    local start=$((current_idx / page_size * page_size))
+
+    # Calculate the arrow row position based on header lines and current item
+    local arrow_row=$((header_lines + (current_idx - start) + 1))
+
+    echo "$arrow_row"
+}
+
 # Render the menu with page navigation and options
 render_menu() {
     # Hide cursor
@@ -237,16 +363,46 @@ render_menu() {
     local current_idx="$2"
     local page_size="$3"
     local menu_options=("${@:4}")
+
     local num_options=${#menu_options[@]}
+
+    # Keyboard shortcuts based on search mode with colors
+    ud_nav_option="${highlight_color}↗↘${reset_color}: Nav"
+    lr_nav_option="${highlight_color}◁▷${reset_color}: Pages"
+    sel_nav_option="${select_color}↵${reset_color}: Sel"
+    goto_nav_option="${goto_color}g${reset_color}: Go to Page"
+    back_option="${return_color}r${reset_color}: Back"
+    search_option="${quit_color}/${reset_color}: Search"
+    help_option="${help_color}h${reset_color}: Help"
+    quit_option="${quit_color}q${reset_color}: Quit"
+
+    # Store keyboard options in an array
+    keyboard_options=(
+        "$ud_nav_option"
+        "$lr_nav_option"
+        "$sel_nav_option"
+        "$goto_nav_option"
+        "$back_option"
+        "$search_option"
+        "$quit_option"
+        "$help_option"
+    )
+
+    # Join the options with a space delimiter
+    keyboard_options_string=$(join_array " " "${keyboard_options[@]}")
+
+    keyboard_options_without_color=$(strip_ansi "$keyboard_options_string")
+    keyboard_length="${#keyboard_options_without_color}"
 
     # Prepare static part of the menu (Header and Instructions)
     tput cup 0 0  # Move cursor to top-left
     clean_screen  # Optional, clear screen only if needed
-    echo "$(display_text "$title" --center)" >&2
-
-    echo -e "${faded_color}Keyboard Shortcuts:${reset_color}" >&2
-    keyboard_options="  ↗/↘: Navigate  ◁/▷: Switch Pages  ↵: Select  q: Quit\n"
-    echo -e "$keyboard_options" >&2
+    
+    echo >&2
+    echo "$(display_text "$title" "$keyboard_length" --center)" >&2
+    echo >&2
+    echo -e "$keyboard_options_string" >&2
+    echo >&2
 
     # Determine the range of options to display based on the current index
     local start=$((current_idx / page_size * page_size))
@@ -268,7 +424,8 @@ render_menu() {
     # Fill remaining space if fewer items than page size
     local remaining_space=$((page_size - (end - start)))
     for _ in $(seq 1 $remaining_space); do
-        menu_lines+=("")  # Add empty lines to keep layout consistent
+        # Add empty lines to keep layout consistent
+        menu_lines+=("")
     done
 
     # Render menu lines and calculate arrow position
@@ -284,13 +441,18 @@ render_menu() {
         fi
     done
 
+    # Display page count
+    echo >&2
+    echo -e "$keyboard_options_string" >&2
+    echo >&2
+
     # Render the page navigation footer
     local total_pages=$(((num_options + page_size - 1) / page_size))
     local current_page=$(((start / page_size) + 1))
     local page_text="Page $current_page/$total_pages"
 
     # Add the centered page text to the menu
-    echo -e "\n$(display_text "$page_text" --center)"
+    echo -e "\n$(display_text "$page_text" "$keyboard_length" --center)"
 
     # Ensure the cursor is visible at the end
     tput cnorm
@@ -317,6 +479,7 @@ navigate_menu() {
     local original_menu_options=("${menu_options[@]}")
     local num_options=${#menu_options[@]}
     local current_idx=0
+    local total_pages=
 
     if [[ $num_options -eq 0 ]]; then
         message="${error_color}Error: No options provided to the menu!${reset_color}"
@@ -330,6 +493,24 @@ navigate_menu() {
 
         local num_options=${#menu_options[@]}
 
+        move_up=false
+        move_down=false
+        move_left=false
+        move_right=false
+
+        # Check and set the booleans using the function
+        move_up="$(set_move_boolean "$key" "$up_key")"
+        move_down="$(set_move_boolean "$key" "$down_key")"
+        move_left="$(set_move_boolean "$key" "$left_key")"
+        move_right="$(set_move_boolean "$key" "$right_key")" 
+
+        # Display results
+        echo "Move Up: $move_up" >&2
+        echo "Move Down: $move_down" >&2
+        echo "Move Left: $move_left" >&2
+        echo "Move Right: $move_right" >&2
+        sleep 1
+
         case "$key" in
         $'\x1B') # Start of escape sequence
             read -rsn2 -t 0.1 key
@@ -337,12 +518,16 @@ navigate_menu() {
             "$up_key")   # Up arrow
                 if ((current_idx > 0)); then
                     ((current_idx--))
+                else
+                    current_idx=$((num_options - 1)) # Wrap to the last option
                 fi
                 ;;
 
             "$down_key") # Down arrow
                 if ((current_idx < num_options - 1)); then
                     ((current_idx++))
+                else
+                    current_idx=0 # Wrap to the first option
                 fi
                 ;;
 
@@ -350,7 +535,8 @@ navigate_menu() {
                 if ((current_idx - page_size >= 0)); then
                     current_idx=$(( (current_idx / page_size - 1) * page_size ))
                 else
-                    current_idx=0
+                    # Wrap to the last page
+                    current_idx=$(( ((num_options - 1) / page_size) * page_size ))
                 fi
                 ;;
 
@@ -358,24 +544,75 @@ navigate_menu() {
                 if ((current_idx + page_size < num_options)); then
                     current_idx=$(( (current_idx / page_size + 1) * page_size ))
                 else
-                    current_idx=$((num_options - 1))
+                    # Wrap to the first page
+                    current_idx=0
                 fi
                 ;;
 
             esac
             ;;
-        
-        # Handle "r" key to reset menu to original options
-        "r")  # "r" key to reset the menu to original options
+
+        # "g" key to go to a specific page
+        "g")
+            # Store the current page index before making any changes
+            local previous_idx=$current_idx
+
+            # Prompt for page number input
+            echo -ne "${faded_color}Enter the page number: ${reset_color}" >&2
+            read -e -r page_number
+
+            # Check if the input is a valid number
+            if [[ "$page_number" =~ ^[0-9]+$ ]]; then
+                page_number=$((page_number - 1))  # Adjust to zero-indexed
+                local max_page=$(( (num_options - 1) / page_size ))
+
+                if ((page_number > max_page)); then
+                    # Page doesn't exist (out of bounds)
+                    message="${error_color}Page number out of range! Please enter a valid page.${reset_color}"
+                    echo -e "$message" >&2
+                    sleep 1
+                else
+                    # Page exists, navigate to it
+                    current_idx=$((page_number * page_size))
+
+                    # Render the menu on the new page
+                    render_menu "$title" $current_idx "$page_size" "$is_new_page" "${menu_options[@]}"
+
+                    # Ask if the user wants to go back to the current menu
+                    echo -ne "${faded_color}Would you like to go back to the current menu (y/n)? ${reset_color}"
+                    read -r go_back_choice
+
+                    if [[ "$go_back_choice" == "y" || "$go_back_choice" == "Y" ]]; then
+                        # Reset to the previous page if the user wants to go back
+                        current_idx=$previous_idx
+                        echo -e "${faded_color}Returning to the previous menu...${reset_color}" >&2
+                        sleep 1
+                    else
+                        echo -e "${faded_color}You are now on page $((page_number + 1)).${reset_color}" >&2
+                    fi
+                fi
+            else
+                # Invalid input (not a number)
+                message="${error_color}Invalid input! Please enter a valid page number.${reset_color}"
+                echo -e "$message" >&2
+                sleep 1
+            fi
+            ;;
+
+        # "r" key to reset the menu to original options
+        "r")  
             # Reset the menu to the original options
             menu_options=("${original_menu_options[@]}")  
             
             # Reset to the first item (first page)
-            current_idx=0  
+            current_idx=0
+
+
             continue
             ;;
 
-        "/")  # Start search
+        # Start search
+        "/")  
             # Print the prompt with colors using echo
             echo -ne "${faded_color}Search: ${reset_color}" >&2
 
@@ -414,15 +651,19 @@ navigate_menu() {
                 menu_options=("${original_menu_options[@]}")
             else
                 menu_options=("${filtered_options[@]}")
-            fi
-        
-            # Adjust the current index if it exceeds the number of options
-            if ((current_idx >= ${#menu_options[@]})); then
-                current_idx=$(( ${#menu_options[@]} - 1 ))
+                current_idx=0
             fi
             ;;
 
-        "") # Enter key
+        "h")
+            show_help
+            sleep 3
+            ;;
+
+        # Enter key
+        "") 
+            echo >&2
+
             option_label=$(get_menu_item_label "${menu_options[current_idx]}")
             question="Are you sure you want to select \"$option_label\"? (y/n)"
             message="${faded_color}$question${reset_color}"
@@ -431,13 +672,15 @@ navigate_menu() {
             request_confirmation "$message" confirm
 
             while [[ ! "$confirm" =~ ^[yYnN]$ ]]; do
+                # Display invalid input message and prompt again
                 reason="Invalid input \"$confirm\""
                 select_options="Please enter 'y' for yes or 'n' for no."
-                invalid_message="${faded_color}$reason\n. $select_options\n${reset_color}"
-                echo -ne "$invalid_message" >&2
-                tput cub ${#invalid_message}
+                invalid_message="${faded_color}$reason\n$select_options\n${reset_color}"
 
-                # Re-prompt for confirmation if the input is invalid
+                # Clear the current line and print the invalid message
+                echo -e "$invalid_message" >&2
+
+                # Re-display the confirmation prompt
                 echo -ne "${faded_color}$message${reset_color}" >&2
                 request_confirmation "$message" confirm
             done
@@ -447,15 +690,20 @@ navigate_menu() {
             if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
                 # Perform the action after confirmation
                 option_action=$(get_menu_item_action "${menu_options[current_idx]}")
+                clean_screen
+                
                 eval "$option_action"
                 sleep 2
                 
-                clean_screen
                 break
             fi
             ;;
 
-        "q")  # q key to exit
+
+        # q key to exit
+        "q")
+            echo >&2
+
             # Ask for confirmation
             message="${faded_color}Are you sure you want to exit the menu? (y/n)${reset_color}"
             request_confirmation "$message" confirm_exit false
@@ -468,8 +716,10 @@ navigate_menu() {
                 break
             fi
             ;;
+        
+        *)  
+            echo >&2
 
-        *)  # Handle invalid key input
             shoutout="Invalid key pressed!"
             keyboard_options="Please use ↑/↓ to navigate, ←/→ to switch pages, or Enter to select."
             message="${error_color}$shoutout $keyboard_options${reset_color}"
@@ -502,3 +752,4 @@ menu_object="$(
 )"
 
 navigate_menu "$menu_object"
+
