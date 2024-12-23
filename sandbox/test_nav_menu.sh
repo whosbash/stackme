@@ -24,11 +24,39 @@ clean_screen(){
     echo -ne "\033[H\033[J" >&2
 }
 
-# Function to display the header
-display_header(){
-    local header="$1"
-    echo -e "$header\n" >&2
+# Function to display styled and optionally centered text
+display_text() {
+    local text="$1"               # The text to display
+    local term_width=$(tput cols) # Get terminal width
+    local padding=0               # Optional padding around the text
+    local center=false            # Set to true to center the text
+    local style="${bold_color}"   # Optional style (e.g., bold or colored)
+
+    # Check if additional options are provided
+    while [[ $# -gt 1 ]]; do
+        case "$2" in
+            --center) center=true ;;
+            --style) style="$3"; shift ;;
+            --padding) padding="$3"; shift ;;
+        esac
+        shift
+    done
+
+    # Add padding
+    local padded_text=$(printf "%${padding}s%s%${padding}s" "" "$text" "")
+
+    # Center the text if needed
+    if [[ "$center" == true ]]; then
+        local text_length=${#padded_text}
+        local left_padding=$(( (term_width - text_length) / 2 ))
+        padded_text=$(printf "%${left_padding}s%s" "" "$padded_text")
+    fi
+
+    # Apply styling and display
+    echo -e "${style}${padded_text}${reset_color}"
 }
+
+
 
 query_json_value(){
     local menu_item="$1"
@@ -214,9 +242,12 @@ render_menu() {
     # Prepare static part of the menu (Header and Instructions)
     tput cup 0 0  # Move cursor to top-left
     clean_screen  # Optional, clear screen only if needed
-    display_header "$header"  # Display header
+    echo "$(display_text "$header" --center)" >&2
+
     echo -e "${faded_color}Keyboard Shortcuts:${reset_color}" >&2
-    echo -e "  ↗/↘: Navigate  ◁/▷: Switch Pages  ↵: Select  q: Quit\n" >&2
+    
+    keyboard_options="  ↗/↘: Navigate  ◁/▷: Switch Pages  ↵: Select  q: Quit\n"
+    echo -e "$keyboard_options" >&2
 
     # Determine the range of options to display based on current index
     local start=$((current_idx / page_size * page_size))
@@ -246,10 +277,13 @@ render_menu() {
         menu_lines+=("")  # Add empty lines to keep layout consistent
     done
 
-    # Display current page and total pages (this will be updated dynamically)
+    # Render the rest of the page, i.e., page number and static info
     local total_pages=$(((num_options + page_size - 1) / page_size))
     local current_page=$(((start / page_size) + 1))
-    menu_lines+=("\n${fade_color}Page $current_page/$total_pages${reset_color}")
+    local page_text="${faded_color}Page $current_page/$total_pages${reset_color}"
+
+    # Add the centered page text to the menu lines
+    menu_lines+=("\n$(display_text "$page_text" --center)")
 
     # Render only the dynamic parts (menu options and page number)
     for line in "${menu_lines[@]}"; do
