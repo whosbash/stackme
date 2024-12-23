@@ -210,22 +210,22 @@ build_menu() {
 
 # Function to process all lines in parallel and maintain order
 display_parallel() {
-  local -n _lines=$1  # Array passed by reference
-  local -a pids=()     # Array to hold process IDs
+    local -n _lines=$1  # Array passed by reference
+    local -a pids=()     # Array to hold process IDs
 
-  # Process each line in parallel
-  for i in "${!_lines[@]}"; do
+    # Process each line in parallel
+    for i in "${!_lines[@]}"; do
     line="${_lines[i]}"
     {
-      echo -e "$line"
+        echo -e "$line"
     } &
     pids+=($!)  # Store the process ID for each background process
-  done
+    done
 
-  # Wait for all processes to finish
-  for pid in "${pids[@]}"; do
+    # Wait for all processes to finish
+    for pid in "${pids[@]}"; do
     wait "$pid"
-  done
+    done
 }
 
 # Render the menu with page navigation and options
@@ -327,6 +327,9 @@ navigate_menu() {
     while true; do
         render_menu "$title" $current_idx "$page_size" "${menu_options[@]}"
         read -rsn1 key
+
+        local num_options=${#menu_options[@]}
+
         case "$key" in
         $'\x1B') # Start of escape sequence
             read -rsn2 -t 0.1 key
@@ -361,25 +364,64 @@ navigate_menu() {
 
             esac
             ;;
+        
+        # Handle "r" key to reset menu to original options
+        "r")  # "r" key to reset the menu to original options
+            # Reset the menu to the original options
+            menu_options=("${original_menu_options[@]}")  
+            
+            # Reset to the first item (first page)
+            current_idx=0  
+            continue
+            ;;
 
         "/")  # Start search
-            echo -e "${faded_color}Search: ${reset_color}" >&2
-            read -r search_key
+            # Print the prompt with colors using echo
+            echo -ne "${faded_color}Search: ${reset_color}" >&2
+
+            # Move the cursor to the end of the printed message using tput
+            tput cuf 0
+
+            # Read the user input without printing the escape sequences
+            read -e -r search_key
+
+            # Check for 'r' to reset to original menu options
+            if [[ "$search_key" == "r" ]]; then
+                # Reset the menu to the original options
+                menu_options=("${original_menu_options[@]}")  
+                continue
+            fi
+
+            # If search_key is empty, reset to original options
             if [[ -z "$search_key" ]]; then
                 menu_options=("${original_menu_options[@]}")
                 continue
             fi
+
+            # Initialize filtered options
             filtered_options=()
+
+            # Filter the options based on the search key
             for option in "${original_menu_options[@]}"; do
-                if [[ $option == *"$search_key"* ]]; then
+                # Skip empty items and filter options
+                if [[ -n "$option" && "$option" == *"$search_key"* ]]; then
                     filtered_options+=("$option")
                 fi
             done
-            menu_options=("${filtered_options[@]}")
+
+            # If no options match the search, reset to original options
+            if [[ ${#filtered_options[@]} -eq 0 ]]; then
+                menu_options=("${original_menu_options[@]}")
+            else
+                menu_options=("${filtered_options[@]}")
+            fi
+        
+            # Adjust the current index if it exceeds the number of options
             if ((current_idx >= ${#menu_options[@]})); then
                 current_idx=$(( ${#menu_options[@]} - 1 ))
             fi
             ;;
+
         "") # Enter key
             option_label=$(get_menu_item_label "${menu_options[current_idx]}")
             question="Are you sure you want to select \"$option_label\"? (y/n)"
@@ -394,7 +436,7 @@ navigate_menu() {
                 invalid_message="${faded_color}$reason\n. $select_options\n${reset_color}"
                 echo -ne "$invalid_message" >&2
                 tput cub ${#invalid_message}
-                
+
                 # Re-prompt for confirmation if the input is invalid
                 echo -ne "${faded_color}$message${reset_color}" >&2
                 request_confirmation "$message" confirm
@@ -413,12 +455,11 @@ navigate_menu() {
             fi
             ;;
 
-
         "q")  # q key to exit
             # Ask for confirmation
             message="${faded_color}Are you sure you want to exit the menu? (y/n)${reset_color}"
             request_confirmation "$message" confirm_exit false
-            
+
             # Proceed with exit if confirmed
             if [[ "${confirm_exit}" == "y" || "${confirm_exit}" == "Y" ]]; then
                 message="${faded_color}Exiting the menu... Goodbye!${reset_color}"
