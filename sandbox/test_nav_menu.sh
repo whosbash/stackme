@@ -7,7 +7,7 @@ declare -A MENUS
 highlight_color="\033[1;32m"   # Highlight color (Bright Green)
 faded_color="\033[2m"          # Faded color (Dark gray)
 select_color="\033[1;34m"      # Blue for select (↵)
-return_color="\033[1;35m"      # Magenta for return (r)
+back_color="\033[2m"           # Magenta for return (r)
 quit_color="\033[1;31m"        # Red for quit (q)
 search_color="\033[1;36m"      # Search color (/)
 goto_color="\033[1;36m"        # Go-to page color (g)
@@ -52,23 +52,15 @@ to_boolean() {
 
 # Function to show help
 show_help() {
-    echo "Help Menu:"
-    echo "${highlight_color}↗↘${reset_color}  - Navigate down- and upwards"
-    echo "${highlight_color}◁▷${reset_color} - Navigate sideways"
-    echo "${select_color}↵${reset_color}   - Select current option"
-    echo "${return_color}r${}   - Return to begin of menu"
-    echo "${}/${}   - Search on current menu"
-    echo "${}q${}   - Quit the application"
-    echo "${}h${}   - Show this help menu"
+    echo -e "Help Menu:"
+    echo -e "${highlight_color}↗↘${reset_color}  - Navigate down- and upwards"
+    echo -e "${highlight_color}◁▷${reset_color} - Navigate sideways"
+    echo -e "${select_color}↵${reset_color}   - Select current option"
+    echo -e "${back_color}r${reset_color}   - Return to begin of menu"
+    echo -e "${search_color}/${reset_color}   - Search on current menu"
+    echo -e "${quit_color}q${reset_color}   - Quit the application"
+    echo -e "${help_color}h${reset_color}   - Show this help menu"
 }
-
-ud_nav_option="${highlight_color}↗↘${reset_color}: Nav"
-lr_nav_option="${highlight_color}◁▷${reset_color}: Pages"
-sel_nav_option="${select_color}↵${reset_color}: Sel"
-goto_nav_option="${goto_color}g${reset_color}: Go to Page"
-back_option="${return_color}r${reset_color}: Back"
-search_option="${search_color}/${reset_color}: Search"
-quit_option="${quit_color}q${reset_color}: Quit"
 
 # Function to display styled and optionally centered text with custom or terminal width
 display_text() {
@@ -263,13 +255,6 @@ is_new_page_handler(){
     local total_pages=$(( (num_options + page_size - 1) / page_size ))  # ceiling division
     local more_than_one_page=$(( total_pages > 1 ))
 
-    # Debug output for page calculation
-    echo "Current index: $current_idx" >&2
-    echo "Total options: $num_options" >&2
-    echo "Page size: $page_size" >&2
-    echo "Total pages: $total_pages" >&2
-    echo "More than one page? $more_than_one_page" >&2
-
     # Get booleans for navigation keys
     local move_up_bool=$(to_integer "$(set_move_boolean "$key" "$up_key")")
     local move_down_bool=$(to_integer "$(set_move_boolean "$key" "$down_key")")
@@ -290,8 +275,6 @@ is_new_page_handler(){
 
     # Output result    
     echo "$is_new_page"
-
-    sleep 2
 }
 
 # Custom function to join an array into a single string with a delimiter
@@ -425,8 +408,8 @@ render_menu() {
     lr_nav_option="${highlight_color}◁▷${reset_color}: Pages"
     sel_nav_option="${select_color}↵${reset_color}: Sel"
     goto_nav_option="${goto_color}g${reset_color}: Go to Page"
-    back_option="${return_color}r${reset_color}: Back"
-    search_option="${quit_color}/${reset_color}: Search"
+    back_option="${back_color}r${reset_color}: Return"
+    search_option="${search_color}/${reset_color}:Search"
     help_option="${help_color}h${reset_color}: Help"
     quit_option="${quit_color}q${reset_color}: Quit"
 
@@ -554,8 +537,6 @@ navigate_menu() {
             read -rsn2 -t 0.1 key 
 
             is_new_page=$(is_new_page_handler "$key" "$current_idx" "$num_options" "$page_size")
-            echo "Is new page? $is_new_page" >&2
-            
 
             case "$key" in
             "$up_key")   # Up arrow
@@ -588,11 +569,14 @@ navigate_menu() {
 
             "$right_key") # Right arrow (next page)
                 if ((total_pages > 1)); then
-                    if ((current_idx + page_size < num_options)); then
-                        # Navigate to the first item of the next page
-                        current_idx=$(( (current_idx / page_size + 1) * page_size ))
+                    # Compute the first item on the next page
+                    next_page_start=$(( (current_idx / page_size + 1) * page_size ))
+
+                    if ((next_page_start < num_options)); then
+                        # If the next page exists, move to the first item of the next page
+                        current_idx=$next_page_start
                     else
-                        # Wrap to the first page and get the first item on it
+                        # Otherwise, wrap around to the first page
                         current_idx=0
                     fi
                 fi
@@ -655,8 +639,7 @@ navigate_menu() {
             
             # Reset to the first item (first page)
             current_idx=0
-
-
+    
             continue
             ;;
 
