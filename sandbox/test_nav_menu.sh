@@ -9,10 +9,11 @@ faded_color="\033[2m"          # Faded color (Dark gray)
 select_color="\033[1;34m"      # Blue for select (↵)
 return_color="\033[1;35m"      # Magenta for return (r)
 quit_color="\033[1;31m"        # Red for quit (q)
+search_color="\033[1;36m"      # Search color (/)
+goto_color="\033[1;36m"        # Go-to page color (g)
+help_color="\033[1;35m"        # Help color (h)
 error_color="\033[1;31m"       # Error color (Dark red)
 title_color="\033[1;36m"       # Title color (Cyan)
-goto_color="\033[1;36m"        # Go-to page color (Cyan)
-help_color="\033[1;35m"        # Help color (Magenta)
 reset_color="\033[0m"          # Reset color
 
 # Define arrow keys for navigation
@@ -38,16 +39,27 @@ strip_ansi() {
     echo -e "$1" | sed "$pattern"
 }
 
+# Function to convert "true"/"false" to integer 1/0
+to_integer() {
+    [[ "$1" == "true" ]] && echo 1 || echo 0
+}
+
+# Function to convert a numeric result to "true" or "false"
+to_boolean() {
+    [[ "$1" -ne 0 ]] && echo "true" || echo "false"
+}
+
+
 # Function to show help
 show_help() {
     echo "Help Menu:"
-    echo "↗↘  - Navigate down- and upwards"
-    echo "◁▷ - Navigate down- and upwards"
-    echo "↵   - Select current option"
-    echo "r   - Return to begin of menu"
-    echo "/   - Search on current menu"
-    echo "q   - Quit the application"
-    echo "h   - Show this help menu"
+    echo "${highlight_color}↗↘${reset_color}  - Navigate down- and upwards"
+    echo "${highlight_color}◁▷${reset_color} - Navigate sideways"
+    echo "${select_color}↵${reset_color}   - Select current option"
+    echo "${return_color}r${}   - Return to begin of menu"
+    echo "${}/${}   - Search on current menu"
+    echo "${}q${}   - Quit the application"
+    echo "${}h${}   - Show this help menu"
 }
 
 ud_nav_option="${highlight_color}↗↘${reset_color}: Nav"
@@ -55,7 +67,7 @@ lr_nav_option="${highlight_color}◁▷${reset_color}: Pages"
 sel_nav_option="${select_color}↵${reset_color}: Sel"
 goto_nav_option="${goto_color}g${reset_color}: Go to Page"
 back_option="${return_color}r${reset_color}: Back"
-search_option="${quit_color}/${reset_color}: Search"
+search_option="${search_color}/${reset_color}: Search"
 quit_option="${quit_color}q${reset_color}: Quit"
 
 # Function to display styled and optionally centered text with custom or terminal width
@@ -131,8 +143,7 @@ set_move_boolean() {
         echo false
     fi
 }
-
-# 
+ 
 get_menu_item_label(){
     local menu_item="$1"
     query_json_value "$menu_item" ".label"
@@ -209,41 +220,79 @@ calculate_total_pages() {
     echo "$total_pages"
 }
 
-# Function to check if the current item is the last item on the page
-is_last_page_item() {
-    local current_item="$1"   # Current item number (1-based index)
-    local items_per_page="$2" # Number of items per page
-    local total_items="$3"    # Total number of items
-
-    # Calculate the last item number for the current page
-    last_item_on_page=$(( current_item / items_per_page * items_per_page ))
-
-    # Adjust if the current page isn't full (for the last page)
-    if [ "$current_item" -gt "$last_item_on_page" ]; then
-        last_item_on_page=$(( (total_items + items_per_page - 1) / items_per_page * items_per_page ))
-    fi
-
-    # Check if the current item is the last item on the page
-    if [ "$current_item" -eq "$last_item_on_page" ]; then
-        echo "true"
-    else
-        echo "false"
-    fi
-}
-
 # Function to check if the current item is the first item on the page
 is_first_page_item() {
-    local current_item="$1"   # Current item number (1-based index)
-    local items_per_page="$2" # Number of items per page
+    local current_item="$1"   # Current item number (0-based index)
+    local items_per_page="$2"
 
     # Check if the current item is the first item on the page
-    if [ "$current_item" -eq 1 ]; then
-        echo "true"
+    # First items are those which are of the form: 0, p, 2p+1, 3p+2, ...
+    local first_item_mod=$(( current_item % items_per_page ))
+    if [ "$first_item_mod" -eq 0 ]; then
+        echo "1"  # Return 1 (true)
     else
-        echo "false"
+        echo "0"  # Return 0 (false)
     fi
 }
 
+# Function to check if the current item is the last item on the page
+is_last_page_item() {
+    local current_item="$1"   # Current item number (0-based index)
+    local items_per_page="$2"  # Items per page
+    local total_items="$3"     # Total number of items
+
+    # Calculate the last item index of the current page (0-based)
+    # Last items are those which are of the form: p-1, 2p, 3p+1, ...
+    local last_item_mod=$(( (current_item + 1) % items_per_page ))
+    if [ "$last_item_mod" -eq 0 ] || [ "$current_item" -eq "$((total_items - 1))" ]; then
+        echo "1"  # Return 1 (true)
+    else
+        echo "0"  # Return 0 (false)
+    fi
+}
+
+
+
+is_new_page_handler(){
+    local key="$1"
+    local current_idx="$2" 
+    local num_options="$3"
+    local page_size="$4"
+
+    # Calculate total pages
+    local total_pages=$(( (num_options + page_size - 1) / page_size ))  # ceiling division
+    local more_than_one_page=$(( total_pages > 1 ))
+
+    # Debug output for page calculation
+    echo "Current index: $current_idx" >&2
+    echo "Total options: $num_options" >&2
+    echo "Page size: $page_size" >&2
+    echo "Total pages: $total_pages" >&2
+    echo "More than one page? $more_than_one_page" >&2
+
+    # Get booleans for navigation keys
+    local move_up_bool=$(to_integer "$(set_move_boolean "$key" "$up_key")")
+    local move_down_bool=$(to_integer "$(set_move_boolean "$key" "$down_key")")
+    local move_left_bool=$(to_integer "$(set_move_boolean "$key" "$left_key")")
+    local move_right_bool=$(to_integer "$(set_move_boolean "$key" "$right_key")")
+
+    # Check for first and last page items
+    is_first_page_item_bool=$(is_first_page_item "$current_idx" "$page_size")
+    is_last_page_item_bool=$(is_last_page_item "$current_idx" "$page_size" "$num_options")
+
+    # Determine if there is movement to a new page
+    local move_sideways=$(( move_left_bool || move_right_bool ))  # Move left or right
+    local move_up_first_page=$(( is_first_page_item_bool && move_up_bool ))  # Move up from first page
+    local move_down_last_page=$(( is_last_page_item_bool && move_down_bool ))  # Move down from last page
+
+    # Determine if it's a new page
+    local is_new_page=$(( more_than_one_page && (move_sideways || move_down_last_page || move_up_first_page) ))
+
+    # Output result    
+    echo "$is_new_page"
+
+    sleep 2
+}
 
 # Custom function to join an array into a single string with a delimiter
 join_array() {
@@ -312,11 +361,15 @@ build_menu() {
     menu_items=$(build_array_from_items "$@")
 
     # Create final menu object
-    jq -n --arg title "$title" --arg page_size "$page_size" --argjson items "$menu_items" '{
-        title: $title,
-        page_size: $page_size,
-        items: $items
-    }'
+    jq -n \
+        --arg title "$title" \
+        --arg page_size "$page_size" \
+        --argjson items "$menu_items" \
+        '{
+            title: $title,
+            page_size: $page_size,
+            items: $items
+        }'
 }
 
 # Function to process all lines in parallel and maintain order
@@ -362,7 +415,8 @@ render_menu() {
     local title="$1"
     local current_idx="$2"
     local page_size="$3"
-    local menu_options=("${@:4}")
+    local is_new_page="$4"
+    local menu_options=("${@:5}")
 
     local num_options=${#menu_options[@]}
 
@@ -389,7 +443,7 @@ render_menu() {
     )
 
     # Join the options with a space delimiter
-    keyboard_options_string=$(join_array " " "${keyboard_options[@]}")
+    keyboard_options_string=$(join_array ", " "${keyboard_options[@]}")
 
     keyboard_options_without_color=$(strip_ansi "$keyboard_options_string")
     keyboard_length="${#keyboard_options_without_color}"
@@ -397,11 +451,9 @@ render_menu() {
     # Prepare static part of the menu (Header and Instructions)
     tput cup 0 0  # Move cursor to top-left
     clean_screen  # Optional, clear screen only if needed
-    
+
     echo >&2
     echo "$(display_text "$title" "$keyboard_length" --center)" >&2
-    echo >&2
-    echo -e "$keyboard_options_string" >&2
     echo >&2
 
     # Determine the range of options to display based on the current index
@@ -418,7 +470,7 @@ render_menu() {
         option_desc=$(get_menu_item_description "${menu_options[i]}")
 
         # Add the option (label + description) to the menu
-        menu_lines+=("  ${option_label}: ${option_desc}")
+        menu_lines+=("${option_label}: ${option_desc}")
     done
 
     # Fill remaining space if fewer items than page size
@@ -437,7 +489,7 @@ render_menu() {
             echo -e "${highlight_color}→${reset_color} ${menu_line}"
         else
             # Render line without an arrow
-            echo -e "   ${menu_line}"
+            echo -e "  ${menu_line}"
         fi
     done
 
@@ -478,8 +530,9 @@ navigate_menu() {
 
     local original_menu_options=("${menu_options[@]}")
     local num_options=${#menu_options[@]}
+    local total_pages=0
+    local is_new_page=0
     local current_idx=0
-    local total_pages=
 
     if [[ $num_options -eq 0 ]]; then
         message="${error_color}Error: No options provided to the menu!${reset_color}"
@@ -488,32 +541,22 @@ navigate_menu() {
     fi
 
     while true; do
-        render_menu "$title" $current_idx "$page_size" "${menu_options[@]}"
+        render_menu "$title" $current_idx "$page_size" "$is_new_page" "${menu_options[@]}"
         read -rsn1 key
 
         local num_options=${#menu_options[@]}
+        total_pages="$(calculate_total_pages "$num_options" "$page_size")"
 
-        move_up=false
-        move_down=false
-        move_left=false
-        move_right=false
-
-        # Check and set the booleans using the function
-        move_up="$(set_move_boolean "$key" "$up_key")"
-        move_down="$(set_move_boolean "$key" "$down_key")"
-        move_left="$(set_move_boolean "$key" "$left_key")"
-        move_right="$(set_move_boolean "$key" "$right_key")" 
-
-        # Display results
-        echo "Move Up: $move_up" >&2
-        echo "Move Down: $move_down" >&2
-        echo "Move Left: $move_left" >&2
-        echo "Move Right: $move_right" >&2
-        sleep 1
+        echo ""
 
         case "$key" in
-        $'\x1B') # Start of escape sequence
-            read -rsn2 -t 0.1 key
+        $'\x1B')
+            read -rsn2 -t 0.1 key 
+
+            is_new_page=$(is_new_page_handler "$key" "$current_idx" "$num_options" "$page_size")
+            echo "Is new page? $is_new_page" >&2
+            
+
             case "$key" in
             "$up_key")   # Up arrow
                 if ((current_idx > 0)); then
@@ -532,20 +575,26 @@ navigate_menu() {
                 ;;
 
             "$left_key") # Left arrow (previous page)
-                if ((current_idx - page_size >= 0)); then
-                    current_idx=$(( (current_idx / page_size - 1) * page_size ))
-                else
-                    # Wrap to the last page
-                    current_idx=$(( ((num_options - 1) / page_size) * page_size ))
+                if ((total_pages > 1)); then
+                    if ((current_idx - page_size >= 0)); then
+                        # Navigate to the first item of the previous page
+                        current_idx=$(( (current_idx / page_size - 1) * page_size ))
+                    else
+                        # Wrap to the last page and get the first item on it
+                        current_idx=$(( ((num_options - 1) / page_size) * page_size ))
+                    fi
                 fi
                 ;;
 
             "$right_key") # Right arrow (next page)
-                if ((current_idx + page_size < num_options)); then
-                    current_idx=$(( (current_idx / page_size + 1) * page_size ))
-                else
-                    # Wrap to the first page
-                    current_idx=0
+                if ((total_pages > 1)); then
+                    if ((current_idx + page_size < num_options)); then
+                        # Navigate to the first item of the next page
+                        current_idx=$(( (current_idx / page_size + 1) * page_size ))
+                    else
+                        # Wrap to the first page and get the first item on it
+                        current_idx=0
+                    fi
                 fi
                 ;;
 
