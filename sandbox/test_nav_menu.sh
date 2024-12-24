@@ -409,7 +409,16 @@ render_menu() {
   local current_idx="$2"
   local page_size="$3"
   local is_new_page="$4"
-  local menu_options=("${@:5}")
+  local previous_idx="$5"
+  local menu_options=("${@:6}")
+
+  if [[ "$is_new_page" == 0 ]]; then
+    header_line_count=3
+    prev_arrow_height="$(get_arrow_position $previous_idx $page_size $header_line_count)"
+    curr_arrow_height="$(get_arrow_position $current_idx $page_size $header_line_count)"
+    echo "We must erase from position $prev_arrow_height and display on position $curr_arrow_height"
+    sleep 2
+  fi
 
   local num_options=${#menu_options[@]}
 
@@ -479,7 +488,8 @@ render_menu() {
     local menu_line="${menu_lines[$i]}"
     if [[ $((start + i)) -eq $current_idx ]]; then
       # Add the arrow next to the line
-      echo -e "${highlight_color}→${reset_color} ${menu_line}"
+      colored_arrow="${highlight_color}→${reset_color}"
+      echo -e "${colored_arrow} ${menu_line}"
     else
       # Render line without an arrow
       echo -e "  ${menu_line}"
@@ -496,6 +506,7 @@ render_menu() {
   local current_page=$(((start / page_size) + 1))
   local page_text="Page $current_page/$total_pages"
 
+    
   # Add the centered page text to the menu
   echo -e "\n$(display_text "$page_text" "$keyboard_length" --center)"
 
@@ -525,6 +536,7 @@ navigate_menu() {
   local num_options=${#menu_options[@]}
   local total_pages=0
   local is_new_page=0
+  local previous_idx=0
   local current_idx=0
 
   if [[ $num_options -eq 0 ]]; then
@@ -534,20 +546,19 @@ navigate_menu() {
   fi
 
   while true; do
-    render_menu "$title" $current_idx "$page_size" "$is_new_page" "${menu_options[@]}"
+    render_menu "$title" $current_idx "$page_size" "$is_new_page" "$previous_idx" "${menu_options[@]}"
     read -rsn1 key
 
     local num_options=${#menu_options[@]}
     total_pages="$(calculate_total_pages "$num_options" "$page_size")"
 
-    echo ""
+    previous_idx=$current_idx
 
     case "$key" in
     $'\x1B')
       read -rsn2 -t 0.1 key
 
       is_new_page=$(is_new_page_handler "$key" "$current_idx" "$num_options" "$page_size")
-
       case "$key" in
       "$up_key") # Up arrow
         if ((current_idx > 0)); then
@@ -739,7 +750,7 @@ navigate_menu() {
         eval "$option_action"
         sleep 2
 
-        break
+        clean_screen
       fi
       ;;
 
@@ -778,14 +789,14 @@ navigate_menu() {
 }
 
 # Settings Menu
-item_1="$(build_menu_item "Option 1" "Description 1" "echo 'Option 1 selected'")"
-item_2="$(build_menu_item "Option 2" "Description 2" "echo \"Option 2 selected\"")"
-item_3="$(build_menu_item "Option 3" "Description 3" "echo \"Option 3 selected\"")"
-item_4="$(build_menu_item "Option 4" "Description 4" "echo \"Option 4 selected\"")"
-item_5="$(build_menu_item "Option 5" "Description 5" "echo \"Option 5 selected\"")"
-item_6="$(build_menu_item "Option 6" "Description 6" "echo \"Option 6 selected\"")"
-item_7="$(build_menu_item "Option 7" "Description 7" "echo \"Option 7 selected\"")"
-item_8="$(build_menu_item "Option 8" "Description 8" "echo \"Option 8 selected\"")"
+item_1="$(build_menu_item "Option 1" "Description 1" "echo 'Option 1 selected' >&2")"
+item_2="$(build_menu_item "Option 2" "Description 2" "echo 'Option 2 selected' >&2")"
+item_3="$(build_menu_item "Option 3" "Description 3" "echo 'Option 3 selected' >&2")"
+item_4="$(build_menu_item "Option 4" "Description 4" "echo 'Option 4 selected' >&2")"
+item_5="$(build_menu_item "Option 5" "Description 5" "echo 'Option 5 selected' >&2")"
+item_6="$(build_menu_item "Option 6" "Description 6" "echo 'Option 6 selected' >&2")"
+item_7="$(build_menu_item "Option 7" "Description 7" "echo 'Option 7 selected' >&2")"
+item_8="$(build_menu_item "Option 8" "Description 8" "echo 'Option 8 selected' >&2")"
 
 page_size=5
 
