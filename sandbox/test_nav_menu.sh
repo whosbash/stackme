@@ -241,6 +241,35 @@ truncate_option() {
   fi
 }
 
+# Function to shift the option text horizontally
+shift_option_text() {
+  local option="$1"
+  local max_length="${2-50}"
+  local shift_speed="${3-0.2}"  # Speed of the shift (in seconds)
+
+  # If the option is longer than the max_length, we shift it
+  if [[ ${#option} -gt $max_length ]]; then
+    local visible_part="${option:0:$max_length}"
+    local shifted_option="$visible_part"
+    local option_length=${#option}
+    
+    # Shift the message by removing one character from the start and adding one from the end
+    while true; do
+      # Display the current visible part of the option
+      echo -n "$shifted_option"
+      sleep "$shift_speed"
+      
+      # Shift the visible part
+      shifted_option="${shifted_option:1}${option:((${#shifted_option}-1)):1}"
+      
+      # Clear the line after each shift for smoother animation
+      tput cuu1 && tput el
+    done
+  else
+    echo "$option"
+  fi
+}
+
 # Function to calculate total pages
 calculate_total_pages() {
   local total_items="$1"    # Total number of items
@@ -571,9 +600,6 @@ render_menu() {
   # Move cursor to page text position
   tput cup $((page_size + 4)) 0
   echo -e "\n$(display_text "$page_text" "$keyboard_options_length" --center)"
-
-  # Ensure the cursor is visible at the end
-  tput cnorm
 }
 
 navigate_menu() {
@@ -802,3 +828,6 @@ menu_object="$(
 )"
 
 navigate_menu "$menu_object"
+
+# Ensure the cursor is visible at the end
+tput cnorm
