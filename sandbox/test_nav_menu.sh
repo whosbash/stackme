@@ -22,6 +22,9 @@ down_key="[B"  # Down Arrow
 left_key="[D"  # Left Arrow
 right_key="[C" # Right Arrow
 
+# Default menu options
+TRUNCATED_DEFAULT_LENGTH=50
+
 # Disable canonical mode, set immediate input
 stty -icanon min 1 time 0
 
@@ -233,7 +236,7 @@ handle_confirmation_prompt() {
 # Function to truncate option text to a max length
 truncate_option() {
   local option="$1"
-  local max_length="${2-50}"
+  local max_length="${2-$TRUNCATED_DEFAULT_LENGTH}"
   if [[ ${#option} -gt $max_length ]]; then
     echo "${option:0:$((max_length - 3))}..."
   else
@@ -425,6 +428,21 @@ build_menu() {
         }'
 }
 
+# Function to calculate the arrow position in the terminal
+get_arrow_position() {
+  local current_idx="$1"
+  local page_size="$2"
+  local header_row_count="$3"
+
+  # Calculate the start index for the current page
+  local start=$((current_idx / page_size * page_size))
+
+  # Calculate the arrow row position based on header lines and current item
+  local arrow_row=$((header_row_count + (current_idx - start)))
+
+  echo "$arrow_row"
+}
+
 # Function to process all lines in parallel and maintain order
 display_parallel() {
   local -n _lines=$1 # Array passed by reference
@@ -445,45 +463,59 @@ display_parallel() {
   done
 }
 
-# Function to calculate the arrow position in the terminal
-get_arrow_position() {
-  local current_idx="$1"
-  local page_size="$2"
-  local header_lines="$3"
+# Global variables for cleanup
+current_pid=0
+current_idx=0
 
-  # Calculate the start index for the current page
-  local start=$((current_idx / page_size * page_size))
-
-  # Calculate the arrow row position based on header lines and current item
-  local arrow_row=$((header_lines + (current_idx - start) + 1))
-
-  echo "$arrow_row"
+kill_current_pid(){
+  # Start the scrolling message for the selected option
+  if [[ "$current_pid" -ne 0 ]]; then
+      kill "$current_pid" 2>/dev/null  # Kill the previous background process
+  fi
 }
 
-# Function to replace character
-replace_char() {
-  local row=$1
-  local col=$2
-  local old_char=$3
-  local new_char=$4
+# Cleanup function to restore terminal state and stop background processes
+cleanup() {
+    tput cnorm  # Restore cursor visibility
+    kill_current_pid
+    tput reset  # Reset terminal to a clean state (clear screen and reset attributes)
+}
 
-  # Hide cursor
-  tput civis
+finish_session() {
+    cleanup
+    exit 0;
+}
 
-  # Move cursor to specified position
-  tput cup $row $col
+# Trap SIGINT (Ctrl+C) and EXIT (script termination) to invoke the cleanup function
+trap finish_session SIGINT EXIT
 
-  # Clear the old character
-  echo -n "$old_char"
+# Function to shift a message in the background
+shift_message() {
+    local message="$1"
+    local max_width="$2"
+    local x_position="$3"
+    local y_position="$4"
+    local shifted_message="$message"
+    local shift_offset=0
 
-  # Move cursor to specified position again
-  tput cup $row $col
+    tput civis  # Hide the cursor
+    while true; do
+        # Prepare the shifted message
+        local rotated_message="${shifted_message:shift_offset}${shifted_message:0:shift_offset}"
+        rotated_message="${rotated_message:0:$max_width}"
 
-  # Place the new character
-  echo -n "$new_char"
+        # Move cursor to the specified position and print the message
+        tput cup "$y_position" "$x_position"
+        printf "%-*s" "$max_width" "$rotated_message"
 
-  # Restore cursor visibility
-  tput cnorm
+        # Increment the shift offset
+        ((shift_offset++))
+        if [[ "$shift_offset" -ge ${#shifted_message} ]]; then
+            shift_offset=0
+        fi
+
+        sleep 0.15
+    done
 }
 
 # Render the menu with page navigation and options
@@ -556,7 +588,7 @@ render_menu() {
 
     # Add the option (label + description) to the menu
     option="${option_label}: ${option_desc}"
-    truncated_option="$(truncate_option "$option" "$keyboard_options_length")"
+    truncated_option="$(truncate_option "$option")"
     
     menu_lines+=("$truncated_option")
   done
@@ -580,10 +612,10 @@ render_menu() {
       echo -e "${colored_arrow} ${menu_line}"
     elif [[ $((start + i)) -eq $previous_idx ]]; then
       # Clear the previous highlighted line (without arrow)
-      echo -e "  ${menu_line}"
+      echo -e "  ${menu_line} "
     else
       # Render line without an arrow
-      echo -e "  ${menu_line}"
+      echo -e "  ${menu_line} "
     fi
   done
 
@@ -629,19 +661,45 @@ navigate_menu() {
   fi
 
   while true; do
-    render_menu "$title" "$previous_idx" "$current_idx" "$page_size" "$is_new_page" "${menu_options[@]}"
+        # Get terminal dimensions
+    terminal_width=$(tput cols)
+
+    # Start the scrolling message for the selected option
+    kill_current_pid
+
+    # Get the current option
+    current_option="${menu_options[current_idx]}"
+    item_label="$(get_menu_item_label "$current_option")"
+    item_description="$(get_menu_item_description "$current_option")"
+    item_label_length="${#item_label}"
     
+    # Calculate the arrow row position based on header lines and current item
+    # Hard-coded: Try a dynamic approach
+    header_row_count="2"
+    arrow_position="$(get_arrow_position "$current_idx" "$page_size" "2")"
+    horizontal_shift=$((2+item_label_length+2))
+
+    shift_length="$TRUNCATED_DEFAULT_LENGTH"
+
+    shift_message \
+      "$item_description " "$shift_length" "$horizontal_shift" "$arrow_position" &
+    current_pid=$!  # Store the background process ID
+
+    render_menu "$title" "$previous_idx" "$current_idx" "$page_size" "$is_new_page" "${menu_options[@]}"
+
     # Locking the keyboard input to avoid unnecessary display of captured characters
     read -rsn1 key  # Silent input with no output
     
+    # Dynamically calculate the vertical position for the message
     num_options=${#menu_options[@]}
     total_pages="$(calculate_total_pages "$num_options" "$page_size")"
 
+    # Save for later usage
     previous_idx=$current_idx
 
     case "$key" in
     $'\x1B')  # Detect escape sequences (e.g., arrow keys)
-      read -rsn2 -t 0.1 key
+      read -rsn2 -t 0.2 key
       is_new_page=$(is_new_page_handler "$key" "$current_idx" "$num_options" "$page_size")
       case "$key" in
       "$up_key")  # Up arrow
@@ -722,13 +780,15 @@ navigate_menu() {
         fi
         ;;
 
-    "r")  # Reset menu options
+    # Reset menu options
+    "r")
       menu_options=("${original_menu_options[@]}")
       current_idx=0
       continue
       ;;
 
-    "/")  # Start search
+    # Start search
+    "/")
         echo -ne "${faded_color}Search: ${reset_color}" >&2
         read -e -r search_key
         if [[ "$search_key" == "r" ]]; then
@@ -756,13 +816,15 @@ navigate_menu() {
         is_new_page=1
         ;;
 
-    "h")  # Show help
+    # Show help
+    "h")
       show_help
       sleep 3
       is_new_page=1
       ;;
 
-    "")  # Enter key (select option)
+    # Enter key (select option)
+    "")
       echo >&2
       option_label=$(get_menu_item_label "${menu_options[current_idx]}")
       question="Are you sure you want to select \"$option_label\"? (y/n)"
@@ -770,6 +832,7 @@ navigate_menu() {
       if handle_confirmation_prompt "$message" confirm; then
           option_action=$(get_menu_item_action "${menu_options[current_idx]}")
           clean_screen
+          kill_current_pid
           trap 'echo -e "\n${faded_color}Operation interrupted. Returning to menu.${reset_color}"; return' SIGINT
           (eval "$option_action") || echo -e "${faded_color}Action failed. Returning to menu.${reset_color}"
           trap - SIGINT
@@ -778,12 +841,15 @@ navigate_menu() {
       fi
       ;;
 
-    "q")  # Exit menu
+    # Exit menu
+    "q")
       message="${faded_color}Are you sure you want to exit the menu? (y/n)${reset_color}"
       request_confirmation "$message" confirm_exit false
       if [[ "${confirm_exit}" == "y" || "${confirm_exit}" == "Y" ]]; then
         message="${faded_color}Exiting the menu... Goodbye!${reset_color}"
         echo -e "$message" >&2
+        kill_current_pid
+        cleanup
         clean_screen
         break
       fi
