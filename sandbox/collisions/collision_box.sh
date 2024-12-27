@@ -141,7 +141,7 @@ initialize_characters() {
 draw_box
 
 # Initialize a large number of characters
-initialize_characters 500 custom_characters[@] custom_colors[@]
+initialize_characters 10 custom_characters[@] custom_colors[@]
 
 # Animation loop
 while true; do
@@ -150,3 +150,5 @@ while true; do
     done
     sleep $sleep_time
 done
+
+tput cnorm
