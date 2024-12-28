@@ -590,12 +590,12 @@ render_menu() {
     option_label=$(get_menu_item_label "${menu_options[i]}")
     option_desc=$(get_menu_item_description "${menu_options[i]}")
 
+    truncated_option_desc="$(truncate_option "$option_desc")"
+
     # Add the option (label + description) to the menu
-    option="${option_label}: ${option_desc}"
+    option="${option_label}: ${truncated_option_desc}"
 
-    modified_option="$(truncate_option "$option")"
-
-    menu_lines+=("$modified_option")
+    menu_lines+=("$option")
   done
 
   # Fill remaining space if fewer items than page size
