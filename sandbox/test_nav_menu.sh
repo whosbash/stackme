@@ -401,6 +401,40 @@ build_menu() {
         }'
 }
 
+index_to_page() {
+  local current_index="$1"
+  local page_size="$2"
+
+  # Check for valid inputs
+  if [[ -z "$current_index" || -z "$page_size" || "$page_size" -le 0 ]]; then
+    echo "Invalid arguments: current_index=$current_index, page_size=$page_size" >&2
+    return 1
+  fi
+
+  # Calculate the page number (zero-indexed)
+  local page_number=$((current_index / page_size + 1))
+
+  # Output the calculated page number
+  echo "$page_number"
+}
+
+move_cursor() {
+  # $1 is the row (line) position
+  # $2 is the column position
+  echo -e "\033[$1;${2}H"
+}
+
+clear_below_line() {
+  local line=$1
+
+  # Move the cursor to the desired line (line is zero-indexed)
+  tput cup "$line" 0
+
+  # Clear everything below the current line
+  tput ed
+}
+
+
 # Function to calculate the arrow position in the terminal
 get_arrow_position() {
   local current_idx="$1"
@@ -438,7 +472,6 @@ display_parallel() {
 
 # Global variables for cleanup
 current_pid=0
-current_idx=0
 
 kill_current_pid(){
   # Start the scrolling message for the selected option
@@ -561,16 +594,19 @@ render_menu() {
   keyboard_options_without_color=$(strip_ansi "$keyboard_options_string")
   keyboard_options_length="${#keyboard_options_without_color}"
 
+  keyboard_line_count=2
+
+  kill_current_pid
+
   # Prepare static part of the menu (Header and Instructions)
   # Clear the entire screen if it's a new page
-  if [[ "$is_new_page" == 1 ]]; then
+  if [[ "$is_new_page" == "1" ]]; then
     clear
   fi
 
   # Move cursor to top-left and render header
   tput cup 0 0
 
-  echo >&2
   echo "$(display_text "$title" "$keyboard_options_length" --center)" >&2
   echo >&2
 
@@ -613,10 +649,10 @@ render_menu() {
     local menu_line="${menu_lines[$i]}"
     if [[ $((start + i)) -eq $current_idx ]]; then
       # Add the arrow next to the line
-      echo -e "${COLORED_ARROW} ${menu_line}"
+      echo -e "${COLORED_ARROW} ${menu_line}" >&2
     else
       # Render line without an arrow
-      echo -e "  ${menu_line} "
+      echo -e "  ${menu_line} " >&2
     fi
   done
 
@@ -632,7 +668,9 @@ render_menu() {
     
   # Move cursor to page text position
   tput cup $((page_size + 4)) 0
-  echo -e "\n$(display_text "$page_text" "$keyboard_options_length" --center)"
+  echo -e "\n$(display_text "$page_text" "$keyboard_options_length" --center)" >&2
+
+  page_line_count=2
 
   idx=$((current_idx))
   current_option_desc=$(get_menu_item_description "${menu_options[$idx]}")
@@ -642,6 +680,106 @@ render_menu() {
   else 
     kill_current_pid
   fi
+}
+
+handle_arrow_key() {
+  local key="$1"
+  local current_idx="$2"
+  local num_options="$3"
+  local page_size="$4"
+  local total_pages="$5"
+
+  case "$key" in
+    "$up_key")
+      if ((current_idx > 0)); then
+        ((current_idx--))
+      else
+        current_idx=$((num_options - 1))  # Wrap to the last option
+      fi
+      ;;
+
+    "$down_key")
+      if ((current_idx < num_options - 1)); then
+        ((current_idx++))
+      else
+        current_idx=0  # Wrap to the first option
+      fi
+      ;;
+
+    "$left_key")
+      if ((total_pages > 1)); then
+        if ((current_idx - page_size >= 0)); then
+          current_idx=$(((current_idx / page_size - 1) * page_size))  # Navigate to the previous page
+        else
+          current_idx=$((((num_options - 1) / page_size) * page_size))  # Wrap to the last page
+        fi
+      fi
+      ;;
+
+    "$right_key")
+      if ((total_pages > 1)); then
+        next_page_start=$(((current_idx / page_size + 1) * page_size))
+        if ((next_page_start < num_options)); then
+          current_idx=$next_page_start  # Move to the next page
+        else
+          current_idx=0  # Wrap to the first page
+        fi
+      fi
+      ;;
+  esac
+
+  echo "$current_idx"
+}
+
+go_to_specific_page() {
+  local current_idx="$1"
+  local num_options="$2"
+  local page_size="$3"
+  local title="$4"
+  local is_new_page="$5"
+  shift 5
+  local menu_options=("$@")
+
+  local previous_idx=$current_idx
+  echo -ne "${faded_color}Enter the page number: ${reset_color}" >&2
+  read -e -r page_number  # Input with no echo
+
+  # Validate input
+  if [[ ! "$page_number" =~ ^[1-9][0-9]*$ ]]; then
+    echo -e "${error_color}Invalid input! Please enter a positive number.${reset_color}" >&2
+    return "$current_idx"
+  fi
+
+  page_number=$((page_number - 1))  # Adjust to zero-indexed
+  local max_page=$(((num_options - 1) / page_size))
+  if ((page_number > max_page)); then
+    echo -e "${error_color}Page number out of range! Valid range: 1-$((max_page + 1)).${reset_color}" >&2
+    return "$current_idx"
+  fi
+
+  # Update current index to new page
+  current_idx=$((page_number * page_size))
+  render_menu "$title" "$previous_idx" "$current_idx" "$page_size" "$is_new_page" "${menu_options[@]}"
+
+  # Prompt to return to the previous menu
+  while true; do
+    echo -ne "${faded_color}Would you like to return to the previous menu? (y/n): ${reset_color}" >&2
+    read -r go_back_choice
+    case "$go_back_choice" in
+      [yY])
+        current_idx=$previous_idx
+        break
+        ;;
+      [nN])
+        break
+        ;;
+      *)
+        echo -e "${error_color}Invalid choice! Please enter 'y' or 'n'.${reset_color}" >&2
+        ;;
+    esac
+  done
+
+  echo "$current_idx"
 }
 
 navigate_menu() {
@@ -671,11 +809,18 @@ navigate_menu() {
   fi
 
   while true; do
-    render_menu "$title" "$previous_idx" "$current_idx" "$page_size" "$is_new_page" "${menu_options[@]}"
+    render_menu \
+        "$title" "$previous_idx" "$current_idx" \
+        "$page_size" "$is_new_page" "${menu_options[@]}"
 
     # Locking the keyboard input to avoid unnecessary display of captured characters
-    read -rsn1 key  # Silent input with no output
-    
+    read -rsn1 key
+
+    # FIXME: Header, keyboard shortcuts and page counting may be dynamic
+    menu_line_count=$((page_size+6))
+    kill_current_pid
+    move_cursor $menu_line_count 0
+
     # Dynamically calculate the vertical position for the message
     num_options=${#menu_options[@]}
     total_pages="$(calculate_total_pages "$num_options" "$page_size")"
@@ -685,62 +830,37 @@ navigate_menu() {
 
     case "$key" in
     $'\x1B')  # Detect escape sequences (e.g., arrow keys)
-      read -rsn2 -t 0.2 key
+      read -rsn2 -t 0.25 key
       is_new_page=$(is_new_page_handler "$key" "$current_idx" "$num_options" "$page_size")
-      case "$key" in
-      "$up_key")  # Up arrow
-        if ((current_idx > 0)); then
-          ((current_idx--))
-        else
-          current_idx=$((num_options - 1))  # Wrap to the last option
-        fi
-        ;;
 
-      "$down_key")  # Down arrow
-        if ((current_idx < num_options - 1)); then
-          ((current_idx++))
-        else
-          current_idx=0  # Wrap to the first option
-        fi
-        ;;
-
-      "$left_key")  # Left arrow (previous page)
-        if ((total_pages > 1)); then
-          if ((current_idx - page_size >= 0)); then
-            current_idx=$(((current_idx / page_size - 1) * page_size))  # Navigate to the previous page
-          else
-            current_idx=$((((num_options - 1) / page_size) * page_size))  # Wrap to the last page
-          fi
-        fi
-        ;;
-
-      "$right_key")  # Right arrow (next page)
-        if ((total_pages > 1)); then
-          next_page_start=$(((current_idx / page_size + 1) * page_size))
-          if ((next_page_start < num_options)); then
-            current_idx=$next_page_start  # Move to the next page
-          else
-            current_idx=0  # Wrap to the first page
-          fi
-        fi
-        ;;
-
-      esac
+      # Call the function to handle arrow key input
+      current_idx=$(handle_arrow_key "$key" "$current_idx" "$num_options" "$page_size" "$total_pages")
       ;;
 
-    "g")  # Go to specific page
+    # Go to specific page
+    "g")  
         local previous_idx=$current_idx
         echo -ne "${faded_color}Enter the page number: ${reset_color}" >&2
         read -e -r page_number  # Input with no echo
         
         if [[ "$page_number" =~ ^[1-9][0-9]*$ ]]; then
-            page_number=$((page_number - 1))  # Adjust to zero-indexed
+            page_number=$((page_number - 1))
             local max_page=$(((num_options - 1) / page_size))
             if ((page_number > max_page)); then
                 echo -e "${error_color}Page number out of range!${reset_color}" >&2
                 sleep 1
             else
+                # Check if we're already on the same page
+                local previous_page=$((previous_idx / page_size))
+                if [[ "$previous_page" -eq "$current_page" ]]; then
+                    echo -e "${warning_color}You are already on the current page.${reset_color}" >&2
+                    sleep 1  # Wait for 1 second before doing nothing
+                    clear_below_line $menu_line_count
+                    continue  # Skip further execution to prevent changing the page
+                fi
+
                 current_idx=$((page_number * page_size))
+                is_new_page=1
                 render_menu "$title" "$previous_idx" "$current_idx" "$page_size" "$is_new_page" "${menu_options[@]}"
                 while true; do
                     echo -ne "${faded_color}Would you like to return to the previous menu? (y/n): ${reset_color}" >&2
@@ -777,6 +897,9 @@ navigate_menu() {
     "/")
         echo -ne "${faded_color}Search: ${reset_color}" >&2
         read -e -r search_key
+        # Clear the line if the prompt disappears after backspace
+        echo -ne "\033[2K\r"  # Clears the current line
+
         if [[ "$search_key" == "r" ]]; then
             menu_options=("${original_menu_options[@]}")
             continue
@@ -799,6 +922,7 @@ navigate_menu() {
             menu_options=("${filtered_options[@]}")
             current_idx=0
         fi
+
         is_new_page=1
         ;;
 
@@ -849,6 +973,8 @@ navigate_menu() {
       is_new_page=1
       ;;
     esac
+
+    clear_below_line $menu_line_count
   done
 
   # Show cursor
@@ -878,9 +1004,6 @@ menu_object="$(
 )"
 
 navigate_menu "$menu_object"
-
-#truncate_option "Very long description 1 to allow truncation on the menu selection line 123"
-sleep 20
 
 # Ensure the cursor is visible at the end
 tput cnorm
