@@ -25,6 +25,8 @@ right_key="[C" # Right Arrow
 # Default menu options
 TRUNCATED_DEFAULT_LENGTH=50
 
+COLORED_ARROW="${highlight_color}→${reset_color}"
+
 # Disable canonical mode, set immediate input
 stty -icanon min 1 time 0
 
@@ -239,35 +241,6 @@ truncate_option() {
   local max_length="${2-$TRUNCATED_DEFAULT_LENGTH}"
   if [[ ${#option} -gt $max_length ]]; then
     echo "${option:0:$((max_length - 3))}..."
-  else
-    echo "$option"
-  fi
-}
-
-# Function to shift the option text horizontally
-shift_option_text() {
-  local option="$1"
-  local max_length="${2-50}"
-  local shift_speed="${3-0.2}"  # Speed of the shift (in seconds)
-
-  # If the option is longer than the max_length, we shift it
-  if [[ ${#option} -gt $max_length ]]; then
-    local visible_part="${option:0:$max_length}"
-    local shifted_option="$visible_part"
-    local option_length=${#option}
-    
-    # Shift the message by removing one character from the start and adding one from the end
-    while true; do
-      # Display the current visible part of the option
-      echo -n "$shifted_option"
-      sleep "$shift_speed"
-      
-      # Shift the visible part
-      shifted_option="${shifted_option:1}${option:((${#shifted_option}-1)):1}"
-      
-      # Clear the line after each shift for smoother animation
-      tput cuu1 && tput el
-    done
   else
     echo "$option"
   fi
@@ -518,6 +491,34 @@ shift_message() {
     done
 }
 
+run_shift_message(){
+  local current_idx="$1"
+  local page_size="$2"
+  local header_row_count="$3"
+  local menu_options=("${@:4}")
+
+  # Start the scrolling message for the selected option
+  kill_current_pid
+
+  # Get the current option
+  current_option="${menu_options[current_idx]}"
+  item_label="$(get_menu_item_label "$current_option")"
+  item_description="$(get_menu_item_description "$current_option")"
+  item_label_length="${#item_label}"
+  
+  # Calculate the arrow row position based on header lines and current item
+  # Hard-coded: Try a dynamic approach
+  header_row_count="2"
+  arrow_position="$(get_arrow_position "$current_idx" "$page_size" "2")"
+  horizontal_shift=$((header_row_count+item_label_length+2))
+
+  shift_length="$TRUNCATED_DEFAULT_LENGTH"
+
+  shift_message \
+    "$item_description " "$shift_length" "$horizontal_shift" "$arrow_position" &
+  current_pid=$!  # Store the background process ID
+}
+
 # Render the menu with page navigation and options
 render_menu() {
   # Hide cursor
@@ -573,6 +574,9 @@ render_menu() {
   echo "$(display_text "$title" "$keyboard_options_length" --center)" >&2
   echo >&2
 
+  # FIXME: header count must be dynamics based on the actual header row height 
+  header_row_count=2
+
   # Determine the range of options to display based on the current index
   local start=$((current_idx / page_size * page_size))
   local end=$((start + page_size))
@@ -588,9 +592,10 @@ render_menu() {
 
     # Add the option (label + description) to the menu
     option="${option_label}: ${option_desc}"
-    truncated_option="$(truncate_option "$option")"
-    
-    menu_lines+=("$truncated_option")
+
+    modified_option="$(truncate_option "$option")"
+
+    menu_lines+=("$modified_option")
   done
 
   # Fill remaining space if fewer items than page size
@@ -603,16 +608,12 @@ render_menu() {
   # Render menu lines and handle arrow position
   for i in "${!menu_lines[@]}"; do
     # Move cursor to the line position
-    tput cup $((i + 2)) 0
+    tput cup $((i + header_row_count)) 0
 
     local menu_line="${menu_lines[$i]}"
     if [[ $((start + i)) -eq $current_idx ]]; then
       # Add the arrow next to the line
-      colored_arrow="${highlight_color}→${reset_color}"
-      echo -e "${colored_arrow} ${menu_line}"
-    elif [[ $((start + i)) -eq $previous_idx ]]; then
-      # Clear the previous highlighted line (without arrow)
-      echo -e "  ${menu_line} "
+      echo -e "${COLORED_ARROW} ${menu_line}"
     else
       # Render line without an arrow
       echo -e "  ${menu_line} "
@@ -632,6 +633,15 @@ render_menu() {
   # Move cursor to page text position
   tput cup $((page_size + 4)) 0
   echo -e "\n$(display_text "$page_text" "$keyboard_options_length" --center)"
+
+  idx=$((current_idx))
+  current_option_desc=$(get_menu_item_description "${menu_options[$idx]}")
+
+  if [[ ${#current_option_desc} -gt $TRUNCATED_DEFAULT_LENGTH ]]; then
+    run_shift_message "$current_idx" "$page_size" "$header_row_count" "${menu_options[@]}"
+  else 
+    kill_current_pid
+  fi
 }
 
 navigate_menu() {
@@ -661,30 +671,6 @@ navigate_menu() {
   fi
 
   while true; do
-        # Get terminal dimensions
-    terminal_width=$(tput cols)
-
-    # Start the scrolling message for the selected option
-    kill_current_pid
-
-    # Get the current option
-    current_option="${menu_options[current_idx]}"
-    item_label="$(get_menu_item_label "$current_option")"
-    item_description="$(get_menu_item_description "$current_option")"
-    item_label_length="${#item_label}"
-    
-    # Calculate the arrow row position based on header lines and current item
-    # Hard-coded: Try a dynamic approach
-    header_row_count="2"
-    arrow_position="$(get_arrow_position "$current_idx" "$page_size" "2")"
-    horizontal_shift=$((2+item_label_length+2))
-
-    shift_length="$TRUNCATED_DEFAULT_LENGTH"
-
-    shift_message \
-      "$item_description " "$shift_length" "$horizontal_shift" "$arrow_position" &
-    current_pid=$!  # Store the background process ID
-
     render_menu "$title" "$previous_idx" "$current_idx" "$page_size" "$is_new_page" "${menu_options[@]}"
 
     # Locking the keyboard input to avoid unnecessary display of captured characters
@@ -848,9 +834,7 @@ navigate_menu() {
       if [[ "${confirm_exit}" == "y" || "${confirm_exit}" == "Y" ]]; then
         message="${faded_color}Exiting the menu... Goodbye!${reset_color}"
         echo -e "$message" >&2
-        kill_current_pid
-        cleanup
-        clean_screen
+        finish_session
         break
       fi
       ;;
@@ -894,6 +878,9 @@ menu_object="$(
 )"
 
 navigate_menu "$menu_object"
+
+#truncate_option "Very long description 1 to allow truncation on the menu selection line 123"
+sleep 20
 
 # Ensure the cursor is visible at the end
 tput cnorm
