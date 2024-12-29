@@ -3,6 +3,9 @@
 # Define a global associative array for storing menu items
 declare -A MENUS
 
+# Define a global array for storing navigation history
+menu_navigation_history=()
+
 # Highlight and color variables for styling
 highlight_color="\033[1;32m" # Highlight color (Bright Green)
 faded_color="\033[2m"        # Faded color (Dark gray)
@@ -56,9 +59,18 @@ to_boolean() {
 
 # Function to show help
 show_help() {
+  local menu_options_count="$1"
+  local page_size="$2"
+
   echo -e "${highlight_color}↗↘${reset_color}  - Navigate down- and upwards"
-  echo -e "${highlight_color}◁▷${reset_color}  - Navigate sideways"
+
+  # Check if there are more items than the page size
+  if (( $menu_options_count > page_size )); then
+    echo -e "${highlight_color}◁▷${reset_color}  - Navigate sideways"
+  fi
+
   echo -e "${select_color}↵${reset_color}   - Select current option"
+  echo -e "${back_color}g${reset_color}   - Go to specific page"
   echo -e "${back_color}r${reset_color}   - Return to menu begin"
   echo -e "${search_color}/${reset_color}   - Search on current menu"
   echo -e "${quit_color}q${reset_color}   - Quit the application"
@@ -149,16 +161,19 @@ set_move_boolean() {
   fi
 }
 
+# Function to get the label of a menu item
 get_menu_item_label() {
   local menu_item="$1"
   query_json_value "$menu_item" ".label"
 }
 
+# Function to get the description of a menu item
 get_menu_item_description() {
   local menu_item="$1"
   query_json_value "$menu_item" '.description'
 }
 
+# Function to get the action of a menu item
 get_menu_item_action() {
   local menu_item="$1"
   query_json_value "$menu_item" '.action'
@@ -341,6 +356,35 @@ join_array() {
   echo "$result"
 }
 
+# Improved and fancy header display using '=' and '|', with colorized minus signs
+show_header() {
+    local header="$1"
+    local width=${2:-$HEADER_WIDTH}     # Default width to 50 if not provided
+    local border_color="\033[1;34m"     # Blue border color
+    local header_color="\033[1;37m"     # White text for header
+    local reset_color="\033[0m"         # Reset color
+
+    # Create the top and bottom border with colorized minus signs
+    local border=$(printf '%*s' $((width-2)) '' | tr ' ' '-')
+    local colorized_lu_border="${border//-/${border_color}-}"
+    
+    # Print top border
+    echo -e "${border_color}+${reset_color}${colorized_lu_border}${border_color}+${reset_color}"
+
+    # Print header with padding
+    local colorized_side_border="${border_color}|${reset_color}"
+    local colorized_header="${header_color}${header}${reset_color}"
+    local left_padding=$(( (width - ${#header}) / 2 ))
+    local right_padding=$((width - ${#header} - left_padding - 2))
+    local spaced_header="$(printf '%*s' $left_padding '')$colorized_header$(printf '%*s' $right_padding '')"
+
+    # Print the header inside borders
+    printf "${colorized_side_border}${spaced_header}${colorized_side_border}\n"
+
+    # Print bottom border
+    echo -e "${border_color}+${reset_color}${colorized_lu_border}${border_color}+${reset_color}"
+}
+
 # Define individual menu item
 build_menu_item() {
   local label="$1"
@@ -364,6 +408,67 @@ build_menu_item() {
         action: $action_
     }'
 }
+
+# Append a JSON menu array to the MENUS array under a specific key
+build_menu() {
+    local header=$1
+    shift
+    local page_size=$1
+    shift
+    local json_array
+
+    if [ $# -eq 0 ]; then
+        echo "Error: At least one menu item is required."
+        return 1
+    fi
+
+    # Build the menu as a JSON array
+    menu_items=$(build_array_from_items "$@")
+
+    # Create final menu object
+    jq -n --arg header "$header" --arg page_size "$page_size" --argjson items "$menu_items" '{
+        header: $header,
+        page_size: $page_size,
+        items: $items
+    }'
+}
+
+define_menu() {
+    local key="$1"
+    local menu_object="$2   "
+    MENUS["$key"]+="$menu_object"
+}
+
+# Modify push_menu to accept multiple levels of nesting
+push_menu() { 
+    if [[ -n "$1" ]]; then
+        menu_navigation_history+=("$1")
+    else
+        echo "Invalid menu name. Cannot push an empty menu."
+    fi
+}
+
+# Pop menu from stack
+pop_menu() {
+    if [ ${#menu_navigation_history[@]} -gt 0 ]; then
+        unset menu_navigation_history[-1]
+    fi
+}
+
+# Helper function to check if a menu is already in the stack
+is_menu_in_stack() {
+    local menu_name=$1
+    for menu in "${menu_navigation_history[@]}"; do
+        if [[ "$menu" == "$menu_name" ]]; then
+            return 0  # menu found
+        fi
+    done
+    return 1  # menu not found
+}
+
+
+# Get current menu
+get_current_menu() { echo "${menu_navigation_history[-1]}"; }
 
 # Build a JSON array of menu items
 build_array_from_items() {
@@ -552,11 +657,90 @@ run_shift_message(){
   current_pid=$!  # Store the background process ID
 }
 
-# Render the menu with page navigation and options
-render_menu() {
-  # Hide cursor
-  tput civis
+# Helper: Render the header with title and keyboard shortcuts
+render_header() {
+  local title="$1"
+  local page_width="$2"
+  
+  tput cup 0 0
+  echo "$(display_text "$title" "$page_width" --center)" >&2
+  echo >&2
+}
 
+# Helper: Calculate the range of options to display
+calculate_display_range() {
+  local current_idx="$1"
+  local page_size="$2"
+  local num_options="$3"
+
+  local start=$((current_idx / page_size * page_size))
+  local end=$((start + page_size))
+  end=$((end > num_options ? num_options : end))
+
+  echo "$start $end"
+}
+
+# Helper: Render menu options
+render_options() {
+  local start="$1"
+  local end="$2"
+  local current_idx="$3"
+  local header_row_count="$4"
+  local menu_options=("${@:5}")
+
+  local menu_lines=()
+
+  for i in $(seq $start $((end - 1))); do
+    option_label=$(get_menu_item_label "${menu_options[i]}")
+    option_desc=$(get_menu_item_description "${menu_options[i]}")
+    truncated_option_desc="$(truncate_option "$option_desc")"
+    option="${option_label}: ${truncated_option_desc}"
+    menu_lines+=("$option")
+  done
+
+  # Fill remaining space if fewer items than page size
+  local remaining_space=$((end - start))
+  for _ in $(seq 1 $remaining_space); do
+    menu_lines+=(" ")
+  done
+
+  # Render each menu line
+  for i in "${!menu_lines[@]}"; do
+    tput cup $((i + header_row_count)) 0
+    local menu_line="${menu_lines[$i]}"
+    if [[ $((start + i)) -eq $current_idx ]]; then
+      echo -e "${COLORED_ARROW} ${menu_line}" >&2
+    else
+      echo -e "  ${menu_line} " >&2
+    fi
+  done
+}
+
+# Helper: Render the footer with page count and navigation
+render_footer() {
+  local current_idx="$1"
+  local page_size="$2"
+  local page_width="$3"
+  local num_options="$4"
+  local keyboard_options_string="$5"
+
+  local total_pages=$(((num_options + page_size - 1) / page_size))
+  local current_page=$((current_idx / page_size + 1))
+  local page_text="Page $current_page/$total_pages"
+
+  # Display keyboard options
+  tput cup $((page_size + 3)) 0
+  echo -e "$keyboard_options_string" >&2
+  echo >&2
+
+  # Display page text
+  tput cup $((page_size + 4)) 0
+  echo -e "\n$(display_text "$page_text" "$page_width" --center)" >&2
+}
+
+# Main: Render the menu with the given parameters
+render_menu() {
+  tput civis
   local title="$1"
   local previous_idx="$2"
   local current_idx="$3"
@@ -566,118 +750,63 @@ render_menu() {
 
   local num_options=${#menu_options[@]}
 
-  # Keyboard shortcuts based on search mode with colors
-  ud_nav_option="${highlight_color}↗↘${reset_color}: Nav"
-  lr_nav_option="${highlight_color}◁▷${reset_color}: Pages"
-  sel_nav_option="${select_color}↵${reset_color}: Sel"
-  goto_nav_option="${goto_color}g${reset_color}: Go to Page"
-  back_option="${back_color}r${reset_color}: Return"
-  search_option="${search_color}/${reset_color}:Search"
-  help_option="${help_color}h${reset_color}: Help"
-  quit_option="${quit_color}q${reset_color}: Quit"
+  # Prepare keyboard shortcuts
+  local ud_nav_option="${highlight_color}↗↘${reset_color}: Nav"
+  local sel_nav_option="${select_color}↵${reset_color}: Sel"
+  local goto_nav_option="${goto_color}g${reset_color}: Go to Page"
+  local back_option="${back_color}r${reset_color}: Return"
+  local search_option="${search_color}/${reset_color}: Search"
+  local help_option="${help_color}h${reset_color}: Help"
+  local quit_option="${quit_color}q${reset_color}: Quit"
+  local lr_nav_option=""
 
-  # Store keyboard options in an array
-  keyboard_options=(
+  if (( num_options > page_size )); then
+    lr_nav_option="${highlight_color}◁▷${reset_color}: Pages"
+  fi
+
+  # Combine keyboard options
+  local keyboard_options=(
     "$ud_nav_option"
-    "$lr_nav_option"
     "$sel_nav_option"
     "$goto_nav_option"
     "$back_option"
     "$search_option"
     "$quit_option"
     "$help_option"
+    "$lr_nav_option"
   )
+  local keyboard_options_string=$(join_array ", " "${keyboard_options[@]}")
+  
+  local tmp="$(strip_ansi "$keyboard_options_string")"
+  local page_width="${#tmp}"
 
-  # Join the options with a space delimiter
-  keyboard_options_string=$(join_array ", " "${keyboard_options[@]}")
-
-  keyboard_options_without_color=$(strip_ansi "$keyboard_options_string")
-  keyboard_options_length="${#keyboard_options_without_color}"
-
-  keyboard_line_count=2
-
-  kill_current_pid
-
-  # Prepare static part of the menu (Header and Instructions)
-  # Clear the entire screen if it's a new page
+  # Handle new page rendering
   if [[ "$is_new_page" == "1" ]]; then
     clear
   fi
 
-  # Move cursor to top-left and render header
-  tput cup 0 0
+  # Render header
+  render_header "$title" "$page_width"
 
-  echo "$(display_text "$title" "$keyboard_options_length" --center)" >&2
-  echo >&2
+  # Determine the range of options to display
+  local range
+  range=$(calculate_display_range "$current_idx" "$page_size" "$num_options")
+  local start end
+  read -r start end <<< "$range"
 
-  # FIXME: header count must be dynamics based on the actual header row height 
-  header_row_count=2
+  # Render menu options
+  local header_row_count=2
+  render_options "$start" "$end" "$current_idx" "$header_row_count" "${menu_options[@]}"
 
-  # Determine the range of options to display based on the current index
-  local start=$((current_idx / page_size * page_size))
-  local end=$((start + page_size))
-  end=$((end > num_options ? num_options : end))
+  # Render footer
+  render_footer "$current_idx" "$page_size" "$page_width" "$num_options" "$keyboard_options_string"
 
-  # Array to hold the lines for menu options
-  local menu_lines=()
-
-  # Collect options with label and description
-  for i in $(seq $start $((end - 1))); do
-    option_label=$(get_menu_item_label "${menu_options[i]}")
-    option_desc=$(get_menu_item_description "${menu_options[i]}")
-
-    truncated_option_desc="$(truncate_option "$option_desc")"
-
-    # Add the option (label + description) to the menu
-    option="${option_label}: ${truncated_option_desc}"
-
-    menu_lines+=("$option")
-  done
-
-  # Fill remaining space if fewer items than page size
-  local remaining_space=$((page_size - (end - start)))
-  for _ in $(seq 1 $remaining_space); do
-    # Add empty lines to keep layout consistent
-    menu_lines+=(" ")
-  done
-
-  # Render menu lines and handle arrow position
-  for i in "${!menu_lines[@]}"; do
-    # Move cursor to the line position
-    tput cup $((i + header_row_count)) 0
-
-    local menu_line="${menu_lines[$i]}"
-    if [[ $((start + i)) -eq $current_idx ]]; then
-      # Add the arrow next to the line
-      echo -e "${COLORED_ARROW} ${menu_line}" >&2
-    else
-      # Render line without an arrow
-      echo -e "  ${menu_line} " >&2
-    fi
-  done
-
-  # Display page count and keyboard options (move cursor to the footer)
-  tput cup $((page_size + 3)) 0
-  echo -e "$keyboard_options_string" >&2
-  echo >&2
-
-  # Render the page navigation footer
-  local total_pages=$(((num_options + page_size - 1) / page_size))
-  local current_page=$(((start / page_size) + 1))
-  local page_text="Page $current_page/$total_pages"
-    
-  # Move cursor to page text position
-  tput cup $((page_size + 4)) 0
-  echo -e "\n$(display_text "$page_text" "$keyboard_options_length" --center)" >&2
-
-  page_line_count=2
-
-  idx=$((current_idx))
-  current_option_desc=$(get_menu_item_description "${menu_options[$idx]}")
-
+  # Handle option-specific description
+  local current_option_desc
+  current_option_desc=$(get_menu_item_description "${menu_options[$current_idx]}")
   if [[ ${#current_option_desc} -gt $TRUNCATED_DEFAULT_LENGTH ]]; then
     run_shift_message "$current_idx" "$page_size" "$header_row_count" "${menu_options[@]}"
-  else 
+  else
     kill_current_pid
   fi
 }
@@ -786,8 +915,10 @@ navigate_menu() {
   clean_screen
   
   local menu_json="$1"
+
   local title page_size menu_items_json
   local menu_options=()
+  local debounce_time=0.25
   
   title=$(jq -r '.title' <<<"$menu_json")
   page_size=$(jq -r '.page_size' <<<"$menu_json")
@@ -816,6 +947,11 @@ navigate_menu() {
     # Locking the keyboard input to avoid unnecessary display of captured characters
     read -rsn1 key
 
+    # Clear stale characters if any
+    if [[ $? -eq 142 ]]; then
+      key=""  # Clear the key if the read command times out
+    fi
+
     # FIXME: Header, keyboard shortcuts and page counting may be dynamic
     menu_line_count=$((page_size+6))
     kill_current_pid
@@ -830,7 +966,7 @@ navigate_menu() {
 
     case "$key" in
     $'\x1B')  # Detect escape sequences (e.g., arrow keys)
-      read -rsn2 -t 0.25 key
+      read -rsn2 -t "$debounce_time" key
       is_new_page=$(is_new_page_handler "$key" "$current_idx" "$num_options" "$page_size")
 
       # Call the function to handle arrow key input
@@ -928,9 +1064,8 @@ navigate_menu() {
 
     # Show help
     "h")
-      show_help
-      sleep 3
-      is_new_page=1
+      show_help "$num_options" "$page_size"
+      sleep 2
       ;;
 
     # Enter key (select option)
@@ -993,14 +1128,14 @@ item_3="$(build_menu_item "Option 3" "Description 3" "echo 'Option 3 selected' >
 item_4="$(build_menu_item "Option 4" "Description 4" "echo 'Option 4 selected' >&2")"
 item_5="$(build_menu_item "Option 5" "Description 5" "echo 'Option 5 selected' >&2")"
 item_6="$(build_menu_item "Option 6" "Description 6" "echo 'Option 6 selected' >&2")"
-item_7="$(build_menu_item "Option 7" "Description 7" "echo 'Option 7 selected' >&2")"
-item_8="$(build_menu_item "Option 8" "Description 8" "echo 'Option 8 selected' >&2")"
+#item_7="$(build_menu_item "Option 7" "Description 7" "echo 'Option 7 selected' >&2")"
+#item_8="$(build_menu_item "Option 8" "Description 8" "echo 'Option 8 selected' >&2")"
 
 page_size=5
 
 menu_object="$(
   build_menu "Main" $page_size \
-    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" "$item_6" "$item_7" "$item_8"
+    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" "$item_6" #"$item_7" "$item_8"
 )"
 
 navigate_menu "$menu_object"
