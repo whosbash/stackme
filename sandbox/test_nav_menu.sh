@@ -303,6 +303,7 @@ is_last_page_item() {
   fi
 }
 
+# Function to check if there is movement to a new page
 is_new_page_handler() {
   local key="$1"
   local current_idx="$2"
@@ -376,7 +377,8 @@ show_header() {
     local colorized_header="${header_color}${header}${reset_color}"
     local left_padding=$(( (width - ${#header}) / 2 ))
     local right_padding=$((width - ${#header} - left_padding - 2))
-    local spaced_header="$(printf '%*s' $left_padding '')$colorized_header$(printf '%*s' $right_padding '')"
+    local spaced_header="$(\
+      printf '%*s' $left_padding '')$colorized_header$(printf '%*s' $right_padding '')"
 
     # Print the header inside borders
     printf "${colorized_side_border}${spaced_header}${colorized_side_border}\n"
@@ -433,6 +435,7 @@ build_menu() {
     }'
 }
 
+# Append a menu object to the MENUS array
 define_menu() {
     local key="$1"
     local menu_object="$2   "
@@ -465,7 +468,6 @@ is_menu_in_stack() {
     done
     return 1  # menu not found
 }
-
 
 # Get current menu
 get_current_menu() { echo "${menu_navigation_history[-1]}"; }
@@ -506,6 +508,7 @@ build_menu() {
         }'
 }
 
+# Function to calculate the page number
 index_to_page() {
   local current_index="$1"
   local page_size="$2"
@@ -523,12 +526,14 @@ index_to_page() {
   echo "$page_number"
 }
 
+# Function to move the cursor
 move_cursor() {
   # $1 is the row (line) position
   # $2 is the column position
   echo -e "\033[$1;${2}H"
 }
 
+# Function to clear everything below a specific line
 clear_below_line() {
   local line=$1
 
@@ -538,7 +543,6 @@ clear_below_line() {
   # Clear everything below the current line
   tput ed
 }
-
 
 # Function to calculate the arrow position in the terminal
 get_arrow_position() {
@@ -629,6 +633,7 @@ shift_message() {
     done
 }
 
+# Function to start the scrolling message for the selected option
 run_shift_message(){
   local current_idx="$1"
   local page_size="$2"
@@ -645,7 +650,7 @@ run_shift_message(){
   item_label_length="${#item_label}"
   
   # Calculate the arrow row position based on header lines and current item
-  # Hard-coded: Try a dynamic approach
+  # FIXME: Hard-coded, Try a dynamic approach
   header_row_count="2"
   arrow_position="$(get_arrow_position "$current_idx" "$page_size" "2")"
   horizontal_shift=$((header_row_count+item_label_length+2))
@@ -767,13 +772,13 @@ render_menu() {
   # Combine keyboard options
   local keyboard_options=(
     "$ud_nav_option"
+    "$lr_nav_option"
     "$sel_nav_option"
+    "$search_option"
     "$goto_nav_option"
     "$back_option"
-    "$search_option"
     "$quit_option"
     "$help_option"
-    "$lr_nav_option"
   )
   local keyboard_options_string=$(join_array ", " "${keyboard_options[@]}")
   
@@ -811,6 +816,7 @@ render_menu() {
   fi
 }
 
+# Helper: Handle arrow key input
 handle_arrow_key() {
   local key="$1"
   local current_idx="$2"
@@ -838,9 +844,11 @@ handle_arrow_key() {
     "$left_key")
       if ((total_pages > 1)); then
         if ((current_idx - page_size >= 0)); then
-          current_idx=$(((current_idx / page_size - 1) * page_size))  # Navigate to the previous page
+          # Navigate to the previous page
+          current_idx=$(((current_idx / page_size - 1) * page_size))
         else
-          current_idx=$((((num_options - 1) / page_size) * page_size))  # Wrap to the last page
+          # Wrap to the last page
+          current_idx=$((((num_options - 1) / page_size) * page_size))
         fi
       fi
       ;;
@@ -860,6 +868,7 @@ handle_arrow_key() {
   echo "$current_idx"
 }
 
+# Function to navigate to a specific page
 go_to_specific_page() {
   local current_idx="$1"
   local num_options="$2"
@@ -875,24 +884,29 @@ go_to_specific_page() {
 
   # Validate input
   if [[ ! "$page_number" =~ ^[1-9][0-9]*$ ]]; then
-    echo -e "${error_color}Invalid input! Please enter a positive number.${reset_color}" >&2
+    message="Invalid input! Please enter a positive number."
+    echo -e "${error_color}${message}${reset_color}" >&2
     return "$current_idx"
   fi
 
   page_number=$((page_number - 1))  # Adjust to zero-indexed
   local max_page=$(((num_options - 1) / page_size))
   if ((page_number > max_page)); then
-    echo -e "${error_color}Page number out of range! Valid range: 1-$((max_page + 1)).${reset_color}" >&2
+    message="Page number out of range! Valid range: 1-$((max_page + 1))."
+    echo -e "${error_color}$message${reset_color}" >&2
     return "$current_idx"
   fi
 
   # Update current index to new page
   current_idx=$((page_number * page_size))
-  render_menu "$title" "$previous_idx" "$current_idx" "$page_size" "$is_new_page" "${menu_options[@]}"
+  render_menu \
+    "$title" "$previous_idx" "$current_idx" \
+    "$page_size" "$is_new_page" "${menu_options[@]}"
 
   # Prompt to return to the previous menu
   while true; do
-    echo -ne "${faded_color}Would you like to return to the previous menu? (y/n): ${reset_color}" >&2
+    message="Would you like to return to the previous menu? (y/n): "
+    echo -ne "${faded_color}$message${reset_color}" >&2
     read -r go_back_choice
     case "$go_back_choice" in
       [yY])
@@ -911,6 +925,7 @@ go_to_specific_page() {
   echo "$current_idx"
 }
 
+# Function to navigate to a specific menu
 navigate_menu() {
   clean_screen
   
@@ -970,7 +985,9 @@ navigate_menu() {
       is_new_page=$(is_new_page_handler "$key" "$current_idx" "$num_options" "$page_size")
 
       # Call the function to handle arrow key input
-      current_idx=$(handle_arrow_key "$key" "$current_idx" "$num_options" "$page_size" "$total_pages")
+      current_idx=$(\
+        handle_arrow_key "$key" "$current_idx" "$num_options" "$page_size" "$total_pages"
+      )
       ;;
 
     # Go to specific page
@@ -997,9 +1014,12 @@ navigate_menu() {
 
                 current_idx=$((page_number * page_size))
                 is_new_page=1
-                render_menu "$title" "$previous_idx" "$current_idx" "$page_size" "$is_new_page" "${menu_options[@]}"
+                render_menu \
+                  "$title" "$previous_idx" "$current_idx" \
+                  "$page_size" "$is_new_page" "${menu_options[@]}"
                 while true; do
-                    echo -ne "${faded_color}Would you like to return to the previous menu? (y/n): ${reset_color}" >&2
+                    message="Would you like to return to the previous menu? (y/n): "
+                    echo -ne "${faded_color}${message}${reset_color}" >&2
                     read -r go_back_choice
                     case "$go_back_choice" in
                     [yY])
@@ -1034,7 +1054,7 @@ navigate_menu() {
         echo -ne "${faded_color}Search: ${reset_color}" >&2
         read -e -r search_key
         # Clear the line if the prompt disappears after backspace
-        echo -ne "\033[2K\r"  # Clears the current line
+        echo -ne "\033[2K\r"
 
         if [[ "$search_key" == "r" ]]; then
             menu_options=("${original_menu_options[@]}")
@@ -1078,9 +1098,14 @@ navigate_menu() {
           option_action=$(get_menu_item_action "${menu_options[current_idx]}")
           clean_screen
           kill_current_pid
-          trap 'echo -e "\n${faded_color}Operation interrupted. Returning to menu.${reset_color}"; return' SIGINT
-          (eval "$option_action") || echo -e "${faded_color}Action failed. Returning to menu.${reset_color}"
+          
+          message="\n${faded_color}Operation interrupted. Returning to menu.${reset_color}"
+          command="echo -e \"$message\"; return"
+          trap "$command" SIGINT
+
+          (eval "$option_action") || echo -e "$message"
           trap - SIGINT
+
           sleep 2
           clean_screen
       fi
@@ -1120,7 +1145,7 @@ navigate_menu() {
 item_1="$(
     build_menu_item \
     "Option 1" \
-    "Very long description 1 to allow truncation on the menu selection line 123" \
+    "Very long description 1 to allow truncation on the menu selection 123567890" \
     "echo 'Option 1 selected' >&2"
 )"
 item_2="$(build_menu_item "Option 2" "Description 2" "echo 'Option 2 selected' >&2")"
