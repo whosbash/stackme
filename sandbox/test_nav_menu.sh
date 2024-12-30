@@ -179,25 +179,33 @@ get_menu_item_action() {
   query_json_value "$menu_item" '.action'
 }
 
-# Function to display a message, move the cursor, and read user input
+# Function to display a message, move the cursor, and read user input with an optional timeout
 request_input() {
   local message="$1"
   local cursor_move="$2"
   local variable_name="$3"
+  local timeout="$4"  # Optional timeout value in seconds
 
   echo -ne "$message" >&2
-  tput cuf "$cursor_move"     # Move cursor forward by the specified number of characters
-  read -rsn1 "$variable_name" # Read a single character input into the specified variable
+  tput cuf "$cursor_move" # Move cursor forward by the specified number of characters
+
+  if [[ -n "$timeout" ]]; then
+    read -rsn1 -t "$timeout" "$variable_name" || eval "$variable_name=''"  # Timeout or empty input
+  else
+    read -rsn1 "$variable_name" # No timeout
+  fi
 }
+
 
 # Function to request confirmation (yes/no)
 request_confirmation() {
   local message="$1"
   local confirm_variable_name="$2"
   local default_value="${3:-false}"
+  local timeout="$4"
 
   local user_input=""
-  request_input "$message" 1 user_input # Move 1 character forward
+  request_input "$message" 1 user_input "$timeout"
 
   # Use default value if input is empty
   if [[ -z "$user_input" && "$default_value" != "false" ]]; then
@@ -236,10 +244,11 @@ display_invalid_input_message() {
 handle_confirmation_prompt() {
     local prompt_message=$1
     local confirm_var=$2
+    local default_value=${3:-false}
 
     while true; do
         # Request confirmation from the user
-        request_confirmation "$prompt_message" "$confirm_var"
+        request_confirmation "$prompt_message" "$confirm_var" "$default_value"
 
         # Validate input
         case "${!confirm_var}" in
@@ -438,12 +447,24 @@ build_menu() {
 # Append a menu object to the MENUS array
 define_menu() {
     local key="$1"
-    local menu_object="$2   "
+    local menu_object="$2"
+
+    
     MENUS["$key"]+="$menu_object"
 }
 
+# Function to get the current menu
+get_current_menu() { 
+  echo "${menu_navigation_history[-1]}"; 
+}
+
+# Function to get a specific menu
+get_menu() { 
+  echo "${MENUS[$1]}"
+}
+
 # Modify push_menu to accept multiple levels of nesting
-push_menu() { 
+push_menu_in_history() { 
     if [[ -n "$1" ]]; then
         menu_navigation_history+=("$1")
     else
@@ -452,14 +473,14 @@ push_menu() {
 }
 
 # Pop menu from stack
-pop_menu() {
+pop_menu_from_history() {
     if [ ${#menu_navigation_history[@]} -gt 0 ]; then
         unset menu_navigation_history[-1]
     fi
 }
 
 # Helper function to check if a menu is already in the stack
-is_menu_in_stack() {
+is_menu_in_history() {
     local menu_name=$1
     for menu in "${menu_navigation_history[@]}"; do
         if [[ "$menu" == "$menu_name" ]]; then
@@ -469,8 +490,16 @@ is_menu_in_stack() {
     return 1  # menu not found
 }
 
-# Get current menu
-get_current_menu() { echo "${menu_navigation_history[-1]}"; }
+# Return to the parent menu (previous menu)
+return_to_parent_menu() {
+    if [ ${#menu_navigation_history[@]} -gt 1 ]; then
+        pop_menu
+        local parent_menu=$(get_current_menu)
+        navigate_menu "$parent_menu"
+    else
+        navigate_menu "Main"
+    fi
+}
 
 # Build a JSON array of menu items
 build_array_from_items() {
@@ -755,18 +784,30 @@ render_menu() {
 
   local num_options=${#menu_options[@]}
 
+  current_menu_name="$(get_current_menu)"
+
   # Prepare keyboard shortcuts
   local ud_nav_option="${highlight_color}↗↘${reset_color}: Nav"
   local sel_nav_option="${select_color}↵${reset_color}: Sel"
-  local goto_nav_option="${goto_color}g${reset_color}: Go to Page"
+  local goto_nav_option=""
   local back_option="${back_color}r${reset_color}: Return"
   local search_option="${search_color}/${reset_color}: Search"
   local help_option="${help_color}h${reset_color}: Help"
-  local quit_option="${quit_color}q${reset_color}: Quit"
+  local quit_option=""
   local lr_nav_option=""
 
   if (( num_options > page_size )); then
     lr_nav_option="${highlight_color}◁▷${reset_color}: Pages"
+  fi
+
+  if (( num_options / page_size > 1 )); then
+    goto_nav_option="${goto_color}g${reset_color}: Go to Page"
+  fi
+
+  if [[ $current_menu_name == "Main" ]]; then
+    quit_option="${quit_color}q${reset_color}: Quit"
+  else
+    quit_option="${quit_color}q${reset_color}: Back"
   fi
 
   # Combine keyboard options
@@ -929,7 +970,14 @@ go_to_specific_page() {
 navigate_menu() {
   clean_screen
   
-  local menu_json="$1"
+  local menu_name="$1"
+  
+  menu_json=$(get_menu "$menu_name")
+
+  # If the menu_navigation_history is empty, set the first menu as the current menu
+  if ! is_menu_in_history "$menu_name"; then
+      push_menu_in_history "$menu_name"
+  fi
 
   local title page_size menu_items_json
   local menu_options=()
@@ -1094,30 +1142,38 @@ navigate_menu() {
       option_label=$(get_menu_item_label "${menu_options[current_idx]}")
       question="Are you sure you want to select \"$option_label\"? (y/n)"
       message="${faded_color}$question${reset_color}"
-      if handle_confirmation_prompt "$message" confirm; then
+      if handle_confirmation_prompt "$message" confirm 'n'; then
           option_action=$(get_menu_item_action "${menu_options[current_idx]}")
+
           clean_screen
           kill_current_pid
-          
+
           message="\n${faded_color}Operation interrupted. Returning to menu.${reset_color}"
           command="echo -e \"$message\"; return"
           trap "$command" SIGINT
 
+          echo "Executing: $option_action" >&2
+          sleep 1
+
           (eval "$option_action") || echo -e "$message"
+          sleep 1
+
           trap - SIGINT
 
-          sleep 2
           clean_screen
+          
       fi
       ;;
 
     # Exit menu
     "q")
-      message="${faded_color}Are you sure you want to exit the menu? (y/n)${reset_color}"
+      message="${faded_color}Are you sure you want to exit this menu? (y/n)${reset_color}"
       request_confirmation "$message" confirm_exit false
       if [[ "${confirm_exit}" == "y" || "${confirm_exit}" == "Y" ]]; then
-        message="${faded_color}Exiting the menu... Goodbye!${reset_color}"
+        clean_screen
+        message="${faded_color}Exiting this menu... Goodbye!${reset_color}"
         echo -e "$message" >&2
+        sleep 1
         finish_session
         break
       fi
@@ -1137,33 +1193,93 @@ navigate_menu() {
     clear_below_line $menu_line_count
   done
 
-  # Show cursor
-  tput cnorm
+  pop_menu_from_history
 }
 
-# Settings Menu
-item_1="$(
-    build_menu_item \
-    "Option 1" \
-    "Very long description 1 to allow truncation on the menu selection 123567890" \
-    "echo 'Option 1 selected' >&2"
-)"
-item_2="$(build_menu_item "Option 2" "Description 2" "echo 'Option 2 selected' >&2")"
-item_3="$(build_menu_item "Option 3" "Description 3" "echo 'Option 3 selected' >&2")"
-item_4="$(build_menu_item "Option 4" "Description 4" "echo 'Option 4 selected' >&2")"
-item_5="$(build_menu_item "Option 5" "Description 5" "echo 'Option 5 selected' >&2")"
-item_6="$(build_menu_item "Option 6" "Description 6" "echo 'Option 6 selected' >&2")"
-#item_7="$(build_menu_item "Option 7" "Description 7" "echo 'Option 7 selected' >&2")"
-#item_8="$(build_menu_item "Option 8" "Description 8" "echo 'Option 8 selected' >&2")"
+# Menus Functions
 
-page_size=5
+# Menu Main
+define_menu_main(){
+  menu_name="Main"
 
-menu_object="$(
-  build_menu "Main" $page_size \
-    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" "$item_6" #"$item_7" "$item_8"
-)"
+  item_1="$(build_menu_item "Menu 1" "Options of Menu 1" "navigate_menu 'Menu 1'")"
+  item_2="$(build_menu_item "Menu 2" "Options of Menu 2" "navigate_menu 'Menu 2'")"
 
-navigate_menu "$menu_object"
+  page_size=5
 
-# Ensure the cursor is visible at the end
-tput cnorm
+  menu_object="$(build_menu "$menu_name" $page_size "$item_1" "$item_2"
+  )"
+
+  define_menu "$menu_name" "$menu_object"
+}
+
+# Menu 1
+define_menu_1(){
+  menu_name="Menu 1"
+
+  item_1="$(
+      build_menu_item \
+      "Option 1.1" \
+      "Very long description 1.1 to allow truncation on the menu selection 123567890" \
+      "echo 'Option 1.1 selected' >&2"
+  )"
+  item_2="$(build_menu_item "Option 1.2" "Description 1.2" "echo 'Option 1.2 selected' >&2")"
+  item_3="$(build_menu_item "Option 1.3" "Description 1.3" "echo 'Option 1.3 selected' >&2")"
+  item_4="$(build_menu_item "Option 1.4" "Description 1.4" "echo 'Option 1.4 selected' >&2")"
+  item_5="$(build_menu_item "Option 1.5" "Description 1.5" "echo 'Option 1.5 selected' >&2")"
+  item_6="$(build_menu_item "Option 1.6" "Description 1.6" "echo 'Option 1.6 selected' >&2")"
+
+  page_size=5
+
+  menu_object="$(
+    build_menu "$menu_name" $page_size \
+      "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" "$item_6"
+  )"
+
+  define_menu "$menu_name" "$menu_object"
+}
+
+# Menu 2
+define_menu_2(){
+  menu_name="Menu 2"
+
+  item_1="$(
+      build_menu_item \
+      "Option 2.1" \
+      "Very long description 2.1 to allow truncation on the menu selection 123567890" \
+      "echo 'Option 2.1 selected' >&2"
+  )"
+  item_2="$(build_menu_item "Option 2.2" "Description 2.2" "echo 'Option 2.2 selected' >&2")"
+  item_3="$(build_menu_item "Option 2.3" "Description 2.3" "echo 'Option 2.3 selected' >&2")"
+  item_4="$(build_menu_item "Option 2.4" "Description 2.4" "echo 'Option 2.4 selected' >&2")"
+  item_5="$(build_menu_item "Option 2.5" "Description 2.5" "echo 'Option 2.5 selected' >&2")"
+  item_6="$(build_menu_item "Option 2.6" "Description 2.6" "echo 'Option 2.6 selected' >&2")"
+  item_7="$(build_menu_item "Option 2.7" "Description 2.7" "echo 'Option 2.7 selected' >&2")"
+
+  page_size=5
+
+  menu_object="$(
+    build_menu "$menu_name" $page_size \
+      "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" "$item_6"
+  )"
+
+  define_menu "$menu_name" "$menu_object"
+}
+
+# Populate MENUS
+define_menus(){
+    define_menu_main
+    define_menu_1
+    define_menu_2
+}
+
+start_main_menu(){
+    navigate_menu "Main";
+}
+
+# Populate MENUS
+define_menus
+
+# Start the main menu
+start_main_menu
+
