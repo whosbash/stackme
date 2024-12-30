@@ -420,27 +420,31 @@ build_menu_item() {
     }'
 }
 
-# Append a JSON menu array to the MENUS array under a specific key
+# Remove one of the redundant build_menu functions
 build_menu() {
-    local header=$1
-    shift
-    local page_size=$1
-    shift
-    local json_array
+  local title="$1"
+  shift
+  local page_size="$1"
+  shift
+  local json_array
 
-    if [ $# -eq 0 ]; then
-        echo "Error: At least one menu item is required."
-        return 1
-    fi
+  if [ $# -eq 0 ]; then
+    echo "Error: At least one menu item is required."
+    return 1
+  fi
 
-    # Build the menu as a JSON array
-    menu_items=$(build_array_from_items "$@")
+  # Build the menu as a JSON array
+  menu_items=$(build_array_from_items "$@")
 
-    # Create final menu object
-    jq -n --arg header "$header" --arg page_size "$page_size" --argjson items "$menu_items" '{
-        header: $header,
-        page_size: $page_size,
-        items: $items
+  # Create final menu object
+  jq -n \
+    --arg title "$title" \
+    --arg page_size "$page_size" \
+    --argjson items "$menu_items" \
+    '{
+      title: $title,
+      page_size: $page_size,
+      items: $items
     }'
 }
 
@@ -691,16 +695,6 @@ run_shift_message(){
   current_pid=$!  # Store the background process ID
 }
 
-# Helper: Render the header with title and keyboard shortcuts
-render_header() {
-  local title="$1"
-  local page_width="$2"
-  
-  tput cup 0 0
-  echo "$(display_text "$title" "$page_width" --center)" >&2
-  echo >&2
-}
-
 # Helper: Calculate the range of options to display
 calculate_display_range() {
   local current_idx="$1"
@@ -750,6 +744,26 @@ render_options() {
   done
 }
 
+# Helper: Render the header with title and keyboard shortcuts
+render_header() {
+  local title="$1"
+  local page_width="$2"
+  
+  tput cup 0 0
+  echo "$(display_text "$title" "$page_width" --center)" >&2
+  echo >&2
+}
+
+# Render breadcrumb trail
+render_breadcrumb() {
+  local breadcrumb=""
+  for menu in "${menu_navigation_history[@]}"; do
+    breadcrumb+="$menu > "
+  done
+  breadcrumb=${breadcrumb% > }
+  echo -e "${highlight_color}Current Path: ${breadcrumb}${reset_color}" >&2
+}
+
 # Helper: Render the footer with page count and navigation
 render_footer() {
   local current_idx="$1"
@@ -767,8 +781,12 @@ render_footer() {
   echo -e "$keyboard_options_string" >&2
   echo >&2
 
-  # Display page text
+  render_breadcrumb
   tput cup $((page_size + 4)) 0
+  echo "" >&2
+
+  # Display page text
+  tput cup $((page_size + 5)) 0
   echo -e "\n$(display_text "$page_text" "$page_width" --center)" >&2
 }
 
@@ -776,11 +794,10 @@ render_footer() {
 render_menu() {
   tput civis
   local title="$1"
-  local previous_idx="$2"
-  local current_idx="$3"
-  local page_size="$4"
-  local is_new_page="$5"
-  local menu_options=("${@:6}")
+  local current_idx="$2"
+  local page_size="$3"
+  local is_new_page="$4"
+  local menu_options=("${@:5}")
 
   local num_options=${#menu_options[@]}
 
@@ -833,7 +850,8 @@ render_menu() {
 
   # Render header
   render_header "$title" "$page_width"
-
+  echo >&2
+  
   # Determine the range of options to display
   local range
   range=$(calculate_display_range "$current_idx" "$page_size" "$num_options")
@@ -941,7 +959,7 @@ go_to_specific_page() {
   # Update current index to new page
   current_idx=$((page_number * page_size))
   render_menu \
-    "$title" "$previous_idx" "$current_idx" \
+    "$title" "$current_idx" \
     "$page_size" "$is_new_page" "${menu_options[@]}"
 
   # Prompt to return to the previous menu
@@ -966,11 +984,47 @@ go_to_specific_page() {
   echo "$current_idx"
 }
 
+# Enhanced animated transition between menus with spinning loader and text effects
+transition_to_menu() {
+  local new_menu="$1"
+  local progress_bar=""
+  local progress_length=30
+  local colors=("\033[1;34m" "\033[1;32m" "\033[1;36m" "\033[1;35m" "\033[1;31m")
+  local spin_chars=('/' '-' '\\' '|')
+  
+  # Clear the line and show the initial transition message
+  echo -ne "\r${colors[0]}Transitioning to ${new_menu}... ${reset_color}" >&2
+
+  for ((i=0; i<progress_length; i++)); do
+    # Update the progress bar
+    progress_bar+="="
+    
+    # Cycle through colors for a smooth transition effect
+    color_index=$((i % ${#colors[@]}))
+    
+    # Add spinning loader
+    spin_index=$((i % ${#spin_chars[@]}))
+    spin_char="${spin_chars[$spin_index]}"
+
+    echo -ne "\r${colors[color_index]}${spin_char} Transitioning to ${new_menu}... [${progress_bar}]${reset_color}" >&2
+    
+    # Delay to create the animation effect
+    sleep 0.05
+  done
+
+  # Finalize the transition with a fade-in effect
+  echo -ne "\r${highlight_color}Transitioning to ${new_menu}... [${progress_bar}] Done!${reset_color}\n" >&2
+  sleep 0.3
+}
+
+
 # Function to navigate to a specific menu
 navigate_menu() {
-  clean_screen
-  
   local menu_name="$1"
+
+  clean_screen
+  transition_to_menu "$menu_name"
+  clean_screen
   
   menu_json=$(get_menu "$menu_name")
 
@@ -994,7 +1048,8 @@ navigate_menu() {
 
   local original_menu_options=("${menu_options[@]}")
   local num_options=${#menu_options[@]}
-  local total_pages=0 is_new_page=0 previous_idx=0 current_idx=0
+  local total_pages="$(calculate_total_pages "$num_options" "$page_size")" 
+  local is_new_page=1 previous_idx=0 current_idx=0
 
   if [[ $num_options -eq 0 ]]; then
     message="${error_color}Error: No options provided to the menu!${reset_color}"
@@ -1004,7 +1059,7 @@ navigate_menu() {
 
   while true; do
     render_menu \
-        "$title" "$previous_idx" "$current_idx" \
+        "$title" "$current_idx" \
         "$page_size" "$is_new_page" "${menu_options[@]}"
 
     # Locking the keyboard input to avoid unnecessary display of captured characters
@@ -1016,7 +1071,7 @@ navigate_menu() {
     fi
 
     # FIXME: Header, keyboard shortcuts and page counting may be dynamic
-    menu_line_count=$((page_size+6))
+    menu_line_count=$((page_size+7))
     kill_current_pid
     move_cursor $menu_line_count 0
 
@@ -1040,14 +1095,14 @@ navigate_menu() {
 
     # Go to specific page
     "g")  
-        local previous_idx=$current_idx
+        previous_idx=$current_idx
         echo -ne "${faded_color}Enter the page number: ${reset_color}" >&2
         read -e -r page_number  # Input with no echo
         
         if [[ "$page_number" =~ ^[1-9][0-9]*$ ]]; then
             page_number=$((page_number - 1))
             local max_page=$(((num_options - 1) / page_size))
-            if ((page_number > max_page)); then
+            if ((page_number > max_page)) ; then
                 echo -e "${error_color}Page number out of range!${reset_color}" >&2
                 sleep 1
             else
@@ -1063,7 +1118,7 @@ navigate_menu() {
                 current_idx=$((page_number * page_size))
                 is_new_page=1
                 render_menu \
-                  "$title" "$previous_idx" "$current_idx" \
+                  "$title" "$current_idx" \
                   "$page_size" "$is_new_page" "${menu_options[@]}"
                 while true; do
                     message="Would you like to return to the previous menu? (y/n): "
@@ -1151,9 +1206,6 @@ navigate_menu() {
           message="\n${faded_color}Operation interrupted. Returning to menu.${reset_color}"
           command="echo -e \"$message\"; return"
           trap "$command" SIGINT
-
-          echo "Executing: $option_action" >&2
-          sleep 1
 
           (eval "$option_action") || echo -e "$message"
           sleep 1
