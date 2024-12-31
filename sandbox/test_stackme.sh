@@ -19,6 +19,13 @@ error_color="\033[1;31m"     # Error color (Dark red)
 title_color="\033[1;36m"     # Title color (Cyan)
 reset_color="\033[0m"        # Reset color
 
+# Color definitions for styling
+bold="\033[1m"
+green="\033[32m"
+yellow="\033[33m"
+red="\033[31m"
+normal="\033[0m"
+
 # Define arrow keys for navigation
 up_key="[A"    # Up Arrow
 down_key="[B"  # Down Arrow
@@ -56,6 +63,147 @@ to_integer() {
 to_boolean() {
   [[ "$1" -ne 0 ]] && echo "true" || echo "false"
 }
+
+###############################################################################
+
+# Functions for diagnostics
+cpu_usage() {
+    # Example usage of display_text to show a centered header
+    display_text "CPU USAGE" 40 --center --style "${bold_color}${green}"
+    echo ""
+    uptime
+    echo ""
+}
+
+memory_usage() {
+    display_text "MEMORY USAGE" 40 --center --style "${bold_color}${green}"
+    echo ""
+    free -h
+    echo ""
+}
+
+disk_usage() {
+    display_text "DISK USAGE" 40 --center --style "${bold_color}${green}"
+    echo ""
+    df -h
+    echo ""
+}
+
+network_usage() {
+    display_text "NETWORK USAGE" 40 --center --style "${bold_color}${green}"
+    echo ""
+    ip -s link
+    echo ""
+}
+
+top_processes() {
+    # Define color and formatting variables
+    local bold="\033[1m"
+    local green="\033[32m"
+    local normal="\033[0m"
+    local separator="=============================================="
+
+    # Print a styled header with separators
+    echo -e "${bold}${green}${separator}${normal}"
+    display_text "TOP 5 PROCESSES BY CPU & MEMORY USAGE" 40 --center --style "${bold_color}${green}"
+    echo -e "${bold}${green}${separator}${normal}"
+
+    # Display only the relevant columns: PID, USER, %CPU, %MEM, and COMMAND
+    ps aux --sort=-%cpu,-%mem | awk 'NR<=6 {print $1, $2, $3, $4, $11}' | column -t
+
+    # Print an empty line for separation
+    echo ""
+}
+
+security_diagnostics() {
+    display_text "SECURITY DIAGNOSTICS" 40 --center --style "${bold_color}${green}"
+    echo -e "${blue}Open Ports:${normal}"
+    ss -tuln
+    echo -e "\n${blue}Failed Login Attempts:${normal}"
+    grep "Failed password" /var/log/auth.log | tail -n 5
+    echo ""
+}
+
+storage_insights() {
+    echo -e "${bold}${green}== STORAGE INSIGHTS ==${normal}"
+    echo -e "${blue}Largest Files:${normal}"
+    du -ah / | sort -rh | head -n 10
+    echo -e "\n${blue}Inode Usage:${normal}"
+    df -i
+    echo ""
+}
+
+load_average() {
+    echo -e "${bold}${green}== LOAD AVERAGE & UPTIME ==${normal}"
+    uptime
+    echo ""
+}
+
+bandwidth_usage() {
+    echo -e "${bold}${green}== BANDWIDTH USAGE ==${normal}"
+    if command -v vnstat &> /dev/null; then
+        vnstat
+    else
+        echo -e "${red}vnstat is not installed. Please install it to monitor bandwidth.${normal}"
+    fi
+    echo ""
+}
+
+update_and_check_vps_packages() {
+    # Check for the package manager (apt)
+    if command -v apt &> /dev/null; then
+        echo -e "${bold}${green}== PACKAGE UPDATES ==${normal}"
+
+        # Check for upgradable packages
+        upgradable_packages=$(apt list --upgradable 2>/dev/null)
+        if [[ -z "$upgradable_packages" ]]; then
+            echo -e "${green}No upgradable packages.${normal}" >&2
+        else
+            echo -e "${yellow}Upgradable packages detected.${normal}" >&2
+
+            # Ask for confirmation
+            message="${yellow}Would you like to update and upgrade the packages? (Y/n)${normal}"
+            if handle_confirmation_prompt \
+              "$message" "update_packages" "y" "5"; then
+                echo ""
+
+                # Notify update start
+                echo -e "${yellow}Updating packages...${normal}"
+
+                # Update and upgrade without logging output
+                sudo apt update -y > /dev/null 2>&1
+                sudo apt upgrade -y > /dev/null 2>&1
+                sudo apt autoremove -y > /dev/null 2>&1
+                sudo apt clean > /dev/null 2>&1
+
+                # Notify update completion
+                echo -e "${green}Update complete!${normal}" >&2
+            else
+                echo -e "${red}Update aborted.${normal}" >&2
+            fi
+        fi
+    else
+        echo -e "${red}Package manager not supported.${normal}" >&2
+    fi
+
+    echo ""
+}
+
+
+##############################################################################
+
+# Function to prompt user and wait for any key press
+press_any_key() {
+    # Prompt user and wait for any key press
+    echo -e "${highlight_color}Press any key to continue...${normal}"
+    
+    # Wait for a single key press without the need to press Enter
+    read -n 1 -s  # -n 1 means read one character, -s means silent mode (no echo)
+    
+    # Newline for better readability after key press
+    echo ""
+}
+
 
 # Function to show help
 show_help() {
@@ -245,10 +393,11 @@ handle_confirmation_prompt() {
     local prompt_message=$1
     local confirm_var=$2
     local default_value=${3:-false}
+    local timeout=$4
 
     while true; do
         # Request confirmation from the user
-        request_confirmation "$prompt_message" "$confirm_var" "$default_value"
+        request_confirmation "$prompt_message" "$confirm_var" "$default_value" "$timeout"
 
         # Validate input
         case "${!confirm_var}" in
@@ -403,8 +552,8 @@ build_menu_item() {
   local action="$3"
 
   # Validate inputs
-  if [ -z "$label" ] || [ -z "$description" ] || [ -z "$action" ]; then
-    echo "Error: Missing argument(s). All arguments (label, description, action) are required."
+  if [ -z "$label" ] ||  [ -z "$action" ]; then
+    echo "Error: Missing argument(s). Arguments (label, action) are required." >&2
     return 1
   fi
 
@@ -459,8 +608,11 @@ define_menu() {
 
 # Function to get the current menu
 get_current_menu() { 
-  echo "${menu_navigation_history[-1]}"; 
+  if [ ${#menu_navigation_history[@]} -gt 0 ]; then
+    echo "${menu_navigation_history[-1]}"
+  fi
 }
+
 
 # Function to get a specific menu
 get_menu() { 
@@ -722,7 +874,14 @@ render_options() {
     option_label=$(get_menu_item_label "${menu_options[i]}")
     option_desc=$(get_menu_item_description "${menu_options[i]}")
     truncated_option_desc="$(truncate_option "$option_desc")"
-    option="${option_label}: ${truncated_option_desc}"
+    
+    if [[ -z "$option_desc" ]]; then
+      option="${option_label}"
+    else
+      option="${option_label}: ${truncated_option_desc}"
+    fi
+    
+    
     menu_lines+=("$option")
   done
 
@@ -752,6 +911,21 @@ render_header() {
   tput cup 0 0
   echo "$(display_text "$title" "$page_width" --center)" >&2
   echo >&2
+}
+
+# Function to print a centered header with customizable width
+print_centered_header() {
+    local text="$1"
+    local width="$2"
+    local padding
+
+    # Calculate padding for centering
+    padding=$(( (width - ${#text}) / 2 ))
+
+    # Print the header with padding
+    printf "%-${padding}s" " "  # Left padding
+    echo -e "${bold}${green}${text}${normal}"
+    printf "%-${padding}s" " "  # Right padding
 }
 
 # Render breadcrumb trail
@@ -1048,6 +1222,7 @@ navigate_menu() {
 
   local original_menu_options=("${menu_options[@]}")
   local num_options=${#menu_options[@]}
+
   local total_pages="$(calculate_total_pages "$num_options" "$page_size")" 
   local is_new_page=1 previous_idx=0 current_idx=0
 
@@ -1195,7 +1370,7 @@ navigate_menu() {
     "")
       echo >&2
       option_label=$(get_menu_item_label "${menu_options[current_idx]}")
-      question="Are you sure you want to select \"$option_label\"? (y/n)"
+      question="Are you sure you want to select \"$option_label\"? (Y/n)"
       message="${faded_color}$question${reset_color}"
       if handle_confirmation_prompt "$message" confirm 'n'; then
           option_action=$(get_menu_item_action "${menu_options[current_idx]}")
@@ -1264,11 +1439,11 @@ define_menu_main(){
 
   item_1="$(build_menu_item "Menu 1" "Options of Menu 1" "navigate_menu 'Menu 1'")"
   item_2="$(build_menu_item "Menu 2" "Options of Menu 2" "navigate_menu 'Menu 2'")"
-
+  item_3="$(build_menu_item "VPS Health" "diagnose" "navigate_menu 'VPS health'")"
+  
   page_size=5
 
-  menu_object="$(build_menu "$menu_name" $page_size "$item_1" "$item_2"
-  )"
+  menu_object="$(build_menu "$menu_name" $page_size "$item_1" "$item_2" "$item_3")"
 
   define_menu "$menu_name" "$menu_object"
 }
@@ -1293,7 +1468,8 @@ define_menu_1(){
 
   menu_object="$(
     build_menu "$menu_name" $page_size \
-      "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" "$item_6"
+      "$item_1" "$item_2" "$item_3" \
+      "$item_4" "$item_5" "$item_6"
   )"
 
   define_menu "$menu_name" "$menu_object"
@@ -1326,11 +1502,56 @@ define_menu_2(){
   define_menu "$menu_name" "$menu_object"
 }
 
+# VPS Health
+define_menu_vps_health(){
+  menu_name="VPS health"
+
+  item_1="$(
+    build_menu_item "CPU Usage" "Current CPU percentage usage" \
+    "cpu_usage && press_any_key"
+  )"
+  item_2="$(
+    build_menu_item "Memory Usage" "Current memory percentage usage" \
+    "memory_usage && press_any_key"
+  )"
+  item_3="$(
+    build_menu_item "Disk Usage" "Current disk percentage usage" \
+    "disk_usage && press_any_key"
+  )"
+  item_4="$(
+    build_menu_item "Network Usage" "Current network usage" \
+    "network_usage && press_any_key"
+  )"
+  item_5="$(\
+    build_menu_item "Top Processes" "Processes sorted by CPU and memory usage" \
+    "top_processes && press_any_key" \
+  )"
+  item_6="$(build_menu_item "Security Diagnostics" "" \
+    "security_diagnostics && press_any_key")"
+  item_7="$(build_menu_item "Load Average" "" \
+    "load_average && press_any_key")"
+  item_8="$(build_menu_item "Bandwidth Usage" "" \
+    "bandwidth_usage && press_any_key")"
+  item_9="$(build_menu_item "Package Updates" "" \
+    "update_and_check_vps_packages && press_any_key")"
+
+  page_size=5
+
+  menu_object="$(
+    build_menu "$menu_name" $page_size \
+      "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" \
+      "$item_6" "$item_7" "$item_8" "$item_9"
+  )"
+
+  define_menu "$menu_name" "$menu_object"
+}
+
 # Populate MENUS
 define_menus(){
     define_menu_main
     define_menu_1
     define_menu_2
+    define_menu_vps_health
 }
 
 start_main_menu(){
@@ -1342,4 +1563,3 @@ define_menus
 
 # Start the main menu
 start_main_menu
-
