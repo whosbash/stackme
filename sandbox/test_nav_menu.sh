@@ -6,6 +6,180 @@ declare -A MENUS
 # Define a global array for storing navigation history
 menu_navigation_history=()
 
+# Define colors with consistent names
+declare -A COLORS=(
+  [yellow]="\e[33m"
+  [light_yellow]="\e[93m"
+  [green]="\e[32m"
+  [light_green]="\e[92m"
+  [white]="\e[97m"
+  [beige]="\e[93m"
+  [red]="\e[91m"
+  [light_red]="\e[31m"
+  [blue]="\e[34m"
+  [light_blue]="\e[94m"
+  [cyan]="\e[36m"
+  [light_cyan]="\e[96m"
+  [magenta]="\e[35m"
+  [light_magenta]="\e[95m"
+  [black]="\e[30m"
+  [gray]="\e[90m"
+  [dark_gray]="\e[37m"
+  [light_gray]="\x1b[38;5;245m"
+  [orange]="\x1b[38;5;214m"
+  [purple]="\x1b[38;5;99m"
+  [pink]="\x1b[38;5;200m"
+  [brown]="\x1b[38;5;94m"
+  [teal]="\x1b[38;5;80m"
+  [gold]="\x1b[38;5;220m"
+  [lime]="\x1b[38;5;154m"
+  [reset]="\e[0m"
+)
+
+# Define text styles
+declare -A STYLES=(
+  [bold]="\e[1m"
+  [dim]="\e[2m"
+  [italic]="\e[3m"
+  [underline]="\e[4m"
+  [hidden]="\e[8m"
+  [reverse]="\e[7m"
+  [strikethrough]="\e[9m"
+  [double_underline]="\e[21m"
+  [overline]="\x1b[53m"
+  [bold_italic]="\e[1m\e[3m"
+  [underline_bold]="\e[4m\e[1m"
+  [dim_italic]="\e[2m\e[3m"
+  [reset]="\e[0m"
+)
+
+################################# BEGIN OF DISPLAY-RELATED FUNCTIONS ###############################
+
+# Function to apply color and style to a string, even if it contains existing color codes
+colorize() {
+  local text="$1"
+  local color_name=$(echo "$2" | tr '[:upper:]' '[:lower:]')
+  local style_name=$(echo "$3" | tr '[:upper:]' '[:lower:]')
+
+  # Remove any existing ANSI escape sequences (colors or styles) from the text
+  text=$(strip_ansi "$text")
+
+  # Get color code, default to reset if not found
+  local color_code="${COLORS[$color_name]:-${COLORS[reset]}}"
+
+  # If no style name is provided, use "reset" style as default
+  if [[ -z "$style_name" ]]; then
+    local style_code="${STYLES[reset]}"
+  else
+    local style_code="${STYLES[$style_name]:-${STYLES[reset]}}"
+  fi
+
+  # Print the text with the chosen color and style
+  echo -e "${style_code}${color_code}${text}${STYLES[reset]}${COLORS[reset]}"
+}
+
+get_status_icon() {
+  local type="$1"
+
+  case "$type" in
+  "success") echo "🌟" ;;   # Bright star for success
+  "error") echo "🔥" ;;     # Fire icon for error
+  "warning") echo "⚠️" ;;   # Lightning for warning
+  "info") echo "💡" ;;      # Light bulb for info
+  "highlight") echo "🌈" ;; # Rainbow for highlight
+  "debug") echo "🔍" ;;     # Magnifying glass for debug
+  "critical") echo "💀" ;;  # Skull for critical
+  "note") echo "📌" ;;      # Pushpin for note
+  "important") echo "⚡" ;; # Rocket for important
+  "wait") echo "⌛" ;;      # Hourglass for waiting
+  "question") echo "🤔" ;;  # Thinking face for question
+  "celebrate") echo "🎉" ;; # Party popper for celebration
+  "progress") echo "📈" ;;  # Upwards chart for progress
+  "failure") echo "💔" ;;   # Broken heart for failure
+  "tip") echo "🍀" ;;       # Four-leaf clover for additional success
+  *) echo "🌀" ;;           # Cyclone for undefined type
+  esac
+}
+
+# Function to get the color code based on the message type
+get_status_color() {
+  local type="$1"
+
+  case "$type" in
+  "success") echo "green" ;;          # Green for success
+  "error") echo "light_red" ;;        # Light Red for error
+  "warning") echo "yellow" ;;         # Yellow for warning
+  "info") echo "teal" ;;              # White for info
+  "highlight") echo "cyan" ;;         # Cyan for highlight
+  "debug") echo "blue" ;;             # Blue for debug
+  "critical") echo "light_magenta" ;; # Light Magenta for critical
+  "note") echo "pink" ;;              # Gray for note
+  "important") echo "gold" ;;         # Orange for important
+  "wait") echo "light_yellow" ;;      # Light Yellow for waiting
+  "question") echo "purple" ;;        # Purple for question
+  "celebrate") echo "green" ;;        # Green for celebration
+  "progress") echo "lime" ;;          # Blue for progress
+  "failure") echo "light_red" ;;      # Red for failure
+  "tip") echo "light_cyan" ;;         # Light Green for tips
+  *) echo "white" ;;                  # Default to white for unknown types
+  esac
+}
+
+# Function to get the style code based on the message type
+get_status_style() {
+  local type="$1"
+
+  case "$type" in
+  "success") echo "bold" ;;                      # Bold for success
+  "info") echo "italic" ;;                       # Italic for info
+  "error") echo "bold,italic" ;;                 # Bold and italic for errors
+  "critical") echo "bold,underline" ;;           # Bold and underline for critical
+  "warning") echo "italic" ;;                    # Underline for warnings
+  "highlight") echo "bold,underline" ;;          # Bold and underline for highlights
+  "wait") echo "dim,italic" ;;                   # Dim and italic for pending
+  "important") echo "bold,underline,overline" ;; # Bold, underline, overline for important
+  "question") echo "italic,underline" ;;         # Italic and underline for questions
+  "celebrate") echo "bold" ;;                    # Bold for celebration
+  "progress") echo "italic" ;;                   # Italic for progress
+  "failure") echo "bold,italic" ;;               # Bold and italic for failure
+  "tip") echo "bold,italic" ;;                   # Bold and italic for tips
+  *) echo "normal" ;;                            # Default to normal style for unknown types
+  esac
+}
+
+# Function to colorize a message based on its type
+colorize_by_type() {
+  local type="$1"
+  local text="$2"
+
+  colorize "$text" "$(get_status_color "$type")" "$(get_status_style "$type")"
+}
+
+format() {
+  local type="$1"                            # Message type (success, error, etc.)
+  local text="$2"                            # Message text
+  local has_timestamp="${3:-$HAS_TIMESTAMP}" # Option to display timestamp (default is false)
+
+  # Get icon based on status
+  local icon
+  icon=$(get_status_icon "$type")
+
+  # Add timestamp if enabled
+  local timestamp=""
+  if [ "$has_timestamp" = true ]; then
+    timestamp="[$(date '+%Y-%m-%d %H:%M:%S')] "
+    # Only colorize the timestamp
+    timestamp="$(colorize "$timestamp" "$(get_status_color "$type")" "normal")"
+  fi
+
+  # Colorize the main message
+  local colorized_message
+  colorized_message="$(colorize_by_type "$type" "$text")"
+
+  # Display the message with icon, timestamp, and colorized message
+  echo -e "$icon $timestamp$colorized_message"
+}
+
 # Highlight and color variables for styling
 highlight_color="\033[1;32m" # Highlight color (Bright Green)
 faded_color="\033[2m"        # Faded color (Dark gray)
@@ -28,7 +202,18 @@ right_key="[C" # Right Arrow
 # Default menu options
 TRUNCATED_DEFAULT_LENGTH=50
 
-COLORED_ARROW="${highlight_color}→${reset_color}"
+# Dictionary of arrows
+declare -A ARROWS=(
+    ["simple"]="→"
+    ["double"]="⇒"
+    ["long_double"]="⟹"
+    ["curved"]="↪"
+)
+
+# Default arrow
+arrow_option='curved'
+selected_arrow="${ARROWS[$arrow_option]}"
+COLORED_ARROW="${highlight_color}${selected_arrow}${reset_color}"
 
 # Disable canonical mode, set immediate input
 stty -icanon min 1 time 0
