@@ -1162,14 +1162,18 @@ update_and_check_vps_packages() {
               "$message" "update_packages" "y" "5"; then
                 echo ""
 
-                # Notify update start
-                echo -e "${yellow}Updating packages...${normal}"
-
                 # Update and upgrade without logging output
-                sudo apt update -y > /dev/null 2>&1
-                sudo apt upgrade -y > /dev/null 2>&1
-                sudo apt autoremove -y > /dev/null 2>&1
-                sudo apt clean > /dev/null 2>&1
+                echo -e "${yellow}Updating packages...${normal}"
+                sudo apt-get update -y > /dev/null 2>&1
+
+                echo -e "${yellow}Upgrading packages...${normal}"
+                sudo apt-get upgrade -y > /dev/null 2>&1
+
+                echo -e "${yellow}Removing unused packages...${normal}"
+                sudo apt-get autoremove -y > /dev/null 2>&1
+
+                echo -e "${yellow}Cleaning up package cache...${normal}"
+                sudo apt-get clean > /dev/null 2>&1
 
                 # Notify update completion
                 echo -e "${green}Update complete!${normal}" >&2
