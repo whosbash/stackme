@@ -1500,12 +1500,13 @@ filtered_request() {
   local content_type="${4:-'application/json'}" # Content-Type (default: application/json)
   local data="${5:-'{}'}"                       # JSON data for POST/PUT requests (optional)
   local filter=${6:-''}                         # Optional jq filter to extract specific output
-
+    
   # Make the API request
   response=$(request "$method" "$url" "$token" "$content_type" "$data")
 
   # Apply the jq filter if provided, otherwise return the raw response
   if [[ -n "$filter" ]]; then
+    
     echo "$response" | jq -r "$filter"
   else
     echo "$response"
@@ -3021,9 +3022,9 @@ transition_to_menu() {
     spin_index=$((i % ${#spin_chars[@]}))
     spin_char="${spin_chars[$spin_index]}"
 
-    message=${spin_char} Transitioning to ${new_menu}... [${progress_bar}]
-    echo -ne ""\r${colors[color_index]}$message${reset_color}"" >&2
-    
+    message="${spin_char} Transitioning to ${new_menu}... [${progress_bar}]"
+    echo -ne "\r${colors[color_index]}$message${reset_color}" >&2
+
     # Delay to create the animation effect
     sleep 0.05
   done
@@ -3033,6 +3034,7 @@ transition_to_menu() {
   echo -ne "\r${highlight_color}$message${reset_color}\n" >&2
   sleep 0.3
 }
+
 
 # Function to navigate to a specific menu
 navigate_menu() {
@@ -3525,12 +3527,9 @@ get_portainer_endpoint_id() {
 
   url="$(get_api_url $protocol $portainer_url $resource)"
 
-  endpoint_id=$(
-    filtered_request \
-      "$method" "$portainer_url" \ 
-    "$token" "$content_type" \
-      "$resource" "$data" "$jq_filter"
-  )
+  endpoint_id="$(
+    filtered_request "$method" "$url" "$token" "$content_type" "$data" "$jq_filter"
+  )"
 
   if [[ -z "$endpoint_id" ]]; then
     exit 1
@@ -3555,10 +3554,8 @@ get_portainer_swarm_id() {
 
   local swarm_id
   swarm_id=$(
-    filtered_request \
-      "$method" "$url" \
-      "$token" "$content_type" \
-      "$resource" "$data" "$jq_filter"
+    filtered_request "$method" "$url" \
+      "$token" "$content_type" "$data" "$jq_filter"
   )
 
   if [[ -z "$swarm_id" ]]; then
@@ -3653,7 +3650,7 @@ upload_stack_on_portainer() {
 
   resource="endpoints"
   jq_query='.[] | select(.Name == "primary") | .Id'
-  endpoint_id=$(get_portainer_endpoint_id "$portainer_url" "$token")
+  endpoint_id="$(get_portainer_endpoint_id "$portainer_url" "$token")"
   if [[ -z "$endpoint_id" ]]; then
     error "Failed to retrieve Endpoint ID."
     return 1
@@ -3668,16 +3665,23 @@ upload_stack_on_portainer() {
 
   # Upload the stack
   info "Uploading stack: ${stack_name}..."
-  resource="stacks?type=1&method=string&endpointId=${endpoint_id}"
-
+  resource="stacks/create/swarm/file"
   content_type="application/json"
-  data="{
-        \"Name\": \"${stack_name}\",
-        \"SwarmID\": \"${swarm_id}\",
-        \"file\": \"$(<"$compose_file")\"
-    }"
 
-  filtered_request "POST" "$portainer_url" "$token" "$content_type" "$data" &&
+  form_data=(
+      -F "Name=$STACK_NAME"
+      -F "file=@$(pwd)/$STACK_NAME.yaml"
+      -F "SwarmID=$SWARM_ID"
+      -F "endpointId=$ENDPOINT_ID"
+  )
+
+  curl -s -k -X POST \
+    -H "Authorization: Bearer $token" \
+    -F "Name=$stack_name" \
+    -F "file=@$(pwd)/sandbox/$stack_name.yaml" \
+    -F "SwarmID=$swarm_id" \
+    -F "endpointId=$endpoint_id" \
+    "https://$portainer_url/api/stacks/create/swarm/file" &&
     success "Stack '$stack_name' uploaded successfully." ||
     error "Failed to upload stack '$stack_name'."
 
@@ -3723,7 +3727,7 @@ delete_stack_on_portainer() {
   resource="stacks/${stack_id}?endpointId=${endpoint_id}"
   url="$(get_api_url $protocol $portainer_url $resource)"
 
-  if filtered_request "DELETE" "$portainer_url" "$token" "application/json"; then
+  if filtered_request "DELETE" "$url" "$token" "application/json"; then
     success "Stack '${stack_name}' deleted successfully."
   else
     error "Failed to delete stack '${stack_name}'."
@@ -4884,8 +4888,53 @@ start_main_menu(){
     farewell_message
 }
 
-# Populate MENUS
-define_menus
+# # Populate MENUS
+# define_menus
+# 
+# # Start the main menu
+# start_main_menu
 
-# Start the main menu
-start_main_menu
+# Portainer test
+portainer_url="portainer.example.com"
+portainer_username="portainer_username"
+portainer_password="secret_password_shhh"
+
+portainer_auth_token="$(\
+  get_portainer_auth_token "$portainer_url" "$portainer_username" "$portainer_password"
+)"
+portainer_endpoint_id="$(\
+  get_portainer_endpoint_id "$portainer_url" "$portainer_auth_token" \
+)"
+portainer_swarm_id="$(\
+  get_portainer_swarm_id "$portainer_url" "$portainer_auth_token" "$portainer_endpoint_id"\
+)"
+portainer_stacks="$(
+  get_portainer_swarm_stacks "$portainer_url" "$portainer_auth_token"
+)"
+
+echo "Token: $portainer_auth_token"
+echo "Endpoint: $portainer_endpoint_id"
+echo "Swarm id: $portainer_swarm_id"
+echo "Stacks: $portainer_stacks"
+
+stack_name='whoami'
+
+check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"
+
+if [[ $? -eq 0 ]]; then
+  echo "Stack $stack_name exists"
+  delete_stack_on_portainer "$portainer_url" "$portainer_auth_token" "$stack_name"
+  check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"
+
+  if [[ $? -eq 1 ]]; then
+    echo "Stack $stack_name deleted"
+  else
+    echo "Stack $stack_name not deleted"
+  fi
+else
+  echo "Stack $stack_name does not exist"
+fi
+
+upload_stack_on_portainer "$portainer_url" "$portainer_auth_token" "$stack_name" ""$(pwd)/sandbox/$stack_name.yaml"" 
+
+sleep 10
