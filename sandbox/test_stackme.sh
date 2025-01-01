@@ -6,17 +6,6 @@ stty -icanon min 1 time 0
 # Ensure terminal settings are restored on script exit
 trap "stty sane" EXIT
 
-# Dictionary of arrows
-declare -A ARROWS=(
-    ["simple"]="→"
-    ["double"]="⇒"
-    ["curved"]="↪"
-    ["star"]="⭐"
-    ["circle"]="⊙"
-    ["sharp"]="➜"
-    ["dash"]="➳"
-)
-
 ######################################### BEGIN OF CONSTANTS ######################################
 
 # Define colors with consistent names
@@ -66,6 +55,36 @@ declare -A STYLES=(
   [reset]="\e[0m"
 )
 
+# Dictionary of arrows
+declare -A ARROWS=(
+    ["simple"]="→"
+    ["sharp"]="➜"
+    ["double"]="⇒"
+    ["curved"]="↪"
+    ["dash"]="➳"
+    ["star"]="⋆"
+    ["angle"]="▸"
+    ["triangle_filled"]="▲"
+    ["triangle"]="△"
+    ["small_square_filled"]="▪"
+    ["medium_empty_square"]="□"
+    ["big_empty_square"]="▢"
+    ["filled_square"]="■"
+    ["square_filled_empty"]="▣"
+    ["horiz_crossed_square"]="▤"
+    ["vert_crossed_square"]="▥"
+    ["crossed_square"]="▦"
+    ["diag_square"]="▧"
+    ["diag_crossed_square"]="▨"
+    ["diamond"]="◆"
+    ["cross"]="✗"
+    ["dot"]="•"
+    ["circle_filled"]="●"
+    ["circle_empty"]="○"
+    ["circle_filled_empty"]="⊙"
+    ["circle_empty_filled"]="⊚"
+)
+
 # Define a global associative array for storing menu items
 declare -A MENUS
 
@@ -76,6 +95,7 @@ menu_navigation_history=()
 highlight_color="\033[1;32m" # Highlight color (Bright Green)
 faded_color="\033[2m"        # Faded color (Dark gray)
 select_color="\033[1;34m"    # Blue for select (↵)
+warning_color="\033[1;33m"   # Warning color (Yellow)
 back_color="\033[2m"         # Magenta for return (r)
 quit_color="\033[1;31m"      # Red for quit (q)
 search_color="\033[1;36m"    # Search color (/)
@@ -95,6 +115,12 @@ magenta="\033[35m"
 cyan="\033[35m"
 normal="\033[0m"
 
+# Define the separator
+separator="=============================================="
+
+# Cleanup
+current_pid=0
+
 # Define arrow keys for navigation
 up_key="[A"    # Up Arrow
 down_key="[B"  # Down Arrow
@@ -103,15 +129,15 @@ right_key="[C" # Right Arrow
 
 # Default menu options
 TRUNCATED_DEFAULT_LENGTH=50
-
 HAS_TIMESTAMP=true
-
 HEADER_LENGTH=120
 
 # Default arrow
-arrow_option='dash'
-selected_arrow="${ARROWS[$arrow_option]}"
-COLORED_ARROW="${highlight_color}${selected_arrow}${reset_color}"
+ARROW_OPTION='star'
+SELECTED_ARROW="${ARROWS[$ARROW_OPTION]}"
+COLORED_ARROW="${highlight_color}${SELECTED_ARROW}${reset_color}"
+
+############################# BEGIN OF DISPLAY-RELATED FUNCTIONS #############################
 
 # Function to display a message with improved formatting
 display() {
@@ -447,6 +473,7 @@ step_progress() {
   step $current $total "$message" "progress" $has_timestamp
 }
 
+# Function to display a boxed text
 boxed_text() {
   local word=${1:-"Hello"}                        # Default word to render
   local text_style=${2:-"highlight"}              # Default text style
@@ -747,6 +774,7 @@ convert_json_array_to_base64_array() {
   echo "$json_array" | jq -r '.[] | @base64'
 }
 
+# Function to search for an object in a JSON array
 search_on_json_array() {
   local json_array_string="$1"
   local search_key="$2"
@@ -957,6 +985,10 @@ load_json() {
   fi
 }
 
+################################## END OF JSON-RELATED FUNCTIONS ################################
+
+############################### BEGIN OF GENERAL UTILITARY FUNCTIONS ############################
+
 # Function to clean the terminal screen
 clean_screen() {
   echo -ne "\033[H\033[J" >&2
@@ -978,9 +1010,47 @@ to_boolean() {
   [[ "$1" -ne 0 ]] && echo "true" || echo "false"
 }
 
-############################# END OF JSON-RELATED FUNCTIONS #############################
+############################# end OF GENERAL UTILITARY FUNCTIONS #############################
 
-############################ BEGIN OF EMAIL-RELATED FUNCTIONS ############################
+############################## BEGIN OF EMAIL-RELATED FUNCTIONS ##############################
+
+send_email() {
+    local from_email=$1
+    local to_email=$2
+    local server=$3
+    local port=$4
+    local user=$5
+    local pass=$6
+    local subject=$7
+    local body=$8
+
+    info "Sending test email..."
+
+    # Attempt to send the email using swaks and capture output and error details
+    local output
+    output=$(swaks \
+        --to "$to_email" \
+        --from "$from_email" \
+        --server "$server" \
+        --port "$port" \
+        --auth LOGIN --auth-user "$user" \
+        --auth-password "$pass" \
+        --tls \
+        --header "Subject: $subject" \
+        --header "Content-Type: text/html; charset=UTF-8" \
+        --data "Content-Type: text/html; charset=UTF-8\n\n$body" 2>&1)
+
+    # Capture the exit status of the swaks command
+    local status=$?
+
+    # Check if the email was sent successfully
+    if [ $status -eq 0 ]; then
+        success "Test email sent successfully to $to_email."
+    else
+        error "Failed to send test email. Details: $output"
+        exit $status
+    fi
+}
 
 test_smtp_email(){
   items='[
@@ -1036,7 +1106,9 @@ test_smtp_email(){
     "$username" "$password" "$subject" "$body"
 }
 
-########################## BEGIN OF SYSTEM-RELATED FUNCTIONS ############################
+################################## END OF EMAIL-RELATED FUNCTIONS #################################
+
+############################### BEGIN OF SYSTEM-RELATED FUNCTIONS #################################
 
 # Functions for diagnostics
 cpu_usage() {
@@ -1048,7 +1120,6 @@ cpu_usage() {
 }
 
 memory_usage() {
-    display_text "MEMORY USAGE" 40 --center --style "${bold_color}${green}"
     echo ""
     free -h
     echo ""
@@ -1056,8 +1127,6 @@ memory_usage() {
 
 # Function to display disk usage
 disk_usage() {
-    display_text "DISK USAGE" 40 --center --style "${bold_color}${green}"
-    
     # Get the used, available, and total space in bytes
     read -r used avail total <<< "$(df --output=used,avail,size --block-size=1 / | tail -n1)"
 
@@ -1079,7 +1148,6 @@ disk_usage() {
 
 # Function to display network usage
 network_usage() {
-    display_text "NETWORK USAGE" 40 --center --style "${bold_color}${green}"
     echo ""
     ip -s link
     echo ""
@@ -1087,27 +1155,16 @@ network_usage() {
 
 # Function to display top processes
 top_processes() {
-    # Define color and formatting variables
-    local bold="\033[1m"
-    local green="\033[32m"
-    local normal="\033[0m"
-    local separator="=============================================="
-
-    # Print a styled header with separators
-    echo -e "${bold}${green}${separator}${normal}"
-    display_text "TOP 5 PROCESSES BY CPU & MEMORY USAGE" 40 --center --style "${bold_color}${green}"
-    echo -e "${bold}${green}${separator}${normal}"
-
+    echo ""
+    
     # Display only the relevant columns: PID, USER, %CPU, %MEM, and COMMAND
     ps aux --sort=-%cpu,-%mem | awk 'NR<=6 {print $1, $2, $3, $4, $11}' | column -t
 
-    # Print an empty line for separation
     echo ""
 }
 
 # Function to display security diagnostics
 security_diagnostics() {
-    display_text "SECURITY DIAGNOSTICS" 40 --center --style "${bold_color}${green}"
     echo -e "${blue}Open Ports:${normal}"
     ss -tuln
     echo -e "\n${blue}Failed Login Attempts:${normal}"
@@ -1117,7 +1174,7 @@ security_diagnostics() {
 
 # Function to display storage insights
 storage_insights() {
-    echo -e "${bold}${green}== STORAGE INSIGHTS ==${normal}"
+    echo ""
     echo -e "${blue}Largest Files:${normal}"
     du -ah /  | sort -rh | head -n 10
     echo -e "\n${blue}Inode Usage:${normal}"
@@ -1125,16 +1182,20 @@ storage_insights() {
     echo ""
 }
 
-# Function to display load average and uptime
+# Function to display formatted load average and uptime
 load_average() {
-    echo -e "${bold}${green}== LOAD AVERAGE & UPTIME ==${normal}"
-    uptime
+    echo ""
+    # Extract and format uptime information
+    uptime | awk -F'( |,|:)+' '{
+        printf "System Uptime: %s days, %s hours, %s minutes\n", $6, $8, $9;
+        printf "Logged-in Users: %s\n", $10;
+        printf "Load Averages: 1 min: %s, 5 min: %s, 15 min: %s\n", $(NF-2), $(NF-1), $NF;
+    }'
     echo ""
 }
 
 # Function to display bandwidth usage
 bandwidth_usage() {
-    echo -e "${bold}${green}== BANDWIDTH USAGE ==${normal}"
     if command -v vnstat &> /dev/null; then
         vnstat
     else
@@ -1147,8 +1208,6 @@ bandwidth_usage() {
 update_and_check_vps_packages() {
     # Check for the package manager (apt)
     if command -v apt &> /dev/null; then
-        echo -e "${bold}${green}== PACKAGE UPDATES ==${normal}"
-
         # Check for upgradable packages
         upgradable_packages=$(apt list --upgradable 2>/dev/null)
         if [[ -z "$upgradable_packages" ]]; then
@@ -1164,16 +1223,16 @@ update_and_check_vps_packages() {
 
                 # Update and upgrade without logging output
                 echo -e "${yellow}Updating packages...${normal}"
-                sudo apt-get update -y > /dev/null 2>&1
+                apt-get update -y > /dev/null 2>&1
 
                 echo -e "${yellow}Upgrading packages...${normal}"
-                sudo apt-get upgrade -y > /dev/null 2>&1
+                apt-get upgrade -y > /dev/null 2>&1
 
                 echo -e "${yellow}Removing unused packages...${normal}"
-                sudo apt-get autoremove -y > /dev/null 2>&1
+                apt-get autoremove -y > /dev/null 2>&1
 
                 echo -e "${yellow}Cleaning up package cache...${normal}"
-                sudo apt-get clean > /dev/null 2>&1
+                apt-get clean > /dev/null 2>&1
 
                 # Notify update completion
                 echo -e "${green}Update complete!${normal}" >&2
@@ -1201,7 +1260,6 @@ press_any_key() {
     # Newline for better readability after key press
     echo ""
 }
-
 
 # Function to show help
 show_help() {
@@ -1851,6 +1909,7 @@ collect_prompt_info() {
   echo "$json_array"
 }
 
+# Function to confirm and modify prompt information
 confirm_and_modify_prompt_info() {
   local json_array="$1"
 
@@ -2371,7 +2430,6 @@ get_current_menu() {
   fi
 }
 
-
 # Function to get a specific menu
 get_menu() { 
   echo "${MENUS[$1]}"
@@ -2522,9 +2580,6 @@ display_parallel() {
   done
 }
 
-# Global variables for cleanup
-current_pid=0
-
 kill_current_pid(){
   # Start the scrolling message for the selected option
   if [[ "$current_pid" -ne 0 ]]; then
@@ -2536,7 +2591,8 @@ kill_current_pid(){
 cleanup() {
     tput cnorm  # Restore cursor visibility
     kill_current_pid
-    tput reset  # Reset terminal to a clean state (clear screen and reset attributes)
+    tput reset  # Reset terminal to a clean state
+    echo -e '\e[5 q' # Restore cursor shape
 }
 
 # Function to display a great farewell message
@@ -2561,7 +2617,6 @@ farewell_message() {
 
 finish_session() {
     cleanup
-    farewell_message
     exit 0;
 }
 
@@ -2966,14 +3021,16 @@ transition_to_menu() {
     spin_index=$((i % ${#spin_chars[@]}))
     spin_char="${spin_chars[$spin_index]}"
 
-    echo -ne "\r${colors[color_index]}${spin_char} Transitioning to ${new_menu}... [${progress_bar}]${reset_color}" >&2
+    message=${spin_char} Transitioning to ${new_menu}... [${progress_bar}]
+    echo -ne ""\r${colors[color_index]}$message${reset_color}"" >&2
     
     # Delay to create the animation effect
     sleep 0.05
   done
 
   # Finalize the transition with a fade-in effect
-  echo -ne "\r${highlight_color}${spin_char} Transitioning to ${new_menu}... [${progress_bar}] Done!${reset_color}\n" >&2
+  message="${spin_char} Transitioning to ${new_menu}... [${progress_bar}] Done!"
+  echo -ne "\r${highlight_color}$message${reset_color}\n" >&2
   sleep 0.3
 }
 
@@ -3196,7 +3253,7 @@ navigate_menu() {
 
         echo -e "$message" >&2
         sleep 0.25
-        finish_session
+
         break
       fi
       ;;
@@ -3208,7 +3265,6 @@ navigate_menu() {
       message="${error_color}$shoutout $keyboard_options${reset_color}"
       echo -e "$message" >&2
       sleep 1
-      is_new_page=1
       ;;
     esac
 
@@ -3217,7 +3273,6 @@ navigate_menu() {
 }
 
 ######################## End of Menu Utility Functions ############################
-
 
 ################################ Docker Utility Functions ##############################
 
@@ -3963,6 +4018,7 @@ update_and_install_packages() {
   packages=(
     "sudo" "apt-utils" "apparmor-utils" "jq" 
     "python3" "docker" "figlet" "swaks" "netcat"
+    "vnstat"
   )
   step_message="Installing required apt-get packages"
   step_progress 3 $total_steps "$step_message"
@@ -4078,12 +4134,10 @@ initialize_server_info() {
 
   # Extract server_name and network_name
   server_name=$(\
-    echo "$server_info_json" | \
-    jq -r '.[] | select(.name=="server_name") | .value'
+    echo "$server_info_json" | jq -r '.[] | select(.name=="server_name") | .value'
   )
   network_name=$(
-    echo "$server_info_json" | 
-    jq -r '.[] | select(.name=="network_name") | .value'
+    echo "$server_info_json" | jq -r '.[] | select(.name=="network_name") | .value'
   )
 
   # Output results
@@ -4137,7 +4191,6 @@ initialize_server_info() {
 
   wait_for_input
 }
-
 
 ####################################### BEGIN OF COMPOSE FILES #####################################
 
@@ -4544,7 +4597,7 @@ generate_config_redis() {
   step_message="Retrieving Redis image version"
   step_info 1 $total_steps 
   local image_version="$(get_latest_stable_version "redis")"
-  handle_exit $? "$step_message" "$total_steps"
+  handle_exit 
   
   info "Redis version: $image_version"
 
@@ -4828,6 +4881,7 @@ define_menus(){
 
 start_main_menu(){
     navigate_menu "Main";
+    farewell_message
 }
 
 # Populate MENUS
