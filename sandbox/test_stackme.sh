@@ -3252,7 +3252,7 @@ navigate_menu() {
   done
 }
 
-######################## End of Menu Utility Functions ############################
+############################# End of Menu Utility Functions ############################
 
 ################################ Docker Utility Functions ##############################
 
@@ -4936,26 +4936,18 @@ portainer_url="portainer.example.com"
 portainer_username="portainer_username"
 portainer_password="secret_password_shhh"
 
-portainer_auth_token="$(\
-  get_portainer_auth_token "$portainer_url" "$portainer_username" "$portainer_password"
-)"
-portainer_endpoint_id="$(\
-  get_portainer_endpoint_id "$portainer_url" "$portainer_auth_token" \
-)"
-portainer_swarm_id="$(\
-  get_portainer_swarm_id "$portainer_url" "$portainer_auth_token" "$portainer_endpoint_id"\
-)"
-portainer_stacks="$(
-  get_portainer_swarm_stacks "$portainer_url" "$portainer_auth_token"
+credentials="$(
+  jq -n \
+    --arg username "$portainer_username" \
+    --arg password "$portainer_password" \
+    '{"username":$username,"password":$password}'\
 )"
 
-echo "Token: $portainer_auth_token"
-echo "Endpoint: $portainer_endpoint_id"
-echo "Swarm id: $portainer_swarm_id"
-echo "Stacks: $portainer_stacks"
+portainer_auth_token="$(\
+  get_portainer_auth_token "$portainer_url" "$credentials"
+)"
 
 stack_name='whoami'
-
 check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"
 
 if [[ $? -eq 0 ]]; then
@@ -4964,14 +4956,15 @@ if [[ $? -eq 0 ]]; then
   check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"
 
   if [[ $? -eq 1 ]]; then
-    echo "Stack $stack_name deleted"
+    success "Stack $stack_name deleted"
   else
-    echo "Stack $stack_name not deleted"
+    error "Stack $stack_name not deleted"
   fi
 else
-  echo "Stack $stack_name does not exist"
+  warning "Stack $stack_name does not exist"
 fi
 
-upload_stack_on_portainer "$portainer_url" "$portainer_auth_token" "$stack_name" ""$(pwd)/sandbox/$stack_name.yaml"" 
+upload_stack_on_portainer "$portainer_url" "$credentials" \
+  "$stack_name" ""$(pwd)/sandbox/$stack_name.yaml"" 
 
 sleep 10
