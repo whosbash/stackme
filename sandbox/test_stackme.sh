@@ -3648,15 +3648,12 @@ upload_stack_on_portainer() {
   # Swarm ID and endpoint id is required for Swarm stack deployments
   local swarm_id
 
-  resource="endpoints"
-  jq_query='.[] | select(.Name == "primary") | .Id'
   endpoint_id="$(get_portainer_endpoint_id "$portainer_url" "$token")"
   if [[ -z "$endpoint_id" ]]; then
     error "Failed to retrieve Endpoint ID."
     return 1
   fi
 
-  jq_filter='.ID'
   swarm_id=$(get_portainer_swarm_id "$portainer_url" "$token" "$endpoint_id")
   if [[ -z "$swarm_id" ]]; then
     error "Failed to retrieve Swarm ID."
