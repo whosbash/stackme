@@ -1474,10 +1474,11 @@ request() {
     echo "API request failed with status code $http_code"
     echo "Response: $response_body"
     return 1
+  else  
+    # Return the response body if successful
+    echo "$response_body"
+    return 0
   fi
-
-  # Return the response body if successful
-  echo "$response_body"
 }
 
 # Function to perform requests on portainer URL
