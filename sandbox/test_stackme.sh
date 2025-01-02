@@ -3393,37 +3393,41 @@ deploy_stack_on_swarm() {
 
 ################################# Portainer Functions ################################
 
-# Function to build api url
-get_api_url() {
-  protocol="$1"
-  url="$2"
-  resource="$3"
-  echo "https://$url/api/$resource"
-}
-
 # Function to check if Portainer credentials are correct
-is_portainer_credential_correct() {
+is_portainer_credentials_correct() {
   local portainer_url="$1"
-  local username="$2"
-  local password="$3"
+  local credentials="$2"
+
+  if [[ -z "$credentials" ]]; then
+    error "No credentials provided."
+    return 1
+  fi
+
+  if [[ "$credentials" != *"username"* || "$credentials" != *"password"* ]]; then
+    error "Invalid credentials format."
+    return 1
+  fi
 
   protocol="https"
   content_type="application/json"
-  credentials="{\"username\":\"$username\",\"password\":\"$password\"}"
   resource='auth'
 
-  url="$(get_api_url $protocol $portainer_url $resource)"
+  url="$(\
+    get_api_url "$protocol" "$portainer_url" "$resource"\
+  )"
 
-  response=$(curl -k -s -X POST -H "Content-Type: $content_type" -d "$credentials" "$url")
+  response=$(\
+    curl -k -s -X POST -H "Content-Type: $content_type" -d "$credentials" "$url" \
+  )
 
   # Check if the response contains a valid token
   token=$(echo "$response" | jq -r .jwt)
 
   if [[ "$token" == "null" || -z "$token" ]]; then
-    echo "Invalid credentials"
+    error "Invalid credentials" >&2
     return 1 # Exit with status 1 for failure
   else
-    echo "Valid credentials"
+    error "Valid credentials" >&2
     return 0 # Exit with status 0 for success
   fi
 }
