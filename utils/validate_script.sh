@@ -487,7 +487,7 @@ check_large_lines() {
 }
 
 # Function to check the length of functions
-check_function_length() {
+check_function_length() { 
     local file="$1"
     local max_length="$2"
     local verbose="$3"
@@ -514,38 +514,49 @@ check_function_length() {
     # Remove 'function' and spaces
     function_name_pattern='^[[:space:]]*(function[[:space:]]+|[[:space:]]*)'
 
-    while IFS= read -r line; do
+    while IFS= read -r line || [[ -n "$line" ]]; do
         # Detect function start with various patterns: 'function name', 'name ()', 'name {'
         if [[ "$line" =~ $pattern ]]; then
+            # If already inside a function, check if it exceeded the limit before resetting
+            if [[ $function_start -gt 0 && $line_count -gt "$max_length" ]]; then
+                ((issues++))
+                local exceed="by $((line_count - max_length)) lines"
+                local message="Function '$function_name' exceeds $max_length lines $exceed."
+                long_functions="$long_functions\n$message"
+
+                [[ "$verbose" == true ]] && print_message "$COLOR_YELLOW" "$message"
+            fi
+
             # Capture function name from the pattern
             function_name=$(
                 echo "$line" | \
                 sed -E "s/$function_name_pattern//;s/\(.*//;s/[[:space:]]*\{.*//"
             )
 
-            # Start counting lines for this function
+            # Start counting lines for the new function
             function_start=$((line_count + 1))
-
-            # Reset line count for the function
-            line_count=0
+            line_count=1
+            continue
         fi
 
-        # If inside a function, start counting lines
+        # If inside a function, continue counting lines
         if [[ $function_start -gt 0 ]]; then
             ((line_count++))
         fi
 
-        # Check if function length exceeds max_length
-        if [[ $line_count -gt "$max_length" && $function_start -gt 0 ]]; then
-            ((issues++))
-            exceed="by $((line_count-max_length)) lines"
-            message="Function '$function_name' exceeds $max_length lines $exceed."
-            long_functions="$long_functions\n$message"
+        # Check if the function ends (line contains only '}')
+        if [[ $function_start -gt 0 && "$line" =~ ^[[:space:]]*\}[[:space:]]*$ ]]; then
+            # Check if the function exceeded the length limit
+            if [[ $line_count -gt "$max_length" ]]; then
+                ((issues++))
+                local exceed="by $((line_count - max_length)) lines"
+                local message="Function '$function_name' exceeds $max_length lines $exceed."
+                long_functions="$long_functions\n$message"
 
-            # Optionally print verbose message
-            [[ "$verbose" == true ]] && print_message "$COLOR_YELLOW" "$message"
+                [[ "$verbose" == true ]] && print_message "$COLOR_YELLOW" "$message"
+            fi
 
-            # Reset after reporting
+            # Reset for the next function
             function_start=0
             line_count=0
         fi
@@ -561,6 +572,7 @@ check_function_length() {
     fi
     echo ""
 }
+
 
 # Process a single file
 process_checks() {
