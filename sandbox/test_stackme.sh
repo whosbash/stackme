@@ -4635,7 +4635,7 @@ generate_config_redis() {
     --arg image_version "$image_version" \
     --arg container_name "$stack_name" \
     --arg container_port "$container_port" \
-    --arg redis_url "$stack_name://$stack_name:$container_port" \
+    --arg redis_url "redis://redis:$container_port" \
     --arg volume_name "$stack_name_data" \
     --arg network_name "$network_name" \
     '{
@@ -4692,20 +4692,43 @@ generate_config_postgres() {
       }'
 }
 
+generate_config_whoami() {
+  local stack_name='whoami'
+  local container_port='80'
+
+  network_name="$(get_network_name)"
+
+  jq -n \
+    --arg stack_name "$stack_name" \s
+    --arg container_port "$container_port" \
+    --arg network_name "$network_name" \
+    '{
+          "name": $stack_name,
+          "variables": {
+              "stack_name": $stack_name,
+              "container_port": $container_port,
+              "network_name": $network_name
+          },
+          "dependencies": {},
+          "setUp": []
+      }'
+  
+}
+
 #################################### END OF STACK CONFIGURATION ###################################
 
 ################################# BEGIN OF STACK DEPLOYMENT FUNCTIONS #############################
 
 # Function to deploy a traefik service
-deploy_stack_traefik() {
-  local stack_name='traefik'
+deploy_stack_pipeline() {
+  local stack_name="$1"
 
   # Generate the n8n service JSON configuration using the helper function
   local config_json
   config_json=$(generate_config_traefik)
 
   if [ -z "$config_json" ]; then
-    failed_stack_configuration_message "traefik"
+    failed_stack_configuration_message "$stack_name"
     return 1
   fi
 
@@ -4718,66 +4741,24 @@ deploy_stack_traefik() {
   build_and_deploy_stack "$stack_name" "$config_json"
 }
 
+# Function to deploy a traefik service
+deploy_stack_traefik() {
+  deploy_stack_pipeline 'traefik'
+}
+
 # Function to deploy a portainer service
 deploy_stack_portainer() {
-  local stack_name='portainer'
-
-  # Generate the n8n service JSON configuration using the helper function
-  local config_json
-  config_json="$(generate_config_portainer)"
-
-  if [ -z "$config_json" ]; then
-    failed_stack_configuration_message "$stack_name"
-    return 1
-  fi
-
-  # Check required fields
-  validate_stack_config "$stack_name" "$config_json"
-
-  # Deploy the n8n service using the JSON
-  build_and_deploy_stack "$stack_name" "$config_json"
+  deploy_stack_pipeline 'portainer'
 }
 
 # Function to deploy a PostgreSQL stack
 deploy_stack_postgres() {
-  local stack_name='postgres'
-
-  # Create a JSON object to pass as an argument
-  local config_json
-  config_json=$(generate_config_postgres)
-
-  if [ -z "$config_json" ]; then
-    failed_stack_configuration_message "$stack_name"
-    return 1
-  fi
-
-  # Check required fields
-  validate_stack_config "$stack_name" "$config_json"
-
-  # Deploy the PostgreSQL service using the JSON
-  build_and_deploy_stack "$stack_name" "$config_json"
+  deploy_stack_pipeline 'postgres'
 }
 
 # Function to deploy a Redis service
 deploy_stack_redis() {
-  local stack_name='redis'
-  local image_version="6.2.5"           # Accept image version or default to 6.2.5
-  local container_port="6379"           # Accept container port or default to 6379
-
-  # Generate the Redis service JSON configuration using the helper function
-  local redis_config_json
-  config_json=$(generate_config_redis)
-
-  if [ -z "$config_json" ]; then
-    failed_stack_configuration_message "redis"
-    return 1
-  fi
-
-  # Check required fields
-  validate_stack_config "$stack_name" "$config_json"
-
-  # Deploy the Redis service using the JSON
-  build_and_deploy_stack "$stack_name" "$config_json"
+  deploy_stack_pipeline 'redis'
 }
 
 #############################################################################
