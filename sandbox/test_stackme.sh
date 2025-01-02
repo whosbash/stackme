@@ -4616,6 +4616,10 @@ generate_config_redis() {
 
   local network_name="$(get_network_name)"
 
+  highlight "Gathering $stack_name configuration"
+
+  total_steps=1
+
   step_message="Retrieving Redis image version"
   step_info 1 $total_steps 
   local image_version="$(get_latest_stable_version "redis")"
