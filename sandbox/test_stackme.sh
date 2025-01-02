@@ -285,6 +285,70 @@ format_array() {
   done
 }
 
+# Function to display styled and optionally centered text with custom or terminal width
+display_text() {
+  local text="$1"             # The text to display
+  local custom_width="$2"     # Custom width for the text
+  local padding=0             # Optional padding around the text
+  local center=false          # Set to true to center the text
+  local style="${bold_color}" # Optional style (e.g., bold or colored)
+
+  # Check if additional options are provided
+  shift 2 # Skip the first two arguments (text and custom_width)
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --center) center=true ;;
+    --style)
+      style="$2"
+      shift
+      ;;
+    --padding)
+      padding="$2"
+      shift
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      return 1
+      ;;
+    esac
+    shift
+  done
+
+  # If custom width is not provided, use terminal width (tput cols)
+  if [[ -z "$custom_width" ]]; then
+    custom_width=$(tput cols)
+  fi
+
+  # Ensure padding is valid
+  if ((padding < 0)); then
+    echo "Padding must be non-negative." >&2
+    return 1
+  fi
+
+  # Calculate text length with padding
+  local padded_text=$(printf "%${padding}s%s%${padding}s" "" "$text" "")
+  local text_length=${#padded_text}
+
+  # Ensure the custom width is at least the length of the text
+  if ((custom_width < text_length)); then
+    message="Custom width ($custom_width) is smaller than text length ($text_length)."
+    echo "Error: $message" >&2
+    return 1
+  fi
+
+  # Center the text if needed
+  if [[ "$center" == true ]]; then
+    local left_padding=$(((custom_width - text_length) / 2))
+    padded_text=$(printf "%${left_padding}s%s" "" "$padded_text")
+  fi
+
+  # Ensure the text fits within the custom width
+  local final_text=$(printf "%-${custom_width}s" "$padded_text")
+
+  # Apply styling and display
+  echo -e "${style}${final_text}${reset_color}"
+}
+
 # Function to display success formatted messages
 success() {
   local message="$1"                     # Step message
@@ -581,12 +645,13 @@ validate_json_recursive() {
   local valid=true
   local errors=()
 
-  # Extract required keys, properties, and additionalProperties from the schema
+  # Extract required keys and properties from the schema
   local required_keys=$(echo "$schema" | jq -r '.required[]? // empty')
-  local properties=$(echo "$schema" | jq -r '.properties // empty')
-
-  jq_query='if has("additionalProperties") then .additionalProperties else true end'
-  local additional_properties=$(echo "$schema" | jq -r "$jq_query")
+  local properties=$(echo "$schema" | jq -c '.properties // empty')
+  local additional_properties=$(\
+    echo "$schema" | \
+    jq -r 'if has("additionalProperties") then .additionalProperties else "true" end'
+  )
 
   # Check if required keys are present
   for key in $required_keys; do
@@ -606,100 +671,33 @@ validate_json_recursive() {
     expected_type=$(echo "$properties" | jq -r ".\"$key\".type // empty")
     sub_schema=$(echo "$properties" | jq -c ".\"$key\"")
     value=$(echo "$json" | jq -c ".\"$key\"")
-    actual_type=$(echo "$json" | jq -r ".\"$key\" | type // empty")
+    actual_type=$(echo "$value" | jq -r 'type // empty')
 
     if [ "$expected_type" = "object" ]; then
+      # Recursively validate nested objects
       if [ "$actual_type" = "object" ]; then
         validate_json_recursive "$value" "$sub_schema" "${parent_path}${key}."
       else
-        errors+=(
-          "Key '${parent_path}${key}' expected type 'object', but got '$actual_type'"
-        )
+        errors+=("Key '${parent_path}${key}' expected type 'object', but got '$actual_type'")
         valid=false
       fi
     elif [ "$expected_type" = "array" ]; then
-      if [ "$actual_type" = "array" ]; then
-        items_schema=$(echo "$sub_schema" | jq -c '.items')
-        array_length=$(echo "$value" | jq 'length')
-
-        for ((i = 0; i < array_length; i++)); do
-          element=$(echo "$value" | jq -c ".[$i]")
-          element_type=$(echo "$element" | jq -r 'type') # Get type of element
-
-          # Check the expected type for the array items and match with element type
-          item_expected_type=$(echo "$items_schema" | jq -r '.type // empty')
-
-          # Handle type mismatch in array elements
-          if [ "$item_expected_type" != "$element_type" ]; then
-            preamble="Array element ${parent_path}${key}[$i]"
-            expected_message="expected type '$item_expected_type'"
-            errors+=(
-              "$preamble $expected_message, but got '$element_type'"
-            )
-            valid=false
-          else
-            # Continue validation for each array element recursively
-            validate_json_recursive \
-              "$element" "$items_schema" "${parent_path}${key}[$i]."
-          fi
-        done
-      else
-        errors+=("Key '${parent_path}${key}' expected type 'array', but got '$actual_type'")
-        valid=false
-      fi
+      # Validate array elements
+      validate_array "$value" "$sub_schema" "${parent_path}${key}" errors valid
     else
-      # Handle specific cases for 'integer', 'string', 'number', etc.
-      if [[ "$expected_type" == "integer" && "$actual_type" == "number" ]]; then
-        # Check if the value is not an integer (i.e., it has a fractional part)
-        if [[ $(echo "$value" | jq '. % 1 != 0') == "true" ]]; then
-          errors+=("Key '${parent_path}${key}' expected type 'integer', but got 'number'")
-          valid=false
-        fi
-      elif [ "$expected_type" != "$actual_type" ] && [ "$actual_type" != "null" ]; then
-        # Handle if expected type does not match the actual type
-        # Check if expected_type is an array of types, and if the
-        # actual type matches any of them
-        if [[ "$expected_type" =~ \[.*\] ]]; then
-          # Expected type is a list of types (e.g., ["string", "number"])
-          # Remove brackets and spaces
-          expected_types=$(echo "$expected_type" | sed 's/[\[\]" ]//g')
-          for type in $(echo "$expected_types" | tr ',' '\n'); do
-            if [ "$type" == "$actual_type" ]; then
-              valid=true
-              break
-            fi
-          done
-
-          key_value="Key '${parent_path}${key}'"
-          if [ "$valid" = false ]; then
-            expected_types="one of the types [${expected_types}]"
-            errors+=("$key_value expected $expected_types, but got '$actual_type'")
-            valid=false
-          fi
-        else
-          errors+=("$key_value expected type '$expected_type', but got '$actual_type'")
-          valid=false
-        fi
-      fi
-
-      # Handle 'null' type
-      if [ "$expected_type" = "null" ] && [ "$actual_type" != "null" ]; then
-        errors+=("Key '${parent_path}${key}' expected type 'null', but got '$actual_type'")
-        valid=false
-      fi
-
-      # Handle additional constraints
-      handle_constraints "$value" "$sub_schema" "${parent_path}${key}" errors valid
+      # Validate primitive types and handle constraints
+      validate_primitive "$value" "$sub_schema" \
+        "$expected_type" "$actual_type" "${parent_path}${key}" errors valid
     fi
   done
 
-  # Handle additional properties when additionalProperties is false
+  # Handle additionalProperties
   if [ "$additional_properties" = "false" ]; then
     for key in $(echo "$json" | jq -r 'keys[]'); do
-      # Check if the key is not present in the properties of the schema
-      if ! echo "$properties" | jq -e ". | has(\"$key\")" >/dev/null; then
-        key_msg="Key '${parent_path}${key}'"
-        errors+=("$key_msg is an extra property, but additionalProperties is false.")
+      if ! echo "$properties" | jq -e "has(\"$key\")" >/dev/null; then
+        errors+=(\
+          "Extra property '${parent_path}${key}' found, but additionalProperties is false."\
+        )
         valid=false
       fi
     done
@@ -713,39 +711,85 @@ validate_json_recursive() {
   fi
 }
 
-# Function to handle additional constraints
-handle_constraints() {
-  local value="$1"
+# Validate array elements
+validate_array() {
+  local array="$1"
   local schema="$2"
-  local key_path="$3"
+  local path="$3"
   local -n errors_ref=$4
   local -n valid_ref=$5
 
-  # Pattern (regex matching)
+  local items_schema=$(echo "$schema" | jq -c '.items // empty')
+  local array_length=$(echo "$array" | jq 'length')
+
+  for ((i = 0; i < array_length; i++)); do
+    local element=$(echo "$array" | jq -c ".[$i]")
+    local element_type=$(echo "$element" | jq -r 'type')
+    local expected_type=$(echo "$items_schema" | jq -r '.type // empty')
+
+    if [ "$element_type" != "$expected_type" ] && [ "$expected_type" != "null" ]; then
+      errors_ref+=(\
+        "Array element ${path}[$i] expected type '$expected_type', but got '$element_type'"\
+      )
+      valid_ref=false
+    fi
+
+    # Recursively validate array elements
+    validate_json_recursive "$element" "$items_schema" "${path}[$i]."
+  done
+}
+
+# Validate primitive types and handle constraints
+validate_primitive() {
+  local value="$1"
+  local schema="$2"
+  local expected_type="$3"
+  local actual_type="$4"
+  local path="$5"
+  local -n errors_ref=$6
+  local -n valid_ref=$7
+
+  if [ "$expected_type" != "$actual_type" ] && \
+    [ "$actual_type" != "null" ]; then
+    errors_ref+=("Key '${path}' expected type '$expected_type', but got '$actual_type'")
+    valid_ref=false
+  fi
+
+  # Handle additional constraints (pattern, enum, etc.)
+  handle_constraints "$value" "$schema" "$path" errors_ref valid_ref
+}
+
+# Handle additional constraints
+handle_constraints() {
+  local value="$1"
+  local schema="$2"
+  local path="$3"
+  local -n errors_ref=$4
+  local -n valid_ref=$5
+
   local pattern=$(echo "$schema" | jq -r '.pattern // empty')
-  if [ -n "$pattern" ]; then
-    if ! [[ "$value" =~ $pattern ]]; then
-      errors_ref+=("Key '${key_path}' does not match the pattern '$pattern'")
-      valid_ref=false
-    fi
-  fi
-
-  # Enum (fixed values)
-  local enum_values=$(echo "$schema" | jq -r '.enum // empty')
-  if [ "$enum_values" != "null" ]; then
-    if ! echo "$enum_values" | jq -e ". | index($value)" >/dev/null; then
-      errors_ref+=("Key '${key_path}' value '$value' is not in the enum list: $enum_values")
-      valid_ref=false
-    fi
-  fi
-
-  # MultipleOf (numerical constraint)
+  local enum_values=$(echo "$schema" | jq -c '.enum // empty')
   local multiple_of=$(echo "$schema" | jq -r '.multipleOf // empty')
-  if [ -n "$multiple_of" ]; then
-    if ! (($(echo "$value % $multiple_of" | bc) == 0)); then
-      errors_ref+=("Key '${key_path}' value '$value' is not a multiple of $multiple_of")
-      valid_ref=false
-    fi
+
+  # Pattern matching
+  if [ -n "$pattern" ] && \
+    ! [[ "$value" =~ $pattern ]]; then
+    errors_ref+=("Key '${path}' does not match pattern '$pattern'")
+    valid_ref=false
+  fi
+
+  # Enum validation
+  if [ "$enum_values" != "null" ] && \
+    ! echo "$enum_values" | jq -e ". | index($value)" >/dev/null; then
+    errors_ref+=("Key '${path}' value '$value' is not in the allowed values: $enum_values")
+    valid_ref=false
+  fi
+
+  # MultipleOf constraint
+  if [ -n "$multiple_of" ] && \
+    (( $(echo "$value % $multiple_of" | bc) != 0 )); then
+    errors_ref+=("Key '${path}' value '$value' is not a multiple of $multiple_of")
+    valid_ref=false
   fi
 }
 
@@ -874,6 +918,14 @@ filter_items() {
   echo "$filtered_items"
 }
 
+# Function to get a specific value from a JSON object
+query_json_value() {
+  local menu_item="$1"
+  local query="$2"
+
+  echo "$menu_item" | jq -r "$query"
+}
+
 # Function to extract values based on a key
 extract_values() {
   echo "$1" | jq -r "map(.$2)"
@@ -891,6 +943,15 @@ append_to_json_array() {
   local json_array="$1"
   local json_object="$2"
   echo "$json_array" | jq ". += [$json_object]"
+}
+
+# Function to extract variables from a string without curly braces
+extract_variables() {
+  local compose_string="$1"
+  echo "$compose_string" | \
+    grep -oE '\{\{[a-zA-Z0-9_]+\}\}' | \
+    sed 's/[{}]//g' | \
+    sort -u
 }
 
 # Function to sort an array based on another array
@@ -1279,87 +1340,6 @@ show_help() {
   echo -e "${search_color}/${reset_color}   - Search on current menu"
   echo -e "${quit_color}q${reset_color}   - Quit the application"
   echo -e "${help_color}h${reset_color}   - Show this help menu"
-}
-
-# Function to display styled and optionally centered text with custom or terminal width
-display_text() {
-  local text="$1"             # The text to display
-  local custom_width="$2"     # Custom width for the text
-  local padding=0             # Optional padding around the text
-  local center=false          # Set to true to center the text
-  local style="${bold_color}" # Optional style (e.g., bold or colored)
-
-  # Check if additional options are provided
-  shift 2 # Skip the first two arguments (text and custom_width)
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-    --center) center=true ;;
-    --style)
-      style="$2"
-      shift
-      ;;
-    --padding)
-      padding="$2"
-      shift
-      ;;
-    *)
-      echo "Unknown option: $1" >&2
-      return 1
-      ;;
-    esac
-    shift
-  done
-
-  # If custom width is not provided, use terminal width (tput cols)
-  if [[ -z "$custom_width" ]]; then
-    custom_width=$(tput cols)
-  fi
-
-  # Ensure padding is valid
-  if ((padding < 0)); then
-    echo "Padding must be non-negative." >&2
-    return 1
-  fi
-
-  # Calculate text length with padding
-  local padded_text=$(printf "%${padding}s%s%${padding}s" "" "$text" "")
-  local text_length=${#padded_text}
-
-  # Ensure the custom width is at least the length of the text
-  if ((custom_width < text_length)); then
-    message="Custom width ($custom_width) is smaller than text length ($text_length)."
-    echo "Error: $message" >&2
-    return 1
-  fi
-
-  # Center the text if needed
-  if [[ "$center" == true ]]; then
-    local left_padding=$(((custom_width - text_length) / 2))
-    padded_text=$(printf "%${left_padding}s%s" "" "$padded_text")
-  fi
-
-  # Ensure the text fits within the custom width
-  local final_text=$(printf "%-${custom_width}s" "$padded_text")
-
-  # Apply styling and display
-  echo -e "${style}${final_text}${reset_color}"
-}
-
-# Function to get a specific value from a JSON object
-query_json_value() {
-  local menu_item="$1"
-  local query="$2"
-
-  echo "$menu_item" | jq -r "$query"
-}
-
-# Function to extract variables from a string without curly braces
-extract_variables() {
-  local compose_string="$1"
-  echo "$compose_string" | \
-    grep -oE '\{\{[a-zA-Z0-9_]+\}\}' | \
-    sed 's/[{}]//g' | \
-    sort -u
 }
 
 # Function to replace variables in a template
