@@ -340,9 +340,9 @@ check_logical_lines() {
     echo ""
 }
 
-check_function_spacing() {
+check_line_spacing() {
     local file="$1"
-    local spacing="$2"
+    local max_spacing=1 # Maximum allowable blank line spacing
 
     # Validate the input file
     if [[ ! -f "$file" ]]; then
@@ -350,71 +350,46 @@ check_function_spacing() {
         return 1
     fi
 
-    print_header "Checking spacing of $spacing between functions"
-
-    # Read the file content
-    local content
-    content=$(<"$file")
-
-    # Extract function definitions (with line numbers)
-    local functions
-    local pattern='^[[:space:]]*[a-zA-Z_][a-zA-Z0-9_]*[[:space:]]*\(\)[[:space:]]*\{'
-    functions=$(grep -nE "$pattern" "$file")
-
-    if [[ -z "$functions" ]]; then
-        echo "No functions found in the file."
-        return 0
-    fi
+    print_header "Checking that spacing between lines does not exceed $max_spacing in $file"
 
     # Initialize variables
-    local prev_end_line_number=0
-    local curr_start_line_number=0
-    local prev_end_brace_line=0
+    local prev_useful_line=0
+    local curr_line_number=0
+    local has_error=0
 
-    # Read each function line-by-line
-    while IFS= read -r line; do
-        # Extract line number of the current function
-        curr_start_line_number=$(echo "$line" | cut -d: -f1)
+    # Process the file line by line
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        curr_line_number=$((curr_line_number + 1))
 
-        # If this is not the first function, calculate the spacing
-        if [[ $prev_end_line_number -ne 0 ]]; then
-            # Find the closing brace of the previous function
-            prev_end_brace_line=$(
-                sed -n "${prev_end_line_number},${curr_start_line_number}p" "$file" | 
-                grep -n "^[[:space:]]*}" | tail -n 1 | cut -d: -f1
-            )
+        # Skip blank lines only
+        if [[ -z "$line" ]]; then
+            continue
+        fi
 
-            # Adjust line number relative to the file
-            if [[ -n "$prev_end_brace_line" ]]; then
-                prev_end_brace_line=$((prev_end_line_number + prev_end_brace_line - 1))
-            else
-                prev_end_brace_line=$prev_end_line_number
-            fi
+        # Treat non-blank lines (including comments) as useful lines
+        if [[ $prev_useful_line -ne 0 ]]; then
+            local spacing=$((curr_line_number - prev_useful_line - 1))
 
-            # Count blank lines between the closing brace and the current function
-            local blank_lines
-            blank_lines=$(
-                sed -n "$((prev_end_brace_line + 1)),$((curr_start_line_number - 1))p" "$file" | 
-                grep -c "^[[:space:]]*$"
-            )
-
-            # Construct message and check if the spacing violates
-            location="Between functions at lines $prev_end_brace_line and $curr_start_line_number"
-            report="there are $blank_lines blank lines"
-            message="$location, $report"
-
-            # Report if the spacing does not match the expectation
-            if [[ "$blank_lines" -ne "$spacing" ]]; then
-                print_message "$COLOR_YELLOW" "$message (should be $spacing)."
+            # Flag an error if spacing exceeds the maximum allowable spacing
+            if [[ $spacing -gt $max_spacing ]]; then
+                echo "Spacing error: $spacing blank lines between useful lines $prev_useful_line and $curr_line_number (maximum allowed is $max_spacing)."
+                has_error=1
             fi
         fi
 
-        # Update previous function's last line
-        prev_end_line_number=$curr_start_line_number
-    done <<< "$functions"
+        # Update the previous useful line tracker
+        prev_useful_line=$curr_line_number
+    done < "$file"
 
-    print_message "$COLOR_GREEN" "Spacing check completed."
+    # Final message
+    if [[ $has_error -eq 0 ]]; then
+        print_message "$COLOR_GREEN" "Line spacing check passed."
+    else
+        print_message "$COLOR_YELLOW" "Line spacing check failed."
+    fi
+    echo ""
 }
+
 
 check_nesting_depth() {
     local file="$1"
@@ -588,7 +563,7 @@ process_checks() {
     check_large_lines "$file" "$max_line_length" "$verbose"
     check_function_length "$file" "$max_function_length" "$verbose"
     check_function_complexity "$file" "$verbose"
-    check_function_spacing "$file" "$spacing" "$verbose" 
+    check_line_spacing "$file" "$spacing" "$verbose" 
     check_best_practices "$file" "$verbose"
     check_dependencies "$file" "$verbose"
     check_todo_comments "$file" "$verbose"
