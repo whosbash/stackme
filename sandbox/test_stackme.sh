@@ -1435,6 +1435,14 @@ command() {
   return $exit_code
 }
 
+# Function to build api url
+get_api_url() {
+  protocol="$1"
+  url="$2"
+  resource="$3"
+  echo "https://$url/api/$resource"
+}
+
 # Function to handle all API requests with enhanced error handling
 request() {
   local method="$1"       # HTTP method (GET, POST, DELETE, etc.)
@@ -2923,33 +2931,40 @@ handle_arrow_key() {
   echo "$current_idx"
 }
 
+# Function to validate page number
+validate_page_number() {
+    local page_number="$1"
+    local max_page="$2"
+
+    if ! [[ "$page_number" =~ ^[1-9][0-9]*$ ]]; then
+        echo "Invalid input! Must be a number."
+        return 1
+    elif ((page_number > max_page)); then
+        echo "Page number out of range!"
+        return 1
+    fi
+    return 0
+}
+
 # Function to navigate to a specific page
 go_to_specific_page() {
   local current_idx="$1"
-  local num_options="$2"
-  local page_size="$3"
-  local title="$4"
-  local is_new_page="$5"
+  local page_size="$2"
+  local title="$3"
+  local is_new_page="$4"
   shift 5
   local menu_options=("$@")
 
-  local previous_idx=$current_idx
+  num_options=${#menu_options[@]}
+  
   echo -ne "${faded_color}Enter the page number: ${reset_color}" >&2
   read -e -r page_number  # Input with no echo
 
-  # Validate input
-  if [[ ! "$page_number" =~ ^[1-9][0-9]*$ ]]; then
-    message="Invalid input! Please enter a positive number."
-    echo -e "${error_color}${message}${reset_color}" >&2
-    return "$current_idx"
-  fi
+  # Validate page number
+  validate_page_number "$page_number" "$(((num_options - 1) / page_size + 1))"
 
-  page_number=$((page_number - 1))  # Adjust to zero-indexed
-  local max_page=$(((num_options - 1) / page_size))
-  if ((page_number > max_page)); then
-    message="Page number out of range! Valid range: 1-$((max_page + 1))."
-    echo -e "${error_color}$message${reset_color}" >&2
-    return "$current_idx"
+  if [[ $? -ne 0 ]]; then
+    return 1
   fi
 
   # Update current index to new page
@@ -2978,6 +2993,93 @@ go_to_specific_page() {
   done
 
   echo "$current_idx"
+}
+
+handle_enter_key(){
+  local menu_item="${menu_options[current_idx]}"
+
+  option_label="$(get_menu_item_label "$menu_item")"
+  question="Are you sure you want to select \"$option_label\"? (Y/n)"
+  message="${faded_color}$question${reset_color}"
+  if handle_confirmation_prompt "$message" confirm 'n'; then
+      option_action=$(get_menu_item_action )
+
+      clean_screen
+      kill_current_pid
+
+      message="\n${faded_color}Operation interrupted. Exiting script...${reset_color}"
+      command="clean_screen; error \"$message\"; return"
+      trap "$command" SIGINT
+
+      (eval "$option_action") || echo -e "$message"
+      sleep 1
+
+      trap - SIGINT
+
+      clean_screen
+  fi
+}
+
+handle_quit_key(){
+  message="${faded_color}Are you sure you want to exit this menu? (y/n)${reset_color}"
+  request_confirmation "$message" confirm_exit false
+
+  if [[ "${confirm_exit}" == "y" || "${confirm_exit}" == "Y" ]]; then
+    clean_screen
+    current_menu=$(get_current_menu)
+    pop_menu_from_history
+    previous_menu=$(get_current_menu)
+
+    if [[ "$current_menu" == "Main" ]]; then
+      message="${faded_color}Exiting program.${reset_color}"
+    else
+      message="${faded_color}Returning to $previous_menu menu.${reset_color}"
+    fi
+
+    echo -e "$message" >&2
+    sleep 0.25
+
+    return 0
+  fi
+
+  return 1
+}
+
+handle_search_key(){
+  local current_idx="$1"                    # Reference to the current index
+  local -n menu_options_ref="$2"            # Reference to the menu options array
+  local -n original_menu_options_ref="$3"   # Reference to the original menu options array
+  
+  echo -ne "${faded_color}Search: ${reset_color}" >&2
+  read -e -r search_key
+
+  # Clear the line if the prompt disappears after backspace
+  echo -ne "\033[2K\r"
+
+  if [[ "$search_key" == "r" ]]; then
+    menu_options_ref=("${original_menu_options_ref[@]}")
+    return
+  fi
+
+  local filtered_options=()
+  for option in "${original_menu_options_ref[@]}"; do
+    label=$(echo "$option" | jq -r '.label // empty')
+    description=$(echo "$option" | jq -r '.description // empty')
+    if [[ "$label" == *"$search_key"* || "$description" == *"$search_key"* ]]; then
+      filtered_options+=("$option")
+    fi
+  done
+
+  if [[ ${#filtered_options[@]} -eq 0 ]]; then
+    menu_options_ref=("${original_menu_options_ref[@]}")
+    warning "No matches found, resetting to original options."
+    sleep 0.5
+  else
+    menu_options_ref=("${filtered_options[@]}")
+    current_idx=0
+  fi
+
+  echo $current_idx
 }
 
 # Enhanced animated transition between menus with spinning loader and text effects
@@ -3024,7 +3126,10 @@ navigate_menu() {
   transition_to_menu "$menu_name"
   clean_screen
   
-  menu_json=$(get_menu "$menu_name")
+  menu_json=$(get_menu "$menu_name") || {
+    error "Failed to load menu ${menu_name}" >&2
+    return 1
+  }
 
   # If the menu_navigation_history is empty, set the first menu as the current menu
   if ! is_menu_in_history "$menu_name"; then
@@ -3047,8 +3152,7 @@ navigate_menu() {
   local original_menu_options=("${menu_options[@]}")
   local num_options=${#menu_options[@]}
 
-  local total_pages="$(calculate_total_pages "$num_options" "$page_size")" 
-  local is_new_page=1 previous_idx=0 current_idx=0
+  local total_pages is_new_page=1 previous_idx=0 current_idx=0
 
   if [[ $num_options -eq 0 ]]; then
     message="${error_color}Error: No options provided to the menu!${reset_color}"
@@ -3081,67 +3185,28 @@ navigate_menu() {
     # Save for later usage
     previous_idx=$current_idx
 
-    case "$key" in
+    case "$user_key" in
     $'\x1B')  # Detect escape sequences (e.g., arrow keys)
-      read -rsn2 -t "$debounce_time" key
-      is_new_page=$(is_new_page_handler "$key" "$current_idx" "$num_options" "$page_size")
+      read -rsn2 -t "$debounce_time" user_key
+      is_new_page=$(is_new_page_handler "$user_key" "$current_idx" "$num_options" "$page_size")
 
       # Call the function to handle arrow key input
       current_idx=$(\
-        handle_arrow_key "$key" "$current_idx" "$num_options" "$page_size" "$total_pages"
+        handle_arrow_key "$user_key" \
+          "$current_idx" "$num_options" "$page_size" "$total_pages"
       )
       ;;
 
     # Go to specific page
-    "g")  
-        previous_idx=$current_idx
-        echo -ne "${faded_color}Enter the page number: ${reset_color}" >&2
-        read -e -r page_number  # Input with no echo
-        
-        if [[ "$page_number" =~ ^[1-9][0-9]*$ ]]; then
-            page_number=$((page_number - 1))
-            local max_page=$(((num_options - 1) / page_size))
-            if ((page_number > max_page)) ; then
-                echo -e "${error_color}Page number out of range!${reset_color}" >&2
-                sleep 1
-            else
-                # Check if we're already on the same page
-                local previous_page=$((previous_idx / page_size))
-                if [[ "$previous_page" -eq "$current_page" ]]; then
-                    echo -e "${warning_color}You are already on the current page.${reset_color}" >&2
-                    sleep 1  # Wait for 1 second before doing nothing
-                    clear_below_line $menu_line_count
-                    continue  # Skip further execution to prevent changing the page
-                fi
+    "g")
+        previous_idx="$current_idx"
 
-                current_idx=$((page_number * page_size))
-                is_new_page=1
-                render_menu \
-                  "$title" "$current_idx" \
-                  "$page_size" "$is_new_page" "${menu_options[@]}"
-                while true; do
-                    message="Would you like to return to the previous menu? (y/n): "
-                    echo -ne "${faded_color}${message}${reset_color}" >&2
-                    read -r go_back_choice
-                    case "$go_back_choice" in
-                    [yY])
-                        current_idx=$previous_idx
-                        sleep 1
-                        break
-                        ;;
-                    [nN])
-                        break
-                        ;;
-                    *)
-                        echo -e "${error_color}Invalid choice!${reset_color}" >&2
-                        ;;
-                    esac
-                done
-            fi
-        else
-            echo -e "${error_color}Invalid input!${reset_color}" >&2
-            sleep 1
-        fi
+        current_idx="$(
+          go_to_specific_page "$current_idx" \
+            "$page_size" "$title" "$is_new_page" "$menu_options"
+        )"
+        
+        is_new_page="$current_idx"!="$previous_idx"  
         ;;
 
     # Reset menu options
@@ -3153,33 +3218,9 @@ navigate_menu() {
 
     # Start search
     "/")
-        echo -ne "${faded_color}Search: ${reset_color}" >&2
-        read -e -r search_key
-        # Clear the line if the prompt disappears after backspace
-        echo -ne "\033[2K\r"
-
-        if [[ "$search_key" == "r" ]]; then
-            menu_options=("${original_menu_options[@]}")
-            continue
-        fi
-
-        filtered_options=()
-        for option in "${original_menu_options[@]}"; do
-            label=$(echo "$option" | jq -r '.label // empty')
-            description=$(echo "$option" | jq -r '.description // empty')
-            if [[ "$label" == *"$search_key"* || "$description" == *"$search_key"* ]]; then
-                filtered_options+=("$option")
-            fi
-        done
-
-        if [[ ${#filtered_options[@]} -eq 0 ]]; then
-            menu_options=("${original_menu_options[@]}")
-            echo "No matches found, resetting to original options." >&2
-            sleep 0.5
-        else
-            menu_options=("${filtered_options[@]}")
-            current_idx=0
-        fi
+        current_idx=$(\
+          handle_search_key "$current_idx" menu_options original_menu_options
+        )
 
         is_new_page=1
         ;;
@@ -3193,52 +3234,13 @@ navigate_menu() {
     # Enter key (select option)
     "")
       echo >&2
-      option_label=$(get_menu_item_label "${menu_options[current_idx]}")
-      question="Are you sure you want to select \"$option_label\"? (Y/n)"
-      message="${faded_color}$question${reset_color}"
-      if handle_confirmation_prompt "$message" confirm 'n'; then
-          option_action=$(get_menu_item_action "${menu_options[current_idx]}")
-
-          clean_screen
-          kill_current_pid
-
-          message="\n${faded_color}Operation interrupted. Exiting script...${reset_color}"
-          command="clean_screen; echo -e \"$message\"; return"
-          trap "$command" SIGINT
-
-          (eval "$option_action") || echo -e "$message"
-          sleep 1
-
-          trap - SIGINT
-
-          clean_screen
-          
-      fi
+      handle_enter_key "${menu_options[current_idx]}"
       ;;
 
     # Exit menu
     "q")
-      message="${faded_color}Are you sure you want to exit this menu? (y/n)${reset_color}"
-      request_confirmation "$message" confirm_exit false
-      
-      if [[ "${confirm_exit}" == "y" || "${confirm_exit}" == "Y" ]]; then
-        clean_screen
-        current_menu=$(get_current_menu)
-        pop_menu_from_history
-        previous_menu=$(get_current_menu)
-
-        if [[ "$current_menu" == "Main" ]]; then
-          message="${faded_color}Exiting program.${reset_color}"
-        else
-          message="${faded_color}Returning to $previous_menu menu.${reset_color}"
-        fi
-
-        echo -e "$message" >&2
-        sleep 0.25
-
-        break
-      fi
-      ;;
+      [[ $(handle_quit_key) -eq 0 ]] && break || continue
+      ;; 
 
     *)
       echo >&2
