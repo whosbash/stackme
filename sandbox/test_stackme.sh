@@ -3591,7 +3591,7 @@ get_portainer_swarm_stacks() {
   )
 
   # Check if any stacks were returned
-  if [[ $stacks -eq 0 ]]; then
+  if [[ "$stacks" -eq 0 ]]; then
     echo "No stacks found or failed to retrieve stacks."
     return 1
   fi
