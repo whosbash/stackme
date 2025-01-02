@@ -3167,12 +3167,7 @@ navigate_menu() {
         "$page_size" "$is_new_page" "${menu_options[@]}"
 
     # Locking the keyboard input to avoid unnecessary display of captured characters
-    read -rsn1 key
-
-    # Clear stale characters if any
-    if [[ $? -eq 142 ]]; then
-      key=""  # Clear the key if the read command times out
-    fi
+    read -rsn1 user_key
 
     # FIXME: Header, keyboard shortcuts and page counting may be dynamic
     menu_line_count=$((page_size+7))
