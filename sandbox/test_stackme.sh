@@ -3445,7 +3445,9 @@ signup_on_portainer(){
 
   url="$(get_api_url $protocol $portainer_url $resource)"
 
-  response=$(curl -k -s -X POST "$url" -H "Content-Type: $content_type" -d "$credentials")
+  response=$(\
+    curl -k -s -X POST "$url" -H "Content-Type: $content_type" -d "$credentials"\
+  )
 
   # Check if the response indicates an existing administrator
   if [[ "$response" == *"An administrator user already exists"* ]]; then
@@ -3458,38 +3460,40 @@ signup_on_portainer(){
 # Function to retrieve a Portainer authentication token
 get_portainer_auth_token() {
   local portainer_url="$1"
-  local username="$2"
-  local password="$3"
+  local credentials="$2"
 
-  local max_attempts=3
-  local attempts=0
+  if [[ -z "$credentials" ]]; then
+    error "No credentials provided."
+    return 1
+  fi
+
+  if [[ "$credentials" != *"username"* || "$credentials" != *"password"* ]]; then
+    error "Invalid credentials format."
+    return 1
+  fi
+
+  if ! is_portainer_credentials_correct "$portainer_url" "$credentials"; then
+    error "Invalid credentials."
+    return 1
+  fi
 
   local token=""
 
   protocol="https"
   method="POST"
   content_type="application/json"
-  credentials="{\"username\":\"$username\",\"password\":\"$password\"}"
+  
   resource='auth'
-  jq_filter='.jwt'
 
   url="$(get_api_url $protocol $portainer_url $resource)"
 
-  while [[ -z "$token" || "$token" == "null" ]]; do
-    token=$(
-      curl -k -s \
-        -X POST \
-        -H "Content-Type: $content_type" \
-        -d "$credentials" "$url" |
-        jq -r .jwt
-    )
-
-    ((attempts++))
-    if [[ "$attempts" -ge "$max_attempts" ]]; then
-      exit 1
-    fi
-    wait_secs 5
-  done
+  token=$(
+    curl -k -s \
+      -X POST \
+      -H "Content-Type: $content_type" \
+      -d "$credentials" "$url" |
+      jq -r ".jwt"
+  )
 
   echo "$token"
 }
@@ -3507,7 +3511,9 @@ get_portainer_endpoint_id() {
   data="{}"
   jq_filter='.[] | select(.Name == "primary") | .Id'
 
-  url="$(get_api_url $protocol $portainer_url $resource)"
+  url="$(\
+    get_api_url "$protocol" "$portainer_url" "$resource" \
+  )"
 
   endpoint_id="$(
     filtered_request "$method" "$url" "$token" "$content_type" "$data" "$jq_filter"
@@ -3532,7 +3538,9 @@ get_portainer_swarm_id() {
   content_type='application/json'
   jq_filter='.ID'
 
-  url="$(get_api_url $protocol $portainer_url $resource)"
+  url="$(\
+    get_api_url "$protocol" "$portainer_url" "$resource" \
+  )"
 
   local swarm_id
   swarm_id=$(
@@ -3562,14 +3570,15 @@ get_portainer_swarm_stacks() {
   content_type='application/json'
   jq_filter='.ID'
 
-  url="$(get_api_url $protocol $portainer_url $resource)"
+  url="$(\
+    get_api_url "$protocol" "$portainer_url" "$resource"
+  )"
 
   local swarm_id
   stacks=$(
-    filtered_request \
-      "$method" "$url" \
+    request "$method" "$url" \
       "$token" "$content_type" \
-      "$resource" "$data"
+      "$data"
   )
 
   # Check if any stacks were returned
@@ -3587,45 +3596,53 @@ check_portainer_stack_exists() {
   local token="$2"
   local stack_name="$3"
 
-  # Fetch stack names and check if the specified stack exists
-  protocol='https'
-  method="GET"
-  resource="stacks"
-  content_type='application/json'
-  data='{}'
-  jq_query=".[] | select(.Name == \"$stack_name\") | .Id"
+  if [[ "$token" != "" ]]; then
+    # Fetch stack names and check if the specified stack exists
+    protocol='https'
+    method="GET"
+    resource="stacks"
+    content_type='application/json'
+    data='{}'
+    jq_query=".[] | select(.Name == \"$stack_name\") | .Id"
 
-  url="$(get_api_url $protocol $portainer_url $resource)"
+    url="$(get_api_url $protocol $portainer_url $resource)"
 
-  # Fetch the stack ID using filtered_request
-  local stack_id
-  stack_id=$(
-    filtered_request \
-      "GET" \
-      "$(get_api_url 'https' $portainer_url "stacks")" \
-      "$token" "application/json" "{}" \
-      ".[] | select(.Name == \"$stack_name\") | .Id"
-  )
+    # Fetch the stack ID using filtered_request
+    local stack_id
+    stack_id=$(
+      filtered_request "$method" "$url" "$token" "$content_type" "$data" "$jq_query"
+    )
 
-  # Check if stack ID was retrieved
-  if [[ -z "$stack_id" ]]; then
-    echo ""
+    # Check if stack ID was retrieved
+    if [[ -z "$stack_id" ]]; then
+      echo ""
+      return 1
+    fi
+
+    # If stack ID is found, return the ID
+    echo "$stack_id"
+    return 0
+  else
+    error "Portainer token is not provided. Skipping stack check."
     return 1
   fi
-
-  # If stack ID is found, return the ID
-  echo "$stack_id"
-  return 0
 }
 
 # Function to upload a stack
 upload_stack_on_portainer() {
   local portainer_url="$1"
-  local token="$2"
+  local credentials="$2"
   local stack_name="$3"
   local compose_file="$4"
 
   highlight "Uploading stack $stack_name on Portainer $portainer_url"
+
+  token="$(get_portainer_auth_token "$portainer_url" "$credentials")"
+
+  if [[ -z "$token" ]] || [[ "$token" == "" ]]; then
+    error "Failed to retrieve Portainer token."
+    return 1
+  fi
 
   # Swarm ID and endpoint id is required for Swarm stack deployments
   local swarm_id
@@ -3646,21 +3663,15 @@ upload_stack_on_portainer() {
   info "Uploading stack: ${stack_name}..."
   resource="stacks/create/swarm/file"
   content_type="application/json"
-
-  form_data=(
-      -F "Name=$STACK_NAME"
-      -F "file=@$(pwd)/$STACK_NAME.yaml"
-      -F "SwarmID=$SWARM_ID"
-      -F "endpointId=$ENDPOINT_ID"
-  )
+  url="$(get_api_url "https" "$portainer_url" "$resource")"
 
   curl -s -k -X POST \
     -H "Authorization: Bearer $token" \
     -F "Name=$stack_name" \
-    -F "file=@$(pwd)/sandbox/$stack_name.yaml" \
+    -F "file=@$compose_file" \
     -F "SwarmID=$swarm_id" \
     -F "endpointId=$endpoint_id" \
-    "https://$portainer_url/api/stacks/create/swarm/file" &&
+    "$url" &&
     success "Stack '$stack_name' uploaded successfully." ||
     error "Failed to upload stack '$stack_name'."
 
@@ -3706,11 +3717,9 @@ delete_stack_on_portainer() {
   resource="stacks/${stack_id}?endpointId=${endpoint_id}"
   url="$(get_api_url $protocol $portainer_url $resource)"
 
-  if filtered_request "DELETE" "$url" "$token" "application/json"; then
-    success "Stack '${stack_name}' deleted successfully."
-  else
-    error "Failed to delete stack '${stack_name}'."
-  fi
+  request "DELETE" "$url" "$token" "application/json" &&
+    success "Stack '$stack_name' deleted successfully." ||
+    error "Failed to delete stack '$stack_name'."
 }
 
 ############################## Deployment Functions ###############################
