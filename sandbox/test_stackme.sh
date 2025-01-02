@@ -4182,6 +4182,8 @@ initialize_server_info() {
 compose_traefik() {
   CERT_PATH="/etc/traefik/letsencrypt/acme.json"
   cat <<EOL
+version: '3'
+
 services:
 
   traefik:
@@ -4236,7 +4238,6 @@ services:
         - "traefik.http.routers.http-catchall.middlewares=redirect-https@docker"
         - "traefik.http.routers.http-catchall.priority=1"
 
-
 volumes:
   vol_shared:
     external: true
@@ -4249,13 +4250,14 @@ networks:
   {{network_name}}:
     external: true
     attachable: true
-    name: {{network_name}}
 EOL
 }
 
 # Function to generate compose file for Portainer
 compose_portainer() {
   cat <<EOL
+version: '3'
+
 services:
 
   agent:
@@ -4299,7 +4301,6 @@ services:
         - "traefik.http.routers.portainer.entrypoints=websecure"
         - "traefik.http.routers.portainer.priority=1"
 
-
 volumes:
   portainer_data:
     external: true
@@ -4308,13 +4309,14 @@ networks:
   {{network_name}}:
     external: true
     attachable: true
-    name: {{network_name}}
 EOL
 }
 
 # Function to generate compose file for Redis
 compose_redis() {
   cat <<EOL
+version: '3'
+
 services:
   redis:
     image: redis:{{image_version}}
@@ -4345,6 +4347,8 @@ EOL
 # Function to generate compose file for Postgres
 compose_postgres() {
   cat <<EOL
+version: '3'
+
 services:
   postgres:
     image: postgres:{{image_version}}
@@ -4367,6 +4371,32 @@ networks:
   {{network_name}}:
     external: true
     name: {{network_name}}
+EOL
+}
+
+compose_whomai(){
+  cat <<EOL
+version: '3'
+
+services:
+  whoami:
+    image: traefik/whoami:v1.10
+    hostname: '{{.Node.Hostname}}'
+    networks:
+      - {{network_name}}
+    deploy:
+      mode: global
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.whoami.rule=Host(\`{{domain_hostname}}\`)
+        - traefik.http.routers.whoami.entrypoints=websecure
+        - traefik.http.routers.whoami.priority=1
+        - traefik.http.routers.whoami.tls.certresolver=letsencryptresolver
+        - traefik.http.services.whoami.loadbalancer.server.port='80'
+
+networks:
+  {{network_name}}:
+    external: true
 EOL
 }
 
