@@ -4769,9 +4769,15 @@ deploy_stack_redis() {
 define_menu_main(){
   menu_name="Main"
 
-  item_1="$(build_menu_item "Menu 1" "Options of Menu 1" "navigate_menu 'Menu 1'")"
-  item_2="$(build_menu_item "Menu 2" "Options of Menu 2" "navigate_menu 'Menu 2'")"
-  item_3="$(build_menu_item "VPS Health" "diagnose" "navigate_menu 'VPS health'")"
+  item_1="$(\
+    build_menu_item "Menu 1" "Options of Menu 1" "navigate_menu 'Menu 1'"\
+  )"
+  item_2="$(\
+    build_menu_item "Menu 2" "Options of Menu 2" "navigate_menu 'Menu 2'"\
+  )"
+  item_3="$(\
+    build_menu_item "VPS Health" "diagnose" "navigate_menu 'VPS health'"\
+  )"
   
   page_size=5
 
@@ -4790,11 +4796,21 @@ define_menu_1(){
       "Very long description 1.1 to allow truncation on the menu selection 123567890" \
       "echo 'Option 1.1 selected' >&2"
   )"
-  item_2="$(build_menu_item "Option 1.2" "Description 1.2" "echo 'Option 1.2 selected' >&2")"
-  item_3="$(build_menu_item "Option 1.3" "Description 1.3" "echo 'Option 1.3 selected' >&2")"
-  item_4="$(build_menu_item "Option 1.4" "Description 1.4" "echo 'Option 1.4 selected' >&2")"
-  item_5="$(build_menu_item "Option 1.5" "Description 1.5" "echo 'Option 1.5 selected' >&2")"
-  item_6="$(build_menu_item "Option 1.6" "Description 1.6" "echo 'Option 1.6 selected' >&2")"
+  item_2="$(/
+    build_menu_item "Option 1.2" "Description 1.2" "echo 'Option 1.2 selected' >&2" /
+  )"
+  item_3="$(/
+    build_menu_item "Option 1.3" "Description 1.3" "echo 'Option 1.3 selected' >&2" /
+  )"
+  item_4="$(/
+    build_menu_item "Option 1.4" "Description 1.4" "echo 'Option 1.4 selected' >&2" /
+  )"
+  item_5="$(/
+    build_menu_item "Option 1.5" "Description 1.5" "echo 'Option 1.5 selected' >&2" /
+  )"
+  item_6="$(/
+    build_menu_item "Option 1.6" "Description 1.6" "echo 'Option 1.6 selected' >&2" /
+  )"
 
   page_size=5
 
@@ -4817,12 +4833,30 @@ define_menu_2(){
       "Very long description 2.1 to allow truncation on the menu selection 123567890" \
       "echo 'Option 2.1 selected' >&2"
   )"
-  item_2="$(build_menu_item "Option 2.2" "Description 2.2" "echo 'Option 2.2 selected' >&2")"
-  item_3="$(build_menu_item "Option 2.3" "Description 2.3" "echo 'Option 2.3 selected' >&2")"
-  item_4="$(build_menu_item "Option 2.4" "Description 2.4" "echo 'Option 2.4 selected' >&2")"
-  item_5="$(build_menu_item "Option 2.5" "Description 2.5" "echo 'Option 2.5 selected' >&2")"
-  item_6="$(build_menu_item "Option 2.6" "Description 2.6" "echo 'Option 2.6 selected' >&2")"
-  item_7="$(build_menu_item "Option 2.7" "Description 2.7" "echo 'Option 2.7 selected' >&2")"
+  item_2="$(\
+    build_menu_item "Option 2.2" \
+      "Description 2.2" "echo 'Option 2.2 selected' >&2"\
+  )"
+  item_3="$(\
+    build_menu_item "Option 2.3" \
+      "Description 2.3" "echo 'Option 2.3 selected' >&2"\
+  )"
+  item_4="$(\
+    build_menu_item "Option 2.4" \
+      "Description 2.4" "echo 'Option 2.4 selected' >&2"\
+  )"
+  item_5="$(\
+    build_menu_item "Option 2.5" \
+      "Description 2.5" "echo 'Option 2.5 selected' >&2"\
+  )"
+  item_6="$(\
+    build_menu_item "Option 2.6" \
+      "Description 2.6" "echo 'Option 2.6 selected' >&2"\
+  )"
+  item_7="$(\
+    build_menu_item "Option 2.7" \
+      "Description 2.7" "echo 'Option 2.7 selected' >&2"\
+  )"
 
   page_size=5
 
