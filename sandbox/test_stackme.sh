@@ -1080,7 +1080,7 @@ to_boolean() {
   [[ "$1" -ne 0 ]] && echo "true" || echo "false"
 }
 
-############################# end OF GENERAL UTILITARY FUNCTIONS #############################
+############################# END OF GENERAL UTILITARY FUNCTIONS #############################
 
 ############################## BEGIN OF EMAIL-RELATED FUNCTIONS ##############################
 
@@ -1789,7 +1789,7 @@ validate_smtp_port() {
 
 ################################# END OF VALIDATION-RELATED FUNCTION ##############################
 
-########################## Prompt Functions ##########################
+############################### BEGIN OF GENERAL UTILITARY FUNCTIONS #############################
 
 # Function to validate the input and return errors for invalid fields
 validate_value() {
