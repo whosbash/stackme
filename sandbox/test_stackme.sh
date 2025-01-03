@@ -938,6 +938,15 @@ extract_field() {
   echo "$json" | jq -r ".[].$field"
 }
 
+get_variable_value_from_collection(){
+  local collected_items="$1"
+  local variable_name="$2"
+
+  echo "$(\
+    search_on_json_array "$collected_items" 'name' "$variable_name" | jq -r ".value"
+  )"
+}
+
 # Function to add a JSON object to an array
 append_to_json_array() {
   local json_array="$1"
@@ -2111,6 +2120,34 @@ wait_for_input() {
   # Display the prompt message and wait for user input
   prompt_message="$(format "question" "$prompt_message")"
   read -rp "$prompt_message" user_input
+}
+
+# Function to handle exit codes and display success or failure messages
+handle_exit() {
+  local exit_code="$1"
+  local current_step="$2" # Current step index (e.g., 3)
+  local total_steps="$3"  # Total number of steps (e.g., 4)
+  local message="$4"      # Descriptive message for success or failure
+
+  # Validate that current step is less than or equal to total steps
+  if [ "$current_step" -gt "$total_steps" ]; then
+    warning "Current step ($current_step) exceeds total steps ($total_steps)."
+  fi
+
+  local status="success"
+  local status_message="$message succeeded"
+
+  if [ "$exit_code" -ne 0 ]; then
+    status="error"
+    status_message="$message failed"
+    error "Error Code: $exit_code"
+  fi
+  step "$current_step" "$total_steps" "$status_message" "$status"
+
+  # Exit with failure if there's an error
+  if [ "$status" == "error" ]; then
+    exit 1
+  fi
 }
 
 ####################################################################
@@ -3516,7 +3553,8 @@ get_portainer_endpoint_id() {
   )"
 
   endpoint_id="$(
-    filtered_request "$method" "$url" "$token" "$content_type" "$data" "$jq_filter"
+    filtered_request "$method" "$url" "$token" \
+      "$content_type" "$data" "$jq_filter"
   )"
 
   if [[ -z "$endpoint_id" ]]; then
@@ -3610,7 +3648,8 @@ check_portainer_stack_exists() {
     # Fetch the stack ID using filtered_request
     local stack_id
     stack_id=$(
-      filtered_request "$method" "$url" "$token" "$content_type" "$data" "$jq_query"
+      filtered_request "$method" "$url" "$token" \
+        "$content_type" "$data" "$jq_query"
     )
 
     # Check if stack ID was retrieved
@@ -3722,6 +3761,8 @@ delete_stack_on_portainer() {
     error "Failed to delete stack '$stack_name'."
 }
 
+###################################################################################
+
 ############################## Deployment Functions ###############################
 
 # Function to display a deploy failed message
@@ -3827,6 +3868,30 @@ execute_set_up_action() {
   # Check if the command executed successfully and handle exit
   local exit_code=$?
 }
+
+# Function to deploy a traefik service
+deploy_stack_pipeline() {
+  local stack_name="$1"
+
+  # Generate the n8n service JSON configuration using the helper function
+  local config_json
+  config_json=$(generate_config_traefik)
+
+  if [ -z "$config_json" ]; then
+    failed_stack_configuration_message "$stack_name"
+    return 1
+  fi
+
+  # Check required fields
+  validate_stack_config "$stack_name" "$config_json"
+
+  echo "$config_json" >&2
+
+  # Deploy the n8n service using the JSON
+  build_and_deploy_stack "$stack_name" "$config_json"
+}
+
+################################################################################
 
 # Function to generate HTML for an email
 email_test_hmtl() {
@@ -4008,9 +4073,8 @@ update_and_install_packages() {
 
   # Install required apt packages quietly
   packages=(
-    "sudo" "apt-utils" "apparmor-utils" "jq" 
-    "python3" "docker" "figlet" "swaks" "netcat"
-    "vnstat"
+    "sudo" "apt-utils" "apparmor-utils" "jq" "python3" 
+    "docker" "figlet" "swaks" "netcat" "vnstat"
   )
   step_message="Installing required apt-get packages"
   step_progress 3 $total_steps "$step_message"
@@ -4034,37 +4098,37 @@ clean_docker_environment() {
 install_docker() {
   # Ensure the script is running with elevated privileges
   if [[ $EUID -ne 0 ]]; then
-    echo "Error: This script must be run as root or with sudo." >&2
+    error "This script must be run as root or with sudo." >&2
     return 1
   fi
 
-  echo "Installing Docker..."
+  info "Installing Docker..."
 
   # Download and execute the Docker installation script
   if curl -fsSL https://get.docker.com | bash > /dev/null 2>&1; then
-    echo "Docker installation script executed successfully."
+    success "Docker installation script executed successfully."
   else
-    echo "Failed to download or execute the Docker installation script." >&2
+    failure "Failed to download or execute the Docker installation script." >&2
     return 1
   fi
 
   # Enable Docker service
   if systemctl enable docker > /dev/null 2>&1; then
-    echo "Docker service enabled to start on boot."
+    success "Docker service enabled to start on boot."
   else
-    echo "Failed to enable Docker service." >&2
+    failure "Failed to enable Docker service." >&2
     return 1
   fi
 
   # Start Docker service
   if systemctl start docker > /dev/null 2>&1; then
-    echo "Docker service started successfully."
+    success "Docker service started successfully."
   else
-    echo "Failed to start Docker service." >&2
+    failure "Failed to start Docker service." >&2
     return 1
   fi
 
-  echo "Docker installation and setup completed successfully."
+  success "Docker installation and setup completed successfully."
   return 0
 }
 
@@ -4189,6 +4253,7 @@ initialize_server_info() {
 # Function to generate compose file for Traefik
 compose_traefik() {
   CERT_PATH="/etc/traefik/letsencrypt/acme.json"
+  
   cat <<EOL
 version: '3'
 
@@ -4458,43 +4523,6 @@ create_postgres_database() {
   fi
 }
 
-# Function to handle exit codes and display success or failure messages
-handle_exit() {
-  local exit_code="$1"
-  local current_step="$2" # Current step index (e.g., 3)
-  local total_steps="$3"  # Total number of steps (e.g., 4)
-  local message="$4"      # Descriptive message for success or failure
-
-  # Validate that current step is less than or equal to total steps
-  if [ "$current_step" -gt "$total_steps" ]; then
-    warning "Current step ($current_step) exceeds total steps ($total_steps)."
-  fi
-
-  local status="success"
-  local status_message="$message succeeded"
-
-  if [ "$exit_code" -ne 0 ]; then
-    status="error"
-    status_message="$message failed"
-    error "Error Code: $exit_code"
-  fi
-  step "$current_step" "$total_steps" "$status_message" "$status"
-
-  # Exit with failure if there's an error
-  if [ "$status" == "error" ]; then
-    exit 1
-  fi
-}
-
-get_variable_value(){
-  local collected_items="$1"
-  local variable_name="$2"
-
-  echo "$(\
-    search_on_json_array "$collected_items" 'name' "$variable_name" | jq -r ".value"
-  )"
-}
-
 get_network_name(){
   server_info_filename='server_info.json'
   server_info_json="$(cat "$server_info_filename")"
@@ -4530,7 +4558,9 @@ generate_config_traefik() {
     return 1
   fi
 
-  email_ssl="$(get_variable_value "$collected_items" "email_ssl")"
+  email_ssl="$(\
+    get_variable_value_from_collection "$collected_items" "email_ssl"
+  )"
 
   # Ensure everything is quoted correctly
   jq -n \
@@ -4587,7 +4617,9 @@ generate_config_portainer() {
     return 1
   fi
 
-  portainer_url="$(get_variable_value "$collected_items" "portainer_url")"
+  portainer_url="$(\
+    get_variable_value_from_collection "$collected_items" "portainer_url" \
+  )"
 
   # Ensure everything is quoted correctly
   jq -n \
@@ -4631,12 +4663,12 @@ generate_config_redis() {
 
   jq -n \
     --arg stack_name "$stack_name" \
-    --arg image_name "$stack_name_$image_version" \
+    --arg image_name "${stack_name}_${image_version}" \
     --arg image_version "$image_version" \
     --arg container_name "$stack_name" \
     --arg container_port "$container_port" \
     --arg redis_url "redis://redis:$container_port" \
-    --arg volume_name "$stack_name_data" \
+    --arg volume_name "${stack_name}_data" \
     --arg network_name "$network_name" \
     '{
             "name": $stack_name,
@@ -4668,11 +4700,10 @@ generate_config_postgres() {
     --arg stack_name "$stack_name" \
     --arg image_name "${stack_name}_$image_version" \
     --arg image_version "$image_version" \
-    --arg container_name "$service_name" \
-    --arg container_potr "$container_port" \
+    --arg container_port "$container_port" \
     --arg db_user "$postgres_user" \
     --arg db_password "$postgres_password" \
-    --arg volume_name "${service_name}_data" \
+    --arg volume_name "${stack_name}_data" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
@@ -4680,7 +4711,6 @@ generate_config_postgres() {
               "stack_name": $stack_name,
               "image_name": $image_name,
               "image_version": $image_version,
-              "container_name": $container_name,
               "container_port": $container_port,
               "volume_name": $volume_name,
               "network_name": $network_name,
@@ -4699,7 +4729,7 @@ generate_config_whoami() {
   network_name="$(get_network_name)"
 
   jq -n \
-    --arg stack_name "$stack_name" \s
+    --arg stack_name "$stack_name" \
     --arg container_port "$container_port" \
     --arg network_name "$network_name" \
     '{
@@ -4718,28 +4748,6 @@ generate_config_whoami() {
 #################################### END OF STACK CONFIGURATION ###################################
 
 ################################# BEGIN OF STACK DEPLOYMENT FUNCTIONS #############################
-
-# Function to deploy a traefik service
-deploy_stack_pipeline() {
-  local stack_name="$1"
-
-  # Generate the n8n service JSON configuration using the helper function
-  local config_json
-  config_json=$(generate_config_traefik)
-
-  if [ -z "$config_json" ]; then
-    failed_stack_configuration_message "$stack_name"
-    return 1
-  fi
-
-  # Check required fields
-  validate_stack_config "$stack_name" "$config_json"
-
-  echo "$config_json" >&2
-
-  # Deploy the n8n service using the JSON
-  build_and_deploy_stack "$stack_name" "$config_json"
-}
 
 # Function to deploy a traefik service
 deploy_stack_traefik() {
@@ -4761,7 +4769,7 @@ deploy_stack_redis() {
   deploy_stack_pipeline 'redis'
 }
 
-#############################################################################
+################################################################################
 
 ############################ Menu Functions ####################################
 
@@ -4797,7 +4805,10 @@ define_menu_1(){
       "echo 'Option 1.1 selected' >&2"
   )"
   item_2="$(/
-    build_menu_item "Option 1.2" "Description 1.2" "echo 'Option 1.2 selected' >&2" /
+    build_menu_item \
+    "Option 1.2" \
+    "Very long description 1.2 to allow truncation on the menu selection 123567890" \
+    "echo 'Option 1.2 selected' >&2" /
   )"
   item_3="$(/
     build_menu_item "Option 1.3" "Description 1.3" "echo 'Option 1.3 selected' >&2" /
@@ -4834,8 +4845,10 @@ define_menu_2(){
       "echo 'Option 2.1 selected' >&2"
   )"
   item_2="$(\
-    build_menu_item "Option 2.2" \
-      "Description 2.2" "echo 'Option 2.2 selected' >&2"\
+    build_menu_item \
+      "Option 2.2" \
+      "Very long description 2.2 to allow truncation on the menu selection 123567890" \
+      "echo 'Option 2.2 selected' >&2"\
   )"
   item_3="$(\
     build_menu_item "Option 2.3" \
@@ -4892,14 +4905,20 @@ define_menu_vps_health(){
     build_menu_item "Top Processes" "Processes sorted by CPU and memory usage" \
     "top_processes && press_any_key" \
   )"
-  item_6="$(build_menu_item "Security Diagnostics" "" \
+  item_6="$(\
+    build_menu_item "Security Diagnostics" "" \
     "security_diagnostics && press_any_key")"
-  item_7="$(build_menu_item "Load Average" "" \
+  item_7="$(\
+    build_menu_item "Load Average" "" \
     "load_average && press_any_key")"
-  item_8="$(build_menu_item "Bandwidth Usage" "" \
-    "bandwidth_usage && press_any_key")"
-  item_9="$(build_menu_item "Package Updates" "" \
-    "update_and_check_vps_packages && press_any_key")"
+  item_8="$(\
+    build_menu_item "Bandwidth Usage" "" \
+    "bandwidth_usage && press_any_key"\
+  )"
+  item_9="$(\
+    build_menu_item "Package Updates" "" \
+    "update_and_check_vps_packages && press_any_key" \
+  )"
 
   page_size=5
 
