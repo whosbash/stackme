@@ -1319,17 +1319,6 @@ update_and_check_vps_packages() {
 
 #######################################################################################
 
-# Function to prompt user and wait for any key press
-press_any_key() {
-    # Prompt user and wait for any key press
-    echo -e "${highlight_color}Press any key to continue...${normal}"
-    
-    # Wait for a single key press without the need to press Enter
-    read -n 1 -s  # -n 1 means read one character, -s means silent mode (no echo)
-    
-    # Newline for better readability after key press
-    echo ""
-}
 
 # Function to show help
 show_help() {
@@ -1653,6 +1642,153 @@ create_network_if_not_exists() {
   fi
 }
 
+################################ BEGIN OF VALIDATION-RELATED FUNCTION #############################
+
+# Function to validate empty values
+validate_empty_value() {
+  local value="$1"
+  if [[ -z "$value" ]]; then
+    echo "The value is empty or not set."
+    return 1
+  else
+    return 0
+  fi
+}
+
+# Function to validate name values with extensive checks
+validate_name_value() {
+  local value="$1"
+
+  # Check if the name starts with a number
+  if [[ "$value" =~ ^[0-9] ]]; then
+    echo "The value '$value' should not start with a number."
+    return 1
+  fi
+
+  # Check if the name contains invalid characters
+  if [[ ! "$value" =~ ^[a-zA-Z0-9][a-zA-Z0-9@#\&*_-]*$ ]]; then
+    allowed_chars="'@', '#', '&', '*', '_', '-'"
+    criterium="Only letters, numbers, and the characters $allowed_chars are allowed."
+    error_message="The value '$value' contains invalid characters."
+    echo "$error_message $criterium"
+    return 1
+  fi
+
+  # Check if the name is too short (less than 3 characters)
+  if ((${#value} < 3)); then
+    echo "The value '$value' is too short. It must be at least 3 characters long."
+    return 1
+  fi
+
+  # Check if the name is too long (more than 50 characters)
+  if ((${#value} > 50)); then
+    echo "The value '$value' is too long. It must be at most 50 characters long."
+    return 1
+  fi
+
+  # Check for spaces in the name
+  if [[ "$value" =~ [[:space:]] ]]; then
+    echo "The value '$value' contains spaces. Spaces are not allowed."
+    return 1
+  fi
+
+  # If all validations pass
+  return 0
+}
+
+# Function to validate email values
+validate_email_value() {
+  local value="$1"
+
+  # Check if the value matches an email pattern
+  if [[ ! "$value" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+    echo "The value '$value' is not a valid email address."
+    return 1
+  fi
+
+  return 0
+}
+
+# Function to validate url suffix
+validate_url_suffix() {
+  local value="$1"
+
+  # Regular expression to match the part after "https://"
+  local url_suffix_regex="^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(/.*)?$"
+
+  # Check if the value matches the suffix pattern
+  if [[ ! "$value" =~ $url_suffix_regex ]]; then
+    echo "The value '$value' is not a valid URL suffix (domain and optional path)."
+    return 1
+  fi
+
+  return 0
+}
+
+# Function to validate integer values
+validate_integer_value() {
+  local value="$1"
+
+  # Check if the value is an integer (allow negative and positive integers)
+  if [[ ! "$value" =~ ^-?[0-9]+$ ]]; then
+    echo "The value '$value' is not a valid integer."
+    return 1
+  fi
+
+  return 0
+}
+
+# Function to validate port availability
+validate_port_availability() {
+  local port="$1"
+
+  # Check if the port is a valid number between 1 and 65535
+  if [[ ! "$port" =~ ^[0-9]+$ ]] || ((port < 1 || port > 65535)); then
+    explanation="Port numbers must be between 1 and 65535."
+    echo "The value '$port' is not a valid port number. $explanation"
+    return 1
+  fi
+
+  # Use netcat (nc) to check if the port is open on localhost
+  # The -z flag checks if the port is open (without sending data)
+  # The -w1 flag specifies a timeout of 1 second
+  nc -z -w1 127.0.0.1 "$port" 2>/dev/null
+
+  # Check the result of the netcat command
+  if [[ $? -eq 0 ]]; then
+    echo "The port '$port' is already in use."
+    return 1
+  else
+    echo "The port '$port' is available."
+    return 0
+  fi
+}
+
+# Function to validate SMTP server connectivity
+validate_smtp_server() {
+    local server=$1
+    if ping -c 1 "$server" >/dev/null 2>&1; then
+        echo "SMTP server $server is reachable."
+    else
+        echo "Unable to reach SMTP server $server. Please check the server address."
+        exit 1
+    fi
+}
+
+# Function to validate SMTP port
+validate_smtp_port() {
+    local server=$1
+    local port=$2
+    if nc -z "$server" "$port" >/dev/null 2>&1; then
+        echo "SMTP port $port is open on $server."
+    else
+        echo "SMTP port $port is not reachable on $server. Please check the port."
+        exit 1
+    fi
+}
+
+################################# END OF VALIDATION-RELATED FUNCTION ##############################
+
 ########################## Prompt Functions ##########################
 
 # Function to validate the input and return errors for invalid fields
@@ -1871,7 +2007,7 @@ validate_stack_config() {
   local config_json="$2"
 
   # Get required fields from the stack template
-  required_fields=$(list_stack_required_fields "$stack_name")
+  required_fields=$(list_stack_compose_required_fields "$stack_name")
 
   # Generate the JSON schema
   schema=$(generate_config_schema "$required_fields")
@@ -2122,6 +2258,18 @@ wait_for_input() {
   read -rp "$prompt_message" user_input
 }
 
+# Function to prompt user and wait for any key press
+press_any_key() {
+    # Prompt user and wait for any key press
+    echo -e "${highlight_color}Press any key to continue...${normal}"
+    
+    # Wait for a single key press without the need to press Enter
+    read -n 1 -s  # -n 1 means read one character, -s means silent mode (no echo)
+    
+    # Newline for better readability after key press
+    echo ""
+}
+
 # Function to handle exit codes and display success or failure messages
 handle_exit() {
   local exit_code="$1"
@@ -2152,7 +2300,7 @@ handle_exit() {
 
 ####################################################################
 
-########################## Menu Functions ##########################
+######################################## BEGIN OF MENU UTILS #######################################
 
 # Function to get the label of a menu item
 get_menu_item_label() {
@@ -3040,7 +3188,7 @@ handle_enter_key(){
   question="Are you sure you want to select \"$option_label\"? (Y/n)"
   message="${faded_color}$question${reset_color}"
   if handle_confirmation_prompt "$message" confirm 'n'; then
-      option_action=$(get_menu_item_action )
+      option_action=$(get_menu_item_action "$menu_item")
 
       clean_screen
       kill_current_pid
@@ -3160,6 +3308,8 @@ transition_to_menu() {
 navigate_menu() {
   local menu_name="$1"
 
+  echo "$menu_name" >&2
+
   clean_screen
   transition_to_menu "$menu_name"
   clean_screen
@@ -3272,8 +3422,14 @@ navigate_menu() {
 
     # Exit menu
     "q")
-      [[ $(handle_quit_key) -eq 0 ]] && break || continue
-      ;; 
+      handle_quit_key
+
+      if [[ "$?" -eq 0 ]]; then
+        break
+      else
+        continue
+      fi
+      ;;
 
     *)
       echo >&2
@@ -3289,9 +3445,9 @@ navigate_menu() {
   done
 }
 
-############################# End of Menu Utility Functions ############################
+######################################### END OF MENU UTILS ########################################
 
-################################ Docker Utility Functions ##############################
+################################## BEGIN OF DOCKER DEPLOYMENT UTILS ################################
 
 # Function to get the latest stable version
 get_latest_stable_version() {
@@ -3391,7 +3547,7 @@ list_stack_services() {
 }
 
 # Function to list the required fields on a stack docker-compose
-list_stack_required_fields() {
+list_stack_compose_required_fields() {
   local stack_name="$1"
   local function_name="compose_${stack_name}"
 
@@ -3428,7 +3584,9 @@ deploy_stack_on_swarm() {
   fi
 }
 
-################################# Portainer Functions ################################
+################################### END OF DOCKER DEPLOYMENT UTILS ################################
+
+################################ BEGIN OF PORTAINER DEPLOYMENT UTILS ##############################
 
 # Function to check if Portainer credentials are correct
 is_portainer_credentials_correct() {
@@ -3761,9 +3919,9 @@ delete_stack_on_portainer() {
     error "Failed to delete stack '$stack_name'."
 }
 
-###################################################################################
+################################# END OF PORTAINER DEPLOYMENT UTILS ###############################
 
-############################## Deployment Functions ###############################
+############################### BEGIN OF GENERAL DEPLOYMENT FUNCTIONS #############################
 
 # Function to display a deploy failed message
 deploy_failed_message() {
@@ -3891,7 +4049,48 @@ deploy_stack_pipeline() {
   build_and_deploy_stack "$stack_name" "$config_json"
 }
 
-################################################################################
+################################ END OF GENERAL DEPLOYMENT FUNCTIONS ##############################
+
+####################################### BEGIN OF E-MAIL UTILS #####################################
+
+# Function to send a test email using swaks
+send_email() {
+    local from_email=$1
+    local to_email=$2
+    local server=$3
+    local port=$4
+    local user=$5
+    local pass=$6
+    local subject=$7
+    local body=$8
+
+    info "Sending test email..."
+
+    # Attempt to send the email using swaks and capture output and error details
+    local output
+    output=$(swaks \
+        --to "$to_email" \
+        --from "$from_email" \
+        --server "$server" \
+        --port "$port" \
+        --auth LOGIN --auth-user "$user" \
+        --auth-password "$pass" \
+        --tls \
+        --header "Subject: $subject" \
+        --header "Content-Type: text/html; charset=UTF-8" \
+        --data "Content-Type: text/html; charset=UTF-8\n\n$body" 2>&1)
+
+    # Capture the exit status of the swaks command
+    local status=$?
+
+    # Check if the email was sent successfully
+    if [ $status -eq 0 ]; then
+        success "Test email sent successfully to $to_email."
+    else
+        error "Failed to send test email. Details: $output"
+        exit $status
+    fi
+}
 
 # Function to generate HTML for an email
 email_test_hmtl() {
@@ -3999,6 +4198,62 @@ email_test_hmtl() {
 </body>
 </html>"
 }
+
+test_smtp_email(){
+  items='[
+      {
+          "name": "smtp_server",
+          "label": "SMTP server",
+          "description": "Server to receive SMTP requests",
+          "required": "yes",
+          "validate_fn": "validate_smtp_server",
+          "default_value": "smtp.gmail.com"
+      },
+      {
+          "name": "smtp_port",
+          "label": "SMTP port",
+          "description": "Port on SMTP server",
+          "required": "yes",
+          "validate_fn": "validate_integer_value",
+          "default_value": 587
+      },
+      {
+          "name": "username",
+          "label": "SMTP username",
+          "description": "Username of SMTP server",
+          "required": "yes",
+          "validate_fn": "validate_email_value" 
+      },
+      {
+          "name": "password",
+          "label": "SMTP password",
+          "description": "Password of SMTP server",
+          "required": "yes",
+          "validate_fn": "validate_empty_value" 
+      }
+  ]'
+
+  collected_items="$(run_collection_process "$items")"
+
+  if [[ "$collected_items" == "[]" ]]; then
+    error "Unable to retrieve SMTP test configuration."
+    return 1
+  fi
+
+  smtp_server="$(search_on_json_array "$collected_items" 'name' 'smtp_server' | jq -r ".value")"
+  smtp_port="$(search_on_json_array "$collected_items" 'name' 'smtp_port' | jq -r ".value")"
+  username="$(search_on_json_array "$collected_items" 'name' 'username' | jq -r ".value")"
+  password="$(search_on_json_array "$collected_items" 'name' 'password' | jq -r ".value")"
+
+  subject="Setup test e-mail"
+  body="$(email_test_hmtl)"
+
+  send_email \
+    "$username" "$username" "$smtp_server" "$smtp_port" \
+    "$username" "$password" "$subject" "$body"
+}
+
+######################################## END OF E-MAIL UTILS ######################################
 
 ###################################### BEGIN OF SETUP FUNCTIONS ###################################
 
@@ -4568,14 +4823,14 @@ generate_config_traefik() {
     --arg email_ssl $email_ssl \
     --arg network_name "$network_name" \
     '{
-            "name": $stack_name,
-            "variables": {
-                "email_ssl": $email_ssl,
-                "network_name": $network_name,
-            },
-            "dependencies": {},
-            "setUp": []
-        }'
+        "name": $stack_name,
+        "variables": {
+            "email_ssl": $email_ssl,
+            "network_name": $network_name,
+        },
+        "dependencies": {},
+        "setUp": []
+    }'
 }
 
 # Function to generate configuration files for portainer
@@ -4747,7 +5002,7 @@ generate_config_whoami() {
 
 #################################### END OF STACK CONFIGURATION ###################################
 
-################################# BEGIN OF STACK DEPLOYMENT FUNCTIONS #############################
+################################ BEGIN OF STACK DEPLOYMENT FUNCTIONS ##############################
 
 # Function to deploy a traefik service
 deploy_stack_traefik() {
@@ -4769,9 +5024,14 @@ deploy_stack_redis() {
   deploy_stack_pipeline 'redis'
 }
 
-################################################################################
+# Function to deploy a whoami service
+deploy_stack_whoami() {
+  deploy_stack_pipeline 'whoami'
+}
 
-############################ Menu Functions ####################################
+################################# END OF STACK DEPLOYMENT FUNCTIONS ################################
+
+##################################### BEGIN OF MENU DEFINITIONS ####################################
 
 # Menu Main
 define_menu_main(){
@@ -4781,7 +5041,7 @@ define_menu_main(){
     build_menu_item "Menu 1" "Options of Menu 1" "navigate_menu 'Menu 1'"\
   )"
   item_2="$(\
-    build_menu_item "Menu 2" "Options of Menu 2" "navigate_menu 'Menu 2'"\
+    build_menu_item "Utilities" "explore" "navigate_menu 'Utilities'"\
   )"
   item_3="$(\
     build_menu_item "VPS Health" "diagnose" "navigate_menu 'VPS health'"\
@@ -4789,7 +5049,9 @@ define_menu_main(){
   
   page_size=5
 
-  menu_object="$(build_menu "$menu_name" $page_size "$item_1" "$item_2" "$item_3")"
+  menu_object="$(\
+    build_menu "$menu_name" $page_size "$item_1" "$item_2" "$item_3"\
+  )"
 
   define_menu "$menu_name" "$menu_object"
 }
@@ -4804,23 +5066,22 @@ define_menu_1(){
       "Very long description 1.1 to allow truncation on the menu selection 123567890" \
       "echo 'Option 1.1 selected' >&2"
   )"
-  item_2="$(/
+  item_2="$(
     build_menu_item \
     "Option 1.2" \
     "Very long description 1.2 to allow truncation on the menu selection 123567890" \
-    "echo 'Option 1.2 selected' >&2" /
+    "echo 'Option 1.2 selected' >&2")"
+  item_3="$(
+    build_menu_item "Option 1.3" "Description 1.3" "echo 'Option 1.3 selected' >&2" 
   )"
-  item_3="$(/
-    build_menu_item "Option 1.3" "Description 1.3" "echo 'Option 1.3 selected' >&2" /
+  item_4="$(
+    build_menu_item "Option 1.4" "Description 1.4" "echo 'Option 1.4 selected' >&2" 
   )"
-  item_4="$(/
-    build_menu_item "Option 1.4" "Description 1.4" "echo 'Option 1.4 selected' >&2" /
+  item_5="$(
+    build_menu_item "Option 1.5" "Description 1.5" "echo 'Option 1.5 selected' >&2" 
   )"
-  item_5="$(/
-    build_menu_item "Option 1.5" "Description 1.5" "echo 'Option 1.5 selected' >&2" /
-  )"
-  item_6="$(/
-    build_menu_item "Option 1.6" "Description 1.6" "echo 'Option 1.6 selected' >&2" /
+  item_6="$(
+    build_menu_item "Option 1.6" "Description 1.6" "echo 'Option 1.6 selected' >&2" 
   )"
 
   page_size=5
@@ -4834,49 +5095,19 @@ define_menu_1(){
   define_menu "$menu_name" "$menu_object"
 }
 
-# Menu 2
-define_menu_2(){
-  menu_name="Menu 2"
+# Utilities
+define_utilities(){
+  menu_name="Utilities"
 
-  item_1="$(
-      build_menu_item \
-      "Option 2.1" \
-      "Very long description 2.1 to allow truncation on the menu selection 123567890" \
-      "echo 'Option 2.1 selected' >&2"
-  )"
-  item_2="$(\
-    build_menu_item \
-      "Option 2.2" \
-      "Very long description 2.2 to allow truncation on the menu selection 123567890" \
-      "echo 'Option 2.2 selected' >&2"\
-  )"
-  item_3="$(\
-    build_menu_item "Option 2.3" \
-      "Description 2.3" "echo 'Option 2.3 selected' >&2"\
-  )"
-  item_4="$(\
-    build_menu_item "Option 2.4" \
-      "Description 2.4" "echo 'Option 2.4 selected' >&2"\
-  )"
-  item_5="$(\
-    build_menu_item "Option 2.5" \
-      "Description 2.5" "echo 'Option 2.5 selected' >&2"\
-  )"
-  item_6="$(\
-    build_menu_item "Option 2.6" \
-      "Description 2.6" "echo 'Option 2.6 selected' >&2"\
-  )"
-  item_7="$(\
-    build_menu_item "Option 2.7" \
-      "Description 2.7" "echo 'Option 2.7 selected' >&2"\
-  )"
+  item_1="$(build_menu_item "Test SMPT e-mail" "Send" "test_smtp_email")"
 
   page_size=5
 
   menu_object="$(
-    build_menu "$menu_name" $page_size \
-      "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" "$item_6"
+    build_menu "$menu_name" $page_size "$item_1" 
   )"
+
+  echo "$menu_object" >&2
 
   define_menu "$menu_name" "$menu_object"
 }
@@ -4935,7 +5166,7 @@ define_menu_vps_health(){
 define_menus(){
     define_menu_main
     define_menu_1
-    define_menu_2
+    define_utilities
     define_menu_vps_health
 }
 
@@ -4944,46 +5175,48 @@ start_main_menu(){
     farewell_message
 }
 
-# # Populate MENUS
-# define_menus
+###################################### END OF MENU DEFINITIONS ####################################
+
+# Populate MENUS
+define_menus
+
+# Start the main menu
+start_main_menu
+
+# # Portainer test
+# portainer_url="portainer.example.com"
+# portainer_username="portainer_username"
+# portainer_password="secret_password_shhh"
 # 
-# # Start the main menu
-# start_main_menu
-
-# Portainer test
-portainer_url="portainer.example.com"
-portainer_username="portainer_username"
-portainer_password="secret_password_shhh"
-
-credentials="$(
-  jq -n \
-    --arg username "$portainer_username" \
-    --arg password "$portainer_password" \
-    '{"username":$username,"password":$password}'\
-)"
-
-portainer_auth_token="$(\
-  get_portainer_auth_token "$portainer_url" "$credentials"
-)"
-
-stack_name='whoami'
-check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"
-
-if [[ $? -eq 0 ]]; then
-  echo "Stack $stack_name exists"
-  delete_stack_on_portainer "$portainer_url" "$portainer_auth_token" "$stack_name"
-  check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"
-
-  if [[ $? -eq 1 ]]; then
-    success "Stack $stack_name deleted"
-  else
-    error "Stack $stack_name not deleted"
-  fi
-else
-  warning "Stack $stack_name does not exist"
-fi
-
-upload_stack_on_portainer "$portainer_url" "$credentials" \
-  "$stack_name" ""$(pwd)/sandbox/$stack_name.yaml"" 
-
-sleep 10
+# credentials="$(
+#   jq -n \
+#     --arg username "$portainer_username" \
+#     --arg password "$portainer_password" \
+#     '{"username":$username,"password":$password}'\
+# )"
+# 
+# portainer_auth_token="$(\
+#   get_portainer_auth_token "$portainer_url" "$credentials"
+# )"
+# 
+# stack_name='whoami'
+# check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"
+# 
+# if [[ $? -eq 0 ]]; then
+#   echo "Stack $stack_name exists"
+#   delete_stack_on_portainer "$portainer_url" "$portainer_auth_token" "$stack_name"
+#   check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"
+# 
+#   if [[ $? -eq 1 ]]; then
+#     success "Stack $stack_name deleted"
+#   else
+#     error "Stack $stack_name not deleted"
+#   fi
+# else
+#   warning "Stack $stack_name does not exist"
+# fi
+# 
+# upload_stack_on_portainer "$portainer_url" "$credentials" \
+#   "$stack_name" ""$(pwd)/sandbox/$stack_name.yaml"" 
+# 
+# sleep 10
