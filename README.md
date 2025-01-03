@@ -1,4 +1,4 @@
-# StackMe
+# ![stackme](https://github.com/whosbash/stackme/blob/main/images/stackme_tiny.png)
 
 StackMe is a comprehensive shell script designed to manage Docker Swarm deployments. It includes a variety of functions to handle tasks such as error handling, color and style definitions, JSON parsing, email sending, Docker operations, and more.
 
