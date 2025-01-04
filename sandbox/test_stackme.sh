@@ -4541,17 +4541,43 @@ install_docker() {
     return 1
   fi
 
-  info "Installing Docker..."
+  info "Starting Docker installation..."
 
-  # Download and execute the Docker installation script
-  if curl -fsSL https://get.docker.com | bash > /dev/null 2>&1; then
-    success "Docker installation script executed successfully."
+  # Step 1: Install prerequisites
+  info "Installing prerequisites..."
+  if apt-get install -y -qq apt-transport-https ca-certificates curl software-properties-common; then
+    success "Prerequisites installed."
   else
-    failure "Failed to download or execute the Docker installation script." >&2
+    failure "Failed to install prerequisites." >&2
     return 1
   fi
 
-  # Enable Docker service
+  # Step 2: Add Docker's official GPG key and repository
+  info "Adding Docker GPG key and repository..."
+  url="https://download.docker.com/linux/ubuntu/"
+  keyring_path="/usr/share/keyrings/docker-archive-keyring.gpg"
+  source="deb [arch=$(dpkg --print-architecture) signed-by=$keyring_path] $url $(lsb_release -cs) stable"
+  if curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
+    gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg && \
+     echo  | \
+     tee /etc/apt/sources.list.d/docker.list > /dev/null; then
+    success "Docker repository added."
+  else
+    failure "Failed to add Docker GPG key or repository." >&2
+    return 1
+  fi
+
+  # Step 3: Install Docker
+  info "Installing Docker..."
+  if apt-get update -qq && apt-get install -y -qq docker-ce docker-ce-cli containerd.io; then
+    success "Docker installed successfully."
+  else
+    failure "Failed to install Docker." >&2
+    return 1
+  fi
+
+  # Step 4: Enable Docker service
+  info "Enabling Docker service..."
   if systemctl enable docker > /dev/null 2>&1; then
     success "Docker service enabled to start on boot."
   else
@@ -4559,7 +4585,8 @@ install_docker() {
     return 1
   fi
 
-  # Start Docker service
+  # Step 5: Start Docker service
+  info "Starting Docker service..."
   if systemctl start docker > /dev/null 2>&1; then
     success "Docker service started successfully."
   else
@@ -4567,9 +4594,19 @@ install_docker() {
     return 1
   fi
 
+  # Step 6: Verify Docker installation
+  info "Verifying Docker installation..."
+  if docker --version > /dev/null 2>&1; then
+    success "Docker installation verified: $(docker --version)"
+  else
+    failure "Docker verification failed. Ensure Docker is installed correctly." >&2
+    return 1
+  fi
+
   success "Docker installation and setup completed successfully."
   return 0
 }
+
 
 # Function to merge server, network, and IP information
 get_server_info() {
@@ -5411,15 +5448,6 @@ parse_args() {
 }
 
 # Main script execution
-/*************  ✨ Codeium Command ⭐  *************/
-# Main entry point for the script
-#
-# Calls parse_args to parse command line arguments, then:
-#
-# 1. Updates and installs required packages
-# 2. Initializes server information (IP, hostname, etc.)
-# 3. Starts the main menu
-/******  31ffa9a6-f166-45c4-8761-8b72d0a69394  *******/
 main() {
   parse_args "$@"
 
