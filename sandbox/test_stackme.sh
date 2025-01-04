@@ -2292,11 +2292,6 @@ handle_exit() {
     error "Error Code: $exit_code"
   fi
   step "$current_step" "$total_steps" "$status_message" "$status"
-
-  # Exit with failure if there's an error
-  if [ "$status" == "error" ]; then
-    exit 1
-  fi
 }
 
 ####################################################################
