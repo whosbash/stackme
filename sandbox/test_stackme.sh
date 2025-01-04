@@ -4461,7 +4461,6 @@ install_package() {
     # Try to install the package and check for success
     if ! DEBIAN_FRONTEND=noninteractive $command install "$package" -yq >/dev/null 2>&1; then
       error "Failed to install package: $package. Check logs for more details."
-      exit 1
     else
       success "Successfully installed package: $package"
     fi
@@ -5412,6 +5411,15 @@ parse_args() {
 }
 
 # Main script execution
+/*************  ✨ Codeium Command ⭐  *************/
+# Main entry point for the script
+#
+# Calls parse_args to parse command line arguments, then:
+#
+# 1. Updates and installs required packages
+# 2. Initializes server information (IP, hostname, etc.)
+# 3. Starts the main menu
+/******  31ffa9a6-f166-45c4-8761-8b72d0a69394  *******/
 main() {
   parse_args "$@"
 
