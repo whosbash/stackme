@@ -3558,6 +3558,23 @@ list_stack_compose_required_fields() {
   fi
 }
 
+# Function to check if Docker Swarm is active
+is_swarm_active() {
+  local state=$(\
+    docker info --format '{{.Swarm.LocalNodeState}}' 2>/dev/null | \
+    tr -d '\n' | tr -d ' '\
+  )
+  if [[ -z "$state" ]]; then
+    echo "Swarm state is empty or undefined." >&2
+    return 1
+  fi
+  if [[ "$state" == "active" ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
 # Function to deploy a service using a Docker Compose file
 deploy_stack_on_swarm() {
   local stack_name=$1
@@ -5447,10 +5464,17 @@ main() {
   parse_args "$@"
 
   clear
+  
+  # Install required packages
   update_and_install_packages
   clear
+
+  # Perform initialization
   initialize_server_info
   clear
+
+  define_menus
+
   start_main_menu
 }
 
