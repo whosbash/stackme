@@ -133,7 +133,7 @@ HAS_TIMESTAMP=true
 HEADER_LENGTH=120
 
 # Default arrow
-ARROW_OPTION='star'
+ARROW_OPTION='diamond'
 SELECTED_ARROW="${ARROWS[$ARROW_OPTION]}"
 COLORED_ARROW="${highlight_color}${SELECTED_ARROW}${reset_color}"
 
@@ -1181,11 +1181,12 @@ test_smtp_email(){
 ############################### BEGIN OF SYSTEM-RELATED FUNCTIONS #################################
 
 # Functions for diagnostics
-cpu_usage() {
+uptime_usage() {
     # Example usage of display_text to show a centered header
-    display_text "CPU USAGE" 40 --center --style "${bold_color}${green}"
+    display_text "UPTIME USAGE" 40 --center --style "${bold_color}${green}"
     echo ""
-    uptime
+    format_="%Y-%m-%d %H:%M:%S"
+    echo "$(uptime -p) since $(date -d "$(uptime -s)" +"$format_") to $(date +"$format_")" >&2
     echo ""
 }
 
@@ -4027,6 +4028,153 @@ execute_set_up_action() {
   local exit_code=$?
 }
 
+# Function to deploy a service
+build_and_deploy_stack() {
+  # Arguments
+  local stack_name="$1" # Service name (e.g., redis, postgres)
+  local stack_json="$2" # JSON data with service variables
+
+  total_steps=9
+
+  stack_step_progress(){
+    stack_step "progress" "$1" "$2"
+  }
+
+  stack_step_warning(){
+    stack_step "warning" "$1" "$2"
+  }
+  
+  stack_step_error(){
+    stack_step "error" "$1" "$2"
+  }
+
+  stack_step(){
+    type="$1" 
+    step="$2"
+    message="$3"
+    stack_message="[$stack_name] $message"
+    step_progress $step $total_steps "$stack_message"
+  }
+
+  stack_handle_exit(){
+    exit_code="$1" 
+    step="$2"
+    message="$3"
+    stack_message="[$stack_name] $message"
+    handle_exit "$exit_code" 1 $total_steps "$stack_message"
+  }
+
+  # Declare an associative array to hold service variables
+  declare -A stack_variables
+
+  # Parse JSON data and populate associative array
+  while IFS="=" read -r key value; do
+    stack_variables["$key"]="$value"
+  done < <(\
+    echo "$stack_json" | \
+    jq -r '.variables | to_entries | .[] | "\(.key)=\(.value)"')
+
+  highlight "Deploying stack '$stack_name'"
+
+  # Step 1: Deploy Dependencies
+  stack_step_progress 1 "Checking and deploying dependencies"
+  local dependencies=$(echo "$stack_json" | jq -r '.dependencies[]?')
+
+  # Check if there are dependencies, and if none, display a message
+  if [ -z "$dependencies" ]; then
+    stack_step_warning 1 "No dependencies to deploy"
+  else
+    for dependency in $dependencies; do
+      dependency_message="Deploying dependency: $dependency"
+      stack_step_progress 1 "$dependency_message"
+
+      # Fetch JSON for the dependency
+      local dep_service_json
+      dep_stack_json=$(fetch_service_json "$dependency")
+
+      deploy_stack "$dep" "$dep_stack_json"
+      stack_handle_exit "$?" 1 "$dependency_message"
+    done
+  fi
+
+  # Step 2: Gather setUp actions (if defined in the service JSON)
+  stack_step_progress 2 "Gathering setUp actions"
+  local setUp_actions
+  setUp_actions=$(echo "$service_json" | jq -r '.setUp[]?')
+
+  # Debug: Check if jq returned an error
+  if [[ $? -ne 0 ]]; then
+    stack_step_error 2 "Error parsing setUp actions: $setUp_actions"
+    exit 1
+  fi
+
+  # Step 3: Run setUp actions individually
+  if [ -n "$setUp_actions" ]; then
+    # Iterate through each action, preserving newlines for better debugging
+    IFS=$'\n' read -d '' -r -a actions_array <<<"$setUp_actions"
+
+    for action in "${actions_array[@]}"; do
+      # Perform the action (you can define custom functions to execute these steps)
+      message="Executing setUp action: $action"
+      stack_step_error 3 "$message"
+
+      # Call an appropriate function to handle this setUp action
+      execute_set_up_action "$action"
+      stack_handle_exit $? 3 "$message"
+    done
+  else
+    stack_step_warning 3 "No setUp actions defined"
+  fi
+
+  # Step 4: Build service-related file paths and Docker Compose template
+  message="Building stack filepaths"
+  stack_step_progress 4 "$message"
+  stack_info="$(build_stack_info "$stack_name")"
+  local config_path=$(echo "$stack_info" | awk '{print $1}')
+  local compose_filepath=$(echo "$stack_info" | awk '{print $2}')
+  local compose_template_func=$(echo "$stack_info" | awk '{print $3}')
+  stack_handle_exit $? 4 "$message"
+
+  # Step 5: Retrieve and substitute variables in Docker Compose template
+  message="Creating Docker Compose template"
+  stack_step_progress 5 "$message"
+  local substituted_template
+  substituted_template="$(\
+    replace_mustache_variables "$($compose_template_func)" stack_variables \
+  )"
+  stack_handle_exit $? 5 "$message"
+
+  # Step 6: Write the substituted template to the compose file
+  message="Writing Docker Compose template"
+  stack_step_progress 6 "$message" 
+  compose_path="$(pwd)/$compose_filepath"
+  echo "$substituted_template" >"$compose_path"
+  stack_handle_exit $? 6 "$message"
+
+  # Step 7: Validate the Docker Compose file
+  message="Validating Docker Compose file" 
+  stack_step_progress 7 "$message" 
+  validate_compose_file "$compose_path"
+  stack_handle_exit $? 7 "$message"
+
+  # Step 8: Deploy the service on Docker Swarm
+  message="Deploying stack on Docker Swarm"
+  stack_step 'progress' 8 
+  deploy_stack_on_swarm "$stack_name" "$compose_filepath"
+  stack_handle_exit $? 8 "$message"
+
+  # Step 9: Save service-specific information to a configuration file
+  message="Saving stack configuration"
+  stack_step_progress 9 "$message"
+  write_json "$config_path" "$stack_json"
+  stack_handle_exit $? 9 "$message"
+
+  # Final Success Message
+  deploy_success_message "$stack_name"
+
+  wait_for_input
+}
+
 # Function to deploy a traefik service
 deploy_stack_pipeline() {
   local stack_name="$1"
@@ -4095,11 +4243,11 @@ send_email() {
 # Function to generate HTML for an email
 email_test_hmtl() {
   echo "<!DOCTYPE html>
-<html lang='en'>
+<html lang="en">
 <head>
-  <meta charset='UTF-8'>
-  <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-  <title>Welcome to StackSetup</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to StackMe</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -4107,6 +4255,7 @@ email_test_hmtl() {
       margin: 0;
       padding: 0;
       color: #333;
+      line-height: 1.6; /* Increased line height for better readability */
     }
     .container {
       margin: 20px auto;
@@ -4115,86 +4264,121 @@ email_test_hmtl() {
       background-color: #ffffff;
       border-radius: 10px;
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-      overflow: hidden;
     }
     .header {
       text-align: center;
-      padding: 20px 0;
       background-color: #4caf50;
       color: #ffffff;
+      padding: 20px;
+      border-radius: 10px 10px 0 0;
     }
     .header img {
       max-width: 80px;
       margin-bottom: 10px;
     }
     .header h1 {
-      font-size: 24px;
+      font-size: 26px; /* Adjusted font size for better prominence */
       margin: 0;
     }
     .content {
       padding: 20px;
     }
     .content p {
-      color: #555;
-      line-height: 1.6;
+      line-height: 1.8;
       margin: 15px 0;
+      font-size: 16px; /* Slightly adjusted font size for readability */
     }
     .content a.button {
-      display: inline-block;
-      margin: 20px 0;
-      padding: 12px 25px;
+      display: block;
+      margin: 20px auto;
+      padding: 14px 30px;
       background-color: #4caf50;
       color: #ffffff;
       text-decoration: none;
       border-radius: 5px;
       font-size: 16px;
+      font-weight: bold;
+      transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
       text-align: center;
-      transition: background-color 0.3s ease;
+      max-width: 300px;
     }
     .content a.button:hover {
       background-color: #45a049;
+      transform: scale(1.05);
+      color: #ffffff; /* Ensure text color stays white on hover */
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); /* Added shadow on hover for a more dynamic effect */
+    }
+    .content a {
+      color: #4caf50;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    .content a:hover {
+      color: #45a049;
     }
     .footer {
       text-align: center;
-      padding: 15px 0;
-      font-size: 12px;
+      padding: 20px 0;
+      font-size: 14px; /* Slightly larger font size for footer */
       color: #aaaaaa;
       border-top: 1px solid #eeeeee;
     }
     .footer a {
       color: #4caf50;
       text-decoration: none;
+      font-weight: bold;
     }
+    .footer a:hover {
+      color: #45a049;
+    }
+
+    /* Social Icons */
     .social-icons {
       margin-top: 10px;
     }
     .social-icons a {
-      margin: 0 5px;
+      margin: 0 10px;
       display: inline-block;
-      text-decoration: none;
     }
     .social-icons img {
       width: 24px;
       height: 24px;
     }
+
+    /* Responsive Styles */
+    @media (max-width: 600px) {
+      .container {
+        padding: 10px;
+        max-width: 100%;
+      }
+      .header h1 {
+        font-size: 22px; /* Adjust header size for smaller screens */
+      }
+      .content a.button {
+        padding: 12px 25px;
+      }
+      .content p {
+        font-size: 14px; /* Adjust paragraph size for mobile */
+      }
+    }
   </style>
 </head>
 <body>
-  <div class='container'>
-    <div class='header'>
-      <img src='https://via.placeholder.com/80x80' alt='Logo'>
+  <section class="container">
+    <header class="header">
+      <img src="https://raw.githubusercontent.com/whosbash/stackme/main/images/stackme_tiny.png" alt="StackMe Logo" />
       <h1>Welcome to StackMe</h1>
-    </div>
-    <div class='content'>
-      <p>We are thrilled to have you onboard!</p>
-      <p>If you have any questions, feel free to submit an issue to 
-      <a href='https://github.com/whosbash/stackme/issues'>our repository</a>. We're here to help!
-      </p>
-    </div>
-    <div class='footer'>
+    </header>
+    <section class="content">
+      <p>Hi there,</p>
+      <p>We are thrilled to have you onboard! Explore the amazing features of StackMe and elevate your workflow.</p>
+      <a href="https://github.com/whosbash/stackme" class="button">Get Started</a>
+      <p>If you have any questions, feel free to submit an issue to <a href="https://github.com/whosbash/stackme/issues" title="Visit our Issues page on GitHub">our repository</a>. We're here to help!</p>
+    </section>
+    <footer class="footer">
       <p>Sent using a Shell Script and the Swaks tool.</p>
-    </div>
-  </div>
+    </footer>
+  </section>
 </body>
 </html>"
 }
@@ -4245,7 +4429,7 @@ test_smtp_email(){
   username="$(search_on_json_array "$collected_items" 'name' 'username' | jq -r ".value")"
   password="$(search_on_json_array "$collected_items" 'name' 'password' | jq -r ".value")"
 
-  subject="Setup test e-mail"
+  subject="[StackMe] Test SMTP e-mail"
   body="$(email_test_hmtl)"
 
   send_email \
@@ -4308,6 +4492,7 @@ update_and_install_packages() {
   # Check if the script is running as root
   if [ "$EUID" -ne 0 ]; then
     failure "Please run this script as root or use sudo."
+    sleep 2
     exit 1
   fi
 
@@ -4437,10 +4622,6 @@ initialize_server_info() {
     fi
   else  
     server_info_json=$(get_server_info)
-
-    # Save the server information to a JSON file
-    echo "$server_info_json" >"$server_filename"
-    step_success 1 $total_steps "Server information saved to file $server_filename"
   fi
 
   # Extract server_name and network_name
@@ -4454,19 +4635,27 @@ initialize_server_info() {
   # Output results
   if [[ -z "$server_name" || -z "$network_name" ]]; then
     error "Missing server_name or network_name in file $server_filename"
+    wait_for_input
     exit 1
   fi
 
-  # Set Hostname
-  step_message="Set Hostname"
-  step_progress 2 $total_steps "$step_message"
-  hostnamectl set-hostname "$server_name" 2>&1
-  handle_exit $? 2 $total_steps "$step_message"
+  # Save the server information to a JSON file
+  echo "$server_info_json" >"$server_filename"
+  step_success 1 $total_steps "Server information saved to file $server_filename"
 
   # Update /etc/hosts
   step_message="Add name to server name in hosts file at path /etc/hosts"
   step_progress 3 $total_steps "$step_message"
-  sed -i "s/127.0.0.1[[:space:]]localhost/127.0.0.1 $server_name/g" /etc/hosts 2>&1
+  # Ensure the server_name exists in /etc/hosts
+  if ! grep -q "127.0.0.1[[:space:]]$server_name" /etc/hosts; then
+    echo "127.0.0.1 $server_name" >> /etc/hosts
+  fi
+  handle_exit $? 2 $total_steps "$step_message"
+
+    # Set Hostname
+  step_message="Set Hostname"
+  step_progress 3 $total_steps "$step_message"
+  hostnamectl set-hostname "$server_name" 2>&1
   handle_exit $? 3 $total_steps "$step_message"
 
   # Install docker
@@ -4482,11 +4671,7 @@ initialize_server_info() {
   if is_swarm_active; then
     step_warning 5 $total_steps "Swarm is already active"
   else
-    server_ip=$(
-      echo "$server_info_json" | 
-      jq -r '.[] | select(.name=="server_ip") | .value'
-    )
-
+    # server_ip=$(curl ipinfo.io/ip)
     docker swarm init 2>&1
     
     handle_exit $? 5 $total_steps "$step_message"
@@ -5033,63 +5218,28 @@ deploy_stack_whoami() {
 
 ##################################### BEGIN OF MENU DEFINITIONS ####################################
 
-# Menu Main
-define_menu_main(){
-  menu_name="Main"
-
-  item_1="$(\
-    build_menu_item "Menu 1" "Options of Menu 1" "navigate_menu 'Menu 1'"\
-  )"
-  item_2="$(\
-    build_menu_item "Utilities" "explore" "navigate_menu 'Utilities'"\
-  )"
-  item_3="$(\
-    build_menu_item "VPS Health" "diagnose" "navigate_menu 'VPS health'"\
-  )"
-  
-  page_size=5
-
-  menu_object="$(\
-    build_menu "$menu_name" $page_size "$item_1" "$item_2" "$item_3"\
-  )"
-
-  define_menu "$menu_name" "$menu_object"
-}
-
-# Menu 1
-define_menu_1(){
-  menu_name="Menu 1"
+# Stacks
+define_menu_stacks(){
+  menu_name="Stacks"
 
   item_1="$(
-      build_menu_item \
-      "Option 1.1" \
-      "Very long description 1.1 to allow truncation on the menu selection 123567890" \
-      "echo 'Option 1.1 selected' >&2"
+      build_menu_item "Traefik + Portainer" \
+      "Deploy" "deploy_stack_traefik && deploy_stack_portainer"
   )"
   item_2="$(
-    build_menu_item \
-    "Option 1.2" \
-    "Very long description 1.2 to allow truncation on the menu selection 123567890" \
-    "echo 'Option 1.2 selected' >&2")"
+    build_menu_item "whoami" "Deploy" "deploy_stack_whoami"
+  )"
   item_3="$(
-    build_menu_item "Option 1.3" "Description 1.3" "echo 'Option 1.3 selected' >&2" 
+    build_menu_item "postgres" "Deploy" "deploy_stack_postgres" 
   )"
   item_4="$(
-    build_menu_item "Option 1.4" "Description 1.4" "echo 'Option 1.4 selected' >&2" 
-  )"
-  item_5="$(
-    build_menu_item "Option 1.5" "Description 1.5" "echo 'Option 1.5 selected' >&2" 
-  )"
-  item_6="$(
-    build_menu_item "Option 1.6" "Description 1.6" "echo 'Option 1.6 selected' >&2" 
+    build_menu_item "redis" "Deploy" "deploy_stack_redis" 
   )"
 
   page_size=5
 
   menu_object="$(
-    build_menu "$menu_name" $page_size \
-      "$item_1" "$item_2" "$item_3" \
-      "$item_4" "$item_5" "$item_6"
+    build_menu "$menu_name" $page_size "$item_1" "$item_2" "$item_3" "$item_4"
   )"
 
   define_menu "$menu_name" "$menu_object"
@@ -5107,47 +5257,45 @@ define_utilities(){
     build_menu "$menu_name" $page_size "$item_1" 
   )"
 
-  echo "$menu_object" >&2
-
   define_menu "$menu_name" "$menu_object"
 }
 
 # VPS Health
-define_menu_vps_health(){
-  menu_name="VPS health"
+define_menu_health(){
+  menu_name="Health"
 
   item_1="$(
-    build_menu_item "CPU Usage" "Current CPU percentage usage" \
-    "cpu_usage && press_any_key"
+    build_menu_item "Awake Usage" "describe" \
+    "uptime_usage && press_any_key"
   )"
   item_2="$(
-    build_menu_item "Memory Usage" "Current memory percentage usage" \
+    build_menu_item "Memory Usage" "describe" \
     "memory_usage && press_any_key"
   )"
   item_3="$(
-    build_menu_item "Disk Usage" "Current disk percentage usage" \
+    build_menu_item "Disk Usage" "describe" \
     "disk_usage && press_any_key"
   )"
   item_4="$(
-    build_menu_item "Network Usage" "Current network usage" \
+    build_menu_item "Network" "describe" \
     "network_usage && press_any_key"
   )"
   item_5="$(\
-    build_menu_item "Top Processes" "Processes sorted by CPU and memory usage" \
+    build_menu_item "Top Processes" "list" \
     "top_processes && press_any_key" \
   )"
   item_6="$(\
-    build_menu_item "Security Diagnostics" "" \
+    build_menu_item "Security" "diagnose" \
     "security_diagnostics && press_any_key")"
   item_7="$(\
-    build_menu_item "Load Average" "" \
+    build_menu_item "Load Average" "describe" \
     "load_average && press_any_key")"
   item_8="$(\
-    build_menu_item "Bandwidth Usage" "" \
-    "bandwidth_usage && press_any_key"\
+    build_menu_item "Bandwidth" "describe" \
+    "bandwidth_usage && press_any_key" \
   )"
   item_9="$(\
-    build_menu_item "Package Updates" "" \
+    build_menu_item "Package Updates" "install" \
     "update_and_check_vps_packages && press_any_key" \
   )"
 
@@ -5162,26 +5310,121 @@ define_menu_vps_health(){
   define_menu "$menu_name" "$menu_object"
 }
 
+# Menu Main
+define_menu_main(){
+  menu_name="Main"
+
+  item_1="$(\
+    build_menu_item "Stacks" "explore" "navigate_menu 'Stacks'"\
+  )"
+  item_2="$(\
+    build_menu_item "Utilities" "explore" "navigate_menu 'Utilities'"\
+  )"
+  item_3="$(\
+    build_menu_item "Health" "diagnose" "navigate_menu 'Health'"\
+  )"
+  
+  page_size=5
+
+  menu_object="$(\
+    build_menu "$menu_name" $page_size "$item_1" "$item_2" "$item_3"\
+  )"
+
+  define_menu "$menu_name" "$menu_object"
+}
+
 # Populate MENUS
 define_menus(){
     define_menu_main
-    define_menu_1
+    define_menu_stacks
     define_utilities
-    define_menu_vps_health
+    define_menu_health
 }
 
 start_main_menu(){
     navigate_menu "Main";
+    cleanup
     farewell_message
 }
 
 ###################################### END OF MENU DEFINITIONS ####################################
 
-# Populate MENUS
-define_menus
+# Display help message
+usage() {
+  usage_messages=(
+    "Usage: $0 [options]"
+    "Options:"
+    "  -i, --install           Install required packages."
+    "  -c, --clean             Clean docker environment."
+    "  -p, --prepare           Prepare the environment, same as combination '-i -c'."
+    "  -u, --startup           Startup server information."
+    "  -s, --stack STACK       Specify which stack to install: {${stack_names[*]}}."
+    "  -h, --help              Display this help message and exit."
+  )
+  format_array "info" usage_messages
 
-# Start the main menu
-start_main_menu
+  display_parallel usage_messages
+
+  exit 1
+}
+
+# Parse command-line arguments
+parse_args() {
+  # Get options using getopt
+  OPTIONS=$(\
+    getopt \
+    -o c,h \
+    --long clean,help -- "$@" \
+  )
+
+  # Check if getopt failed (invalid option)
+  if [ $? -ne 0 ]; then
+    echo "Invalid option(s) provided."
+    usage
+    exit 1
+  fi
+
+  # Apply the options to positional parameters
+  eval set -- "$OPTIONS"
+
+  # Loop through the options
+  while true; do
+    case "$1" in
+    -c | --clean)
+      CLEAN=true
+      shift
+      ;;
+    -h | --help)
+      usage
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      # This will be triggered for any unrecognized option
+      echo "Unknown option: $1"
+      usage
+      return 1
+      ;;
+    esac
+  done
+}
+
+# Main script execution
+main() {
+  parse_args "$@"
+
+  clear
+  update_and_install_packages
+  clear
+  initialize_server_info
+  clear
+  start_main_menu
+}
+
+# Call the main function
+main "$@"
 
 # # Portainer test
 # portainer_url="portainer.example.com"
