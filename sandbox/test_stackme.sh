@@ -4995,7 +4995,7 @@ services:
       mode: global
       labels:
         - traefik.enable=true
-        - traefik.http.routers.whoami.rule=Host(\`{{domain_hostname}}\`)
+        - traefik.http.routers.whoami.rule=Host(\`{{domain_name}}\`)
         - traefik.http.routers.whoami.entrypoints=websecure
         - traefik.http.routers.whoami.priority=1
         - traefik.http.routers.whoami.tls.certresolver=letsencryptresolver
@@ -5148,7 +5148,7 @@ generate_config_portainer() {
   collected_items="$(run_collection_process "$prompt_items")"
 
   if [[ "$collected_items" == "[]" ]]; then
-    step_error 3 $total_steps "Unable to prompt Portanier configuration."
+    step_error 3 $total_steps "Unable to prompt Portainer configuration."
     return 1
   fi
 
@@ -5261,18 +5261,44 @@ generate_config_whoami() {
   local stack_name='whoami'
   local container_port='80'
 
+  # Step 1: Retrieve network name
   network_name="$(get_network_name)"
+
+  # Prompting step 
+  prompt_items='[
+      {
+          "name": "domain_name",
+          "label": "Whoami domain name",
+          "description": "URL to access Whoami remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      }
+  ]'
+
+  step_info 3 $total_steps "Prompting required WhoAmI information"
+  collected_items="$(run_collection_process "$prompt_items")"
+
+  if [[ "$collected_items" == "[]" ]]; then
+    step_error 3 $total_steps "Unable to prompt Portainer configuration."
+    return 1
+  fi
+
+  domain_name="$(\
+    get_variable_value_from_collection "$collected_items" "domain_name" \
+  )"
 
   jq -n \
     --arg stack_name "$stack_name" \
     --arg container_port "$container_port" \
     --arg network_name "$network_name" \
+    --arg domain_name "$domain_name" \
     '{
           "name": $stack_name,
           "variables": {
               "stack_name": $stack_name,
               "container_port": $container_port,
               "network_name": $network_name
+              "domain_name": $domain_name
           },
           "dependencies": {},
           "setUp": []
