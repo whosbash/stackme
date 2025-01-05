@@ -4200,7 +4200,8 @@ deploy_stack_pipeline() {
 
   # Generate the n8n service JSON configuration using the helper function
   local config_json
-  config_json=$(generate_config_traefik)
+  config_function="generate_config_$stack_name"
+  config_json=$(eval "$config_function")
 
   if [ -z "$config_json" ]; then
     failed_stack_configuration_message "$stack_name"
