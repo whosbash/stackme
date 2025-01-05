@@ -5023,9 +5023,8 @@ create_postgres_database() {
 get_network_name(){
   server_info_filename='server_info.json'
   server_info_json="$(cat "$server_info_filename")"
-  local network_name="$(
-    search_on_json_array "$server_info_json" "name" "network_name" | \
-    jq -r ".value"
+  echo "$(
+    search_on_json_array "$server_info_json" "name" "network_name" | jq -r ".value"
   )"
 }
 
