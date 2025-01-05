@@ -4575,20 +4575,22 @@ install_docker() {
   info "Adding Docker GPG key and repository..."
   url="https://download.docker.com/linux/ubuntu/"
   keyring_path="/usr/share/keyrings/docker-archive-keyring.gpg"
-  source="deb [arch=$(dpkg --print-architecture) signed-by=$keyring_path] $url $(lsb_release -cs) stable"
+  arch="$(dpkg --print-architecture)"
+  source="deb [arch=$arch signed-by=$keyring_path] $url $(lsb_release -cs) stable"
   if curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
-    gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg && \
-     echo  | \
-     tee /etc/apt/sources.list.d/docker.list > /dev/null; then
-    success "Docker repository added."
+      gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg && \
+      echo "deb [arch=$arch signed-by=$keyring_path] $url $(lsb_release -cs) stable" | \
+      tee /etc/apt/sources.list.d/docker.list > /dev/null; then
+      success "Docker repository added."
   else
-    failure "Failed to add Docker GPG key or repository." >&2
-    return 1
+      failure "Failed to add Docker GPG key or repository." >&2
+      return 1
   fi
 
   # Step 3: Install Docker
   info "Installing Docker..."
-  if apt-get update -qq && apt-get install -y -qq docker-ce docker-ce-cli containerd.io; then
+  if apt-get update -qq && \
+    apt-get install -y -qq docker-ce docker-ce-cli containerd.io; then
     success "Docker installed successfully."
   else
     failure "Failed to install Docker." >&2
