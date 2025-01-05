@@ -3982,6 +3982,41 @@ validate_compose_file() {
   return $EXIT_CODE
 }
 
+# Function to determine if an image is official
+is_official_image() {
+  # Measure execution time
+  local image_name=$1
+  local response=""
+
+  # Try fetching the official image first
+  response=$(
+    curl -fsSL "https://hub.docker.com/v2/repositories/library/${image_name}" 2>/dev/null
+  )
+
+  # Check if the response contains 'name' indicating it's an official image
+  if [ $? -eq 0 ] && echo "$response" | jq -e '.name' >/dev/null 2>&1; then
+    echo "true" # It's an official image
+    return
+  fi
+
+  # If official image fails, try fetching the non-official image (user/organization image)
+  response=$(curl -fsSL "https://hub.docker.com/v2/repositories/${image_name}")
+
+  # If the response contains 'name', it's a valid (non-official) image
+  if [ $? -eq 0 ] && echo "$response" | jq -e '.name' >/dev/null 2>&1; then
+    echo "false" # It's a non-official image
+  else
+    # If neither the official nor non-official image is found, return false
+    echo "false" # Image not found
+  fi
+}
+
+# Function to fetch stable tags from a response
+fetch_stable_tags_from_page() {
+  pattern='^[0-9]+\.[0-9]+\.[0-9]+$|^[0-9]+\.[0-9]+$'
+  echo "$1" | jq -r '.results[].name' | grep -E "$pattern"
+}
+
 # Function to create a Docker network if it doesn't exist
 create_network_if_not_exists() {
   local network_name="${1:-$DEFAULT_NETWORK}"
