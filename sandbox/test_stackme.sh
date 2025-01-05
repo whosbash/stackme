@@ -3976,7 +3976,7 @@ validate_compose_file() {
   fi
 
   # Validate the syntax of the Docker Compose file
-  docker compose -f "$compose_file" config >/dev/null 2>&1
+  docker compose -f "$compose_file" config 2>&1
 
   local EXIT_CODE=$?
   return $EXIT_CODE
@@ -4154,7 +4154,7 @@ build_and_deploy_stack() {
   substituted_template="$(\
     replace_mustache_variables "$($compose_template_func)" stack_variables \
   )"
-  stack_handle_exit $? 5 "$message"
+  stack_handle_exit "$?" 5 "$message"
 
   # Step 6: Write the substituted template to the compose file
   message="Writing Docker Compose template"
@@ -4167,11 +4167,18 @@ build_and_deploy_stack() {
   message="Validating Docker Compose file" 
   stack_step_progress 7 "$message" 
   validate_compose_file "$compose_path"
-  stack_handle_exit $? 7 "$message"
+  exit_code=$?
+  stack_handle_exit "$exit_code" 7 "$message"
+
+  if [ $exit_code -ne 0 ]; then
+    rm -f "$compose_path"
+    warning "Validation failed. Docker Compose file \"$compose_path\" was removed."
+    return 1
+  fi
 
   # Step 8: Deploy the service on Docker Swarm
   message="Deploying stack on Docker Swarm"
-  stack_step 'progress' 8 
+  stack_step_progress 8 "$message" 
   deploy_stack_on_swarm "$stack_name" "$compose_filepath"
   stack_handle_exit $? 8 "$message"
 
@@ -5049,6 +5056,8 @@ generate_config_traefik() {
   email_ssl="$(\
     get_variable_value_from_collection "$collected_items" "email_ssl"
   )"
+
+  local network_name="$(get_network_name)"  
 
   # Ensure everything is quoted correctly
   jq -n \
