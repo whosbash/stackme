@@ -3587,7 +3587,8 @@ deploy_stack_on_swarm() {
   fi
 
   # Deploy the service using Docker stack
-  docker stack deploy --prune --resolve-image always -c "$compose_path" "$stack_name"
+  docker stack deploy \
+    --detach=false --prune --resolve-image always -c "$compose_path" "$stack_name"
 
   if [ $? -eq 0 ]; then
     success "Stack $stack_name deployed and running successfully."
@@ -4980,7 +4981,7 @@ networks:
 EOL
 }
 
-compose_whomai(){
+compose_whoami(){
   cat <<EOL
 version: '3'
 
