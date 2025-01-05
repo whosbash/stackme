@@ -1788,6 +1788,71 @@ validate_smtp_port() {
     fi
 }
 
+# Function to validate username
+validate_username() {
+  local value="$1"
+
+  # Check if the value contains only letters, numbers, and underscores
+  if [[ ! "$value" =~ ^[a-zA-Z0-9_]+$ ]]; then
+    warn_message="The value '$value' is not a valid username"
+    reason="It can only contain letters, numbers, and underscores."
+    echo "$warn_message. $reason"
+    return 1
+  fi
+
+  return 0
+}
+
+# Function to validate password
+validate_password() {
+  local value="$1"
+
+  # Check if the value contains at least 8 characters
+  warn_message="The value '$value' is not a valid password"
+  if [[ ${#value} -lt 5 ]]; then
+    reason="It must be at least 5 characters long."
+    echo "$warn_message. $reason"
+    return 1
+  fi
+
+  # Check if the value contains at least one uppercase letter
+  if [[ ! "$value" =~ [A-Z] ]]; then
+    reason="It must contain at least one uppercase letter."
+    echo "$warn_message. $reason"
+    return 1
+  fi
+
+  # Check if the value contains at least one lowercase letter
+  if [[ ! "$value" =~ [a-z] ]]; then
+    reason="It must contain at least one lowercase letter."
+    echo "$warn_message. $reason"
+    return 1
+  fi
+
+  # Check if the value contains at least one number
+  if [[ ! "$value" =~ [0-9] ]]; then
+    reason="It must contain at least one number."
+    echo "$warn_message. $reason"
+    return 1
+  fi
+
+  # Check if the value contains at least one special character
+  if [[ ! "$value" =~ [!@#$%^&*()_+-=] ]]; then
+    reason="It must contain at least one special character."
+    echo "$warn_message. $reason"
+    return 1
+  fi
+
+  # Check if the value does not contain spaces
+  if [[ "$value" =~ \  ]]; then
+    reason="It cannot contain spaces."
+    echo "$warn_message. $reason"
+    return 1
+  fi
+
+  return 0
+}
+
 ################################# END OF VALIDATION-RELATED FUNCTION ##############################
 
 ############################### BEGIN OF GENERAL UTILITARY FUNCTIONS #############################
@@ -1807,44 +1872,6 @@ validate_value() {
     return 1
   fi
   return 0
-}
-
-# Function to execute a setUp action
-execute_set_up_action() {
-  local action="$1" # JSON object representing the setUp action
-
-  # Extract the name, command, and variables from the action
-  local action_name
-  action_name=$(echo "$action" | jq -r '.name')
-
-  local action_command
-  action_command=$(echo "$action" | jq -r '.command')
-
-  # Extract variables if they exist (empty string if not defined)
-  local action_variables
-  action_variables=$(echo "$action" | jq -r '.variables // empty')
-
-  # If there are variables, export them for the command execution
-  if [ -n "$action_variables" ]; then
-    # Export each variable safely, ensuring no unintended command execution
-    for var in $(echo "$action_variables" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"'); do
-      # Escape and export the variable
-      local var_name=$(echo "$var" | cut -d'=' -f1)
-      local var_value=$(echo "$var" | cut -d'=' -f2)
-      export "$var_name"="$var_value"
-    done
-  fi
-
-  # Safely format the command using printf to avoid eval
-  # Substitute the variables in the command
-  local formatted_command
-  formatted_command=$(printf "%s" "$action_command")
-
-  # Execute the formatted command
-  bash -c "$formatted_command"
-
-  # Check if the command executed successfully and handle exit
-  local exit_code=$?
 }
 
 create_error_item() {
@@ -1926,6 +1953,47 @@ create_prompt_item() {
   echo "$item_json"
 }
 
+# Function to generate a JSON configuration for a service
+generate_config_schema() {
+  local required_fields="$1"
+
+  # Start the JSON schema structure
+  local schema="{\"variables\": {"
+
+  # Generate properties for each required field
+  local first=true
+  for field in $required_fields; do
+    if [ "$first" = true ]; then
+      first=false
+    else
+      schema+=","
+    fi
+    schema+="\"$field\": {\"type\": \"string\"}"
+  done
+
+  # Add dependencies and setUp as always-present fields
+  schema+='},
+    "dependencies": {},
+    "setUp": []}'
+
+  echo "$schema"
+}
+
+# Function to extract required fields and generate schema
+validate_stack_config() {
+  local stack_name="$1"
+  local config_json="$2"
+
+  # Get required fields from the stack template
+  required_fields=$(list_stack_compose_required_fields "$stack_name")
+
+  # Generate the JSON schema
+  schema=$(generate_config_schema "$required_fields")
+
+  # Step 5: Validate if the provided JSON has all required variables
+  validate_json_from_schema "$config_json" "$schema"
+}
+
 # Function to prompt for user input
 prompt_for_input() {
   local item="$1"
@@ -1974,47 +2042,6 @@ prompt_for_input() {
       warning "$label is a required field. Please enter a value."
     fi
   done
-}
-
-# Function to generate a JSON configuration for a service
-generate_config_schema() {
-  local required_fields="$1"
-
-  # Start the JSON schema structure
-  local schema="{\"variables\": {"
-
-  # Generate properties for each required field
-  local first=true
-  for field in $required_fields; do
-    if [ "$first" = true ]; then
-      first=false
-    else
-      schema+=","
-    fi
-    schema+="\"$field\": {\"type\": \"string\"}"
-  done
-
-  # Add dependencies and setUp as always-present fields
-  schema+='},
-    "dependencies": {},
-    "setUp": []}'
-
-  echo "$schema"
-}
-
-# Function to extract required fields and generate schema
-validate_stack_config() {
-  local stack_name="$1"
-  local config_json="$2"
-
-  # Get required fields from the stack template
-  required_fields=$(list_stack_compose_required_fields "$stack_name")
-
-  # Generate the JSON schema
-  schema=$(generate_config_schema "$required_fields")
-
-  # Step 5: Validate if the provided JSON has all required variables
-  validate_json_from_schema "$config_json" "$schema"
 }
 
 # Function to collect and validate information
@@ -3949,18 +3976,30 @@ deploy_success_message() {
   success "Successfully deployed stack $stack_name!"
 }
 
+# Function to remove a failed deployment
+remove_compose_if_failed_deployment() {
+  local compose_path=$1
+  local exit_code=$2
+
+  if [ $exit_code -ne 0 ]; then
+    rm -f "$compose_path"
+    warning "Deployment failed. Docker Compose file \"$compose_path\" was removed."
+    return 1
+  fi  
+}
+
 # Function to build config and compose files for a service
 build_stack_info() {
-  local service_name="$1"
+  local stack_name="$1"
 
   # Build config file
-  local config_path="${service_name}_config.json"
+  local config_path="${stack_name}_config.json"
 
   # Build compose file
-  local compose_path="${service_name}.yaml"
+  local compose_path="${stack_name}.yaml"
 
   # Build compose func name
-  local compose_func="compose_${service_name}"
+  local compose_func="compose_${stack_name}"
 
   # Return files
   echo "$config_path $compose_path $compose_func"
@@ -4039,24 +4078,24 @@ create_network_if_not_exists() {
 }
 
 # Function to execute a setUp action
-execute_set_up_action() {
-  local action="$1" # JSON object representing the setUp action
+execute_action() {
+  local action_json="$1"
+  local variables="$2"
 
   # Extract the name, command, and variables from the action
   local action_name
-  action_name=$(echo "$action" | jq -r '.name')
+  action_name=$(echo "$action_json" | jq -r '.name')
 
   local action_command
-  action_command=$(echo "$action" | jq -r '.command')
-
-  # Extract variables if they exist (empty string if not defined)
-  local action_variables
-  action_variables=$(echo "$action" | jq -r '.variables // empty')
+  action_command=$(echo "$action_json" | jq -r '.command')
 
   # If there are variables, export them for the command execution
   if [ -n "$action_variables" ]; then
     # Export each variable safely, ensuring no unintended command execution
-    for var in $(echo "$action_variables" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"'); do
+    for var in $(\
+      echo "$action_variables" | \
+      jq -r 'to_entries | .[] | "\(.key)=\(.value)"'
+    ); do
       # Escape and export the variable
       local var_name=$(echo "$var" | cut -d'=' -f1)
       local var_value=$(echo "$var" | cut -d'=' -f2)
@@ -4133,45 +4172,52 @@ build_and_deploy_stack() {
     stack_step_warning 1 "No dependencies to deploy"
   else
     for dependency in $dependencies; do
-      dependency_message="Deploying dependency: $dependency"
-      stack_step_progress 1 "$dependency_message"
+      # Check if stack dependency exists on docker
+      if ! docker stack ls | grep -q "$dependency"; then
+        dependency_message="Deploying dependency: $dependency"
+        stack_step_progress 1 "$dependency_message"
 
-      # Fetch JSON for the dependency
-      local dep_service_json
-      dep_stack_json=$(fetch_service_json "$dependency")
-
-      deploy_stack "$dep" "$dep_stack_json"
-      stack_handle_exit "$?" 1 "$dependency_message"
+        # Fetch JSON for the dependency
+        deploy_stack_pipeline "$dependency"
+        stack_handle_exit "$?" 1 "$dependency_message"  
+      else
+        dependency_message="Dependency \"$dependency\" already exists"
+        stack_step_warning 1 "$dependency_message"
+      fi
     done
   fi
 
-  # Step 2: Gather setUp actions (if defined in the service JSON)
+  # Step 2: Gather setUp actions
   stack_step_progress 2 "Gathering setUp actions"
   local setUp_actions
-  setUp_actions=$(echo "$service_json" | jq -r '.setUp[]?')
+  prepare_actions=$(echo "$stack_json" | jq -r '.prepare[]?')
+  finalize_actions=$(echo "$stack_json" | jq -r '.finalize[]?')
+  stack_variables="$(echo "$stack_json" | jq -r '.variables[]?')"
 
-  # Debug: Check if jq returned an error
+  # Check if jq returned an error
   if [[ $? -ne 0 ]]; then
-    stack_step_error 2 "Error parsing setUp actions: $setUp_actions"
+    stack_step_error 2 "Error parsing setUp actions: $prepare_actions"
     exit 1
   fi
 
   # Step 3: Run setUp actions individually
-  if [ -n "$setUp_actions" ]; then
+  if [ -n "$prepare_actions" ]; then
     # Iterate through each action, preserving newlines for better debugging
-    IFS=$'\n' read -d '' -r -a actions_array <<<"$setUp_actions"
+    IFS=$'\n' read -d '' -r -a actions_array <<<"$prepare_actions"
 
     for action in "${actions_array[@]}"; do
       # Perform the action (you can define custom functions to execute these steps)
-      message="Executing setUp action: $action"
+      action_name=$(echo "$action" | jq -r '.name')
+      
+      message="Executing setUp action: $action_name"
       stack_step_error 3 "$message"
 
       # Call an appropriate function to handle this setUp action
-      execute_set_up_action "$action"
+      execute_action "$action" "$variables"
       stack_handle_exit $? 3 "$message"
     done
   else
-    stack_step_warning 3 "No setUp actions defined"
+    stack_step_warning 3 "No prepare actions defined"
   fi
 
   # Step 4: Build service-related file paths and Docker Compose template
@@ -4193,9 +4239,14 @@ build_and_deploy_stack() {
   stack_handle_exit "$?" 5 "$message"
 
   # Step 6: Write the substituted template to the compose file
+  
+  # Create folder stacks on home path
+  stacks_folder="~/stacks"
+  mkdir -p "$stacks_folder"
+  
   message="Writing Docker Compose template"
   stack_step_progress 6 "$message" 
-  compose_path="$(pwd)/$compose_filepath"
+  compose_path="$stacks_folder/$compose_filepath"
   echo "$substituted_template" >"$compose_path"
   stack_handle_exit $? 6 "$message"
 
@@ -4206,17 +4257,72 @@ build_and_deploy_stack() {
   exit_code=$?
   stack_handle_exit "$exit_code" 7 "$message"
 
-  if [ $exit_code -ne 0 ]; then
-    rm -f "$compose_path"
-    warning "Validation failed. Docker Compose file \"$compose_path\" was removed."
+  remove_compose_if_failed_deployment "$exit_code" "$compose_path"
+
+  if [ $? -ne 0 ]; then
     return 1
   fi
 
   # Step 8: Deploy the service on Docker Swarm
-  message="Deploying stack on Docker Swarm"
-  stack_step_progress 8 "$message" 
-  deploy_stack_on_swarm "$stack_name" "$compose_filepath"
-  stack_handle_exit $? 8 "$message"
+  if [ "$stack_name" == "traefik" ] || [ "$stack_name" == "portainer" ]; then
+    message="Deploying stack on Docker Swarm"
+    stack_step_progress 8 "$message"
+
+    deploy_stack_on_swarm "$stack_name" "$compose_filepath"
+
+  else
+    message="Deploying stack on Portainer"
+    stack_step_progress 8 "$message"
+
+    # Get Portainer credentials
+    portainer_config_json="$(load_json "portainer_config.json")"
+    portainer_url="$(\
+      get_variable_value_from_collection "$portainer_config_json" "portainer_url"\
+    )"
+    portainer_username="$(\
+      get_variable_value_from_collection "$portainer_config_json" "username"\
+    )"
+    portainer_password="$(\
+      get_variable_value_from_collection "$portainer_config_json" "password"\
+    )"
+    portainer_credentials="$(
+      jq -n \
+        --arg username "$portainer_username" \
+        --arg password "$portainer_password" \
+        '{"username":$username,"password":$password}'\
+    )"
+
+    upload_stack_on_portainer "$portainer_url" "$portainer_credentials" \
+      "$stack_name" "$compose_path"
+  fi
+
+  exit_code=$?
+  stack_handle_exit $exit_code 8 "$message"
+
+  remove_compose_if_failed_deployment "$compose_path" "$exit_code"
+
+  if [ $? -ne 0 ]; then
+    return 1
+  fi
+
+  # Step 3: Run finalize actions individually
+  if [ -n "$finalize_actions" ]; then
+    # Iterate through each action, preserving newlines for better debugging
+    IFS=$'\n' read -d '' -r -a actions_array <<<"$finalize_actions"
+
+    for action in "${actions_array[@]}"; do
+      action_name=$(echo "$action" | jq -r '.name')
+      
+      message="Executing finalize action: $action_name"
+      stack_step_error 3 "$message"
+
+      # Perform the action
+      execute_action "$action" "$variables"
+      stack_handle_exit $? 3 "$message"
+    done
+  else
+    stack_step_warning 3 "No prepare actions defined"
+  fi
 
   # Step 9: Save service-specific information to a configuration file
   message="Saving stack configuration"
@@ -4234,13 +4340,13 @@ build_and_deploy_stack() {
 deploy_stack_pipeline() {
   local stack_name="$1"
 
-  # Generate the n8n service JSON configuration using the helper function
+  # Generate the stack JSON configuration
   local config_json
   config_function="generate_config_$stack_name"
   config_json=$(eval "$config_function")
 
   if [ -z "$config_json" ]; then
-    failed_stack_configuration_message "$stack_name"
+    
     return 1
   fi
 
@@ -4298,6 +4404,10 @@ send_email() {
 
 # Function to generate HTML for an email
 email_test_hmtl() {
+  issues_url="https://github.com/whosbash/stackme/issues"
+  invitation="<a href="$issues_url" title="Visit our Issues page on GitHub">our repository</a>"
+  call_for_action="If you have any questions, feel free to submit an issue to $invitation. We're here to help!"
+
   echo "<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -4429,7 +4539,7 @@ email_test_hmtl() {
       <p>Hi there,</p>
       <p>We are thrilled to have you onboard! Explore the amazing features of StackMe and elevate your workflow.</p>
       <a href="https://github.com/whosbash/stackme" class="button">Get Started</a>
-      <p>If you have any questions, feel free to submit an issue to <a href="https://github.com/whosbash/stackme/issues" title="Visit our Issues page on GitHub">our repository</a>. We're here to help!</p>
+      <p>$call_for_action</p>
     </section>
     <footer class="footer">
       <p>Sent using a Shell Script and the Swaks tool.</p>
@@ -4734,7 +4844,7 @@ initialize_server_info() {
   fi
 
   # Save the server information to a JSON file
-  echo "$server_info_json" >"$server_filename"
+  echo "$server_info_json" > "~/$server_filename"
   step_success 1 $total_steps "Server information saved to file $server_filename"
 
   # Update /etc/hosts
@@ -4844,6 +4954,13 @@ services:
         - "traefik.http.routers.http-catchall.entrypoints=web"
         - "traefik.http.routers.http-catchall.middlewares=redirect-https@docker"
         - "traefik.http.routers.http-catchall.priority=1"
+        - "traefik.http.routers.dashboard.rule=Host(`{{domain_name}}`)"
+        - "traefik.http.routers.dashboard.entrypoints=websecure"
+        - "traefik.http.routers.dashboard.service=api@internal"
+        - "traefik.http.routers.dashboard.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.dummy-svc.loadbalancer.server.port=9999"
+        - "traefik.http.routers.dashboard.middlewares=myauth"
+        - "traefik.http.middlewares.myauth.basicauth.users={{dashboard_username}}:{{dashboard_password}}"
 
 volumes:
   vol_shared:
@@ -5058,10 +5175,17 @@ create_postgres_database() {
 }
 
 get_network_name(){
-  server_info_filename='server_info.json'
+  server_info_filename='~/server_info.json'
+  
+  if [[ ! -f "$server_info_filename" ]]; then
+    error "File $server_info_filename not found."
+    exit 1
+  fi
+
   server_info_json="$(cat "$server_info_filename")"
   echo "$(
-    search_on_json_array "$server_info_json" "name" "network_name" | jq -r ".value"
+    search_on_json_array "$server_info_json" "name" "network_name" | \
+    jq -r ".value"
   )"
 }
 
@@ -5081,6 +5205,27 @@ generate_config_traefik() {
           "description": "E-mail to receive SSL notifications",
           "required": "yes",
           "validate_fn": "validate_email_value" 
+      },
+      {
+          "name": "domain_name",
+          "label": "Traefik Domain Name",
+          "description": "Domain name for Traefik",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      },
+      {
+          "name": "dashboard_username",
+          "label": "Traefik Dashboard Username",
+          "description": "Username for Traefik dashboard",
+          "required": "yes",
+          "validate_fn": "validate_username" 
+      },
+      {
+          "name": "dashboard_password",
+          "label": "Traefik Dashboard Password",
+          "description": "Password for Traefik dashboard",
+          "required": "yes",
+          "validate_fn": "validate_password" 
       }
   ]'
 
@@ -5095,17 +5240,35 @@ generate_config_traefik() {
     get_variable_value_from_collection "$collected_items" "email_ssl"
   )"
 
+  domain_name="$(\
+    get_variable_value_from_collection "$collected_items" "domain_name"
+  )"
+
+  dashboard_username="$(\
+    get_variable_value_from_collection "$collected_items" "dashboard_username"
+  )"
+
+  dashboard_password="$(\
+    get_variable_value_from_collection "$collected_items" "dashboard_password"
+  )"
+
   local network_name="$(get_network_name)"  
 
   # Ensure everything is quoted correctly
   jq -n \
     --arg stack_name "$stack_name" \
     --arg email_ssl $email_ssl \
+    --arg domain_name $domain_name \
+    --arg dashboard_username $dashboard_username \
+    --arg dashboard_password $dashboard_password \
     --arg network_name "$network_name" \
     '{
         "name": $stack_name,
         "variables": {
             "email_ssl": $email_ssl,
+            "domain_name": $domain_name,
+            "dashboard_username": $dashboard_username,
+            "dashboard_password": $dashboard_password,
             "network_name": $network_name,
         },
         "dependencies": {},
@@ -5131,8 +5294,6 @@ generate_config_portainer() {
   info "Portainer ce version: $portainer_ce_version"
   step_success 2 $total_steps "Retrieving Portainer ce version succeeded"
 
-  local network_name="$(get_network_name)"  
-
   # Prompting step 
   prompt_items='[
       {
@@ -5141,6 +5302,20 @@ generate_config_portainer() {
           "description": "URL to access Portainer remotely",
           "required": "yes",
           "validate_fn": "validate_url_suffix" 
+      },
+      {	
+          "name": "portainer_username",
+          "label": "Portainer Username",
+          "description": "Username to access Portainer remotely",
+          "required": "yes",
+          "validate_fn": "validate_username" 
+      },
+      {
+          "name": "portainer_password",
+          "label": "Portainer Password",
+          "description": "Password to access Portainer remotely",
+          "required": "yes",
+          "validate_fn": "validate_password"
       }
   ]'
 
@@ -5155,6 +5330,8 @@ generate_config_portainer() {
   portainer_url="$(\
     get_variable_value_from_collection "$collected_items" "portainer_url" \
   )"
+
+  local network_name="$(get_network_name)"  
 
   # Ensure everything is quoted correctly
   jq -n \
@@ -5172,7 +5349,12 @@ generate_config_portainer() {
               "network_name": $network_name
           },
           "dependencies": {},
-          "setUp": []
+          "prepare": [
+              {
+                  "name": "portainer",
+              }
+          ],
+          "finalize": []
       }'
 }
 
