@@ -5425,6 +5425,8 @@ generate_config_traefik() {
     htpasswd -nbB "$dashboard_username" "$dashboard_password"
   )"
 
+  echo "$dashboard_credentials" >&2
+
   local network_name="$(get_network_name)"  
 
   # Ensure everything is quoted correctly
