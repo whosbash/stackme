@@ -137,6 +137,8 @@ ARROW_OPTION='diamond'
 SELECTED_ARROW="${ARROWS[$ARROW_OPTION]}"
 COLORED_ARROW="${highlight_color}${SELECTED_ARROW}${reset_color}"
 
+STACKS_FOLDER="~/stacks"
+
 ############################# BEGIN OF DISPLAY-RELATED FUNCTIONS #############################
 
 # Function to display a message with improved formatting
@@ -1043,15 +1045,18 @@ load_json() {
     # If file doesn't exist, handle as needed (e.g., return empty JSON or an error)
     warning "Configuration file '$config_file' not found. Returning empty JSON."
     config_output="{}"
+    return 1
   fi
 
   # Ensure valid JSON by passing it through jq
   if ! echo "$config_output" | jq . >/dev/null 2>&1; then
     warning "Invalid JSON in the configuration file '$config_file'. Returning empty JSON."
     echo "{}"
+    return 1
   else
     # Return the valid JSON
     echo "$config_output"
+    return 0
   fi
 }
 
@@ -1180,10 +1185,14 @@ test_smtp_email(){
 
 ############################### BEGIN OF SYSTEM-RELATED FUNCTIONS #################################
 
+diplay_header(){
+  local title="$1"
+  display_text "$title" 40 --center --style "${bold_color}${green}"
+}
+
 # Functions for diagnostics
 uptime_usage() {
     # Example usage of display_text to show a centered header
-    display_text "UPTIME USAGE" 40 --center --style "${bold_color}${green}"
     echo ""
     format_="%Y-%m-%d %H:%M:%S"
     echo "$(uptime -p) since $(date -d "$(uptime -s)" +"$format_") to $(date +"$format_")" >&2
@@ -1276,7 +1285,7 @@ bandwidth_usage() {
 }
 
 # Function to update and check VPS packages
-update_and_check_vps_packages() {
+update_and_check_packages() {
     # Check for the package manager (apt)
     if command -v apt &> /dev/null; then
         # Check for upgradable packages
@@ -3671,12 +3680,10 @@ is_portainer_credentials_correct() {
 # Function to signup on portainer
 signup_on_portainer(){
   local portainer_url="$1"
-  local new_username="$2"
-  local new_password="$3"
+  local credentials="$2"
 
   local protocol="https"
   local content_type="application/json"
-  local credentials="{\"Username\":\"$new_username\",\"Password\":\"$new_password\"}"
   local resource='users/admin/init'
 
   url="$(get_api_url $protocol $portainer_url $resource)"
@@ -3912,7 +3919,42 @@ upload_stack_on_portainer() {
     "$url" &&
     success "Stack '$stack_name' uploaded successfully." ||
     error "Failed to upload stack '$stack_name'."
+}
 
+# Function to deploy a stack
+deploy_stack_on_portainer() {
+  local portainer_url="$1"
+  local portainer_credentials="$2"
+  local stack_name="$3"
+
+  portainer_auth_token="$(\
+    get_portainer_auth_token "$portainer_url" "$portainer_credentials"
+  )"
+
+  if [[ -z "$portainer_auth_token" ]]; then
+    error "Failed to retrieve Portainer token."
+    return 1
+  fi
+
+  check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"
+
+  if [[ $? -eq 0 ]]; then
+    echo "Stack $stack_name exists"
+    delete_stack_on_portainer "$portainer_url" "$portainer_auth_token" "$stack_name"
+    check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"
+
+    if [[ $? -eq 1 ]]; then
+      success "Stack $stack_name deleted"
+    else
+      error "Stack $stack_name not deleted"
+    fi
+  else
+    warning "Stack $stack_name does not exist"
+  fi
+
+  upload_stack_on_portainer "$portainer_url" "$credentials" \
+    "$stack_name" "~/stacks/$stack_name.yaml" || \
+    error "Failed to upload stack '$stack_name'"
 }
 
 # Function to delete a stack
@@ -3992,18 +4034,23 @@ remove_compose_if_failed_deployment() {
 build_stack_info() {
   local stack_name="$1"
 
-  # Build config file
-  local config_path="${stack_name}_config.json"
+  # Build JSON object
+  local json_output
+  json_output=$(jq -n \
+    --arg config_path "${stack_name}_config.json" \
+    --arg compose_path "${stack_name}.yaml" \
+    --arg compose_func "compose_${stack_name}" \
+    '{
+      config_path: $config_path,
+      compose_path: $compose_path,
+      compose_func: $compose_func
+    }'
+  )
 
-  # Build compose file
-  local compose_path="${stack_name}.yaml"
-
-  # Build compose func name
-  local compose_func="compose_${stack_name}"
-
-  # Return files
-  echo "$config_path $compose_path $compose_func"
+  # Return JSON
+  echo "$json_output"
 }
+
 
 # Function to validate a Docker Compose file
 validate_compose_file() {
@@ -4080,7 +4127,7 @@ create_network_if_not_exists() {
 # Function to execute a setUp action
 execute_action() {
   local action_json="$1"
-  local variables="$2"
+  local action_variables="$2"
 
   # Extract the name, command, and variables from the action
   local action_name
@@ -4116,10 +4163,10 @@ execute_action() {
 }
 
 # Function to deploy a service
-build_and_deploy_stack() {
+deploy_stack_pipeline() {
   # Arguments
-  local stack_name="$1" # Service name (e.g., redis, postgres)
-  local stack_json="$2" # JSON data with service variables
+  local stack_name="$1" # stack name (e.g., redis, postgres)
+  local config_json="$2" # JSON data with stack setup cofiguration
 
   total_steps=9
 
@@ -4158,14 +4205,14 @@ build_and_deploy_stack() {
   while IFS="=" read -r key value; do
     stack_variables["$key"]="$value"
   done < <(\
-    echo "$stack_json" | \
+    echo "$config_json" | \
     jq -r '.variables | to_entries | .[] | "\(.key)=\(.value)"')
 
   highlight "Deploying stack '$stack_name'"
 
   # Step 1: Deploy Dependencies
   stack_step_progress 1 "Checking and deploying dependencies"
-  local dependencies=$(echo "$stack_json" | jq -r '.dependencies[]?')
+  local dependencies=$(echo "$config_json" | jq -r '.dependencies[]?')
 
   # Check if there are dependencies, and if none, display a message
   if [ -z "$dependencies" ]; then
@@ -4190,9 +4237,9 @@ build_and_deploy_stack() {
   # Step 2: Gather setUp actions
   stack_step_progress 2 "Gathering setUp actions"
   local setUp_actions
-  prepare_actions=$(echo "$stack_json" | jq -r '.prepare[]?')
-  finalize_actions=$(echo "$stack_json" | jq -r '.finalize[]?')
-  stack_variables="$(echo "$stack_json" | jq -r '.variables[]?')"
+  prepare_actions=$(echo "$config_json" | jq -r '.prepare[]?')
+  finalize_actions=$(echo "$config_json" | jq -r '.finalize[]?')
+  stack_variables="$(echo "$config_json" | jq -r '.variables[]?')"
 
   # Check if jq returned an error
   if [[ $? -ne 0 ]]; then
@@ -4224,9 +4271,12 @@ build_and_deploy_stack() {
   message="Building stack filepaths"
   stack_step_progress 4 "$message"
   stack_info="$(build_stack_info "$stack_name")"
-  local config_path=$(echo "$stack_info" | awk '{print $1}')
-  local compose_filepath=$(echo "$stack_info" | awk '{print $2}')
-  local compose_template_func=$(echo "$stack_info" | awk '{print $3}')
+
+  # Extract values from the JSON output
+  local config_path=$(echo "$stack_info" | jq -r '.config_path')
+  local compose_filepath=$(echo "$stack_info" | jq -r '.compose_path')
+  local compose_template_func=$(echo "$stack_info" | jq -r '.compose_func')
+
   stack_handle_exit $? 4 "$message"
 
   # Step 5: Retrieve and substitute variables in Docker Compose template
@@ -4241,12 +4291,11 @@ build_and_deploy_stack() {
   # Step 6: Write the substituted template to the compose file
   
   # Create folder stacks on home path
-  stacks_folder="~/stacks"
-  mkdir -p "$stacks_folder"
+  mkdir -p "$STACKS_FOLDER"
   
   message="Writing Docker Compose template"
   stack_step_progress 6 "$message" 
-  compose_path="$stacks_folder/$compose_filepath"
+  compose_path="$STACKS_FOLDER/$compose_filepath"
   echo "$substituted_template" >"$compose_path"
   stack_handle_exit $? 6 "$message"
 
@@ -4275,21 +4324,12 @@ build_and_deploy_stack() {
     stack_step_progress 8 "$message"
 
     # Get Portainer credentials
-    portainer_config_json="$(load_json "portainer_config.json")"
+    portainer_config_json="$(load_json "$STACKS_FOLDER/portainer_config.json")"
     portainer_url="$(\
       get_variable_value_from_collection "$portainer_config_json" "portainer_url"\
     )"
-    portainer_username="$(\
+    portainer_credentials="$(\
       get_variable_value_from_collection "$portainer_config_json" "username"\
-    )"
-    portainer_password="$(\
-      get_variable_value_from_collection "$portainer_config_json" "password"\
-    )"
-    portainer_credentials="$(
-      jq -n \
-        --arg username "$portainer_username" \
-        --arg password "$portainer_password" \
-        '{"username":$username,"password":$password}'\
     )"
 
     upload_stack_on_portainer "$portainer_url" "$portainer_credentials" \
@@ -4305,8 +4345,11 @@ build_and_deploy_stack() {
     return 1
   fi
 
-  # Step 3: Run finalize actions individually
+  # Step 9: Run finalize actions individually
   if [ -n "$finalize_actions" ]; then
+    message="Executing finalize actions"
+    stack_step_progress 9 "$message"
+
     # Iterate through each action, preserving newlines for better debugging
     IFS=$'\n' read -d '' -r -a actions_array <<<"$finalize_actions"
 
@@ -4321,14 +4364,14 @@ build_and_deploy_stack() {
       stack_handle_exit $? 3 "$message"
     done
   else
-    stack_step_warning 3 "No prepare actions defined"
+    stack_step_warning 9 "No finalize actions defined"
   fi
 
   # Step 9: Save service-specific information to a configuration file
   message="Saving stack configuration"
-  stack_step_progress 9 "$message"
+  stack_step_progress 10 "$message"
   write_json "$config_path" "$stack_json"
-  stack_handle_exit $? 9 "$message"
+  stack_handle_exit $? 10 "$message"
 
   # Final Success Message
   deploy_success_message "$stack_name"
@@ -4337,8 +4380,10 @@ build_and_deploy_stack() {
 }
 
 # Function to deploy a traefik service
-deploy_stack_pipeline() {
+deploy_stack() {
   local stack_name="$1"
+
+
 
   # Generate the stack JSON configuration
   local config_json
@@ -4353,10 +4398,13 @@ deploy_stack_pipeline() {
   # Check required fields
   validate_stack_config "$stack_name" "$config_json"
 
-  echo "$config_json" >&2
+  if [ $? -ne 0 ]; then
+    failure "Stack $stack_name configuration validation failed."
+    return 1
+  fi
 
   # Deploy the n8n service using the JSON
-  build_and_deploy_stack "$stack_name" "$config_json"
+  deploy_stack_pipeline "$stack_name" "$config_json"
 }
 
 ################################ END OF GENERAL DEPLOYMENT FUNCTIONS ##############################
@@ -4811,7 +4859,7 @@ get_server_info() {
 # Function to initialize the server information
 initialize_server_info() {
   total_steps=6
-  server_filename="server_info.json"
+  server_filename="${HOME}/server_info.json"
 
   # Step 1: Check if server_info.json exists and is valid
   message="Initialization of server information"
@@ -4850,16 +4898,36 @@ initialize_server_info() {
   # Update /etc/hosts
   step_message="Add name to server name in hosts file at path /etc/hosts"
   step_progress 3 $total_steps "$step_message"
-  # Ensure the server_name exists in /etc/hosts
-  if ! grep -q "127.0.0.1[[:space:]]$server_name" /etc/hosts; then
+  # Ensure /etc/hosts has the correct entry
+  if ! grep -q "^127.0.0.1[[:space:]]$server_name" /etc/hosts; then
+    sed -i "/^127.0.0.1[[:space:]]/d" /etc/hosts  # Remove old entries
     echo "127.0.0.1 $server_name" >> /etc/hosts
+  else
+    step_info 2 $total_steps "$server_name is already present in /etc/hosts"
   fi
+
   handle_exit $? 2 $total_steps "$step_message"
 
     # Set Hostname
   step_message="Set Hostname"
-  step_progress 3 $total_steps "$step_message"
-  hostnamectl set-hostname "$server_name" 2>&1
+  current_hostname=$(hostnamectl --static)
+
+  if [[ "$current_hostname" != "$server_name" ]]; then
+    hostnamectl set-hostname "$server_name"
+    handle_exit $? 3 $total_steps "Set Hostname"
+
+    # Verify the hostname was set
+    updated_hostname=$(hostnamectl --static)
+    if [[ "$updated_hostname" != "$server_name" ]]; then
+      step_error "Failed to set hostname to $server_name. Current hostname: $updated_hostname"
+      exit 1
+    fi
+
+    # Allow a brief delay for changes to propagate
+    sleep 2
+  else
+      step_info 3 $total_steps "Hostname is already set to $server_name"
+  fi
   handle_exit $? 3 $total_steps "$step_message"
 
   # Install docker
@@ -4954,13 +5022,13 @@ services:
         - "traefik.http.routers.http-catchall.entrypoints=web"
         - "traefik.http.routers.http-catchall.middlewares=redirect-https@docker"
         - "traefik.http.routers.http-catchall.priority=1"
-        - "traefik.http.routers.dashboard.rule=Host(`{{domain_name}}`)"
+        - "traefik.http.routers.dashboard.rule=Host(\`{{domain_name}}\`)"
         - "traefik.http.routers.dashboard.entrypoints=websecure"
         - "traefik.http.routers.dashboard.service=api@internal"
         - "traefik.http.routers.dashboard.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.dummy-svc.loadbalancer.server.port=9999"
         - "traefik.http.routers.dashboard.middlewares=myauth"
-        - "traefik.http.middlewares.myauth.basicauth.users={{dashboard_username}}:{{dashboard_password}}"
+        - "traefik.http.middlewares.myauth.basicauth.users={{dashboard_credentials}}"
 
 volumes:
   vol_shared:
@@ -5081,7 +5149,7 @@ services:
       - PG_MAX_CONNECTIONS=500
     ## Uncomment the following line to use a custom configuration file
     # ports:
-    #   - {{container_port}}:5432
+    #   - 5432:5432
     volumes:
       - {{volume_name}}:/var/lib/postgresql/data
     networks:
@@ -5179,7 +5247,7 @@ get_network_name(){
   
   if [[ ! -f "$server_info_filename" ]]; then
     error "File $server_info_filename not found."
-    exit 1
+    return 1
   fi
 
   server_info_json="$(cat "$server_info_filename")"
@@ -5187,6 +5255,8 @@ get_network_name(){
     search_on_json_array "$server_info_json" "name" "network_name" | \
     jq -r ".value"
   )"
+
+  return 0
 }
 
 #################################### BEGIN OF STACK CONFIGURATION #################################
@@ -5195,6 +5265,12 @@ get_network_name(){
 generate_config_traefik() {
   local stack_name="traefik"
   local network_name="$(get_network_name)"
+
+  if [[ -z "$network_name" ]]; then
+    reason="Either stackme was not initialized properly or server_info.json file is corrupted."
+    error "Unable to retrieve network name. $reason"
+    return 1
+  fi
 
   highlight "Gathering $stack_name configuration"
 
@@ -5252,6 +5328,10 @@ generate_config_traefik() {
     get_variable_value_from_collection "$collected_items" "dashboard_password"
   )"
 
+  dashboard_credentials="$(
+    htpasswd -nbB "$dashboard_username" "$dashboard_password"
+  )"
+
   local network_name="$(get_network_name)"  
 
   # Ensure everything is quoted correctly
@@ -5259,21 +5339,22 @@ generate_config_traefik() {
     --arg stack_name "$stack_name" \
     --arg email_ssl $email_ssl \
     --arg domain_name $domain_name \
-    --arg dashboard_username $dashboard_username \
-    --arg dashboard_password $dashboard_password \
+    --arg dashboard_credentials $dashboard_credentials \
     --arg network_name "$network_name" \
     '{
         "name": $stack_name,
         "variables": {
             "email_ssl": $email_ssl,
             "domain_name": $domain_name,
-            "dashboard_username": $dashboard_username,
-            "dashboard_password": $dashboard_password,
+            "dashboard_credentials": $dashboard_credentials,
             "network_name": $network_name,
         },
         "dependencies": {},
         "setUp": []
-    }'
+    }' | jq . || {
+        echo "Error: Failed to generate JSON" >&2
+        return 1
+    }
 }
 
 # Function to generate configuration files for portainer
@@ -5331,37 +5412,56 @@ generate_config_portainer() {
     get_variable_value_from_collection "$collected_items" "portainer_url" \
   )"
 
+  portainer_username="$(\
+    get_variable_value_from_collection "$collected_items" "portainer_username"
+  )"
+
+  portainer_password="$(\
+    get_variable_value_from_collection "$collected_items" "portainer_password"
+  )"
+  
+  portainer_credentials="$(
+    jq -n \
+      --arg username "$portainer_username" \
+      --arg password "$portainer_password" \
+      '{"username": $username, "password": $password}'  
+  )"
+
   local network_name="$(get_network_name)"  
 
-  # Ensure everything is quoted correctly
   jq -n \
-    --arg stack_name "$stack_name" \
-    --arg portainer_agent_version "$portainer_agent_version" \
-    --arg portainer_ce_version "$portainer_ce_version" \
-    --arg portainer_url "$portainer_url" \
-    --arg network_name "$network_name" \
-    '{
-          "variables": {
-              "stack_name": $stack_name,
-              "portainer_agent_version": $portainer_agent_version,
-              "portainer_ce_version": $portainer_ce_version,
-              "portainer_url": $portainer_url,
-              "network_name": $network_name
-          },
-          "dependencies": {},
-          "prepare": [
-              {
-                  "name": "portainer",
-              }
-          ],
-          "finalize": []
-      }'
+  --arg stack_name "$stack_name" \
+  --arg portainer_agent_version "$portainer_agent_version" \
+  --arg portainer_ce_version "$portainer_ce_version" \
+  --arg portainer_url "$portainer_url" \
+  --argjson portainer_credentials "$portainer_credentials" \
+  --arg network_name "$network_name" \
+  '{
+        "variables": {
+            "stack_name": $stack_name,
+            "portainer_agent_version": $portainer_agent_version,
+            "portainer_ce_version": $portainer_ce_version,
+            "portainer_url": $portainer_url,
+            "portainer_credentials": $portainer_credentials,
+            "network_name": $network_name
+        },
+        "dependencies": {},
+        "prepare": [],
+        "finalize": [
+            {
+                "name": "Create portainer first admin credentials",
+                "command": "signup_on_portainer \"$portainer_url\" \"$portainer_credentials\""
+            }
+        ]
+    }' | jq . || {
+        echo "Error: Failed to generate JSON" >&2
+        return 1
+    }
 }
 
 # Function to generate configuration files for redis
 generate_config_redis() {
   local stack_name = 'redis'
-  local container_port='6379'
 
   local network_name="$(get_network_name)"
 
@@ -5372,34 +5472,29 @@ generate_config_redis() {
   step_message="Retrieving Redis image version"
   step_info 1 $total_steps 
   local image_version="$(get_latest_stable_version "redis")"
-  handle_exit 
+  handle_exit "$?" 1 $total_steps "$step_message"
   
   info "Redis version: $image_version"
 
-  step_success 1 $total_steps "$step_message succeeded"
-
   jq -n \
     --arg stack_name "$stack_name" \
-    --arg image_name "${stack_name}_${image_version}" \
     --arg image_version "$image_version" \
-    --arg container_name "$stack_name" \
-    --arg container_port "$container_port" \
-    --arg redis_url "redis://redis:$container_port" \
+    --arg container_port "6379" \
+    --arg redis_url "redis://redis:6379" \
     --arg volume_name "${stack_name}_data" \
     --arg network_name "$network_name" \
     '{
             "name": $stack_name,
             "variables": {
-                "image_name": $image_name,
                 "image_version": $image_version,
-                "container_name": $container_name,
                 "container_port": $container_port,
                 "redis_url": $redis_url,
                 "volume_name": $volume_name,
                 "network_name": $network_name
             },
             "dependencies": {},
-            "setUp": []
+            "prepare": [],
+            "finalize": []
         }'
 }
 
@@ -5407,7 +5502,6 @@ generate_config_redis() {
 generate_config_postgres() {
   local stack_name='postgres'
   local image_version='15'
-  local container_port='5432'
 
   local postgres_user="postgres"
   local postgres_password="$(random_string)"
@@ -5415,9 +5509,7 @@ generate_config_postgres() {
   # Ensure everything is quoted correctly
   jq -n \
     --arg stack_name "$stack_name" \
-    --arg image_name "${stack_name}_$image_version" \
     --arg image_version "$image_version" \
-    --arg container_port "$container_port" \
     --arg db_user "$postgres_user" \
     --arg db_password "$postgres_password" \
     --arg volume_name "${stack_name}_data" \
@@ -5426,17 +5518,19 @@ generate_config_postgres() {
           "name": $stack_name,
           "variables": {
               "stack_name": $stack_name,
-              "image_name": $image_name,
               "image_version": $image_version,
-              "container_port": $container_port,
               "volume_name": $volume_name,
               "network_name": $network_name,
               "db_user": $db_user,
               "db_password": $db_password
           },
           "dependencies": {},
-          "setUp": []
-      }'
+          "prepare": [],
+          "finalize": []
+      }' | jq . || {
+        echo "Error: Failed to generate JSON" >&2
+        return 1
+    }
 }
 
 generate_config_whoami() {
@@ -5444,6 +5538,7 @@ generate_config_whoami() {
   local container_port='80'
 
   # Step 1: Retrieve network name
+  step_info 1 $total_steps "Retrieving network name"
   network_name="$(get_network_name)"
 
   # Prompting step 
@@ -5457,11 +5552,11 @@ generate_config_whoami() {
       }
   ]'
 
-  step_info 3 $total_steps "Prompting required WhoAmI information"
+  step_info 2 $total_steps "Prompting required WhoAmI information"
   collected_items="$(run_collection_process "$prompt_items")"
 
   if [[ "$collected_items" == "[]" ]]; then
-    step_error 3 $total_steps "Unable to prompt Portainer configuration."
+    step_error 2 $total_steps "Unable to prompt Portainer configuration."
     return 1
   fi
 
@@ -5472,20 +5567,23 @@ generate_config_whoami() {
   jq -n \
     --arg stack_name "$stack_name" \
     --arg container_port "$container_port" \
-    --arg network_name "$network_name" \
     --arg domain_name "$domain_name" \
+    --arg network_name "$network_name" \
     '{
           "name": $stack_name,
           "variables": {
               "stack_name": $stack_name,
               "container_port": $container_port,
-              "network_name": $network_name,
               "domain_name": $domain_name
+              "network_name": $network_name,
           },
           "dependencies": {},
-          "setUp": []
-      }'
-  
+          "prepare": [],
+          "finalize": []
+      }' | jq . || {
+        echo "Error: Failed to generate JSON" >&2
+        return 1
+    } 
 }
 
 #################################### END OF STACK CONFIGURATION ###################################
@@ -5494,27 +5592,37 @@ generate_config_whoami() {
 
 # Function to deploy a traefik service
 deploy_stack_traefik() {
-  deploy_stack_pipeline 'traefik'
+  deploy_stack 'traefik'
 }
 
 # Function to deploy a portainer service
 deploy_stack_portainer() {
-  deploy_stack_pipeline 'portainer'
+  deploy_stack 'portainer'
+}
+
+deploy_stack_traefik_and_portainer() {
+  deploy_stack 'traefik'
+
+  if [[ $? -ne 0 ]]; then
+    return 1
+  fi
+
+  deploy_stack 'portainer'
 }
 
 # Function to deploy a PostgreSQL stack
 deploy_stack_postgres() {
-  deploy_stack_pipeline 'postgres'
+  deploy_stack 'postgres'
 }
 
 # Function to deploy a Redis service
 deploy_stack_redis() {
-  deploy_stack_pipeline 'redis'
+  deploy_stack 'redis'
 }
 
 # Function to deploy a whoami service
 deploy_stack_whoami() {
-  deploy_stack_pipeline 'whoami'
+  deploy_stack 'whoami'
 }
 
 ################################# END OF STACK DEPLOYMENT FUNCTIONS ################################
@@ -5526,17 +5634,17 @@ define_menu_stacks(){
   menu_name="Stacks"
 
   item_1="$(
-      build_menu_item "Traefik + Portainer" \
-      "Deploy" "deploy_stack_traefik && deploy_stack_portainer"
+      build_menu_item "Traefik & Portainer" \
+      "Deploy" "deploy_stack_traefik_and_portainer"
   )"
   item_2="$(
-    build_menu_item "whoami" "Deploy" "deploy_stack_whoami"
-  )"
-  item_3="$(
     build_menu_item "postgres" "Deploy" "deploy_stack_postgres" 
   )"
-  item_4="$(
+  item_3="$(
     build_menu_item "redis" "Deploy" "deploy_stack_redis" 
+  )"
+  item_4="$(
+    build_menu_item "whoami" "Deploy" "deploy_stack_whoami"
   )"
 
   page_size=5
@@ -5549,7 +5657,7 @@ define_menu_stacks(){
 }
 
 # Utilities
-define_utilities(){
+define_menu_utilities(){
   menu_name="Utilities"
 
   item_1="$(build_menu_item "Test SMPT e-mail" "Send" "test_smtp_email")"
@@ -5569,37 +5677,37 @@ define_menu_health(){
 
   item_1="$(
     build_menu_item "Awake Usage" "describe" \
-    "uptime_usage && press_any_key"
+    "diplay_header 'Uptime' && uptime_usage && press_any_key"
   )"
   item_2="$(
     build_menu_item "Memory Usage" "describe" \
-    "memory_usage && press_any_key"
+    "diplay_header 'Memory' && memory_usage && press_any_key"
   )"
   item_3="$(
     build_menu_item "Disk Usage" "describe" \
-    "disk_usage && press_any_key"
+    "diplay_header 'Disk' && disk_usage && press_any_key"
   )"
   item_4="$(
     build_menu_item "Network" "describe" \
-    "network_usage && press_any_key"
+    "diplay_header 'Network' && network_usage && press_any_key"
   )"
   item_5="$(\
     build_menu_item "Top Processes" "list" \
-    "top_processes && press_any_key" \
+    "diplay_header 'Processes' && top_processes && press_any_key" \
   )"
   item_6="$(\
     build_menu_item "Security" "diagnose" \
-    "security_diagnostics && press_any_key")"
+    "diplay_header 'Security' && security_diagnostics && press_any_key")"
   item_7="$(\
     build_menu_item "Load Average" "describe" \
-    "load_average && press_any_key")"
+    "diplay_header 'Load Average' && load_average && press_any_key")"
   item_8="$(\
     build_menu_item "Bandwidth" "describe" \
-    "bandwidth_usage && press_any_key" \
+    "diplay_header 'Bandwidth' && bandwidth_usage && press_any_key" \
   )"
   item_9="$(\
     build_menu_item "Package Updates" "install" \
-    "update_and_check_vps_packages && press_any_key" \
+    "diplay_header 'Package Updates' && update_and_check_packages && press_any_key" \
   )"
 
   page_size=5
@@ -5640,7 +5748,7 @@ define_menu_main(){
 define_menus(){
     define_menu_main
     define_menu_stacks
-    define_utilities
+    define_menu_utilities
     define_menu_health
 }
 
@@ -5659,9 +5767,6 @@ usage() {
     "Options:"
     "  -i, --install           Install required packages."
     "  -c, --clean             Clean docker environment."
-    "  -p, --prepare           Prepare the environment, same as combination '-i -c'."
-    "  -u, --startup           Startup server information."
-    "  -s, --stack STACK       Specify which stack to install: {${stack_names[*]}}."
     "  -h, --help              Display this help message and exit."
   )
   format_array "info" usage_messages
@@ -5675,9 +5780,7 @@ usage() {
 parse_args() {
   # Get options using getopt
   OPTIONS=$(\
-    getopt \
-    -o c,h \
-    --long clean,help -- "$@" \
+    getopt -o c,h --long clean,help -- "$@" \
   )
 
   # Check if getopt failed (invalid option)
@@ -5706,7 +5809,7 @@ parse_args() {
       ;;
     *)
       # This will be triggered for any unrecognized option
-      echo "Unknown option: $1"
+      info "Unknown option: $1" >&2
       usage
       return 1
       ;;
@@ -5719,14 +5822,18 @@ main() {
   parse_args "$@"
 
   clear
-  
+
   # Install required packages
   update_and_install_packages
   clear
 
   # Perform initialization
-  initialize_server_info
-  clear
+  config="$(load_json "~/server_info.json")"
+  
+  if [[ "$config" == "{}" ]]; then
+    initialize_server_info
+    clear
+  fi
 
   define_menus
 
@@ -5735,41 +5842,3 @@ main() {
 
 # Call the main function
 main "$@"
-
-# # Portainer test
-# portainer_url="portainer.example.com"
-# portainer_username="portainer_username"
-# portainer_password="secret_password_shhh"
-# 
-# credentials="$(
-#   jq -n \
-#     --arg username "$portainer_username" \
-#     --arg password "$portainer_password" \
-#     '{"username":$username,"password":$password}'\
-# )"
-# 
-# portainer_auth_token="$(\
-#   get_portainer_auth_token "$portainer_url" "$credentials"
-# )"
-# 
-# stack_name='whoami'
-# check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"
-# 
-# if [[ $? -eq 0 ]]; then
-#   echo "Stack $stack_name exists"
-#   delete_stack_on_portainer "$portainer_url" "$portainer_auth_token" "$stack_name"
-#   check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"
-# 
-#   if [[ $? -eq 1 ]]; then
-#     success "Stack $stack_name deleted"
-#   else
-#     error "Stack $stack_name not deleted"
-#   fi
-# else
-#   warning "Stack $stack_name does not exist"
-# fi
-# 
-# upload_stack_on_portainer "$portainer_url" "$credentials" \
-#   "$stack_name" ""$(pwd)/sandbox/$stack_name.yaml"" 
-# 
-# sleep 10
