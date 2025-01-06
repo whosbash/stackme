@@ -4096,8 +4096,8 @@ deploy_success_message() {
 
 # Function to remove a failed deployment
 remove_compose_if_failed_deployment() {
-  local compose_path=$1
-  local exit_code=$2
+  local compose_path="$1"
+  local exit_code="$2"
 
   # Ensure exit_code is a valid integer
   if [[ ! "$exit_code" =~ ^[0-9]+$ ]]; then
@@ -4384,10 +4384,10 @@ deploy_stack_pipeline() {
   message="Validating Docker Compose file" 
   stack_step_progress 7 "$message" 
   validate_compose_file "$compose_path"
-  exit_code=$?
+  exit_code="$?"
   stack_handle_exit "$exit_code" 7 "$message"
 
-  remove_compose_if_failed_deployment "$exit_code" "$compose_path"
+  remove_compose_if_failed_deployment "$compose_path" "$exit_code" 
 
   if [ $? -ne 0 ]; then
     return 1
