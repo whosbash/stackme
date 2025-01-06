@@ -2288,7 +2288,10 @@ run_collection_process() {
     collected_info="$(collect_prompt_info "$items")"
 
     # If no values were collected, exit early
-    handle_empty_collection "$collected_info"
+    if [[ "$collected_info" == "[]" ]]; then
+      warning "No data collected. Exiting process."
+      exit 0
+    fi
 
     # Define the filter functions in jq format
     labels='.name and .label and .description and .value and .required'
@@ -2349,13 +2352,6 @@ display_error_items() {
     done
 }
 
-# Function to handle empty collections and avoid exiting prematurely
-handle_empty_collection() {
-  if [[ "$1" == "[]" ]]; then
-    warning "No data collected. Exiting process."
-    exit 0
-  fi
-}
 
 # Function to wait for any letter or command to continue
 wait_for_input() {
@@ -5398,10 +5394,6 @@ generate_config_traefik() {
   ]'
 
   collected_items="$(run_collection_process "$prompt_items")"
-
-  echo "$collected_items" >&2
-
-  wait_for_input
 
   if [[ "$collected_items" == "[]" ]]; then
     error "Unable to retrieve Traefik configuration."
