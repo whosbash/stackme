@@ -1,32 +1,56 @@
 #!/bin/bash
 
-shift_option_text() {
-    local text="$1"
-    local max_length="${2-50}" # Default max length is 50
-    local delay="${3-0.2}"     # Default delay between shifts is 0.2 seconds
+# Function to display machine specs
+generate_machine_specs() {
+  echo "Machine Specifications"
+  echo "======================="
 
-    # If the text is shorter than or equal to max_length, display it as-is
-    if [[ ${#text} -le $max_length ]]; then
-        echo "$text"
-        return
-    fi
+  # Basic Information
+  echo "Hostname: $(hostname)"
+  echo "Operating System: $(lsb_release -d | cut -f2)"
+  echo "Kernel Version: $(uname -r)"
 
-    # Loop to shift the text
-    while true; do
-        for i in $(seq 0 $(( ${#text} - 1 ))); do
-            # Create the substring to display
-            local shifted_text="${text:$i:$max_length}"
-            
-            # Wrap around when the end of the text is reached
-            if [[ ${#shifted_text} -lt $max_length ]]; then
-                shifted_text+="${text:0:$((max_length - ${#shifted_text}))}"
-            fi
-    
-            # Display the shifted text and wait for the delay
-            echo -ne "\r$shifted_text"
-            sleep "$delay"
-        done
-    done
+  # Processor (CPU)
+  echo "Model: $(lscpu | grep 'Model name' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//')"
+  echo "Cores: $(lscpu | grep '^CPU(s):' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//')"
+  echo "Threads: $(lscpu | grep '^Thread(s) per core:' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//')"
+  echo "Clock Speed: $(lscpu | grep 'MHz' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//') MHz"
+
+  # Memory (RAM)
+  echo "Total: $(free -h | grep Mem: | awk '{print $2}')"
+
+  # Storage
+  echo "Disk Usage:"
+  df -h --output=source,fstype,size,used,avail,pcent | grep -E '^/dev'
+
+  # GPU
+  if command -v lspci &>/dev/null; then
+    echo "$(lspci | grep -i 'vga\|3d\|2d')"
+  else
+    echo "lspci command not found. GPU info unavailable."
+  fi
+
+  # Network
+  echo "Ethernet: $(ip -4 addr show | grep 'state UP' -A2 | grep inet | awk '{print $2}')"
+  echo "Wi-Fi: $(nmcli device status | grep wifi | awk '{print $1, $3, $4}')"
+
+  # Virtualization and Containers
+  if [[ $(lscpu | grep Virtualization) ]]; then
+    echo "Virtualization: Enabled ($(lscpu | grep Virtualization | awk '{print $2}') supported)"
+  else
+    echo "Virtualization: Not supported or disabled"
+  fi
+  echo "Docker Version: $(docker --version 2>/dev/null || echo "Not installed")"
+
+  # Power (if laptop)
+  if command -v upower &>/dev/null; then
+    upower -i $(upower -e | grep BAT) | grep -E "state|to full|percentage"
+  else
+    echo "Battery information unavailable."
+  fi
+
+  echo -e "\nSpecifications collected successfully."
 }
 
-shift_option_text "This is a very long option text that should shift to let the user read it fully." 30 0.1
+# Run the function
+generate_machine_specs
