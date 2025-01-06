@@ -4991,7 +4991,7 @@ initialize_server_info() {
     # Set Hostname
   step_message="Set Hostname"
   step_progress 3 $total_steps "$step_message"
-  
+
   current_hostname="$(hostnamectl --static)"
 
   if [[ "$current_hostname" != "$server_name" ]]; then
@@ -5011,7 +5011,6 @@ initialize_server_info() {
   else
       step_info 3 $total_steps "Hostname is already set to $server_name"
   fi
-  handle_exit $? 3 $total_steps "$step_message"
 
   # Install docker
   step_message="Installing Docker"
