@@ -635,6 +635,11 @@ header() {
   boxed_text "$word" "$text_style" "$border_style" "$font" "$min_width"
 }
 
+diplay_header(){
+  local title="$1"
+  display_text "$title" 40 --center --style "${bold_color}${green}"
+}
+
 ################################## END OF DISPLAY-RELATED FUNCTIONS ###############################
 
 ################################## BEGIN OF JSON-RELATED FUNCTIONS ################################
@@ -1185,9 +1190,53 @@ test_smtp_email(){
 
 ############################### BEGIN OF SYSTEM-RELATED FUNCTIONS #################################
 
-diplay_header(){
-  local title="$1"
-  display_text "$title" 40 --center --style "${bold_color}${green}"
+# Function to display machine specs
+generate_machine_specs() {
+  # Basic Information
+  echo "Hostname: $(hostname)"
+  echo "Operating System: $(lsb_release -d | cut -f2)"
+  echo "Kernel Version: $(uname -r)"
+
+  # Processor (CPU)
+  echo "Model: $(lscpu | grep 'Model name' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//')"
+  echo "Cores: $(lscpu | grep '^CPU(s):' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//')"
+  echo "Threads: $(lscpu | grep '^Thread(s) per core:' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//')"
+  echo "Clock Speed: $(lscpu | grep 'MHz' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//') MHz"
+
+  # Memory (RAM)
+  echo "Total: $(free -h | grep Mem: | awk '{print $2}')"
+
+  # Storage
+  echo "Disk Usage:"
+  df -h --output=source,fstype,size,used,avail,pcent | grep -E '^/dev'
+
+  # GPU
+  if command -v lspci &>/dev/null; then
+    echo "$(lspci | grep -i 'vga\|3d\|2d')"
+  else
+    echo "lspci command not found. GPU info unavailable."
+  fi
+
+  # Network
+  echo "Ethernet: $(ip -4 addr show | grep 'state UP' -A2 | grep inet | awk '{print $2}')"
+  echo "Wi-Fi: $(nmcli device status | grep wifi | awk '{print $1, $3, $4}')"
+
+  # Virtualization and Containers
+  if [[ $(lscpu | grep Virtualization) ]]; then
+    echo "Virtualization: Enabled ($(lscpu | grep Virtualization | awk '{print $2}') supported)"
+  else
+    echo "Virtualization: Not supported or disabled"
+  fi
+  echo "Docker Version: $(docker --version 2>/dev/null || echo "Not installed")"
+
+  # Power (if laptop)
+  if command -v upower &>/dev/null; then
+    upower -i $(upower -e | grep BAT) | grep -E "state|to full|percentage"
+  else
+    echo "Battery information unavailable."
+  fi
+
+  echo -e "\nSpecifications collected successfully."
 }
 
 # Functions for diagnostics
@@ -1346,7 +1395,7 @@ show_help() {
   echo -e "${back_color}g${reset_color}   - Go to specific page"
   echo -e "${back_color}r${reset_color}   - Return to menu begin"
   echo -e "${search_color}/${reset_color}   - Search on current menu"
-  echo -e "${quit_color}q${reset_color}   - Quit the application"
+  echo -e "${quit_color}q${reset_color}   - Return to previous menu / Quit the application"
   echo -e "${help_color}h${reset_color}   - Show this help menu"
 }
 
@@ -1846,7 +1895,7 @@ validate_password() {
   fi
 
   # Check if the value contains at least one special character
-  if [[ ! "$value" =~ [!@#$%^&*()_+-=] ]]; then
+  if [[ ! "$value" =~ [\!\@\#\$\%\^\&\*\(\)_\+\-=] ]]; then
     reason="It must contain at least one special character."
     echo "$warn_message. $reason"
     return 1
@@ -4727,7 +4776,7 @@ update_and_install_packages() {
   # Install required apt packages quietly
   packages=(
     "sudo" "apt-utils" "apparmor-utils" "jq" "python3" 
-    "docker" "figlet" "swaks" "netcat" "vnstat"
+    "docker" "figlet" "swaks" "netcat" "vnstat" "network-manager"
   )
   step_message="Installing required apt-get packages"
   step_progress 3 $total_steps "$step_message"
@@ -5675,37 +5724,41 @@ define_menu_utilities(){
 define_menu_health(){
   menu_name="Health"
 
-  item_1="$(
+  item_1="$(\
+    build_menu_item "Machine specifications" "describe" \
+    "diplay_header 'Machine specifications' && generate_machine_specs && press_any_key"
+  )"
+  item_2="$(
     build_menu_item "Awake Usage" "describe" \
     "diplay_header 'Uptime' && uptime_usage && press_any_key"
   )"
-  item_2="$(
+  item_3="$(
     build_menu_item "Memory Usage" "describe" \
     "diplay_header 'Memory' && memory_usage && press_any_key"
   )"
-  item_3="$(
+  item_4="$(
     build_menu_item "Disk Usage" "describe" \
     "diplay_header 'Disk' && disk_usage && press_any_key"
   )"
-  item_4="$(
+  item_5="$(
     build_menu_item "Network" "describe" \
     "diplay_header 'Network' && network_usage && press_any_key"
   )"
-  item_5="$(\
+  item_6="$(\
     build_menu_item "Top Processes" "list" \
     "diplay_header 'Processes' && top_processes && press_any_key" \
   )"
-  item_6="$(\
+  item_7="$(\
     build_menu_item "Security" "diagnose" \
     "diplay_header 'Security' && security_diagnostics && press_any_key")"
-  item_7="$(\
+  item_8="$(\
     build_menu_item "Load Average" "describe" \
     "diplay_header 'Load Average' && load_average && press_any_key")"
-  item_8="$(\
+  item_9="$(\
     build_menu_item "Bandwidth" "describe" \
     "diplay_header 'Bandwidth' && bandwidth_usage && press_any_key" \
   )"
-  item_9="$(\
+  item_10="$(\
     build_menu_item "Package Updates" "install" \
     "diplay_header 'Package Updates' && update_and_check_packages && press_any_key" \
   )"
@@ -5715,7 +5768,7 @@ define_menu_health(){
   menu_object="$(
     build_menu "$menu_name" $page_size \
       "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" \
-      "$item_6" "$item_7" "$item_8" "$item_9"
+      "$item_6" "$item_7" "$item_8" "$item_9" "$item_10"
   )"
 
   define_menu "$menu_name" "$menu_object"
