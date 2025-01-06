@@ -4277,7 +4277,7 @@ deploy_stack_pipeline() {
     step="$2"
     message="$3"
     stack_message="[$stack_name] $message"
-    handle_exit "$exit_code" 1 $total_steps "$stack_message"
+    handle_exit "$exit_code" "$step" $total_steps "$stack_message"
   }
 
   # Declare an associative array to hold service variables
@@ -4438,11 +4438,11 @@ deploy_stack_pipeline() {
       action_name=$(echo "$action" | jq -r '.name')
       
       message="Executing finalize action: $action_name"
-      stack_step_error 3 "$message"
+      stack_step_error 9 "$message"
 
       # Perform the action
       execute_action "$action" "$variables"
-      stack_handle_exit $? 3 "$message"
+      stack_handle_exit $? 9 "$message"
     done
   else
     stack_step_warning 9 "No finalize actions defined"
@@ -5121,7 +5121,7 @@ services:
         - "traefik.http.routers.dashboard.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.dummy-svc.loadbalancer.server.port=9999"
         - "traefik.http.routers.dashboard.middlewares=myauth"
-        - "traefik.http.middlewares.myauth.basicauth.users={{dashboard_credentials}}"
+        - "traefik.http.middlewares.myauth.basicauth.users=\`{{dashboard_credentials}}\`"
 
 volumes:
   vol_shared:
