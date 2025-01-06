@@ -4939,8 +4939,6 @@ initialize_server_info() {
   total_steps=6
   server_filename="${HOME}/server_info.json"
 
-  echo "$server_filename" >&2
-
   # Step 1: Check if server_info.json exists and is valid
   message="Initialization of server information"
   step_progress 1 $total_steps "$message"
