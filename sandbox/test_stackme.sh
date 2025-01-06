@@ -5121,7 +5121,7 @@ services:
         - "traefik.http.routers.dashboard.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.dummy-svc.loadbalancer.server.port=9999"
         - "traefik.http.routers.dashboard.middlewares=myauth"
-        - "traefik.http.middlewares.myauth.basicauth.users=\`{{dashboard_credentials}}\`"
+        #- "traefik.http.middlewares.myauth.basicauth.users=\`{{dashboard_credentials}}\`"
 
 volumes:
   vol_shared:
