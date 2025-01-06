@@ -1235,8 +1235,6 @@ generate_machine_specs() {
   else
     echo "Battery information unavailable."
   fi
-
-  echo -e "\nSpecifications collected successfully."
 }
 
 # Functions for diagnostics
