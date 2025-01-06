@@ -5421,7 +5421,8 @@ generate_config_traefik() {
   )"
 
   dashboard_credentials="$(
-    htpasswd -nbB "$dashboard_username" "$dashboard_password" | sed 's/\$/\$\$/g'
+        htpasswd -nbB "$dashboard_username" "$dashboard_password" | \
+        sed -e 's/\$/\$\$/g' -e 's/\\/\\\\/g'
   )"
 
   echo "$dashboard_credentials" >&2
