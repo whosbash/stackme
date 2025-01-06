@@ -137,6 +137,7 @@ STACKS_FOLDER="~/stacks"
 
 # Default arrow
 DEFAULT_ARROW_OPTION='diamond'
+USER_DEFINED_ARROW=""
 
 ############################# BEGIN OF DISPLAY-RELATED FUNCTIONS #############################
 
@@ -653,6 +654,8 @@ set_arrow() {
       ARROW_OPTION="$DEFAULT_ARROW_OPTION"
       sleep 2
     fi
+  else
+    ARROW_OPTION="$DEFAULT_ARROW_OPTION"
   fi
 
   SELECTED_ARROW="${ARROWS[$ARROW_OPTION]}"
