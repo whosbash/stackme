@@ -5926,10 +5926,8 @@ main() {
   # Perform initialization
   server_config_fname="${HOME}/server_info.json"
 
-  if [[ ! -f "$server_config_fname" ]]; then
-    initialize_server_info
-    clear
-  fi
+  initialize_server_info
+  clear
 
   define_menus
 
