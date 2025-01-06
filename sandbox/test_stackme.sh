@@ -133,7 +133,7 @@ HAS_TIMESTAMP=true
 HEADER_LENGTH=120
 
 # Default arrow
-STACKS_FOLDER="~/stacks"
+STACKS_FOLDER="${HOME}/stacks"
 
 # Default arrow
 DEFAULT_ARROW_OPTION='diamond'
@@ -4029,7 +4029,7 @@ deploy_stack_on_portainer() {
   fi
 
   upload_stack_on_portainer "$portainer_url" "$credentials" \
-    "$stack_name" "~/stacks/$stack_name.yaml" || \
+    "$stack_name" "$STACKS_FOLDER/$stack_name.yaml" || \
     error "Failed to upload stack '$stack_name'"
 }
 
@@ -5330,7 +5330,7 @@ create_postgres_database() {
 }
 
 get_network_name(){
-  server_info_filename='~/server_info.json'
+  server_info_filename="${HOME}/server_info.json"
   
   if [[ ! -f "$server_info_filename" ]]; then
     error "File $server_info_filename not found."
