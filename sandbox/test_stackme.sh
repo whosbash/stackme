@@ -4939,6 +4939,8 @@ initialize_server_info() {
   total_steps=6
   server_filename="${HOME}/server_info.json"
 
+  echo "$server_filename" >&2
+
   # Step 1: Check if server_info.json exists and is valid
   message="Initialization of server information"
   step_progress 1 $total_steps "$message"
@@ -4952,6 +4954,12 @@ initialize_server_info() {
     fi
   else  
     server_info_json=$(get_server_info)
+  fi
+
+  if [[ -z "$server_info_json" ]]; then
+    error "Unable to retrieve server and network names."
+    wait_for_input
+    exit 1
   fi
 
   # Extract server_name and network_name
@@ -5917,9 +5925,9 @@ main() {
   clear
 
   # Perform initialization
-  config="$(load_json "${HOME}/server_info.json")"
+  server_config_fname="${HOME}/server_info.json"
 
-  if [[ "$config" == "{}" ]]; then
+  if [[ ! -f "$server_config_fname" ]]; then
     initialize_server_info
     clear
   fi
