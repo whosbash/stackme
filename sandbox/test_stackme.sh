@@ -4414,8 +4414,7 @@ deploy_stack_pipeline() {
       get_variable_value_from_collection "$portainer_config_json" "username"\
     )"
 
-    upload_stack_on_portainer "$portainer_url" "$portainer_credentials" \
-      "$stack_name" "$compose_path"
+    upload_stack_on_portainer "$portainer_url" "$portainer_credentials" "$stack_name" "$compose_path"
   fi
 
   exit_code=$?
@@ -5122,7 +5121,7 @@ services:
         - "traefik.http.routers.dashboard.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.dummy-svc.loadbalancer.server.port=9999"
         - "traefik.http.routers.dashboard.middlewares=myauth"
-        - "traefik.http.middlewares.myauth.basicauth.users={{dashboard_credentials}}"
+        - "traefik.http.middlewares.myauth.basicauth.users=\"{{dashboard_credentials}}"
 
 volumes:
   vol_shared:
@@ -5422,10 +5421,8 @@ generate_config_traefik() {
   )"
 
   dashboard_credentials="$(
-    htpasswd -nbB "$dashboard_username" "$dashboard_password"
+    htpasswd -nbB "$dashboard_username" "$dashboard_password" | sed 's/\$/\$\$/g'
   )"
-
-  echo "$dashboard_credentials" >&2
 
   local network_name="$(get_network_name)"  
 
