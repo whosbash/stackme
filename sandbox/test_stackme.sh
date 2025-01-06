@@ -4977,7 +4977,7 @@ initialize_server_info() {
 
   # Update /etc/hosts
   step_message="Add name to server name in hosts file at path /etc/hosts"
-  step_progress 3 $total_steps "$step_message"
+  step_progress 2 $total_steps "$step_message"
   # Ensure /etc/hosts has the correct entry
   if ! grep -q "^127.0.0.1[[:space:]]$server_name" /etc/hosts; then
     sed -i "/^127.0.0.1[[:space:]]/d" /etc/hosts  # Remove old entries
@@ -4990,14 +4990,16 @@ initialize_server_info() {
 
     # Set Hostname
   step_message="Set Hostname"
-  current_hostname=$(hostnamectl --static)
+  step_progress 3 $total_steps "$step_message"
+  
+  current_hostname="$(hostnamectl --static)"
 
   if [[ "$current_hostname" != "$server_name" ]]; then
     hostnamectl set-hostname "$server_name"
     handle_exit $? 3 $total_steps "Set Hostname"
 
     # Verify the hostname was set
-    updated_hostname=$(hostnamectl --static)
+    updated_hostname="$(hostnamectl --static)"
     if [[ "$updated_hostname" != "$server_name" ]]; then
       step_error "Failed to set hostname to $server_name. Current hostname: $updated_hostname"
       wait_for_input
