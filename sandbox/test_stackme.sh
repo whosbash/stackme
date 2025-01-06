@@ -4108,6 +4108,7 @@ remove_compose_if_failed_deployment() {
   if [ "$exit_code" -ne 0 ]; then
     rm -f "$compose_path"
     warning "Deployment failed. Docker Compose file \"$compose_path\" was removed."
+    wait_for_input
     return 1
   fi
 }
