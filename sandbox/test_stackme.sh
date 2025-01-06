@@ -4099,11 +4099,17 @@ remove_compose_if_failed_deployment() {
   local compose_path=$1
   local exit_code=$2
 
-  if [ $exit_code -ne 0 ]; then
+  # Ensure exit_code is a valid integer
+  if [[ ! "$exit_code" =~ ^[0-9]+$ ]]; then
+    error "Invalid exit code: \"$exit_code\". Must be an integer."
+    return 1
+  fi
+
+  if [ "$exit_code" -ne 0 ]; then
     rm -f "$compose_path"
     warning "Deployment failed. Docker Compose file \"$compose_path\" was removed."
     return 1
-  fi  
+  fi
 }
 
 # Function to build config and compose files for a service
@@ -4804,7 +4810,7 @@ update_and_install_packages() {
 
   # Install required apt packages quietly
   packages=(
-    "sudo" "apt-utils" "apparmor-utils" "jq" "python3" 
+    "sudo" "apt-utils" "apparmor-utils" "apache2-utils" "jq" "python3" 
     "docker" "figlet" "swaks" "netcat" "vnstat" "network-manager"
   )
   step_message="Installing required apt-get packages"
@@ -5016,8 +5022,6 @@ initialize_server_info() {
   else
       step_info 3 $total_steps "Hostname is already set to $server_name"
   fi
-
-  echo "Hi" >&2
 
   # Install docker
   step_message="Installing Docker"
