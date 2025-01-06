@@ -5399,6 +5399,10 @@ generate_config_traefik() {
 
   collected_items="$(run_collection_process "$prompt_items")"
 
+  echo "$collected_items" >&2
+
+  wait_for_input
+
   if [[ "$collected_items" == "[]" ]]; then
     error "Unable to retrieve Traefik configuration."
     return 1
