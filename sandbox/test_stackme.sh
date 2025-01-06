@@ -5006,6 +5006,8 @@ initialize_server_info() {
       exit 1
     fi
 
+    step_success 3 $total_steps "Hostname set to $server_name"
+
     # Allow a brief delay for changes to propagate
     sleep 2
   else
