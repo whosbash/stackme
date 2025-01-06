@@ -133,11 +133,10 @@ HAS_TIMESTAMP=true
 HEADER_LENGTH=120
 
 # Default arrow
-ARROW_OPTION='diamond'
-SELECTED_ARROW="${ARROWS[$ARROW_OPTION]}"
-COLORED_ARROW="${highlight_color}${SELECTED_ARROW}${reset_color}"
-
 STACKS_FOLDER="~/stacks"
+
+# Default arrow
+DEFAULT_ARROW_OPTION='diamond'
 
 ############################# BEGIN OF DISPLAY-RELATED FUNCTIONS #############################
 
@@ -638,6 +637,26 @@ header() {
 diplay_header(){
   local title="$1"
   display_text "$title" 40 --center --style "${bold_color}${green}"
+}
+
+# Function to set the arrow based on user input
+set_arrow() {
+  if [[ -n "$USER_DEFINED_ARROW" ]]; then
+    # If the user provides an arrow option, validate and set it
+    if [[ -n "${ARROWS[$USER_DEFINED_ARROW]}" ]]; then
+      ARROW_OPTION="$USER_DEFINED_ARROW"
+    else
+      # Handle invalid user-defined arrow options
+      warning "'$USER_DEFINED_ARROW' is not a valid arrow option."
+      echo "Available options: ${!ARROWS[@]}"
+      warning "Falling back to default arrow: $DEFAULT_ARROW_OPTION"
+      ARROW_OPTION="$DEFAULT_ARROW_OPTION"
+      sleep 2
+    fi
+  fi
+
+  SELECTED_ARROW="${ARROWS[$ARROW_OPTION]}"
+  COLORED_ARROW="${highlight_color}${SELECTED_ARROW}${reset_color}"
 }
 
 ################################## END OF DISPLAY-RELATED FUNCTIONS ###############################
@@ -1193,48 +1212,56 @@ test_smtp_email(){
 # Function to display machine specs
 generate_machine_specs() {
   # Basic Information
-  echo "Hostname: $(hostname)"
-  echo "Operating System: $(lsb_release -d | cut -f2)"
-  echo "Kernel Version: $(uname -r)"
+  echo "Hostname:          $(hostname)"
+  echo "Operating System:  $(lsb_release -d | cut -f2)"
+  echo "Kernel Version:    $(uname -r)"
 
   # Processor (CPU)
-  echo "Model: $(lscpu | grep 'Model name' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//')"
-  echo "Cores: $(lscpu | grep '^CPU(s):' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//')"
-  echo "Threads: $(lscpu | grep '^Thread(s) per core:' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//')"
-  echo "Clock Speed: $(lscpu | grep 'MHz' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//') MHz"
+  echo "Model:             $(\
+    lscpu | grep 'Model name' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//')"
+  echo "Cores:             $(\
+    lscpu | grep '^CPU(s):' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//')"
+  echo "Threads:           $(\
+    lscpu | grep '^Thread(s) per core:' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//')"
+  echo "Clock Speed:       $(\
+    lscpu | grep 'MHz' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//') MHz"
 
   # Memory (RAM)
-  echo "Total: $(free -h | grep Mem: | awk '{print $2}')"
+  echo "Total:             $(free -h | grep Mem: | awk '{print $2}')"
 
   # Storage
   echo "Disk Usage:"
-  df -h --output=source,fstype,size,used,avail,pcent | grep -E '^/dev'
+  df -h --output=source,fstype,size,used,avail,pcent | \
+    grep -E '^/dev' | awk '{printf "  %-15s %-10s %-8s %-8s %-8s %-6s\n", $1, $2, $3, $4, $5, $6}'
 
   # GPU
   if command -v lspci &>/dev/null; then
-    echo "$(lspci | grep -i 'vga\|3d\|2d')"
+    echo "Details:           $(lspci | grep -i 'vga\|3d\|2d')"
   else
-    echo "lspci command not found. GPU info unavailable."
+    echo "Details:           GPU information unavailable (lspci not installed)."
   fi
 
   # Network
-  echo "Ethernet: $(ip -4 addr show | grep 'state UP' -A2 | grep inet | awk '{print $2}')"
-  echo "Wi-Fi: $(nmcli device status | grep wifi | awk '{print $1, $3, $4}')"
+  echo "Ethernet:          $(\
+    ip -4 addr show | grep 'state UP' -A2 | grep inet | awk '{print $2}')"
+  echo "Wi-Fi:             $(\
+    nmcli device status | grep wifi | awk '{print $1, $3, $4}')"
 
   # Virtualization and Containers
   if [[ $(lscpu | grep Virtualization) ]]; then
-    echo "Virtualization: Enabled ($(lscpu | grep Virtualization | awk '{print $2}') supported)"
+    echo "Virtualization:    Enabled ($(lscpu | grep Virtualization | awk '{print $2}') supported)"
   else
-    echo "Virtualization: Not supported or disabled"
+    echo "Virtualization:    Not supported or disabled"
   fi
-  echo "Docker Version: $(docker --version 2>/dev/null || echo "Not installed")"
+  echo "Docker Version:    $(docker --version 2>/dev/null || echo "Not installed")"
 
   # Power (if laptop)
   if command -v upower &>/dev/null; then
-    upower -i $(upower -e | grep BAT) | grep -E "state|to full|percentage"
+    upower -i $(upower -e | grep BAT) | grep -E "state|to full|percentage" | sed 's/^/  /'
   else
-    echo "Battery information unavailable."
+    echo "Battery:           Information unavailable (upower not installed)."
   fi
+
 }
 
 # Functions for diagnostics
@@ -1375,7 +1402,6 @@ update_and_check_packages() {
 }
 
 #######################################################################################
-
 
 # Function to show help
 show_help() {
@@ -3382,7 +3408,6 @@ transition_to_menu() {
   sleep 0.3
 }
 
-
 # Function to navigate to a specific menu
 navigate_menu() {
   local menu_name="$1"
@@ -3986,15 +4011,16 @@ deploy_stack_on_portainer() {
   check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"
 
   if [[ $? -eq 0 ]]; then
-    echo "Stack $stack_name exists"
-    delete_stack_on_portainer "$portainer_url" "$portainer_auth_token" "$stack_name"
-    check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"
-
-    if [[ $? -eq 1 ]]; then
-      success "Stack $stack_name deleted"
-    else
-      error "Stack $stack_name not deleted"
-    fi
+    warning "Stack $stack_name exists"
+    return 1
+    # delete_stack_on_portainer "$portainer_url" "$portainer_auth_token" "$stack_name"
+    # check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"
+    # 
+    # if [[ $? -eq 1 ]]; then
+    #   success "Stack $stack_name deleted"
+    # else
+    #   error "Stack $stack_name not deleted"
+    # fi
   else
     warning "Stack $stack_name does not exist"
   fi
@@ -4097,7 +4123,6 @@ build_stack_info() {
   # Return JSON
   echo "$json_output"
 }
-
 
 # Function to validate a Docker Compose file
 validate_compose_file() {
@@ -4430,8 +4455,6 @@ deploy_stack_pipeline() {
 deploy_stack() {
   local stack_name="$1"
 
-
-
   # Generate the stack JSON configuration
   local config_json
   config_function="generate_config_$stack_name"
@@ -4501,7 +4524,11 @@ send_email() {
 email_test_hmtl() {
   issues_url="https://github.com/whosbash/stackme/issues"
   invitation="<a href="$issues_url" title="Visit our Issues page on GitHub">our repository</a>"
-  call_for_action="If you have any questions, feel free to submit an issue to $invitation. We're here to help!"
+  question="If you have any questions, feel free to submit an issue to $invitation."
+  call_for_action="$question We're here to help!"
+
+  suggestion="Explore the amazing features of StackMe and elevate your workflow."
+  initial_message="We are thrilled to have you onboard! $suggestion"
 
   echo "<!DOCTYPE html>
 <html lang="en">
@@ -4567,7 +4594,7 @@ email_test_hmtl() {
       background-color: #45a049;
       transform: scale(1.05);
       color: #ffffff; /* Ensure text color stays white on hover */
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); /* Added shadow on hover for a more dynamic effect */
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     }
     .content a {
       color: #4caf50;
@@ -4627,12 +4654,13 @@ email_test_hmtl() {
 <body>
   <section class="container">
     <header class="header">
-      <img src="https://raw.githubusercontent.com/whosbash/stackme/main/images/stackme_tiny.png" alt="StackMe Logo" />
+      <img src="https://raw.githubusercontent.com/whosbash/stackme/main/images/stackme_tiny.png" 
+      alt="StackMe Logo" />
       <h1>Welcome to StackMe</h1>
     </header>
     <section class="content">
       <p>Hi there,</p>
-      <p>We are thrilled to have you onboard! Explore the amazing features of StackMe and elevate your workflow.</p>
+      <p>$initial_message</p>
       <a href="https://github.com/whosbash/stackme" class="button">Get Started</a>
       <p>$call_for_action</p>
     </section>
@@ -4806,7 +4834,8 @@ install_docker() {
 
   # Step 1: Install prerequisites
   info "Installing prerequisites..."
-  if apt-get install -y -qq apt-transport-https ca-certificates curl software-properties-common; then
+  if apt-get install -y -qq \
+    apt-transport-https ca-certificates curl software-properties-common; then
     success "Prerequisites installed."
   else
     failure "Failed to install prerequisites." >&2
@@ -4870,7 +4899,6 @@ install_docker() {
   return 0
 }
 
-
 # Function to merge server, network, and IP information
 get_server_info() {
   local server_array ip_object merged_result
@@ -4913,7 +4941,7 @@ initialize_server_info() {
   step_progress 1 $total_steps "$message"
   if [[ -f "$server_filename" ]]; then
     server_info_json=$(cat "$server_filename" 2>/dev/null)
-    if jq -e . >/dev/null 2>&1 <<<"$server_info_json"; then
+    if jq -e . >/dev/null 2>&1 <<< "$server_info_json"; then
       step_info 1 $total_steps "Valid $server_filename found. Using existing information."
     else
       step_error "Content on file $server_filename is invalid. Reinitializing..."
@@ -4924,12 +4952,8 @@ initialize_server_info() {
   fi
 
   # Extract server_name and network_name
-  server_name=$(\
-    echo "$server_info_json" | jq -r '.[] | select(.name=="server_name") | .value'
-  )
-  network_name=$(
-    echo "$server_info_json" | jq -r '.[] | select(.name=="network_name") | .value'
-  )
+  server_name="$(get_variable_value_from_collection "$server_info_json" "server_name")"
+  network_name="$(get_variable_value_from_collection "$server_info_json" "network_name")"
 
   # Output results
   if [[ -z "$server_name" || -z "$network_name" ]]; then
@@ -4939,7 +4963,7 @@ initialize_server_info() {
   fi
 
   # Save the server information to a JSON file
-  echo "$server_info_json" > "~/$server_filename"
+  echo "$server_info_json" > "$server_filename"
   step_success 1 $total_steps "Server information saved to file $server_filename"
 
   # Update /etc/hosts
@@ -5253,17 +5277,16 @@ get_postgres_password() {
 # Function to create a PostgreSQL database
 create_postgres_database() {
   local db_name="$1"
-  local db_user="${2:-postgres}"
-  local container_name="${3:-postgres_db}"
+  local db_user="postgres"
 
   local container_id
   local db_exists
 
   # Display a message about the database creation attempt
-  info "Creating PostgreSQL database: $db_name in container: $container_name"
+  info "Creating PostgreSQL database: $db_name in POstgres container"
 
   # Check if the container is running
-  container_id=$(docker ps -q --filter "name=^${container_name}$")
+  container_id=$(docker ps -q --filter "name=^postgres")
   if [ -z "$container_id" ]; then
     error "Container '${container_name}' is not running. Cannot create database."
     return 1
@@ -5531,18 +5554,21 @@ generate_config_redis() {
     --arg volume_name "${stack_name}_data" \
     --arg network_name "$network_name" \
     '{
-            "name": $stack_name,
-            "variables": {
-                "image_version": $image_version,
-                "container_port": $container_port,
-                "redis_url": $redis_url,
-                "volume_name": $volume_name,
-                "network_name": $network_name
-            },
-            "dependencies": {},
-            "prepare": [],
-            "finalize": []
-        }'
+          "name": $stack_name,
+          "variables": {
+              "image_version": $image_version,
+              "container_port": $container_port,
+              "redis_url": $redis_url,
+              "volume_name": $volume_name,
+              "network_name": $network_name
+          },
+          "dependencies": {},
+          "prepare": [],
+          "finalize": []
+      }' | jq . || {
+        echo "Error: Failed to generate JSON" >&2
+        return 1
+      }
 }
 
 # Function to generate Postgres service configuration JSON
@@ -5696,9 +5722,11 @@ define_menu_stacks(){
 
   page_size=5
 
-  menu_object="$(
-    build_menu "$menu_name" $page_size "$item_1" "$item_2" "$item_3" "$item_4"
-  )"
+  items=(
+    "$item_1" "$item_2" "$item_3" "$item_4"
+  )
+
+  menu_object="$(build_menu "$menu_name" $page_size "${items[@]}")"
 
   define_menu "$menu_name" "$menu_object"
 }
@@ -5711,9 +5739,7 @@ define_menu_utilities(){
 
   page_size=5
 
-  menu_object="$(
-    build_menu "$menu_name" $page_size "$item_1" 
-  )"
+  menu_object="$(build_menu "$menu_name" $page_size "$item_1")"
 
   define_menu "$menu_name" "$menu_object"
 }
@@ -5763,10 +5789,13 @@ define_menu_health(){
 
   page_size=5
 
+  items=(
+    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" \
+    "$item_6" "$item_7" "$item_8" "$item_9" "$item_10"
+  )
+
   menu_object="$(
-    build_menu "$menu_name" $page_size \
-      "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" \
-      "$item_6" "$item_7" "$item_8" "$item_9" "$item_10"
+    build_menu "$menu_name" $page_size "${items[@]}"
   )"
 
   define_menu "$menu_name" "$menu_object"
@@ -5788,9 +5817,11 @@ define_menu_main(){
   
   page_size=5
 
-  menu_object="$(\
-    build_menu "$menu_name" $page_size "$item_1" "$item_2" "$item_3"\
-  )"
+  items=(
+    "$item_1" "$item_2" "$item_3"
+  )
+
+  menu_object="$(build_menu "$menu_name" $page_size "${items[@]}")"
 
   define_menu "$menu_name" "$menu_object"
 }
@@ -5830,9 +5861,7 @@ usage() {
 # Parse command-line arguments
 parse_args() {
   # Get options using getopt
-  OPTIONS=$(\
-    getopt -o c,h --long clean,help -- "$@" \
-  )
+  OPTIONS=$(getopt -o a:,c,h --long arrow:,clean,help -- "$@")
 
   # Check if getopt failed (invalid option)
   if [ $? -ne 0 ]; then
@@ -5850,6 +5879,10 @@ parse_args() {
     -c | --clean)
       CLEAN=true
       shift
+      ;;
+    -a | --arrow)
+      USER_DEFINED_ARROW="$2"
+      shift 2
       ;;
     -h | --help)
       usage
@@ -5872,6 +5905,8 @@ parse_args() {
 main() {
   parse_args "$@"
 
+  set_arrow
+
   clear
 
   # Install required packages
@@ -5879,8 +5914,8 @@ main() {
   clear
 
   # Perform initialization
-  config="$(load_json "~/server_info.json")"
-  
+  config="$(load_json "${HOME}/server_info.json")"
+
   if [[ "$config" == "{}" ]]; then
     initialize_server_info
     clear
