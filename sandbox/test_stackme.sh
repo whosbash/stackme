@@ -4851,10 +4851,11 @@ install_docker() {
   keyring_path="/usr/share/keyrings/docker-archive-keyring.gpg"
   arch="$(dpkg --print-architecture)"
   source="deb [arch=$arch signed-by=$keyring_path] $url $(lsb_release -cs) stable"
+
+  # Force overwrite of keyring and sources list
   if curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
-      gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg && \
-      echo "deb [arch=$arch signed-by=$keyring_path] $url $(lsb_release -cs) stable" | \
-      tee /etc/apt/sources.list.d/docker.list > /dev/null; then
+      gpg --dearmor --yes -o "$keyring_path" && \
+      echo "$source" | tee /etc/apt/sources.list.d/docker.list > /dev/null; then
       success "Docker repository added."
   else
       failure "Failed to add Docker GPG key or repository." >&2
