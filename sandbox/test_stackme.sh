@@ -4339,7 +4339,7 @@ deploy_stack_pipeline() {
 
   # Extract values from the JSON output
   local config_path=$(echo "$stack_info" | jq -r '.config_path')
-  local compose_filepath=$(echo "$stack_info" | jq -r '.compose_path')
+  local compose_path=$(echo "$stack_info" | jq -r '.compose_path')
   local compose_template_func=$(echo "$stack_info" | jq -r '.compose_func')
 
   stack_handle_exit $? 4 "$message"
@@ -4360,7 +4360,6 @@ deploy_stack_pipeline() {
   
   message="Writing Docker Compose template"
   stack_step_progress 6 "$message" 
-  compose_path="$STACKS_FOLDER/$compose_filepath"
   echo "$substituted_template" >"$compose_path"
   stack_handle_exit $? 6 "$message"
 
