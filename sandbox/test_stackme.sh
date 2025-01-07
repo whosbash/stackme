@@ -4098,7 +4098,7 @@ build_stack_info() {
   # Build JSON object
   local json_output
   json_output=$(jq -n \
-    --arg config_path "${stack_name}_config.json" \
+    --arg config_path "${STACKS_FOLDER}/${stack_name}_config.json" \
     --arg compose_path "${STACKS_FOLDER}/${stack_name}.yaml" \
     --arg compose_func "compose_${stack_name}" \
     '{
@@ -4123,7 +4123,7 @@ validate_compose_file() {
   fi
 
   # Validate the syntax of the Docker Compose file
-  docker compose -f "$compose_file" config 2>&1
+  docker compose -f "$compose_file" config >/dev/null 2>&1
 
   local EXIT_CODE=$?
   return $EXIT_CODE
@@ -4235,7 +4235,7 @@ deploy_stack_pipeline() {
   local stack_name="$1" # stack name (e.g., redis, postgres)
   local config_json="$2" # JSON data with stack setup cofiguration
 
-  total_steps=9
+  total_steps=10
 
   stack_step_progress(){
     stack_step "progress" "$1" "$2"
