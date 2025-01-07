@@ -4415,11 +4415,15 @@ deploy_stack_pipeline() {
     message="Executing finalize actions"
     stack_step_progress 9 "$message"
 
+    echo "$finalize_actions" >&2
+
     # Iterate through each action, preserving newlines for better debugging
-    IFS=$'\n' read -d '' -r -a actions_array <<<"$finalize_actions"
+    IFS=$'\n' read -d '' -r -a actions_array <<< "$finalize_actions"
 
     for action in "${actions_array[@]}"; do
       action_name=$(echo "$action" | jq -r '.name')
+
+      echo "$action" >&2
       
       message="Executing finalize action: $action_name"
       stack_step_error 9 "$message"
@@ -5434,7 +5438,7 @@ generate_config_traefik() {
         "dependencies": {},
         "setUp": []
     }' | jq . || {
-        echo "Error: Failed to generate JSON" >&2
+        error "Failed to generate JSON"
         return 1
     }
 }
@@ -5536,7 +5540,7 @@ generate_config_portainer() {
             }
         ]
     }' | jq . || {
-        echo "Error: Failed to generate JSON" >&2
+        error "Failed to generate JSON"
         return 1
     }
 }
@@ -5566,21 +5570,21 @@ generate_config_redis() {
     --arg volume_name "${stack_name}_data" \
     --arg network_name "$network_name" \
     '{
-          "name": $stack_name,
-          "variables": {
-              "image_version": $image_version,
-              "container_port": $container_port,
-              "redis_url": $redis_url,
-              "volume_name": $volume_name,
-              "network_name": $network_name
-          },
-          "dependencies": {},
-          "prepare": [],
-          "finalize": []
-      }' | jq . || {
-        echo "Error: Failed to generate JSON" >&2
-        return 1
-      }
+            "name": $stack_name,
+            "variables": {
+                "image_version": $image_version,
+                "container_port": $container_port,
+                "redis_url": $redis_url,
+                "volume_name": $volume_name,
+                "network_name": $network_name
+            },
+            "dependencies": {},
+            "prepare": [],
+            "finalize": []
+        }' | jq . || {
+            error "Failed to generate JSON"
+            return 1
+        }
 }
 
 # Function to generate Postgres service configuration JSON
@@ -5613,7 +5617,7 @@ generate_config_postgres() {
           "prepare": [],
           "finalize": []
       }' | jq . || {
-        echo "Error: Failed to generate JSON" >&2
+        error "Failed to generate JSON"
         return 1
     }
 }
@@ -5666,7 +5670,7 @@ generate_config_whoami() {
           "prepare": [],
           "finalize": []
       }' | jq . || {
-        echo "Error: Failed to generate JSON" >&2
+        error "Failed to generate JSON"
         return 1
     } 
 }
@@ -5677,36 +5681,43 @@ generate_config_whoami() {
 
 # Function to deploy a traefik service
 deploy_stack_traefik() {
+  cleanup
   deploy_stack 'traefik'
 }
 
 # Function to deploy a portainer service
 deploy_stack_portainer() {
+  cleanup
   deploy_stack 'portainer'
 }
 
 deploy_stack_traefik_and_portainer() {
+  cleanup  
   deploy_stack 'traefik'
 
   if [[ $? -ne 0 ]]; then
     return 1
   fi
 
+  clear
   deploy_stack 'portainer'
 }
 
 # Function to deploy a PostgreSQL stack
 deploy_stack_postgres() {
+  cleanup
   deploy_stack 'postgres'
 }
 
 # Function to deploy a Redis service
 deploy_stack_redis() {
+  cleanup
   deploy_stack 'redis'
 }
 
 # Function to deploy a whoami service
 deploy_stack_whoami() {
+  cleanup
   deploy_stack 'whoami'
 }
 
