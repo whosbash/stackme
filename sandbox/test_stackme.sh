@@ -4327,6 +4327,12 @@ deploy_stack_pipeline() {
 
   # Step 3: Run setUp actions individually
   if [ -n "$prepare_actions" ]; then
+    # Validate JSON
+    if ! echo "$prepare_actions" | jq empty; then
+        stack_step_error 9 "Invalid JSON in prepare_actions: $prepare_actions"
+        return 1
+    fi
+
     # Iterate through each action, preserving newlines for better debugging
     IFS=$'\n' read -d '' -r -a actions_array <<<"$prepare_actions"
 
@@ -4423,6 +4429,12 @@ deploy_stack_pipeline() {
 
   # Step 9: Run finalize actions individually
   if [ -n "$finalize_actions" ]; then
+    # Validate JSON
+    if ! echo "$finalize_actions" | jq empty; then
+        stack_step_error 9 "Invalid JSON in finalize_actions: $finalize_actions"
+        return 1
+    fi
+
     message="Executing finalize actions"
     stack_step_progress 9 "$message"
 
