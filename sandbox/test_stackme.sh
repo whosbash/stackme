@@ -3674,6 +3674,7 @@ deploy_stack_on_swarm() {
   fi
 
   # Deploy the service using Docker stack
+  echo "$compose_path" >&2
   docker stack deploy \
     --detach=false --prune --resolve-image always -c "$compose_path" "$stack_name"
 
@@ -3681,7 +3682,7 @@ deploy_stack_on_swarm() {
     success "Stack $stack_name deployed and running successfully."
   else
     error "Stack $stack_name failed to deploy or is not running correctly."
-    exit 1
+    return 1
   fi
 }
 
