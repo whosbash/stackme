@@ -4190,12 +4190,16 @@ create_network_if_not_exists() {
   if ! docker network ls --format '{{.Name}}' | grep -wq "$network_name"; then
     info "Creating network: $network_name"
 
+    # Get the IP address
+    read -r ip _ <<<$(hostname -I | tr ' ' '\n' | grep -v '^127\.0\.0\.1' | tr '\n' ' ')
+
     # Create the overlay network
-    if docker network create --driver overlay "$network_name" 2>/dev/null; then
+    if docker network create \
+      --driver overlay "$network_name" --ad -- 2>&1; then
       success "Network $network_name created successfully."
     else
       error "Failed to create network $network_name."
-      return 1 # Exit with error status if network creation fails
+      exit 1 # Exit with error status if network creation fails
     fi
   else
     warning "Network $network_name already exists."
@@ -5029,11 +5033,14 @@ initialize_server_info() {
   step_message="Docker Swarm initialization"
   step_progress 5 $total_steps "$step_message"
 
+  read -r ip _ <<<$(
+    hostname -I | tr ' ' '\n' | grep -v '^127\.0\.0\.1' | tr '\n' ' '
+  )
   if is_swarm_active; then
     step_warning 5 $total_steps "Swarm is already active"
   else
     # server_ip=$(curl ipinfo.io/ip)
-    docker swarm init 2>&1
+    docker swarm init --advertise-addr $ip 2>&1
     
     handle_exit $? 5 $total_steps "$step_message"
   fi
