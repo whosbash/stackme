@@ -3664,8 +3664,8 @@ is_swarm_active() {
 
 # Function to deploy a service using a Docker Compose file
 deploy_stack_on_swarm() {
-  local stack_name=$1
-  local compose_path=$2
+  local stack_name="$1"
+  local compose_path="$2"
 
   # Ensure Python is installed
   if ! command -v python3 &>/dev/null; then
@@ -4382,7 +4382,7 @@ deploy_stack_pipeline() {
     message="Deploying stack on Docker Swarm"
     stack_step_progress 8 "$message"
 
-    deploy_stack_on_swarm "$stack_name" "$compose_filepath"
+    deploy_stack_on_swarm "$stack_name" "$compose_path"
 
   else
     message="Deploying stack on Portainer"
