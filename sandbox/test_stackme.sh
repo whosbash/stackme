@@ -1051,7 +1051,7 @@ write_json() {
     echo "Invalid JSON content. Aborting save."
     return 1
   fi
-  echo "$json_content"
+
   # Write the JSON content to the specified file using a temporary file for safety
   local temp_file=$(mktemp)
   echo "$json_content" >"$temp_file" && mv "$temp_file" "$file_path"
@@ -1094,6 +1094,14 @@ load_json() {
 # Function to clean the terminal screen
 clean_screen() {
   echo -ne "\033[H\033[J" >&2
+}
+
+# Function to generate a random string
+random_string() {
+  local length="${1:-16}"
+
+  local word="$(openssl rand -hex $length)"
+  echo "$word"
 }
 
 # Function to strip ANSI escape sequences from a string
@@ -5702,7 +5710,8 @@ deploy_stack_traefik_and_portainer() {
     return 1
   fi
 
-  clear
+  clean_screen
+
   deploy_stack 'portainer'
 }
 
