@@ -2876,6 +2876,7 @@ farewell_message() {
 
 finish_session() {
     cleanup
+    farewell_message
     exit 0;
 }
 
