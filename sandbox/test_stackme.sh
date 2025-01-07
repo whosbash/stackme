@@ -4177,7 +4177,7 @@ create_network_if_not_exists() {
 
     # Create the overlay network
     if docker network create \
-      --driver overlay "$network_name" --ad -- 2>&1; then
+      --driver overlay "$network_name" -- 2>&1; then
       success "Network $network_name created successfully."
     else
       error "Failed to create network $network_name."
