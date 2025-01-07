@@ -1708,26 +1708,6 @@ sanitize() {
   fi
 }
 
-# Function to create a Docker network if it doesn't exist
-create_network_if_not_exists() {
-  local network_name="${1:-$DEFAULT_NETWORK}"
-
-  # Check if the network already exists
-  if ! docker network ls --format '{{.Name}}' | grep -wq "$network_name"; then
-    info "Creating network: $network_name"
-
-    # Create the overlay network
-    if docker network create --driver overlay "$network_name" 2>/dev/null; then
-      success "Network $network_name created successfully."
-    else
-      error "Failed to create network $network_name."
-      return 1 # Exit with error status if network creation fails
-    fi
-  else
-    warning "Network $network_name already exists."
-  fi
-}
-
 ################################ BEGIN OF VALIDATION-RELATED FUNCTION #############################
 
 # Function to validate empty values
@@ -4191,7 +4171,9 @@ create_network_if_not_exists() {
     info "Creating network: $network_name"
 
     # Get the IP address
-    read -r ip _ <<<$(hostname -I | tr ' ' '\n' | grep -v '^127\.0\.0\.1' | tr '\n' ' ')
+    read -r ip _ <<<$(\
+      hostname -I | tr ' ' '\n' | grep -v '^127\.0\.0\.1' | tr '\n' ' '\
+    )
 
     # Create the overlay network
     if docker network create \
@@ -4199,6 +4181,7 @@ create_network_if_not_exists() {
       success "Network $network_name created successfully."
     else
       error "Failed to create network $network_name."
+      wait_for_input
       exit 1 # Exit with error status if network creation fails
     fi
   else
