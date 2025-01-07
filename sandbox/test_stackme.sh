@@ -4097,7 +4097,7 @@ build_stack_info() {
   local json_output
   json_output=$(jq -n \
     --arg config_path "${stack_name}_config.json" \
-    --arg compose_path "${stack_name}.yaml" \
+    --arg compose_path "${STACKS_FOLDER}/${stack_name}.yaml" \
     --arg compose_func "compose_${stack_name}" \
     '{
       config_path: $config_path,
