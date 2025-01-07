@@ -3076,13 +3076,13 @@ render_menu() {
   # Prepare keyboard shortcuts
   local ud_nav_option="${highlight_color}↗↘${reset_color}: Nav"
   local sel_nav_option="${select_color}↵${reset_color}: Sel"
+  local lr_nav_option=""
   local goto_nav_option=""
   local back_option="${back_color}r${reset_color}: Return"
   local search_option="${search_color}/${reset_color}: Search"
   local help_option="${help_color}h${reset_color}: Help"
   local quit_option=""
-  local lr_nav_option=""
-
+  
   if (( num_options > page_size )); then
     lr_nav_option="${highlight_color}◁▷${reset_color}: Pages"
   fi
@@ -3100,14 +3100,17 @@ render_menu() {
   # Combine keyboard options
   local keyboard_options=(
     "$ud_nav_option"
-    "$lr_nav_option"
     "$sel_nav_option"
     "$search_option"
-    "$goto_nav_option"
     "$back_option"
-    "$quit_option"
     "$help_option"
   )
+
+  # Conditionally add non-empty options
+  [[ -n "$lr_nav_option" ]] && keyboard_options+=("$lr_nav_option")
+  [[ -n "$goto_nav_option" ]] && keyboard_options+=("$goto_nav_option")
+  [[ -n "$quit_option" ]] && keyboard_options+=("$quit_option")
+
   local keyboard_options_string=$(join_array ", " "${keyboard_options[@]}")
   
   local tmp="$(strip_ansi "$keyboard_options_string")"
