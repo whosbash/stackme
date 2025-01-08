@@ -4441,7 +4441,10 @@ deploy_stack_pipeline() {
     echo "$finalize_actions" >&2
 
     # Iterate through each action, preserving newlines for better debugging
+    echo "Here 1"
     actions_array=($(echo "$finalize_actions" | jq -r '.[]'))
+    echo "Here 2"
+
     for action in "${actions_array[@]}"; do
       action_name=$(echo "$action" | jq -r '.name')
 
