@@ -4327,29 +4327,18 @@ deploy_stack_pipeline() {
   fi
 
   # Step 3: Run setUp actions individually
-  if [ -n "$prepare_actions" ]; then
-    # Validate JSON
-    if ! echo "$prepare_actions" | jq empty; then
-        stack_step_error 9 "Invalid JSON in prepare_actions: $prepare_actions"
-        return 1
-    fi
+  echo "$prepare_actions" | jq -c '.[]' | while IFS= read -r action; do
+    # Extract the action name
+    action_name=$(echo "$action" | jq -r '.name // "Unnamed Action"')
 
-    # Iterate through each action, preserving newlines for better debugging
-    actions_array=($(echo "$prepare_actions" | jq -r '.[]'))
-    for action in "${actions_array[@]}"; do
-      # Perform the action (you can define custom functions to execute these steps)
-      action_name=$(echo "$action" | jq -r '.name')
-      
-      message="Executing setUp action: $action_name"
-      stack_step_error 3 "$message"
+    # Print a message for debugging
+    message="Executing prepare action: $action_name"
+    stack_step_error 3 "$message"
 
-      # Call an appropriate function to handle this setUp action
-      execute_action "$action" "$variables"
-      stack_handle_exit $? 3 "$message"
-    done
-  else
-    stack_step_warning 3 "No prepare actions defined"
-  fi
+    # Execute the action
+    execute_action "$action" "$variables"
+    stack_handle_exit $? 3 "$message"
+  done
 
   # Step 4: Build service-related file paths and Docker Compose template
   message="Building stack filepaths"
@@ -4428,6 +4417,19 @@ deploy_stack_pipeline() {
   fi
 
   # Step 9: Run finalize actions individually
+  echo "$prepare_actions" | jq -c '.[]' | while IFS= read -r action; do
+    # Extract the action name
+    action_name=$(echo "$action" | jq -r '.name // "Unnamed Action"')
+
+    # Print a message for debugging
+    message="Executing finalize action: $action_name"
+    stack_step_error 9 "$message"
+
+    # Execute the action
+    execute_action "$action" "$variables"
+    stack_handle_exit $? 9 "$message"
+  done
+  
   if [ -n "$finalize_actions" ]; then
     # Validate JSON
     if ! echo "$finalize_actions" | jq empty; then
