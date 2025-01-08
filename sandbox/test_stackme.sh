@@ -4427,6 +4427,9 @@ deploy_stack_pipeline() {
     return 1
   fi
 
+  echo "$finalize_actions" >&2
+  echo ">>>>>>>>>>>>>><<<<<<<<<<<<<<<<"
+
   # Step 9: Run finalize actions individually
   if [ -n "$finalize_actions" ]; then
     # Validate JSON
@@ -5963,8 +5966,8 @@ main() {
   # Perform initialization
   server_config_fname="${HOME}/server_info.json"
 
-  initialize_server_info
-  clear
+  # initialize_server_info
+  # clear
 
   define_menus
 
