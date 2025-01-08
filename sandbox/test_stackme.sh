@@ -4313,7 +4313,7 @@ deploy_stack_pipeline() {
   fi
 
   # Step 2: Gather setUp actions
-  stack_step_progress 2 "Gathering setUp actions"
+  stack_step_progress 2 "Gathering prepare actions"
   local setUp_actions
   stack_variables="$(echo "$config_json" | jq -r '.variables[]?')"
 
@@ -4328,16 +4328,15 @@ deploy_stack_pipeline() {
 
   # Step 3: Run setUp actions individually
   echo "$prepare_actions" | jq -c '.[]' | while IFS= read -r action; do
-    # Extract the action name
+    # Extract action name safely
     action_name=$(echo "$action" | jq -r '.name // "Unnamed Action"')
 
-    # Print a message for debugging
-    message="Executing prepare action: $action_name"
-    stack_step_error 3 "$message"
+    # Print debug message
+    echo "Executing prepare action: $action_name"
 
-    # Execute the action
+    # Pass the action JSON safely to the function
     execute_action "$action" "$variables"
-    stack_handle_exit $? 3 "$message"
+    stack_handle_exit $? 3 "Action $action_name completed"
   done
 
   # Step 4: Build service-related file paths and Docker Compose template
@@ -4417,53 +4416,19 @@ deploy_stack_pipeline() {
   fi
 
   # Step 9: Run finalize actions individually
-  echo "$prepare_actions" | jq -c '.[]' | while IFS= read -r action; do
-    # Extract the action name
+  echo "$finalize_actions" | jq -c '.[]' | while IFS= read -r action; do
+    # Extract action name safely
     action_name=$(echo "$action" | jq -r '.name // "Unnamed Action"')
 
-    # Print a message for debugging
-    message="Executing finalize action: $action_name"
-    stack_step_error 9 "$message"
+    # Print debug message
+    echo "Executing finalize action: $action_name"
 
-    # Execute the action
+    # Pass the action JSON safely to the function
     execute_action "$action" "$variables"
-    stack_handle_exit $? 9 "$message"
+    stack_handle_exit $? 3 "Action $action_name completed"
   done
-  
-  if [ -n "$finalize_actions" ]; then
-    # Validate JSON
-    if ! echo "$finalize_actions" | jq empty; then
-        stack_step_error 9 "Invalid JSON in finalize_actions: $finalize_actions"
-        return 1
-    fi
 
-    message="Executing finalize actions"
-    stack_step_progress 9 "$message"
-
-    echo "$finalize_actions" >&2
-
-    # Iterate through each action, preserving newlines for better debugging
-    echo "Here 1"
-    actions_array=($(echo "$finalize_actions" | jq -r '.[]'))
-    echo "Here 2"
-
-    for action in "${actions_array[@]}"; do
-      echo "This action: $action" >&2
-      
-      action_name=$(echo "$action" | jq -r '.name')
-      
-      message="Executing finalize action: $action_name"
-      stack_step_error 9 "$message"
-
-      # Perform the action
-      execute_action "$action" "$variables"
-      stack_handle_exit $? 9 "$message"
-    done
-  else
-    stack_step_warning 9 "No finalize actions defined"
-  fi
-
-  # Step 9: Save service-specific information to a configuration file
+  # Step 10: Save service-specific information to a configuration file
   message="Saving stack configuration"
   stack_step_progress 10 "$message"
   write_json "$config_path" "$stack_json"
