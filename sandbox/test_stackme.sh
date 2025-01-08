@@ -4317,9 +4317,8 @@ deploy_stack_pipeline() {
   local setUp_actions
   stack_variables="$(echo "$config_json" | jq -r '.variables[]?')"
 
-  prepare_actions=$(echo "$config_json" | jq -r '.prepare?')
-  finalize_actions=$(echo "$config_json" | jq -r '.finalize?')
-  
+  prepare_actions=$(echo "$config_json" | jq -r '.prepare // []')
+  finalize_actions=$(echo "$config_json" | jq -r '.finalize // []')  
 
   # Check if jq returned an error
   if [[ $? -ne 0 ]]; then
