@@ -3686,9 +3686,9 @@ deploy_stack_on_swarm() {
   fi
 
   # Deploy the service using Docker stack
-  echo "$compose_path" >&2
   docker stack deploy \
-    --detach=false --prune --resolve-image always -c "$compose_path" "$stack_name"
+    --detach=false --prune --resolve-image always \
+    -c "$compose_path" "$stack_name"
 
   if [ $? -eq 0 ]; then
     success "Stack $stack_name deployed and running successfully."
@@ -5559,7 +5559,7 @@ generate_config_portainer() {
         "finalize": [
             {
                 "name": "Create portainer first admin credentials",
-                "command": "signup_on_portainer \"$portainer_url\" \"$portainer_credentials\""
+                "command": ("signup_on_portainer \"" + $portainer_url + "\" \"" + ($portainer_credentials | tostring) + "\"")
             }
         ]
     }' | jq . || {
