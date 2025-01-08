@@ -4315,9 +4315,11 @@ deploy_stack_pipeline() {
   # Step 2: Gather setUp actions
   stack_step_progress 2 "Gathering setUp actions"
   local setUp_actions
-  prepare_actions=$(echo "$config_json" | jq -r '.prepare[]?')
-  finalize_actions=$(echo "$config_json" | jq -r '.finalize[]?')
   stack_variables="$(echo "$config_json" | jq -r '.variables[]?')"
+
+  prepare_actions=$(echo "$config_json" | jq -r '.prepare?')
+  finalize_actions=$(echo "$config_json" | jq -r '.finalize?')
+  
 
   # Check if jq returned an error
   if [[ $? -ne 0 ]]; then
@@ -4334,8 +4336,7 @@ deploy_stack_pipeline() {
     fi
 
     # Iterate through each action, preserving newlines for better debugging
-    IFS=$'\n' read -d '' -r -a actions_array <<<"$prepare_actions"
-
+    actions_array=($(echo "$prepare_actions" | jq -r '.[]'))
     for action in "${actions_array[@]}"; do
       # Perform the action (you can define custom functions to execute these steps)
       action_name=$(echo "$action" | jq -r '.name')
@@ -4427,9 +4428,6 @@ deploy_stack_pipeline() {
     return 1
   fi
 
-  echo "$finalize_actions" >&2
-  echo ">>>>>>>>>>>>>><<<<<<<<<<<<<<<<"
-
   # Step 9: Run finalize actions individually
   if [ -n "$finalize_actions" ]; then
     # Validate JSON
@@ -4444,8 +4442,7 @@ deploy_stack_pipeline() {
     echo "$finalize_actions" >&2
 
     # Iterate through each action, preserving newlines for better debugging
-    IFS=$'\n' read -d '' -r -a actions_array <<< "$finalize_actions"
-
+    actions_array=($(echo "$finalize_actions" | jq -r '.[]'))
     for action in "${actions_array[@]}"; do
       action_name=$(echo "$action" | jq -r '.name')
 
