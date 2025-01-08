@@ -4446,9 +4446,9 @@ deploy_stack_pipeline() {
     echo "Here 2"
 
     for action in "${actions_array[@]}"; do
+      echo "This action: $action" >&2
+      
       action_name=$(echo "$action" | jq -r '.name')
-
-      echo "$action" >&2
       
       message="Executing finalize action: $action_name"
       stack_step_error 9 "$message"
