@@ -4311,8 +4311,8 @@ deploy_stack_pipeline() {
   # Step 2: Gather setUp actions
   stack_step_progress 2 "Gathering setUp actions"
   local setUp_actions
-  prepare_actions=$(echo "$config_json" | jq -r '.prepare[]?')
-  finalize_actions=$(echo "$config_json" | jq -r '.finalize[]?')
+  prepare_actions=$(echo "$config_json" | jq -r '.prepare?')
+  finalize_actions=$(echo "$config_json" | jq -r '.finalize?')
   stack_variables="$(echo "$config_json" | jq -r '.variables[]?')"
 
   # Check if jq returned an error
@@ -4329,10 +4329,7 @@ deploy_stack_pipeline() {
         return 1
     fi
 
-    # Iterate through each action, preserving newlines for better debugging
-    IFS=$'\n' read -d '' -r -a actions_array <<<"$prepare_actions"
-
-    for action in "${actions_array[@]}"; do
+    echo "$prepare_actions" | jq -c '.[]' | while IFS= read -r action; do
       # Perform the action (you can define custom functions to execute these steps)
       action_name=$(echo "$action" | jq -r '.name')
       
@@ -4434,12 +4431,7 @@ deploy_stack_pipeline() {
     message="Executing finalize actions"
     stack_step_progress 9 "$message"
 
-    echo "$finalize_actions" >&2
-
-    # Iterate through each action, preserving newlines for better debugging
-    IFS=$'\n' read -d '' -r -a actions_array <<< "$finalize_actions"
-
-    for action in "${actions_array[@]}"; do
+    echo "$finalize_actions" | jq -c '.[]' | while IFS= read -r action; do
       action_name=$(echo "$action" | jq -r '.name')
 
       echo "$action" >&2
@@ -5561,13 +5553,14 @@ generate_config_portainer() {
         "finalize": [
             {
                 "name": "Create portainer first admin credentials",
-                "command": ("signup_on_portainer \"" + $portainer_url + "\" " + ($portainer_credentials | @sh))
+                "command": ("signup_on_portainer \"" + $portainer_url + "\" " + ($portainer_credentials | @json))
             }
         ]
     }' | jq . || {
-        error "Failed to generate JSON"
+        echo "Failed to generate JSON"
         return 1
     }
+
 }
 
 # Function to generate configuration files for redis
