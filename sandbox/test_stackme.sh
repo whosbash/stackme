@@ -4207,38 +4207,34 @@ execute_action() {
   local action_json="$1"
   local action_variables="$2"
 
-  # Extract the name, command, and variables from the action
+  # Extract the name and command safely using jq
   local action_name
   action_name=$(echo "$action_json" | jq -r '.name')
 
   local action_command
   action_command=$(echo "$action_json" | jq -r '.command')
 
-  # If there are variables, export them for the command execution
+  # Export variables if provided
   if [ -n "$action_variables" ]; then
-    # Export each variable safely, ensuring no unintended command execution
-    for var in $(\
-      echo "$action_variables" | \
-      jq -r 'to_entries | .[] | "\(.key)=\(.value)"'
-    ); do
-      # Escape and export the variable
+    for var in $(echo "$action_variables" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"'); do
       local var_name=$(echo "$var" | cut -d'=' -f1)
       local var_value=$(echo "$var" | cut -d'=' -f2)
       export "$var_name"="$var_value"
     done
   fi
 
-  # Safely format the command using printf to avoid eval
-  # Substitute the variables in the command
-  local formatted_command
-  formatted_command=$(printf "%s" "$action_command")
+  # Use eval safely to execute the command
+  eval "$action_command"
 
-  # Execute the formatted command
-  bash -c "$formatted_command"
-
-  # Check if the command executed successfully and handle exit
+  # Check command success
   local exit_code=$?
+  if [ $exit_code -ne 0 ]; then
+    echo "Action '$action_name' failed with exit code $exit_code"
+  else
+    echo "Action '$action_name' executed successfully"
+  fi
 }
+
 
 # Function to deploy a service
 deploy_stack_pipeline() {
@@ -5123,19 +5119,14 @@ services:
           - node.role == manager
       labels:
         - "traefik.enable=true"
-        - "traefik.http.middlewares.redirect-https.redirectscheme.scheme=https"
-        - "traefik.http.middlewares.redirect-https.redirectscheme.permanent=true"
-        - "traefik.http.routers.http-catchall.rule=Host(\`{host:.+}\`)"
-        - "traefik.http.routers.http-catchall.entrypoints=web"
-        - "traefik.http.routers.http-catchall.middlewares=redirect-https@docker"
-        - "traefik.http.routers.http-catchall.priority=1"
+        
         - "traefik.http.routers.dashboard.rule=Host(\`{{domain_name}}\`)"
         - "traefik.http.routers.dashboard.entrypoints=websecure"
         - "traefik.http.routers.dashboard.service=api@internal"
         - "traefik.http.routers.dashboard.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.dummy-svc.loadbalancer.server.port=9999"
         - "traefik.http.routers.dashboard.middlewares=myauth"
-        #- "traefik.http.middlewares.myauth.basicauth.users=\`{{dashboard_credentials}}\`"
+        - "traefik.http.middlewares.myauth.basicauth.users=\`{{dashboard_credentials}}\`"
 
 volumes:
   vol_shared:
@@ -5559,7 +5550,7 @@ generate_config_portainer() {
         "finalize": [
             {
                 "name": "Create portainer first admin credentials",
-                "command": ("signup_on_portainer \"" + $portainer_url + "\" \"" + ($portainer_credentials | tostring) + "\"")
+                "command": ("signup_on_portainer \"" + $portainer_url + "\" " + ($portainer_credentials | @sh))
             }
         ]
     }' | jq . || {
