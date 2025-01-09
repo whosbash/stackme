@@ -5440,7 +5440,7 @@ generate_config_traefik() {
 
   dashboard_credentials="$(
         htpasswd -nbB "$dashboard_username" "$dashboard_password" | \
-        sed -e 's/\$/\$\$/g' -e 's/\\/\\\\/g'
+        sed -e 's/\$/\$\$/g'
   )"
 
   local network_name="$(get_network_name)"  
