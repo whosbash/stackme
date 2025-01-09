@@ -4838,7 +4838,6 @@ clean_docker_environment() {
   wait_for_input
 }
 
-# Function to install Docker
 install_docker() {
   # Ensure the script is running with elevated privileges
   if [[ $EUID -ne 0 ]]; then
@@ -4848,73 +4847,88 @@ install_docker() {
 
   info "Starting Docker installation..."
 
-  # Step 1: Install prerequisites
-  info "Installing prerequisites..."
-  if apt-get install -y -qq \
-    apt-transport-https ca-certificates curl software-properties-common; then
-    success "Prerequisites installed."
+  # Step 1: Check and install prerequisites
+  info "Checking prerequisites..."
+  if dpkg -l | grep -qE "apt-transport-https|ca-certificates|curl|software-properties-common"; then
+    success "Prerequisites are already installed."
   else
-    failure "Failed to install prerequisites." >&2
-    return 1
+    info "Installing prerequisites..."
+    if apt-get install -y -qq \
+      apt-transport-https ca-certificates curl software-properties-common; then
+      success "Prerequisites installed."
+    else
+      failure "Failed to install prerequisites." >&2
+      return 1
+    fi
   fi
 
-  # Step 2: Add Docker's official GPG key and repository
-  info "Adding Docker GPG key and repository..."
-  url="https://download.docker.com/linux/ubuntu/"
+  # Step 2: Add Docker's official GPG key and repository (if not already added)
+  info "Checking Docker GPG key and repository..."
   keyring_path="/usr/share/keyrings/docker-archive-keyring.gpg"
-  arch="$(dpkg --print-architecture)"
-  source="deb [arch=$arch signed-by=$keyring_path] $url $(lsb_release -cs) stable"
-
-  # Force overwrite of keyring and sources list
-  if curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
-      gpg --dearmor --yes -o "$keyring_path" && \
-      echo "$source" | tee /etc/apt/sources.list.d/docker.list > /dev/null; then
-      success "Docker repository added."
+  if [[ -f "$keyring_path" ]] && grep -q "download.docker.com" /etc/apt/sources.list.d/docker.list; then
+    success "Docker GPG key and repository are already configured."
   else
+    info "Adding Docker GPG key and repository..."
+    url="https://download.docker.com/linux/ubuntu/"
+    arch="$(dpkg --print-architecture)"
+    source="deb [arch=$arch signed-by=$keyring_path] $url $(lsb_release -cs) stable"
+    if curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
+        gpg --dearmor --yes -o "$keyring_path" && \
+        echo "$source" | tee /etc/apt/sources.list.d/docker.list > /dev/null; then
+      success "Docker repository added."
+    else
       failure "Failed to add Docker GPG key or repository." >&2
       return 1
+    fi
   fi
 
-  # Step 3: Install Docker
-  info "Installing Docker..."
-  if apt-get update -qq && \
-    apt-get install -y -qq docker-ce docker-ce-cli containerd.io; then
-    success "Docker installed successfully."
+  # Step 3: Install Docker (if not already installed)
+  info "Checking Docker installation..."
+  if command -v docker > /dev/null 2>&1; then
+    success "Docker is already installed: $(docker --version)"
   else
-    failure "Failed to install Docker." >&2
-    return 1
+    info "Installing Docker..."
+    if apt-get update -qq && \
+      apt-get install -y -qq docker-ce docker-ce-cli containerd.io; then
+      success "Docker installed successfully."
+    else
+      failure "Failed to install Docker." >&2
+      return 1
+    fi
   fi
 
   # Step 4: Enable Docker service
-  info "Enabling Docker service..."
-  if systemctl enable docker > /dev/null 2>&1; then
-    success "Docker service enabled to start on boot."
+  info "Checking Docker service status..."
+  if systemctl is-enabled docker > /dev/null 2>&1; then
+    success "Docker service is already enabled."
   else
-    failure "Failed to enable Docker service." >&2
-    return 1
+    info "Enabling Docker service..."
+    if systemctl enable docker > /dev/null 2>&1; then
+      success "Docker service enabled to start on boot."
+    else
+      failure "Failed to enable Docker service." >&2
+      return 1
+    fi
   fi
 
   # Step 5: Start Docker service
-  info "Starting Docker service..."
-  if systemctl start docker > /dev/null 2>&1; then
-    success "Docker service started successfully."
+  info "Checking if Docker service is running..."
+  if systemctl is-active docker > /dev/null 2>&1; then
+    success "Docker service is already running."
   else
-    failure "Failed to start Docker service." >&2
-    return 1
-  fi
-
-  # Step 6: Verify Docker installation
-  info "Verifying Docker installation..."
-  if docker --version > /dev/null 2>&1; then
-    success "Docker installation verified: $(docker --version)"
-  else
-    failure "Docker verification failed. Ensure Docker is installed correctly." >&2
-    return 1
+    info "Starting Docker service..."
+    if systemctl start docker > /dev/null 2>&1; then
+      success "Docker service started successfully."
+    else
+      failure "Failed to start Docker service." >&2
+      return 1
+    fi
   fi
 
   success "Docker installation and setup completed successfully."
   return 0
 }
+
 
 # Function to merge server, network, and IP information
 get_server_info() {
