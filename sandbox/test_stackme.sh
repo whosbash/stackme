@@ -5952,8 +5952,8 @@ main() {
   # Perform initialization
   server_config_fname="${HOME}/server_info.json"
 
-  # initialize_server_info
-  # clear
+  initialize_server_info
+  clear
 
   define_menus
 
