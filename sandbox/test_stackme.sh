@@ -5430,8 +5430,6 @@ generate_config_traefik() {
         sed -e 's/\$/\$\$/g' -e 's/\\/\\\\/g'
   )"
 
-  echo "$dashboard_credentials" >&2
-
   local network_name="$(get_network_name)"  
 
   # Ensure everything is quoted correctly
@@ -5954,8 +5952,8 @@ main() {
   # Perform initialization
   server_config_fname="${HOME}/server_info.json"
 
-  initialize_server_info
-  clear
+  # initialize_server_info
+  # clear
 
   define_menus
 
