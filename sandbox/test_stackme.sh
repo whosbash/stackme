@@ -5995,6 +5995,7 @@ define_menus(){
 start_main_menu(){
     navigate_menu "Main";
     cleanup
+    clean_screen
     farewell_message
 }
 
