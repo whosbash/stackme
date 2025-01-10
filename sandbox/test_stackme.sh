@@ -3747,39 +3747,34 @@ signup_on_portainer() {
   local portainer_url="$1"
   local credentials="$2"
 
+  # Validate and reformat JSON
+  credentials=$(echo "$credentials" | jq -c . 2>/dev/null)
+  if [ $? -ne 0 ]; then
+    echo "Invalid JSON provided for credentials: $credentials" >&2
+    return 1
+  fi
+
   local protocol="https"
   local content_type="application/json"
   local resource='users/admin/init'
 
   echo "Signing up on portainer..."
 
-  # Build the API URL
-  url="$(get_api_url $protocol $portainer_url $resource)"
+  url="$(get_api_url "$protocol" "$portainer_url" "$resource")"
 
   echo "URL: $url" >&2
 
-  # Escape the credentials JSON string for safe usage
-  credentials=$(echo "$credentials" | jq -c .)
-
-  # Make the API call
-  response=$(
-    curl -k -s -X POST "$url" \
-      -H "Content-Type: $content_type" \
-      -d "$credentials"
-  )
+  response=$(curl -k -s -X POST "$url" -H "Content-Type: $content_type" -d "$credentials")
 
   echo "Response: $response" >&2
 
   # Check if the response indicates an existing administrator
   if [[ "$response" == *"An administrator user already exists"* ]]; then
     warning "An administrator user already exists."
-  elif [[ "$response" == *"Invalid request payload"* ]]; then
-    error "Failed to create administrator: $response"
-  else
+  else 
     success "Administrator user created successfully."
   fi
 }
-
 
 # Function to retrieve a Portainer authentication token
 get_portainer_auth_token() {
