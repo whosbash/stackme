@@ -5979,8 +5979,5 @@ main() {
   start_main_menu
 }
 
-# # Call the main function
-# main "$@"
-
-generate_config_traefik
-wait_for_input
+# Call the main function
+main "$@"
