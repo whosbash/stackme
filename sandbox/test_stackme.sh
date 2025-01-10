@@ -4521,18 +4521,11 @@ deploy_stack_pipeline() {
     # Get Portainer credentials
     portainer_config_json="$(load_json "$STACKS_FOLDER/portainer_config.json")"
     echo "$portainer_config_json" >&2
-    
-    portainer_url="$(\
-      get_variable_value_from_collection "$portainer_config_json" "portainer_url"\
-    )"
-    portainer_credentials="$(\
-      get_variable_value_from_collection "$portainer_config_json" "username"\
-    )"
+  
+    portainer_url="$(echo "$portainer_config_json" | jq -r '.variables.portainer_url')"
+    portainer_credentials="$(echo "$portainer_config_json" | jq -r '.variables.portainer_credentials')"
 
-    echo "$portainer_url" >&2
-    echo "$portainer_credentials" >&2
-
-    # upload_stack_on_portainer "$portainer_url" "$portainer_credentials" "$stack_name" "$compose_path"
+    upload_stack_on_portainer "$portainer_url" "$portainer_credentials" "$stack_name" "$compose_path"
   fi
 
   exit_code=0
