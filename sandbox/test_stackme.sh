@@ -3755,8 +3755,10 @@ signup_on_portainer(){
 
   url="$(get_api_url $protocol $portainer_url $resource)"
 
+  echo "URL: $url" >&2
+
   response=$(\
-    curl -k -s -X POST "$url" -H "Content-Type: $content_type" -d "$credentials"\
+    curl -k -s -X POST "$url" -H "Content-Type: $content_type" -d "$credentials" \
   )
 
   echo "Response: $response" >&2
@@ -5976,11 +5978,11 @@ main() {
   update_and_install_packages
   clear
 
-  # # Perform initialization
-  # server_config_fname="${HOME}/server_info.json"
+  # Perform initialization
+  server_config_fname="${HOME}/server_info.json"
 
-  #initialize_server_info
-  #clear
+  initialize_server_info
+  clear
 
   define_menus
 
