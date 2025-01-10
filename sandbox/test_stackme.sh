@@ -4427,6 +4427,8 @@ deploy_stack_pipeline() {
 
     # Get Portainer credentials
     portainer_config_json="$(load_json "$STACKS_FOLDER/portainer_config.json")"
+    echo "$portainer_config_json" >&2
+    
     portainer_url="$(\
       get_variable_value_from_collection "$portainer_config_json" "portainer_url"\
     )"
