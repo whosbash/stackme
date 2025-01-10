@@ -3751,11 +3751,15 @@ signup_on_portainer(){
   local content_type="application/json"
   local resource='users/admin/init'
 
+  echo "Signing up on portainer..."
+
   url="$(get_api_url $protocol $portainer_url $resource)"
 
   response=$(\
     curl -k -s -X POST "$url" -H "Content-Type: $content_type" -d "$credentials"\
   )
+
+  echo "Response: $response" >&2
 
   # Check if the response indicates an existing administrator
   if [[ "$response" == *"An administrator user already exists"* ]]; then
@@ -5983,5 +5987,9 @@ main() {
   start_main_menu
 }
 
-# Call the main function
-main "$@"
+# # Call the main function
+# main "$@"
+
+signup_on_portainer "portainer.persev.info" "{\"username\":\"portainer\",\"password\":\"Portainer!54321\"}"
+
+wait_for_input
