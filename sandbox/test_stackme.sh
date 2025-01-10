@@ -1877,52 +1877,63 @@ validate_username() {
 }
 
 # Function to validate password
+# Function to validate password
 validate_password() {
   local value="$1"
 
-  # Check if the value contains at least 8 characters
-  warn_message="The value '$value' is not a valid password"
+  # Common warning message
+  local warn_message="The value '$value' is not a valid password"
+
+  # Check if the value contains at least 5 characters
   if [[ ${#value} -lt 5 ]]; then
-    reason="It must be at least 5 characters long."
+    local reason="It must be at least 5 characters long."
     echo "$warn_message. $reason"
     return 1
   fi
 
   # Check if the value contains at least one uppercase letter
   if [[ ! "$value" =~ [A-Z] ]]; then
-    reason="It must contain at least one uppercase letter."
+    local reason="It must contain at least one uppercase letter."
     echo "$warn_message. $reason"
     return 1
   fi
 
   # Check if the value contains at least one lowercase letter
   if [[ ! "$value" =~ [a-z] ]]; then
-    reason="It must contain at least one lowercase letter."
+    local reason="It must contain at least one lowercase letter."
     echo "$warn_message. $reason"
     return 1
   fi
 
   # Check if the value contains at least one number
   if [[ ! "$value" =~ [0-9] ]]; then
-    reason="It must contain at least one number."
+    local reason="It must contain at least one number."
     echo "$warn_message. $reason"
     return 1
   fi
 
-  # Check if the value contains at least one special character
-  if [[ ! "$value" =~ [\!\@\#\$\%\^\&\*\(\)_\+\-=] ]]; then
-    reason="It must contain at least one special character."
+  # Check if the value contains at least one valid special character
+  if [[ ! "$value" =~ [\!\@\#\$\%\^\&\*\(\)\_\+\-\=] ]]; then
+    local reason="It must contain at least one valid special character (!@#$%^&*()_+-=)."
     echo "$warn_message. $reason"
     return 1
   fi
 
   # Check if the value does not contain spaces
-  if [[ "$value" =~ \  ]]; then
-    reason="It cannot contain spaces."
+  if [[ "$value" =~ [[:space:]] ]]; then
+    local reason="It cannot contain spaces."
     echo "$warn_message. $reason"
     return 1
   fi
 
+  # Check for invalid special characters (e.g., '<', '>')
+  if [[ "$value" =~ [\<\>] ]]; then
+    local reason="It contains invalid special characters (<>)."
+    echo "$warn_message. $reason"
+    return 1
+  fi
+
+  # If all checks pass
   return 0
 }
 
@@ -2351,10 +2362,13 @@ wait_for_input() {
     prompt_message="Press any key to continue..."
   fi
 
-  # Display the prompt message and wait for user input
+  # Display the prompt message and wait for user input (one character)
   prompt_message="$(format "question" "$prompt_message")"
-  read -rp "$prompt_message" user_input
+  echo -n "$prompt_message"  # Display the message without a newline
+  read -n 1 -s user_input    # Wait for a single character input, suppress echo
+  echo                    # Print a newline after input
 }
+
 
 # Function to prompt user and wait for any key press
 press_any_key() {
@@ -6002,4 +6016,3 @@ main() {
 
 # Call the main function
 main "$@"
-
