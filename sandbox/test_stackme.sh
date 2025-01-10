@@ -3291,7 +3291,7 @@ handle_enter_key(){
       kill_current_pid
 
       message="\n${faded_color}Operation interrupted. Exiting script...${reset_color}"
-      command="clean_screen; error \"$message\"; sleep 1; return"
+      command="clean_screen; error \"$message\"; cleanup; clean_screen; sleep 1; return"
       trap "$command" SIGINT
 
       (eval "$option_action") || echo -e "$message"
