@@ -4482,6 +4482,8 @@ deploy_stack_pipeline() {
   # Step 9: Save service-specific information to a configuration file
   message="Saving stack configuration"
   stack_step_progress 10 "$message"
+  echo "$stack_json" >&2
+  echo "$config_path" >&2
   write_json "$config_path" "$stack_json"
   stack_handle_exit $? 10 "$message"
 
