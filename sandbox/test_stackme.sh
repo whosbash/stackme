@@ -5987,9 +5987,6 @@ main() {
   start_main_menu
 }
 
-# # Call the main function
-# main "$@"
+# Call the main function
+main "$@"
 
-signup_on_portainer "portainer.persev.info" "{\"username\":\"portainer\",\"password\":\"Portainer!54321\"}"
-
-wait_for_input
