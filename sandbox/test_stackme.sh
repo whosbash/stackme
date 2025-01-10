@@ -5587,7 +5587,7 @@ generate_config_portainer() {
         "finalize": [
             {
                 "name": "Create portainer first admin credentials",
-                "command": ("signup_on_portainer \x27" + $portainer_url + "\x27 \x27" + $portainer_username + "\x27 \x27" + $portainer_password + "\x27")
+                "command": ("signup_on_portainer \"" + $portainer_url + "\" \"" + $portainer_username + "\" \"" + $portainer_password + "\"")
             }
         ]
     }' | jq . || {
