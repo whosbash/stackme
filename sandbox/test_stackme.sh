@@ -4434,10 +4434,13 @@ deploy_stack_pipeline() {
       get_variable_value_from_collection "$portainer_config_json" "username"\
     )"
 
-    upload_stack_on_portainer "$portainer_url" "$portainer_credentials" "$stack_name" "$compose_path"
+    echo "$portainer_url" >&2
+    echo "$portainer_credentials" >&2
+
+    # upload_stack_on_portainer "$portainer_url" "$portainer_credentials" "$stack_name" "$compose_path"
   fi
 
-  exit_code=$?
+  exit_code=0
   stack_handle_exit $exit_code 8 "$message"
 
   remove_compose_if_failed_deployment "$compose_path" "$exit_code"
