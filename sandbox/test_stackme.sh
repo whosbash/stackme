@@ -3750,7 +3750,7 @@ signup_on_portainer() {
 
   echo "Username: $username" >&2
   echo "Password: $password" >&2
-
+ 
   credentials="{\"username\":\"$username\",\"password\":\"$password\"}"
 
   echo "Credentials: $credentials" >&2
@@ -4451,12 +4451,6 @@ deploy_stack_pipeline() {
       stack_step_error 9 "Invalid JSON in finalize_actions: $finalize_actions"
       return 1
   fi
-
-  echo "Type of finalize_actions:" >&2
-  echo "$finalize_actions" | jq -r 'type' >&2
-
-  echo "Length of finalize_actions:" >&2
-  echo "$finalize_actions" | jq 'length' >&2
 
   # Step 9: Run finalize actions individually
   if echo "$finalize_actions" | jq -e '. | type == "array" and length > 0' > /dev/null 2>&1; then
