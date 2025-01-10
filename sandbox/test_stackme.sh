@@ -3743,7 +3743,7 @@ is_portainer_credentials_correct() {
 }
 
 # Function to signup on portainer
-signup_on_portainer(){
+signup_on_portainer() {
   local portainer_url="$1"
   local credentials="$2"
 
@@ -3753,12 +3753,19 @@ signup_on_portainer(){
 
   echo "Signing up on portainer..."
 
+  # Build the API URL
   url="$(get_api_url $protocol $portainer_url $resource)"
 
   echo "URL: $url" >&2
 
-  response=$(\
-    curl -k -s -X POST "$url" -H "Content-Type: $content_type" -d "$credentials" \
+  # Escape the credentials JSON string for safe usage
+  credentials=$(echo "$credentials" | jq -c .)
+
+  # Make the API call
+  response=$(
+    curl -k -s -X POST "$url" \
+      -H "Content-Type: $content_type" \
+      -d "$credentials"
   )
 
   echo "Response: $response" >&2
@@ -3766,10 +3773,13 @@ signup_on_portainer(){
   # Check if the response indicates an existing administrator
   if [[ "$response" == *"An administrator user already exists"* ]]; then
     warning "An administrator user already exists."
-  else 
+  elif [[ "$response" == *"Invalid request payload"* ]]; then
+    error "Failed to create administrator: $response"
+  else
     success "Administrator user created successfully."
   fi
 }
+
 
 # Function to retrieve a Portainer authentication token
 get_portainer_auth_token() {
