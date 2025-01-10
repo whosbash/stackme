@@ -3751,7 +3751,7 @@ signup_on_portainer() {
   echo "Username: $username" >&2
   echo "Password: $password" >&2
 
-  credentials="{\"username\":'$username',\"password\":'$password'}"
+  credentials="{\"username\":\"$username\",\"password\":\"$password\"}"
 
   echo "Credentials: $credentials" >&2
 
