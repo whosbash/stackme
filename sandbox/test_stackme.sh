@@ -3751,7 +3751,7 @@ signup_on_portainer() {
   echo "Username: $username" >&2
   echo "Password: $password" >&2
 
-  credentials="{\"username\":\"$username\",\"password\":\"$password\"}"
+  credentials="{\"username\":'$username',\"password\":'$password'}"
 
   echo "Credentials: $credentials" >&2
 
@@ -5558,8 +5558,6 @@ generate_config_portainer() {
     get_variable_value_from_collection "$collected_items" "portainer_password"
   )"
 
-  portainer_password=$(printf '%q' "$portainer_password")
-  
   portainer_credentials="$(
     jq -n \
       --arg username "$portainer_username" \
