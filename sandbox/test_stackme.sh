@@ -5796,7 +5796,7 @@ generate_config_whoami() {
           "variables": {
               "stack_name": $stack_name,
               "container_port": $container_port,
-              "domain_name": $domain_name
+              "domain_name": $domain_name,
               "network_name": $network_name,
           },
           "dependencies": [],
