@@ -2957,6 +2957,7 @@ farewell_message() {
 
 finish_session() {
     cleanup
+    clean_screen
     farewell_message
     exit 0;
 }
@@ -3806,10 +3807,10 @@ is_portainer_credentials_correct() {
   token=$(echo "$response" | jq -r .jwt)
 
   if [[ "$token" == "null" || -z "$token" ]]; then
-    error "Invalid credentials" >&2
+    error "Invalid Portainer credentials" >&2
     return 1 # Exit with status 1 for failure
   else
-    error "Valid credentials" >&2
+    success "Valid Portainer credentials" >&2
     return 0 # Exit with status 0 for success
   fi
 }
