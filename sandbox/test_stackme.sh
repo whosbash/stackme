@@ -3764,9 +3764,9 @@ signup_on_portainer() {
 
   echo "Username: $username" >&2
   echo "Password: $password" >&2
- 
-  credentials="{\"username\":\"$username\",\"password\":\"$password\"}"
 
+  # Prepare credentials in JSON format
+  credentials="{\"username\":\"$username\",\"password\":\"$password\"}"
   echo "Credentials: $credentials" >&2
 
   # Validate and reformat JSON
@@ -3776,27 +3776,46 @@ signup_on_portainer() {
     return 1
   fi
 
+  # Setup headers and endpoint
   local protocol="https"
   local content_type="application/json"
   local resource='users/admin/init'
   local header="Content-Type: $content_type"
 
-  echo "Signing up on portainer..."
+  info "Signing up on portainer..."
 
+  # Get the URL
   url="$(get_api_url "$protocol" "$portainer_url" "$resource")"
-
   echo "URL: $url" >&2
-  echo "Credentials: $credentials" >&2
 
-  response=$(curl -k -X POST "$url" -H "$header" -d "$credentials")
-
+  # Make the request
+  response=$(curl -s -k -X POST "$url" -H "$header" -d "$credentials")
   echo "Response: $response" >&2
 
-  # Check if the response indicates an existing administrator
+  # Check for existing administrator user in the response
   if [[ "$response" == *"An administrator user already exists"* ]]; then
-    warning "An administrator user already exists."
-  else 
-    success "Administrator user created successfully."
+    echo "Warning: An administrator user already exists." >&2
+    return 1
+  fi
+
+  # Parse the response and check if it contains the expected fields
+  user_info=$(\
+    echo "$response" | \
+    jq -c 'select(.Id and .Username and .Password and .Role)'
+  )
+  if [ $? -ne 0 ]; then
+    echo "Error: The response does not contain the expected fields." >&2
+    return 1
+  fi
+
+  # Ensure the password is correctly hashed (checking the format of the password)
+  password_hash=$(echo "$response" | jq -r '.Password')
+  if [[ "$password_hash" =~ ^\$2a\$10\$ ]]; then
+    echo "Administrator user created successfully."
+    return 0
+  else
+    echo "Error: Password hashing failed or response is incorrect." >&2
+    return 1
   fi
 }
 
@@ -5484,7 +5503,7 @@ generate_config_traefik() {
         sed -e 's/\$/\$\$/g' -e 's/\\\//\//g'
   )"
 
-  info "Hashed credentials: $credentials" >&2
+  info "Hashed credentials: $dashboard_credentials" >&2
 
   local network_name="$(get_network_name)"  
 
