@@ -2278,6 +2278,7 @@ run_collection_process() {
     # If no values were collected, exit early
     if [[ "$collected_info" == "[]" ]]; then
       warning "No data collected. Exiting process."
+      echo "[]"
       exit 0
     fi
 
@@ -5377,13 +5378,6 @@ get_network_name(){
 # Function to generate configuration files for traefik
 generate_config_traefik() {
   local stack_name="traefik"
-  local network_name="$(get_network_name)"
-
-  if [[ -z "$network_name" ]]; then
-    reason="Either stackme was not initialized properly or server_info.json file is corrupted."
-    error "Unable to retrieve network name. $reason"
-    return 1
-  fi
 
   highlight "Gathering $stack_name configuration"
 
@@ -5422,6 +5416,14 @@ generate_config_traefik() {
 
   if [[ "$collected_items" == "[]" ]]; then
     error "Unable to retrieve Traefik configuration."
+    return 1
+  fi
+
+  local network_name="$(get_network_name)"
+
+  if [[ -z "$network_name" ]]; then
+    reason="Either stackme was not initialized properly or server_info.json file is corrupted."
+    error "Unable to retrieve network name. $reason"
     return 1
   fi
 
@@ -5960,23 +5962,25 @@ main() {
   parse_args "$@"
 
   set_arrow
-
   clear
 
   # Install required packages
   update_and_install_packages
   clear
 
-  # Perform initialization
-  server_config_fname="${HOME}/server_info.json"
+  # # Perform initialization
+  # server_config_fname="${HOME}/server_info.json"
 
-  initialize_server_info
-  clear
+  #initialize_server_info
+  #clear
 
   define_menus
 
   start_main_menu
 }
 
-# Call the main function
-main "$@"
+# # Call the main function
+# main "$@"
+
+generate_config_traefik
+wait_for_input
