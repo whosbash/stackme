@@ -3767,7 +3767,7 @@ signup_on_portainer() {
 
   echo "URL: $url" >&2
 
-  response=$(curl -k -s -X POST "$url" -H "Content-Type: $content_type" -d "$credentials")
+  response=$(curl -k -X POST "$url" -H "Content-Type: $content_type" -d "$credentials")
 
   echo "Response: $response" >&2
 
