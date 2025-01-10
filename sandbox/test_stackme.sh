@@ -4333,6 +4333,8 @@ deploy_stack_pipeline() {
       return 1
   fi
 
+  echo "$prepare_actions" >&2
+
   # Step 3: Run setUp actions individually
   if [ "$(echo "$prepare_actions" | jq length)" -eq 0 ]; then
     echo "$prepare_actions" | jq -c '.[]' | while IFS= read -r action; do
@@ -4431,6 +4433,8 @@ deploy_stack_pipeline() {
       stack_step_error 9 "Invalid JSON in finalize_actions: $finalize_actions"
       return 1
   fi
+
+  echo "$finalize_actions" >&2
 
   # Step 9: Run finalize actions individually
   if [ "$(echo "$finalize_actions" | jq length)" -eq 0 ]; then
