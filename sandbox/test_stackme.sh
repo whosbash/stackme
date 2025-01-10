@@ -5584,12 +5584,7 @@ generate_config_portainer() {
         },
         "dependencies": {},
         "prepare": [],
-        "finalize": [
-            {
-                "name": "Create portainer first admin credentials",
-                "command": ("signup_on_portainer \"" + $portainer_url + "\" \"" + $portainer_username + "\" \"" + $portainer_password + "\"")
-            }
-        ]
+        "finalize": []
     }' | jq . || {
         echo "Failed to generate JSON"
         return 1
