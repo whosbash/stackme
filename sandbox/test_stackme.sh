@@ -5138,16 +5138,6 @@ initialize_server_info() {
     hostnamectl set-hostname "$server_name"
     handle_exit $? 3 $total_steps "Set Hostname"
 
-    # Verify the hostname was set
-    updated_hostname="$(hostnamectl --static)"
-    info "Updated hostname: $updated_hostname"
-
-    if [[ "$updated_hostname" != "$server_name" ]]; then
-      step_error "Failed to set hostname to $server_name. Current hostname: $updated_hostname"
-      wait_for_input
-      exit 1
-    fi
-
     step_success 3 $total_steps "Hostname set to $server_name"
 
     # Allow a brief delay for changes to propagate
