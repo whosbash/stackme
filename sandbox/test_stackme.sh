@@ -4286,20 +4286,26 @@ deploy_stack_pipeline() {
 
   # Step 1: Deploy Dependencies
   stack_step_progress 1 "Checking and deploying dependencies"
-  local dependencies=$(echo "$config_json" | jq -r '.dependencies[]?')
+  local dependencies=$(echo "$config_json" | jq -c '.dependencies // []')
+
+  # Validate JSON
+  if ! echo "$dependencies" | jq empty; then
+      stack_step_error 9 "Invalid JSON in dependencies: $dependencies"
+      return 1
+  fi
 
   # Check if there are dependencies, and if none, display a message
-  if [ -z "$dependencies" ]; then
+  if [ "$(echo "$dependencies" | jq length)" -eq 0 ]; then
     stack_step_warning 1 "No dependencies to deploy"
   else
-    for dependency in $dependencies; do
+    echo "$dependencies" | jq -c '.[]' | while IFS= read -r dependency; do
       # Check if stack dependency exists on docker
       if ! docker stack ls | grep -q "$dependency"; then
         dependency_message="Deploying dependency: $dependency"
         stack_step_progress 1 "$dependency_message"
 
         # Fetch JSON for the dependency
-        deploy_stack_pipeline "$dependency"
+        deploy_stack "$dependency"
         stack_handle_exit "$?" 1 "$dependency_message"  
       else
         dependency_message="Dependency \"$dependency\" already exists"
@@ -4321,14 +4327,14 @@ deploy_stack_pipeline() {
     exit 1
   fi
 
-  # Step 3: Run setUp actions individually
-  if [ -n "$prepare_actions" ]; then
-    # Validate JSON
-    if ! echo "$prepare_actions" | jq empty; then
-        stack_step_error 9 "Invalid JSON in prepare_actions: $prepare_actions"
-        return 1
-    fi
+  # Validate JSON
+  if ! echo "$prepare_actions" | jq empty; then
+      stack_step_error 9 "Invalid JSON in prepare_actions: $prepare_actions"
+      return 1
+  fi
 
+  # Step 3: Run setUp actions individually
+  if [ "$(echo "$prepare_actions" | jq length)" -eq 0 ]; then
     echo "$prepare_actions" | jq -c '.[]' | while IFS= read -r action; do
       # Perform the action (you can define custom functions to execute these steps)
       action_name=$(echo "$action" | jq -r '.name')
@@ -4420,13 +4426,14 @@ deploy_stack_pipeline() {
     return 1
   fi
 
+  # Validate JSON
+  if ! echo "$finalize_actions" | jq empty; then
+      stack_step_error 9 "Invalid JSON in finalize_actions: $finalize_actions"
+      return 1
+  fi
+
   # Step 9: Run finalize actions individually
-  if [ -n "$finalize_actions" ]; then
-    # Validate JSON
-    if ! echo "$finalize_actions" | jq empty; then
-        stack_step_error 9 "Invalid JSON in finalize_actions: $finalize_actions"
-        return 1
-    fi
+  if [ "$(echo "$finalize_actions" | jq length)" -eq 0 ]; then
 
     message="Executing finalize actions"
     stack_step_progress 9 "$message"
@@ -5453,7 +5460,8 @@ generate_config_traefik() {
             "network_name": $network_name,
         },
         "dependencies": {},
-        "setUp": []
+        "prepare": [],
+        "finalize": []
     }' | jq . || {
         error "Failed to generate JSON"
         return 1
@@ -5631,7 +5639,7 @@ generate_config_postgres() {
               "db_user": $db_user,
               "db_password": $db_password
           },
-          "dependencies": {},
+          "dependencies": [],
           "prepare": [],
           "finalize": []
       }' | jq . || {
@@ -5684,7 +5692,7 @@ generate_config_whoami() {
               "domain_name": $domain_name
               "network_name": $network_name,
           },
-          "dependencies": {},
+          "dependencies": [],
           "prepare": [],
           "finalize": []
       }' | jq . || {
