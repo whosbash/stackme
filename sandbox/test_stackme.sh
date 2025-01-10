@@ -5554,6 +5554,8 @@ generate_config_portainer() {
   portainer_password="$(\
     get_variable_value_from_collection "$collected_items" "portainer_password"
   )"
+
+  portainer_password=$(printf '%q' "$portainer_password")
   
   portainer_credentials="$(
     jq -n \
@@ -5568,9 +5570,9 @@ generate_config_portainer() {
   --arg stack_name "$stack_name" \
   --arg portainer_agent_version "$portainer_agent_version" \
   --arg portainer_ce_version "$portainer_ce_version" \
-  --arg portainer_url "'$portainer_url'" \
-  --arg portainer_username "'$portainer_username'" \
-  --arg portainer_password "'$portainer_password'" \
+  --arg portainer_url "$portainer_url" \
+  --arg portainer_username "$portainer_username" \
+  --arg portainer_password "$portainer_password" \
   --argjson portainer_credentials "$portainer_credentials" \
   --arg network_name "$network_name" \
   '{
