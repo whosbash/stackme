@@ -1120,6 +1120,64 @@ to_boolean() {
   [[ "$1" -ne 0 ]] && echo "true" || echo "false"
 }
 
+# Function to check the IP address of a domain
+check_domain_ip() {
+  local domain="$1"
+  local expected_ip="$2"
+
+  # Get the IP address of the domain using dig
+  resolved_ip=$(dig +short "$domain")
+
+  # Compare the resolved IP with the expected IP
+  if [[ "$resolved_ip" == "$expected_ip" ]]; then
+    success "The domain '$domain' resolves to '$expected_ip'."
+  else
+    error "The domain '$domain' does not resolve to '$expected_ip'. Resolved to '$resolved_ip'."
+  fi
+}
+
+# Function to check if a command is available
+is_command_available() {
+  local command="$1"
+  command -v "$command" >/dev/null 2>&1
+}
+
+assert_domain_and_ip(){
+  items='[
+      {
+          "name": "domain_url",
+          "label": "Domain URL",
+          "description": "URL to access domain remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      },
+      {
+          "name": "ip",
+          "label": "IP address",
+          "description": "String of IP address",
+          "required": "yes",
+          "validate_fn": ""
+      }
+  ]'
+
+  collected_items="$(run_collection_process "$items")"
+
+  if [[ "$collected_items" == "[]" ]]; then
+    error "Unable to retrieve SMTP test configuration."
+    return 1
+  fi
+
+  domain_url="$(\
+    search_on_json_array "$collected_items" 'name' 'domain_url' | jq -r ".value"
+  )"
+
+  ip="$(\
+    search_on_json_array "$collected_items" 'name' 'ip' | jq -r ".value"
+  )"
+
+  check_domain_ip "$domain_url" "$ip"
+}
+
 ############################# END OF GENERAL UTILITARY FUNCTIONS #############################
 
 ############################## BEGIN OF EMAIL-RELATED FUNCTIONS ##############################
@@ -1444,7 +1502,7 @@ replace_mustache_variables() {
     value="${variables[$key]}"
     
     # Escape special characters in the value to prevent issues with sed (if needed)
-    value_escaped=$(printf '%s' "$value" | sed 's/[&/\]/\\&/g')
+    value_escaped=$(printf '%s' "$value")
 
     # Replace instances of {{KEY}} in the template
     template="${template//\{\{$key\}\}/$value_escaped}"
@@ -4430,7 +4488,7 @@ deploy_stack_pipeline() {
   
   # Create folder stacks on home path
   mkdir -p "$STACKS_FOLDER"
-  
+
   message="Writing Docker Compose template"
   stack_step_progress 6 "$message" 
   echo "$substituted_template" >"$compose_path"
@@ -4547,6 +4605,8 @@ deploy_stack() {
     failure "Stack $stack_name configuration validation failed."
     return 1
   fi
+
+  clean_screen
 
   # Deploy the n8n service using the JSON
   deploy_stack_pipeline "$stack_name" "$config_json"
@@ -5850,6 +5910,7 @@ define_menu_utilities(){
   menu_name="Utilities"
 
   item_1="$(build_menu_item "Test SMPT e-mail" "Send" "test_smtp_email")"
+  item_2="$(build_menu_item "Test SWAKS e-mail" "Send" "assert_domain_and_ip")"
 
   page_size=5
 
