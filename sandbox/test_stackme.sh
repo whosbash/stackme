@@ -3745,7 +3745,10 @@ is_portainer_credentials_correct() {
 # Function to signup on portainer
 signup_on_portainer() {
   local portainer_url="$1"
-  local credentials="$2"
+  local username="$2"
+  local password="$3"
+
+  credentials="{\"username\":\"$username\",\"password\":\"$password\"}"
 
   # Validate and reformat JSON
   credentials=$(echo "$credentials" | jq -c . 2>/dev/null)
@@ -5566,6 +5569,8 @@ generate_config_portainer() {
   --arg portainer_agent_version "$portainer_agent_version" \
   --arg portainer_ce_version "$portainer_ce_version" \
   --arg portainer_url "$portainer_url" \
+  --arg portainer_username  $portainer_username \
+  --arg portainer_password $portainer_password \
   --argjson portainer_credentials "$portainer_credentials" \
   --arg network_name "$network_name" \
   '{
@@ -5582,7 +5587,7 @@ generate_config_portainer() {
         "finalize": [
             {
                 "name": "Create portainer first admin credentials",
-                "command": ("signup_on_portainer \"" + $portainer_url + "\" \"" + ($portainer_credentials | @json) + "\"")
+                "command": ("signup_on_portainer \"" + $portainer_url + "\" \"" + $portainer_username + "\" \"" + $portainer_password + "\"")
             }
         ]
     }' | jq . || {
