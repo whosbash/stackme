@@ -5484,6 +5484,8 @@ generate_config_traefik() {
         sed -e 's/\$/\$\$/g' -e 's/\\\//\//g'
   )"
 
+  info "Hashed credentials: $credentials" >&2
+
   local network_name="$(get_network_name)"  
 
   # Ensure everything is quoted correctly
