@@ -4435,11 +4435,14 @@ deploy_stack_pipeline() {
       return 1
   fi
 
-  echo "$finalize_actions" >&2
+  echo "Type of finalize_actions:" >&2
+  echo "$finalize_actions" | jq -r 'type' >&2
+
+  echo "Length of finalize_actions:" >&2
+  echo "$finalize_actions" | jq 'length' >&2
 
   # Step 9: Run finalize actions individually
-  if [ "$(echo "$finalize_actions" | jq length)" -eq 0 ]; then
-
+  if echo "$finalize_actions" | jq -e '. | type == "array" and length > 0' > /dev/null 2>&1; then
     message="Executing finalize actions"
     stack_step_progress 9 "$message"
 
@@ -4447,7 +4450,7 @@ deploy_stack_pipeline() {
       action_name=$(echo "$action" | jq -r '.name')
 
       echo "$action" >&2
-      
+
       message="Executing finalize action: $action_name"
       stack_step_error 9 "$message"
 
@@ -4458,6 +4461,7 @@ deploy_stack_pipeline() {
   else
     stack_step_warning 9 "No finalize actions defined"
   fi
+
 
   # Step 9: Save service-specific information to a configuration file
   message="Saving stack configuration"
