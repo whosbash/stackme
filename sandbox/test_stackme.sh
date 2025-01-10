@@ -3291,7 +3291,7 @@ handle_enter_key(){
       kill_current_pid
 
       message="\n${faded_color}Operation interrupted. Exiting script...${reset_color}"
-      command="clean_screen; error \"$message\"; cleanup; clean_screen; sleep 1; return"
+      command="clean_screen; error \"$message\"; sleep 1; cleanup; clean_screen; return"
       trap "$command" SIGINT
 
       (eval "$option_action") || echo -e "$message"
@@ -3748,7 +3748,12 @@ signup_on_portainer() {
   local username="$2"
   local password="$3"
 
+  echo "Username: $username" >&2
+  echo "Password: $password" >&2
+
   credentials="{\"username\":\"$username\",\"password\":\"$password\"}"
+
+  echo "Credentials: $credentials" >&2
 
   # Validate and reformat JSON
   credentials=$(echo "$credentials" | jq -c . 2>/dev/null)
@@ -4330,7 +4335,7 @@ deploy_stack_pipeline() {
   fi
 
   # Step 2: Gather setUp actions
-  stack_step_progress 2 "Gathering setUp actions"
+  stack_step_progress 2 "Gathering prepare actions"
   local setUp_actions
   prepare_actions=$(echo "$config_json" | jq -r '.prepare?')
   finalize_actions=$(echo "$config_json" | jq -r '.finalize?')
@@ -4338,7 +4343,7 @@ deploy_stack_pipeline() {
 
   # Check if jq returned an error
   if [[ $? -ne 0 ]]; then
-    stack_step_error 2 "Error parsing setUp actions: $prepare_actions"
+    stack_step_error 2 "Error parsing prepare actions: $prepare_actions"
     exit 1
   fi
 
@@ -4347,8 +4352,6 @@ deploy_stack_pipeline() {
       stack_step_error 9 "Invalid JSON in prepare_actions: $prepare_actions"
       return 1
   fi
-
-  echo "$prepare_actions" >&2
 
   # Step 3: Run setUp actions individually
   if [ "$(echo "$prepare_actions" | jq length)" -eq 0 ]; then
