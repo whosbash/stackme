@@ -3779,14 +3779,16 @@ signup_on_portainer() {
   local protocol="https"
   local content_type="application/json"
   local resource='users/admin/init'
+  local header="Content-Type: $content_type"
 
   echo "Signing up on portainer..."
 
   url="$(get_api_url "$protocol" "$portainer_url" "$resource")"
 
   echo "URL: $url" >&2
+  echo "Credentials: $credentials" >&2
 
-  response=$(curl -k -X POST "$url" -H "Content-Type: $content_type" -d "$credentials")
+  response=$(curl -k -X POST "$url" -H "$header" -d "$credentials")
 
   echo "Response: $response" >&2
 
