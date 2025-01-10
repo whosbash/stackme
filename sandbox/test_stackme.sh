@@ -5587,14 +5587,13 @@ generate_config_portainer() {
         "finalize": [
             {
                 "name": "Create portainer first admin credentials",
-                "command": ("signup_on_portainer \"" + $portainer_url + "\" " + ($portainer_credentials | @json))
+                "command": ("signup_on_portainer \"" + $portainer_url + "\" \"" + ($portainer_credentials | @json) + "\"")
             }
         ]
     }' | jq . || {
         echo "Failed to generate JSON"
         return 1
     }
-
 }
 
 # Function to generate configuration files for redis
