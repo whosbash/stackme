@@ -1060,6 +1060,7 @@ write_json() {
   return 0
 }
 
+
 # Function to load JSON from a file
 load_json() {
   local config_file="$1"
@@ -1290,9 +1291,7 @@ generate_machine_specs_content() {
     local rows="$3"
     echo "<table style='width: 100%; border-collapse: collapse; margin-top: 20px; border: 1px solid #ddd;'>"
     echo "<caption style='font-size: 1.5em; margin-bottom: 10px; font-weight: bold;'>$caption</caption>"
-    if [ -n "$headers" ]; then
-      echo "<thead style='background-color: #f9f9f9;'><tr>$headers</tr></thead>"
-    fi
+    echo "<thead style='background-color: #f9f9f9;'><tr>$headers</tr></thead>"
     echo "<tbody>$rows</tbody>"
     echo "</table>"
   }
@@ -1301,95 +1300,108 @@ generate_machine_specs_content() {
   generate_table_row() {
     local key="$1"
     local value="$2"
+    
+    # If the value is empty or contains 'N/A', use a default fallback value
+    if [[ -z "$value" || "$value" == "N/A" ]]; then
+      value="No data available"
+    fi
+
     echo "<tr style='border-bottom: 1px solid #ddd;'><td style='padding: 8px;'>$key</td><td style='padding: 8px;'>$value</td></tr>"
+  }
+
+  # Helper function to safely execute a command and return the result
+  safe_exec() {
+    local cmd="$1"
+    
+    # Try to execute the command
+    result=$(eval "$cmd" 2>/dev/null)
+    
+    # If no result, return a fallback message
+    if [[ -z "$result" || "$result" == "N/A" ]]; then
+      result="No data available"
+    fi
+
+    echo "$result"
   }
 
   # Machine Specifications Table
   local machine_specs_rows=""
   machine_specs_rows+=$(
-    generate_table_row "Hostname" "$(hostname)"
+    generate_table_row "Hostname" \
+    "$(hostname)"
   )
   machine_specs_rows+=$(
-    generate_table_row "Operating System" "$(lsb_release -d 2>/dev/null | cut -f2 || echo 'N/A')"
+    generate_table_row "Operating System" \
+    "$(safe_exec "lsb_release -d | cut -f2")"
   )
   machine_specs_rows+=$(
-    generate_table_row "Kernel Version" "$(uname -r)"
+    generate_table_row "Kernel Version" \
+    "$(safe_exec "uname -r")"
   )
   machine_specs_rows+=$(
-    generate_table_row "Processor Model" "$(lscpu | \
-    awk -F ':' '/Model name/ {gsub(/^[ \t]+/, "", $2); print $2}')"
+    generate_table_row "Processor Model" \
+    "$(safe_exec "lscpu | awk -F ':' '/Model name/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
   )
   machine_specs_rows+=$(
-    generate_table_row "Processor Cores" "$(lscpu | \
-    awk -F ':' '/^CPU\(s\):/ {gsub(/^[ \t]+/, "", $2); print $2}')"
+    generate_table_row "Processor Cores" \
+    "$(safe_exec "lscpu | awk -F ':' '/^CPU\(s\):/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
   )
   machine_specs_rows+=$(
-    generate_table_row "Processor Threads" "$(lscpu | \
-    awk -F ':' '/^Thread\(s\) per core:/ {gsub(/^[ \t]+/, "", $2); print $2}')"
+    generate_table_row "Processor Threads" \
+    "$(safe_exec "lscpu | awk -F ':' '/^Thread\(s\) per core:/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
   )
   machine_specs_rows+=$(
-    generate_table_row "Clock Speed" "$(lscpu | \
-    grep 'Model name' | grep -o '@ [0-9.]\+GHz' || echo 'N/A')"
+    generate_table_row "Clock Speed" \
+    "$(safe_exec "lscpu | grep 'Model name' | grep -o '@ [0-9.]\+GHz' || echo 'N/A'")"
   )
   machine_specs_rows+=$(
-    generate_table_row "Total Memory" "$(free -h | \
-    awk '/^Mem:/ {print $2}')"
+    generate_table_row "Total Memory" \
+    "$(safe_exec "free -h | awk '/^Mem:/ {print \$2}'")"
   )
   machine_specs_rows+=$(
-    generate_table_row "GPU Details" "$(lspci | \
-    grep -i 'vga\|3d\|2d' || echo 'GPU information unavailable.')"
+    generate_table_row "GPU Details" \
+    "$(safe_exec "lspci | grep -i 'vga\|3d\|2d' || echo 'GPU information unavailable.'")"
   )
   machine_specs_rows+=$(
-    generate_table_row "Docker Version" "$(docker --version 2>/dev/null || echo 'Not installed')"
+    generate_table_row "Docker Version" \
+    "$(safe_exec "docker --version || echo 'Not installed'")"
   )
 
-  html_content+=$(
-    create_table "Machine Specifications" \
-    "<th>Attribute</th><th>Details</th>" "$machine_specs_rows"
-  )
+  html_content+=$(create_table "Machine Specifications" "<th>Attribute</th><th>Details</th>" "$machine_specs_rows")
 
   # Disk Usage Table
-  local disk_usage_rows=$(\
+  local disk_usage_rows=$(
     df -h --output=source,fstype,size,used,avail,pcent | \
     grep -E '^/dev' | \
-    awk '{printf "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", $1, $2, $3, $4, $5, $6}')
-  html_content+=$(\
-    create_table "Disk Usage" \
-    "<th>Source</th><th>Filesystem Type</th><th>Total Size</th><th>Used</th><th>Available</th><th>Use%</th>" \
-    "$disk_usage_rows")
+    awk '{printf "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", $1, $2, $3, $4, $5, $6}'
+  )
+  html_content+=$(create_table "Disk Usage" "<th>Source</th><th>Filesystem Type</th><th>Total Size</th><th>Used</th><th>Available</th><th>Use%</th>" "$disk_usage_rows")
 
-  # Battery Status Table
+  # Battery Status Table (only if upower is available)
   if command -v upower &>/dev/null; then
-    local battery_rows=$(\
+    local battery_rows=$(
       upower -i $(upower -e | grep BAT) | grep -E 'state|to full|percentage' | \
-      awk -F ':' \
-      '{gsub(/^[ \t]+|[ \t]+$/, "", $1); gsub(/^[ \t]+|[ \t]+$/, "", $2); print "<tr><td>" $1 "</td><td>" $2 "</td></tr>"}'\
+      awk -F ':' '{gsub(/^[ \t]+|[ \t]+$/, "", $1); gsub(/^[ \t]+|[ \t]+$/, "", $2); print "<tr><td>" $1 "</td><td>" $2 "</td></tr>"}'
     )
-    html_content+=$(create_table "Battery Status" "<th>Status</th><th>Details</th>" "$battery_rows")
+    if [[ -n "$battery_rows" ]]; then
+      html_content+=$(create_table "Battery Status" "<th>Status</th><th>Details</th>" "$battery_rows")
+    else
+      html_content+=$(create_table "Battery Status" "<th>Status</th><th>Details</th>" "<tr><td colspan='2'>No battery information available.</td></tr>")
+    fi
   fi
 
-  # Network Information Table
-  local ethernet_info=$(\
-    ip -4 addr show | grep 'state UP' -A2 | \
-    grep inet | awk '{print $2}' || echo "No Ethernet connection."
-  )
-  local wifi_info=$(\
-    nmcli device status | grep wifi | awk '{print $1, $3, $4}' || echo "No Wi-Fi connection."
-  )
+  # Network Information Table (Ethernet and Wi-Fi)
+  local ethernet_info=$(safe_exec "ip -4 addr show | grep 'state UP' -A2 | grep inet | awk '{print \$2}' || echo 'No Ethernet connection.'")
+  local wifi_info=$(safe_exec "nmcli device status | grep wifi | awk '{print \$1, \$3, \$4}' || echo 'No Wi-Fi connection.'")
   local network_rows=""
-  network_rows+=$(
-    generate_table_row "Ethernet" "$ethernet_info"
-  )
-  network_rows+=$(
-    generate_table_row "Wi-Fi" "$wifi_info"
-  )
-  html_content+=$(
-    create_table "Network Information" "<th>Type</th><th>Details</th>" "$network_rows"
-  )
+  network_rows+=$(generate_table_row "Ethernet" "$ethernet_info")
+  network_rows+=$(generate_table_row "Wi-Fi" "$wifi_info")
+  html_content+=$(create_table "Network Information" "<th>Type</th><th>Details</th>" "$network_rows")
 
   # Return the complete HTML content
   echo "$html_content"
 }
+
 
 # Functions for diagnostics
 uptime_usage() {
@@ -1566,11 +1578,11 @@ replace_mustache_variables() {
   template="$(sanitize_template "$template")"
 
   # Iterate over the variables and replace each instance of {{KEY}} in the template
-  for key in "${!variables[@]}"; do
-    value="${variables[$key]}"
-    
+  for key in "${!vars_ref[@]}"; do
+    value="${vars_ref[$key]}"
+
     # Escape special characters in the value to prevent issues with sed (if needed)
-    value_escaped=$(printf '%s' "$value")
+    value_escaped="$value"
 
     # Replace instances of {{KEY}} in the template
     # Handle {{key}}, {{ key}}, or {{key }}
@@ -4928,7 +4940,7 @@ format_disk_usage() {
 generate_machine_specs_html(){
   # Example usage
   email_content=$(generate_machine_specs_content)
-  generate_html "$BASE_TEMPLATE" "VPS Status Report" "Machine Specifications" "$email_content"
+  generate_html "$BASE_TEMPLATE" "VPS Status" "Machine Specifications" "$email_content"
 }
 
 # Function to request SMTP information
@@ -4981,10 +4993,12 @@ save_smtp_information(){
     return 1
   fi
 
-  info "Saving SMTP configuration to file: $filename"
   smtp_json=$(process_prompt_items "$collected_items")
-  
+
+  info "Saving SMTP configuration to file: $filename"  
   write_json "$filename"
+
+  echo "$smtp_json"
 }
 
 # Centralized function to retrieve and process SMTP configuration
@@ -4994,8 +5008,7 @@ get_smtp_configuration(){
 
   # If loading fails, request the configuration and save it
   if [[ $? -ne 0 ]]; then
-    save_smtp_information
-    smtp_json=$(load_smtp_information)
+    smtp_json="$(save_smtp_information)"
   fi
 
   echo "$smtp_json"
@@ -5035,7 +5048,7 @@ send_smtp_test_email(){
   password="$(echo "$smtp_json" | jq -r ".password")"
 
   subject="[StackMe] Test SMTP e-mail"
-  body="$(generate_test_smtp_html)"
+  body="$(generate_test_smtp_hmtl)"
 
   # Send the test email
   send_email \
@@ -5047,6 +5060,8 @@ send_smtp_test_email(){
 send_machine_specs_email(){
   # Retrieve SMTP configuration (load from file or request and save)
   smtp_json=$(get_smtp_configuration)
+
+  echo "$smtp_json" >&2
 
   smtp_server="$(echo "$smtp_json" | jq -r ".smtp_server")"
   smtp_port="$(echo "$smtp_json" | jq -r ".smtp_port")"
@@ -5138,7 +5153,7 @@ update_and_install_packages() {
   # Install required apt packages quietly
   packages=(
     "sudo" "apt-utils" "apparmor-utils" "apache2-utils" "jq" "python3" 
-    "docker" "figlet" "swaks" "netcat" "vnstat" "network-manager"
+    "docker" "figlet" "swaks" "netcat" "vnstat" "network-manager" "upower"
   )
   step_message="Installing required apt-get packages"
   step_progress 3 $total_steps "$step_message"
