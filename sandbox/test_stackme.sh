@@ -1182,6 +1182,7 @@ assert_domain_and_ip(){
 
 ############################## BEGIN OF EMAIL-RELATED FUNCTIONS ##############################
 
+# Function to send an email
 send_email() {
     local from_email=$1
     local to_email=$2
@@ -1278,59 +1279,116 @@ test_smtp_email(){
 
 ############################### BEGIN OF SYSTEM-RELATED FUNCTIONS #################################
 
-# Function to display machine specs
-generate_machine_specs() {
-  # Basic Information
-  echo "Hostname:          $(hostname)"
-  echo "Operating System:  $(lsb_release -d | cut -f2)"
-  echo "Kernel Version:    $(uname -r)"
+# Function to generate a complete HTML representation of machine specifications and resource usage
+generate_machine_specs_content() {
+  local html_content=""
 
-  # Processor (CPU)
-  echo "Model:             $(\
-    lscpu | grep 'Model name' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//')"
-  echo "Cores:             $(\
-    lscpu | grep '^CPU(s):' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//')"
-  echo "Threads:           $(\
-    lscpu | grep '^Thread(s) per core:' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//')"
-  echo "Clock Speed:       $(\
-    lscpu | grep 'MHz' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//') MHz"
+  # Helper function to create a table
+  create_table() {
+    local caption="$1"
+    local headers="$2"
+    local rows="$3"
+    echo "<table style='width: 100%; border-collapse: collapse; margin-top: 20px; border: 1px solid #ddd;'>"
+    echo "<caption style='font-size: 1.5em; margin-bottom: 10px; font-weight: bold;'>$caption</caption>"
+    if [ -n "$headers" ]; then
+      echo "<thead style='background-color: #f9f9f9;'><tr>$headers</tr></thead>"
+    fi
+    echo "<tbody>$rows</tbody>"
+    echo "</table>"
+  }
 
-  # Memory (RAM)
-  echo "Total:             $(free -h | grep Mem: | awk '{print $2}')"
+  # Helper function to generate a row
+  generate_table_row() {
+    local key="$1"
+    local value="$2"
+    echo "<tr style='border-bottom: 1px solid #ddd;'><td style='padding: 8px;'>$key</td><td style='padding: 8px;'>$value</td></tr>"
+  }
 
-  # Storage
-  echo "Disk Usage:"
-  df -h --output=source,fstype,size,used,avail,pcent | \
-    grep -E '^/dev' | awk '{printf "  %-15s %-10s %-8s %-8s %-8s %-6s\n", $1, $2, $3, $4, $5, $6}'
+  # Machine Specifications Table
+  local machine_specs_rows=""
+  machine_specs_rows+=$(
+    generate_table_row "Hostname" "$(hostname)"
+  )
+  machine_specs_rows+=$(
+    generate_table_row "Operating System" "$(lsb_release -d 2>/dev/null | cut -f2 || echo 'N/A')"
+  )
+  machine_specs_rows+=$(
+    generate_table_row "Kernel Version" "$(uname -r)"
+  )
+  machine_specs_rows+=$(
+    generate_table_row "Processor Model" "$(lscpu | \
+    awk -F ':' '/Model name/ {gsub(/^[ \t]+/, "", $2); print $2}')"
+  )
+  machine_specs_rows+=$(
+    generate_table_row "Processor Cores" "$(lscpu | \
+    awk -F ':' '/^CPU\(s\):/ {gsub(/^[ \t]+/, "", $2); print $2}')"
+  )
+  machine_specs_rows+=$(
+    generate_table_row "Processor Threads" "$(lscpu | \
+    awk -F ':' '/^Thread\(s\) per core:/ {gsub(/^[ \t]+/, "", $2); print $2}')"
+  )
+  machine_specs_rows+=$(
+    generate_table_row "Clock Speed" "$(lscpu | \
+    grep 'Model name' | grep -o '@ [0-9.]\+GHz' || echo 'N/A')"
+  )
+  machine_specs_rows+=$(
+    generate_table_row "Total Memory" "$(free -h | \
+    awk '/^Mem:/ {print $2}')"
+  )
+  machine_specs_rows+=$(
+    generate_table_row "GPU Details" "$(lspci | \
+    grep -i 'vga\|3d\|2d' || echo 'GPU information unavailable.')"
+  )
+  machine_specs_rows+=$(
+    generate_table_row "Docker Version" "$(docker --version 2>/dev/null || echo 'Not installed')"
+  )
 
-  # GPU
-  if command -v lspci &>/dev/null; then
-    echo "Details:           $(lspci | grep -i 'vga\|3d\|2d')"
-  else
-    echo "Details:           GPU information unavailable (lspci not installed)."
-  fi
+  html_content+=$(
+    create_table "Machine Specifications" \
+    "<th>Attribute</th><th>Details</th>" "$machine_specs_rows"
+  )
 
-  # Network
-  echo "Ethernet:          $(\
-    ip -4 addr show | grep 'state UP' -A2 | grep inet | awk '{print $2}')"
-  echo "Wi-Fi:             $(\
-    nmcli device status | grep wifi | awk '{print $1, $3, $4}')"
+  # Disk Usage Table
+  local disk_usage_rows=$(\
+    df -h --output=source,fstype,size,used,avail,pcent | \
+    grep -E '^/dev' | \
+    awk '{printf "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", $1, $2, $3, $4, $5, $6}')
+  html_content+=$(\
+    create_table "Disk Usage" \
+    "<th>Source</th><th>Filesystem Type</th><th>Total Size</th><th>Used</th><th>Available</th><th>Use%</th>" \
+    "$disk_usage_rows")
 
-  # Virtualization and Containers
-  if [[ $(lscpu | grep Virtualization) ]]; then
-    echo "Virtualization:    Enabled ($(lscpu | grep Virtualization | awk '{print $2}') supported)"
-  else
-    echo "Virtualization:    Not supported or disabled"
-  fi
-  echo "Docker Version:    $(docker --version 2>/dev/null || echo "Not installed")"
-
-  # Power (if laptop)
+  # Battery Status Table
   if command -v upower &>/dev/null; then
-    upower -i $(upower -e | grep BAT) | grep -E "state|to full|percentage" | sed 's/^/  /'
-  else
-    echo "Battery:           Information unavailable (upower not installed)."
+    local battery_rows=$(\
+      upower -i $(upower -e | grep BAT) | grep -E 'state|to full|percentage' | \
+      awk -F ':' \
+      '{gsub(/^[ \t]+|[ \t]+$/, "", $1); gsub(/^[ \t]+|[ \t]+$/, "", $2); print "<tr><td>" $1 "</td><td>" $2 "</td></tr>"}'\
+    )
+    html_content+=$(create_table "Battery Status" "<th>Status</th><th>Details</th>" "$battery_rows")
   fi
 
+  # Network Information Table
+  local ethernet_info=$(\
+    ip -4 addr show | grep 'state UP' -A2 | \
+    grep inet | awk '{print $2}' || echo "No Ethernet connection."
+  )
+  local wifi_info=$(\
+    nmcli device status | grep wifi | awk '{print $1, $3, $4}' || echo "No Wi-Fi connection."
+  )
+  local network_rows=""
+  network_rows+=$(
+    generate_table_row "Ethernet" "$ethernet_info"
+  )
+  network_rows+=$(
+    generate_table_row "Wi-Fi" "$wifi_info"
+  )
+  html_content+=$(
+    create_table "Network Information" "<th>Type</th><th>Details</th>" "$network_rows"
+  )
+
+  # Return the complete HTML content
+  echo "$html_content"
 }
 
 # Functions for diagnostics
@@ -1492,10 +1550,20 @@ show_help() {
   echo -e "${help_color}h${reset_color}   - Show this help menu"
 }
 
+# Function to clean up mustache variables
+sanitize_template() {
+  local template="$1"
+  # Remove any spaces between the mustache braces and the variable name
+  template=$(echo "$template" | sed 's/{{\s*\([a-zA-Z0-9_]*\)\s*}}/{{\1}}/g')
+  echo "$template"
+}
+
 # Function to replace variables in a template
 replace_mustache_variables() {
   local template="$1"
-  declare -n variables="$2" # Associative array passed by reference
+  local -n vars_ref="$2" # Associative array passed by reference
+
+  template="$(sanitize_template "$template")"
 
   # Iterate over the variables and replace each instance of {{KEY}} in the template
   for key in "${!variables[@]}"; do
@@ -1505,6 +1573,7 @@ replace_mustache_variables() {
     value_escaped=$(printf '%s' "$value")
 
     # Replace instances of {{KEY}} in the template
+    # Handle {{key}}, {{ key}}, or {{key }}
     template="${template//\{\{$key\}\}/$value_escaped}"
   done
 
@@ -2332,6 +2401,97 @@ confirm_and_modify_prompt_info() {
       ;;
     esac
   done
+}
+
+create_prompt_item() {
+  local name="$1"
+  local label="$2"
+  local description="$3"
+  local value="$4"
+  local required="$5"
+  local validate_fn="${6-validate_empty_value}"
+
+  # Check if the item is required and the value is empty
+  if [[ "$required" == "yes" && -z "$value" ]]; then
+    error_message="The value for '$name' is required but is empty."
+    error_obj=$(create_error_item "$name" "$error_message" "${FUNCNAME[0]}")
+    echo "$error_obj"
+    return 1
+  fi
+
+  # Validate the value using the provided validation function
+  validation_output=$(validate_value "$value" "$validate_fn" 2>&1)
+
+  # If validation failed, capture the validation message
+  if [[ $? -ne 0 ]]; then
+    # Validation failed, use the validation message captured in validation_output
+    error_obj=$(create_error_item "$name" "$validation_output" "$validate_fn")
+    echo "$error_obj"
+    return 1
+  fi
+
+  # Build the JSON object for the individual item
+  item_json=$(echo "
+    {
+        \"name\": \"$name\",
+        \"label\": \"$label\",
+        \"description\": \"$description\",
+        \"value\": \"$value\",
+        \"required\": \"$required\",
+        \"validate_fn\": \"$validate_fn\"
+    }" | jq .)
+
+  # Check if jq creation was successful
+  if [[ $? -ne 0 ]]; then
+    echo "Failed to create JSON object"
+    return 1
+  fi
+
+  # Return the JSON object
+  echo "$item_json"
+}
+
+# Function to process a JSON array and collect values into a JSON object
+process_prompt_items() {
+  local input_json="$1"
+  local result_json="{"
+
+  # Iterate over the array of prompt items in the input JSON
+  for prompt_item in $(echo "$input_json" | jq -r '.[] | @base64'); do
+    # Decode the base64 encoded JSON object for each item
+    _jq() {
+      echo "$prompt_item" | base64 --decode | jq -r "${1}"
+    }
+
+    # Extract values from the prompt item JSON
+    name=$(_jq '.name')
+    label=$(_jq '.label')
+    description=$(_jq '.description')
+    value=$(_jq '.value')
+    required=$(_jq '.required')
+    validate_fn=$(_jq '.validate_fn')
+
+    # Create the prompt item using the create_prompt_item function
+    item_json=$(\
+      create_prompt_item "$name" "$label" "$description" \
+      "$value" "$required" "$validate_fn"\
+    )
+
+    # Check if the item creation was successful
+    if [[ $? -eq 0 ]]; then
+      # Append to result_json, using the 'name' as the key and 'value' as the value
+      result_json+="\"$name\": \"$value\","
+    else
+      echo "Error processing item: $name"
+      return 1
+    fi
+  done
+
+  # Remove the trailing comma and close the JSON object
+  result_json="${result_json%,}}"
+
+  # Return the final JSON object
+  echo "$result_json"
 }
 
 # Function to collect and validate information, then re-trigger collection for errors
@@ -4610,6 +4770,79 @@ deploy_stack() {
 
 ####################################### BEGIN OF E-MAIL UTILS #####################################
 
+BASE_TEMPLATE='<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{email_title}}</title>
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #f9f9fb; margin: 0; padding: 0; color: #333; }
+    .container { margin: 20px auto; padding: 20px; max-width: 600px; background-color: #ffffff; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); }
+    .header { text-align: center; background-color: #4caf50; color: #ffffff; padding: 20px; border-radius: 10px 10px 0 0; }
+    .header img { max-width: 80px; margin-bottom: 10px; }
+    .header h1 { font-size: 26px; margin: 0; }
+    .content { padding: 20px; }
+    .footer { text-align: center; padding: 20px 0; color: #aaaaaa; border-top: 1px solid #eeeeee; }
+    .footer img { width: 24px; height: 24px; vertical-align: middle; }
+    .footer a { text-decoration: none; color: #aaaaaa; }
+  </style>
+</head>
+<body>
+  <section class="container">
+    <header class="header">
+      <img src="https://raw.githubusercontent.com/whosbash/stackme/main/images/stackme_tiny.png" alt="StackMe Logo">
+      <h1>{{header_title}}</h1>
+    </header>
+    <section class="content">
+      {{email_content}}
+    </section>
+    <footer class="footer">
+      <p>Sent using a Shell Script and the Swaks tool.</p>
+      <p>
+        <a href="https://github.com/whosbash/stackme" target="_blank">
+          <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub Logo">
+        </a>
+      </p>
+    </footer>
+  </section>
+</body>
+</html>'
+
+# Function to generate email
+generate_html() {
+  local base_template="$1"
+  local email_title="$2"
+  local header_title="$3"
+  local email_content="$4"
+
+  # Prepare an associative array with the replacements
+  declare -A email_variables=(
+    [email_title]="$email_title"
+    [header_title]="$header_title"
+    [email_content]="$email_content"
+  )
+
+  # Use the replace_mustache_variables function to substitute variables in the template
+  local email_html=$(replace_mustache_variables "$base_template" email_variables)
+
+  # Output the final HTML email
+  echo "$email_html"
+}
+
+# Example usage
+test_smtp_html() {
+  # Content for the email
+  local email_content="<p>Hi there,</p>
+<p>We are thrilled to have you onboard! Explore the amazing features of StackMe and elevate your workflow.</p>
+<a href=\"https://github.com/whosbash/stackme\" class=\"button\">Get Started</a>
+<p>If you have any questions, feel free to submit an issue to 
+<a href=\"https://github.com/whosbash/stackme/issues\" title=\"Visit our Issues page on GitHub\">our repository</a>. We're here to help!</p>"
+
+  # Generate the email HTML
+  generate_html "$BASE_TEMPLATE" "Welcome to StackMe" "Welcome to StackMe" "$email_content"
+}
+
 # Function to send a test email using swaks
 send_email() {
     local from_email=$1
@@ -4650,158 +4883,56 @@ send_email() {
 }
 
 # Function to generate HTML for an email
-email_test_hmtl() {
-  issues_url="https://github.com/whosbash/stackme/issues"
-  invitation="<a href="$issues_url" title="Visit our Issues page on GitHub">our repository</a>"
-  question="If you have any questions, feel free to submit an issue to $invitation."
-  call_for_action="$question We're here to help!"
+generate_test_smtp_hmtl() {
+  # Content for the email
+  local email_content='<p>Hi there,</p> <p>We are thrilled to have you onboard! Explore the amazing features of StackMe and elevate your workflow.</p> <a href="https://github.com/whosbash/stackme" class="button">Get Started</a> <p>If you have any questions, feel free to submit an issue to <a href="https://github.com/whosbash/stackme/issues" title="Visit our Issues page on GitHub">our repository</a>. We''re here to help!</p>'
 
-  suggestion="Explore the amazing features of StackMe and elevate your workflow."
-  initial_message="We are thrilled to have you onboard! $suggestion"
-
-  echo "<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to StackMe</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f9f9fb;
-      margin: 0;
-      padding: 0;
-      color: #333;
-      line-height: 1.6; /* Increased line height for better readability */
-    }
-    .container {
-      margin: 20px auto;
-      padding: 20px;
-      max-width: 600px;
-      background-color: #ffffff;
-      border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    }
-    .header {
-      text-align: center;
-      background-color: #4caf50;
-      color: #ffffff;
-      padding: 20px;
-      border-radius: 10px 10px 0 0;
-    }
-    .header img {
-      max-width: 80px;
-      margin-bottom: 10px;
-    }
-    .header h1 {
-      font-size: 26px; /* Adjusted font size for better prominence */
-      margin: 0;
-    }
-    .content {
-      padding: 20px;
-    }
-    .content p {
-      line-height: 1.8;
-      margin: 15px 0;
-      font-size: 16px; /* Slightly adjusted font size for readability */
-    }
-    .content a.button {
-      display: block;
-      margin: 20px auto;
-      padding: 14px 30px;
-      background-color: #4caf50;
-      color: #ffffff;
-      text-decoration: none;
-      border-radius: 5px;
-      font-size: 16px;
-      font-weight: bold;
-      transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
-      text-align: center;
-      max-width: 300px;
-    }
-    .content a.button:hover {
-      background-color: #45a049;
-      transform: scale(1.05);
-      color: #ffffff; /* Ensure text color stays white on hover */
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    }
-    .content a {
-      color: #4caf50;
-      text-decoration: none;
-      font-weight: bold;
-    }
-    .content a:hover {
-      color: #45a049;
-    }
-    .footer {
-      text-align: center;
-      padding: 20px 0;
-      font-size: 14px; /* Slightly larger font size for footer */
-      color: #aaaaaa;
-      border-top: 1px solid #eeeeee;
-    }
-    .footer a {
-      color: #4caf50;
-      text-decoration: none;
-      font-weight: bold;
-    }
-    .footer a:hover {
-      color: #45a049;
-    }
-
-    /* Social Icons */
-    .social-icons {
-      margin-top: 10px;
-    }
-    .social-icons a {
-      margin: 0 10px;
-      display: inline-block;
-    }
-    .social-icons img {
-      width: 24px;
-      height: 24px;
-    }
-
-    /* Responsive Styles */
-    @media (max-width: 600px) {
-      .container {
-        padding: 10px;
-        max-width: 100%;
-      }
-      .header h1 {
-        font-size: 22px; /* Adjust header size for smaller screens */
-      }
-      .content a.button {
-        padding: 12px 25px;
-      }
-      .content p {
-        font-size: 14px; /* Adjust paragraph size for mobile */
-      }
-    }
-  </style>
-</head>
-<body>
-  <section class="container">
-    <header class="header">
-      <img src="https://raw.githubusercontent.com/whosbash/stackme/main/images/stackme_tiny.png" 
-      alt="StackMe Logo" />
-      <h1>Welcome to StackMe</h1>
-    </header>
-    <section class="content">
-      <p>Hi there,</p>
-      <p>$initial_message</p>
-      <a href="https://github.com/whosbash/stackme" class="button">Get Started</a>
-      <p>$call_for_action</p>
-    </section>
-    <footer class="footer">
-      <p>Sent using a Shell Script and the Swaks tool.</p>
-    </footer>
-  </section>
-</body>
-</html>"
+  # Generate the email
+  generate_html "$BASE_TEMPLATE" "Welcome to StackMe" "Welcome to StackMe" "$email_content"
 }
 
-test_smtp_email(){
+# Function to generate HTML table row
+generate_table_row() {
+  local category="$1"
+  local details="$2"
+  echo "<tr><td style='padding: 8px; border: 1px solid #ddd;'>$category</td>
+    <td style='padding: 8px; border: 1px solid #ddd;'>$details</td></tr>"
+}
+
+# Function to fetch system information
+fetch_system_info() {
+  local command="$1"
+  local default_value="$2"
+  command -v "$command" &>/dev/null && eval "$command" || echo "$default_value"
+}
+
+format_disk_usage() {
+  local header="<table style='width: 100%; border-collapse: collapse; text-align: left;'>
+<caption style='font-size: 1.5em; margin-bottom: 10px;'>Disk Usage</caption>
+<tr style='background-color: #f2f2f2;'>
+  <th>Source</th>
+  <th>Filesystem Type</th>
+  <th>Total Size</th>
+  <th>Used</th>
+  <th>Available</th>
+  <th>Use%</th>
+</tr>"
+  local rows=$(df -h --output=source,fstype,size,used,avail,pcent | grep -E '^/dev' | \
+    awk '{printf "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n", $1, $2, $3, $4, $5, $6}')
+  local footer="</table>"
+
+  echo "$header$rows$footer"
+}
+
+# Function to generate the machine specs email
+generate_machine_specs_html(){
+  # Example usage
+  email_content=$(generate_machine_specs_content)
+  generate_html "$BASE_TEMPLATE" "VPS Status Report" "Machine Specifications" "$email_content"
+}
+
+# Function to request SMTP information
+request_smtp_information(){
   items='[
       {
           "name": "smtp_server",
@@ -4837,19 +4968,95 @@ test_smtp_email(){
 
   collected_items="$(run_collection_process "$items")"
 
+  echo "$collected_items"
+}
+
+# Function to save SMTP information
+save_smtp_information(){
+  collected_items="$(request_smtp_information)"
+  filename="${HOME}/smtp_info.json"
+
   if [[ "$collected_items" == "[]" ]]; then
-    error "Unable to retrieve SMTP test configuration."
+    error "Unable to retrieve SMTP configuration."
     return 1
   fi
 
-  smtp_server="$(search_on_json_array "$collected_items" 'name' 'smtp_server' | jq -r ".value")"
-  smtp_port="$(search_on_json_array "$collected_items" 'name' 'smtp_port' | jq -r ".value")"
-  username="$(search_on_json_array "$collected_items" 'name' 'username' | jq -r ".value")"
-  password="$(search_on_json_array "$collected_items" 'name' 'password' | jq -r ".value")"
+  info "Saving SMTP configuration to file: $filename"
+  smtp_json=$(process_prompt_items "$collected_items")
+  
+  write_json "$filename"
+}
+
+# Centralized function to retrieve and process SMTP configuration
+get_smtp_configuration(){
+  # First, try to load SMTP configuration from file
+  smtp_json=$(load_smtp_information)
+
+  # If loading fails, request the configuration and save it
+  if [[ $? -ne 0 ]]; then
+    save_smtp_information
+    smtp_json=$(load_smtp_information)
+  fi
+
+  echo "$smtp_json"
+}
+
+read_json(){
+  local filename="$1"
+
+  if [[ -f "$filename" ]]; then
+    cat "$filename"
+  fi
+}
+
+# Function to load SMTP configuration from file
+load_smtp_information(){
+  filename="${HOME}/smtp_info.json"
+  smtp_json=$(read_json "$filename")
+
+  if [[ -z "$smtp_json" ]]; then
+    error "Unable to retrieve SMTP configuration from file $filename."
+    return 1
+  fi
+
+  info "Loaded SMTP configuration: $smtp_json"
+  
+  echo "$smtp_json"
+}
+
+# Function to send a test SMTP email
+send_smtp_test_email(){
+  # Retrieve SMTP configuration (load from file or request and save)
+  smtp_json=$(get_smtp_configuration)
+
+  smtp_server="$(echo "$smtp_json" | jq -r ".smtp_server")"
+  smtp_port="$(echo "$smtp_json" | jq -r ".smtp_port")"
+  username="$(echo "$smtp_json" | jq -r ".username")"
+  password="$(echo "$smtp_json" | jq -r ".password")"
 
   subject="[StackMe] Test SMTP e-mail"
-  body="$(email_test_hmtl)"
+  body="$(generate_test_smtp_html)"
 
+  # Send the test email
+  send_email \
+    "$username" "$username" "$smtp_server" "$smtp_port" \
+    "$username" "$password" "$subject" "$body"
+}
+
+# Function to send machine specs email
+send_machine_specs_email(){
+  # Retrieve SMTP configuration (load from file or request and save)
+  smtp_json=$(get_smtp_configuration)
+
+  smtp_server="$(echo "$smtp_json" | jq -r ".smtp_server")"
+  smtp_port="$(echo "$smtp_json" | jq -r ".smtp_port")"
+  username="$(echo "$smtp_json" | jq -r ".username")"
+  password="$(echo "$smtp_json" | jq -r ".password")"
+
+  subject="[StackMe] Machine Specifications"
+  body="$(generate_machine_specs_html)"
+
+  # Send the machine specs email
   send_email \
     "$username" "$username" "$smtp_server" "$smtp_port" \
     "$username" "$password" "$subject" "$body"
@@ -5667,12 +5874,7 @@ generate_config_portainer() {
         },
         "dependencies": {},
         "prepare": [],
-        "finalize": [
-            {
-                "name": "Create portainer first admin credentials",
-                "command": ("signup_on_portainer \"" + $portainer_url + "\" \"" + $portainer_username + "\" \"" + $portainer_password + "\"")
-            }
-        ]
+        "finalize": []
     }' | jq . || {
         echo "Failed to generate JSON"
         return 1
@@ -5816,17 +6018,20 @@ generate_config_whoami() {
 # Function to deploy a traefik service
 deploy_stack_traefik() {
   cleanup
+  clean_screen
   deploy_stack 'traefik'
 }
 
 # Function to deploy a portainer service
 deploy_stack_portainer() {
   cleanup
+  clean_screen
   deploy_stack 'portainer'
 }
 
 deploy_stack_traefik_and_portainer() {
-  cleanup  
+  cleanup
+  clean_screen  
   deploy_stack 'traefik'
 
   if [[ $? -ne 0 ]]; then
@@ -5841,18 +6046,21 @@ deploy_stack_traefik_and_portainer() {
 # Function to deploy a PostgreSQL stack
 deploy_stack_postgres() {
   cleanup
+  clean_screen
   deploy_stack 'postgres'
 }
 
 # Function to deploy a Redis service
 deploy_stack_redis() {
   cleanup
+  clean_screen
   deploy_stack 'redis'
 }
 
 # Function to deploy a whoami service
 deploy_stack_whoami() {
   cleanup
+  clean_screen
   deploy_stack 'whoami'
 }
 
@@ -5893,12 +6101,22 @@ define_menu_stacks(){
 define_menu_utilities(){
   menu_name="Utilities"
 
-  item_1="$(build_menu_item "Test SMPT e-mail" "Send" "test_smtp_email")"
-  item_2="$(build_menu_item "Test SWAKS e-mail" "Send" "assert_domain_and_ip")"
+  item_1="$(\
+    build_menu_item "Test SMPT e-mail" \
+    "Send" "send_smtp_test_email" \
+  )"
+  item_2="$(
+    build_menu_item "Send Machine Specifications" \
+    "Send" "send_machine_specs_email"\
+  )"
+
+  items=(
+    "$item_1" "$item_2"
+  )
 
   page_size=5
 
-  menu_object="$(build_menu "$menu_name" $page_size "$item_1")"
+  menu_object="$(build_menu "$menu_name" $page_size "${items[@]}")"
 
   define_menu "$menu_name" "$menu_object"
 }
@@ -5909,41 +6127,41 @@ define_menu_health(){
 
   item_1="$(\
     build_menu_item "Machine specifications" "describe" \
-    "diplay_header 'Machine specifications' && generate_machine_specs && press_any_key"
+    "diplay_header 'Machine specifications' && generate_machine_specs && wait_for_input"
   )"
   item_2="$(
     build_menu_item "Awake Usage" "describe" \
-    "diplay_header 'Uptime' && uptime_usage && press_any_key"
+    "diplay_header 'Uptime' && uptime_usage && wait_for_input"
   )"
   item_3="$(
     build_menu_item "Memory Usage" "describe" \
-    "diplay_header 'Memory' && memory_usage && press_any_key"
+    "diplay_header 'Memory' && memory_usage && wait_for_input"
   )"
   item_4="$(
     build_menu_item "Disk Usage" "describe" \
-    "diplay_header 'Disk' && disk_usage && press_any_key"
+    "diplay_header 'Disk' && disk_usage && wait_for_input"
   )"
   item_5="$(
     build_menu_item "Network" "describe" \
-    "diplay_header 'Network' && network_usage && press_any_key"
+    "diplay_header 'Network' && network_usage && wait_for_input"
   )"
   item_6="$(\
     build_menu_item "Top Processes" "list" \
-    "diplay_header 'Processes' && top_processes && press_any_key" \
+    "diplay_header 'Processes' && top_processes && wait_for_input" \
   )"
   item_7="$(\
     build_menu_item "Security" "diagnose" \
-    "diplay_header 'Security' && security_diagnostics && press_any_key")"
+    "diplay_header 'Security' && security_diagnostics && wait_for_input")"
   item_8="$(\
     build_menu_item "Load Average" "describe" \
-    "diplay_header 'Load Average' && load_average && press_any_key")"
+    "diplay_header 'Load Average' && load_average && wait_for_input")"
   item_9="$(\
     build_menu_item "Bandwidth" "describe" \
-    "diplay_header 'Bandwidth' && bandwidth_usage && press_any_key" \
+    "diplay_header 'Bandwidth' && bandwidth_usage && wait_for_input" \
   )"
   item_10="$(\
     build_menu_item "Package Updates" "install" \
-    "diplay_header 'Package Updates' && update_and_check_packages && press_any_key" \
+    "diplay_header 'Package Updates' && update_and_check_packages && wait_for_input" \
   )"
 
   page_size=5
