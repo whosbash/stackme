@@ -5009,6 +5009,11 @@ get_smtp_configuration(){
   # If loading fails, request the configuration and save it
   if [[ $? -ne 0 ]]; then
     smtp_json="$(save_smtp_information)"
+
+    if [[ $? -ne 0 ]]; then
+      error "Unable to retrieve or save SMTP configuration."
+      return 1
+    fi
   fi
 
   echo "$smtp_json"
@@ -5042,6 +5047,11 @@ send_smtp_test_email(){
   # Retrieve SMTP configuration (load from file or request and save)
   smtp_json=$(get_smtp_configuration)
 
+  if [[ $? -ne 0 ]]; then
+    error "Unable to retrieve SMTP configuration."
+    return 1
+  fi
+
   smtp_server="$(echo "$smtp_json" | jq -r ".smtp_server")"
   smtp_port="$(echo "$smtp_json" | jq -r ".smtp_port")"
   username="$(echo "$smtp_json" | jq -r ".username")"
@@ -5061,7 +5071,10 @@ send_machine_specs_email(){
   # Retrieve SMTP configuration (load from file or request and save)
   smtp_json=$(get_smtp_configuration)
 
-  echo "$smtp_json" >&2
+  if [[ $? -ne 0 ]]; then
+    error "Unable to retrieve SMTP configuration."
+    return 1
+  fi
 
   smtp_server="$(echo "$smtp_json" | jq -r ".smtp_server")"
   smtp_port="$(echo "$smtp_json" | jq -r ".smtp_port")"
