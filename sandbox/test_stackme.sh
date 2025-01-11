@@ -4996,7 +4996,7 @@ save_smtp_information(){
   smtp_json=$(process_prompt_items "$collected_items")
 
   info "Saving SMTP configuration to file: $filename"  
-  write_json "$filename"
+  write_json "$filename" "$smtp_json"
 
   echo "$smtp_json"
 }
@@ -6316,5 +6316,9 @@ main() {
   start_main_menu
 }
 
-# Call the main function
-main "$@"
+# # Call the main function
+# main "$@"
+
+write_json "${HOME}/smtp_info.json" {}
+
+wait_for_input
