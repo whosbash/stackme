@@ -1222,60 +1222,6 @@ send_email() {
     fi
 }
 
-test_smtp_email(){
-  items='[
-      {
-          "name": "smtp_server",
-          "label": "SMTP server",
-          "description": "Server to receive SMTP requests",
-          "required": "yes",
-          "validate_fn": "validate_smtp_server",
-          "default_value": "smtp.gmail.com"
-      },
-      {
-          "name": "smtp_port",
-          "label": "SMTP port",
-          "description": "Port on SMTP server",
-          "required": "yes",
-          "validate_fn": "validate_integer_value",
-          "default_value": 587
-      },
-      {
-          "name": "username",
-          "label": "SMTP username",
-          "description": "Username of SMTP server",
-          "required": "yes",
-          "validate_fn": "validate_email_value" 
-      },
-      {
-          "name": "password",
-          "label": "SMTP password",
-          "description": "Password of SMTP server",
-          "required": "yes",
-          "validate_fn": "validate_empty_value" 
-      }
-  ]'
-
-  collected_items="$(run_collection_process "$items")"
-
-  if [[ "$collected_items" == "[]" ]]; then
-    error "Unable to retrieve SMTP test configuration."
-    return 1
-  fi
-
-  smtp_server="$(search_on_json_array "$collected_items" 'name' 'smtp_server' | jq -r ".value")"
-  smtp_port="$(search_on_json_array "$collected_items" 'name' 'smtp_port' | jq -r ".value")"
-  username="$(search_on_json_array "$collected_items" 'name' 'username' | jq -r ".value")"
-  password="$(search_on_json_array "$collected_items" 'name' 'password' | jq -r ".value")"
-
-  subject="Setup test e-mail"
-  body="$(email_test_hmtl)"
-
-  send_email \
-    "$username" "$username" "$smtp_server" "$smtp_port" \
-    "$username" "$password" "$subject" "$body"
-}
-
 ################################## END OF EMAIL-RELATED FUNCTIONS #################################
 
 ############################### BEGIN OF SYSTEM-RELATED FUNCTIONS #################################
@@ -4798,6 +4744,32 @@ BASE_TEMPLATE='<!DOCTYPE html>
     .footer { text-align: center; padding: 20px 0; color: #aaaaaa; border-top: 1px solid #eeeeee; }
     .footer img { width: 24px; height: 24px; vertical-align: middle; }
     .footer a { text-decoration: none; color: #aaaaaa; }
+
+    /* Button Styling */
+    .button {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: #4caf50;
+      color: #ffffff;
+      text-decoration: none;
+      font-size: 16px;
+      border-radius: 5px;
+      text-align: center;
+    }
+    .button:hover {
+      background-color: #45a049;
+    }
+
+    /* Link Styling */
+    a {
+      color: #4caf50; /* Green text */
+      font-weight: bold; /* Bold text */
+      text-decoration: none; /* No underline */
+    }
+    a:hover {
+      text-decoration: underline; /* Underline on hover */
+    }
   </style>
 </head>
 <body>
@@ -4820,6 +4792,7 @@ BASE_TEMPLATE='<!DOCTYPE html>
   </section>
 </body>
 </html>'
+
 
 # Function to generate email
 generate_html() {
