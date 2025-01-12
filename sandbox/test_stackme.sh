@@ -1347,8 +1347,8 @@ generate_machine_specs_content() {
   echo "$html_content"
 }
 
-
 # Functions for diagnostics
+# Show uptime with start and current time
 uptime_usage() {
     # Example usage of display_text to show a centered header
     echo ""
@@ -2527,7 +2527,6 @@ display_error_items() {
     done
 }
 
-
 # Function to wait for any letter or command to continue
 wait_for_input() {
   local prompt_message="$1"
@@ -2543,7 +2542,6 @@ wait_for_input() {
   read -n 1 -s user_input    # Wait for a single character input, suppress echo
   echo                    # Print a newline after input
 }
-
 
 # Function to prompt user and wait for any key press
 press_any_key() {
@@ -4500,7 +4498,6 @@ execute_action() {
   fi
 }
 
-
 # Function to deploy a service
 deploy_stack_pipeline() {
   # Arguments
@@ -4604,7 +4601,7 @@ deploy_stack_pipeline() {
       # Perform the action (you can define custom functions to execute these steps)
       action_name=$(echo "$action" | jq -r '.name')
       
-      message="Executing setUp action: $action_name"
+      message="Executing prepare action: $action_name"
       stack_step_error 3 "$message"
 
       # Call an appropriate function to handle this setUp action
@@ -4637,7 +4634,7 @@ deploy_stack_pipeline() {
   stack_handle_exit "$?" 5 "$message"
 
   # Step 6: Write the substituted template to the compose file
-  
+
   # Create folder stacks on home path
   mkdir -p "$STACKS_FOLDER"
 
@@ -4715,7 +4712,6 @@ deploy_stack_pipeline() {
   else
     stack_step_warning 9 "No finalize actions defined"
   fi
-
 
   # Step 9: Save service-specific information to a configuration file
   message="Saving stack configuration"
@@ -4882,7 +4878,6 @@ BASE_TEMPLATE='<!DOCTYPE html>
 </body>
 </html>'
 
-
 # Function to generate email
 generate_html() {
   local base_template="$1"
@@ -4915,7 +4910,6 @@ test_smtp_html() {
   # Generate the email HTML
   generate_html "$BASE_TEMPLATE" "Welcome to StackMe" "Welcome to StackMe" "$email_content"
 }
-
 
 # Function to send a test email using swaks
 send_email() {
@@ -5339,7 +5333,6 @@ install_docker() {
   return 0
 }
 
-
 # Function to merge server, network, and IP information
 get_server_info() {
   local server_array ip_object merged_result
@@ -5480,7 +5473,7 @@ initialize_server_info() {
 ####################################### BEGIN OF COMPOSE FILES #####################################
 
 # Function to generate compose file for Traefik
-compose_traefik() {
+compose_startup() {
   CERT_PATH="/etc/traefik/letsencrypt/acme.json"
   
   cat <<EOL
@@ -5506,11 +5499,18 @@ services:
       - "--certificatesresolvers.letsencryptresolver.acme.httpchallenge.entrypoint=web"
       - "--certificatesresolvers.letsencryptresolver.acme.storage=$CERT_PATH"
       - "--certificatesresolvers.letsencryptresolver.acme.email={{email_ssl}}"
+      - "--certificatesresolvers.letsencryptresolver.acme.dnschallenge=true"
       - "--log.level=DEBUG"
       - "--log.format=common"
       - "--log.filePath=/var/log/traefik/traefik.log"
       - "--accesslog=true"
       - "--accesslog.filepath=/var/log/traefik/access-log"
+      - "--metrics.prometheus=true" # Enable Prometheus metrics
+      - "--metrics.prometheus.buckets=0.1,0.3,1.2,5.0"
+      - "--tracing.jaeger=true" # Enable Jaeger tracing
+      - "--tracing.jaeger.samplingType=const"
+      - "--tracing.jaeger.samplingParam=1"
+      - "--tracing.jaeger.localAgentHostPort=jaeger:6831"
 
     volumes:
       - "vol_certificates:/etc/traefik/letsencrypt"
@@ -5526,6 +5526,9 @@ services:
       - target: 443
         published: 443
         mode: host
+      - target: 8082 # Expose Prometheus metrics
+        published: 8082
+        mode: host
 
     deploy:
       placement:
@@ -5533,13 +5536,139 @@ services:
           - node.role == manager
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.dashboard.rule=Host(\`{{domain_name}}\`)"
+        - "traefik.http.routers.dashboard.rule=Host(\`{{url_traefik}}\`)"
         - "traefik.http.routers.dashboard.entrypoints=websecure"
         - "traefik.http.routers.dashboard.service=api@internal"
         - "traefik.http.routers.dashboard.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.dummy-svc.loadbalancer.server.port=9999"
         - "traefik.http.routers.dashboard.middlewares=myauth"
         - "traefik.http.middlewares.myauth.basicauth.users={{dashboard_credentials}}"
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.43
+    environment:
+      - JAEGER_STORAGE_TYPE=elasticsearch
+      - JAEGER_ES_SERVER_URL=http://elasticsearch:9200
+      - JAEGER_ES_INDEX_PREFIX=jaeger
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 30s
+      retries: 3
+    ports:
+      - "6831:6831/udp" # Jaeger agent
+      - "16686:16686"   # Jaeger UI
+    networks:
+      - {{network_name}}
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.jaeger.rule=Host(\`{{url_jaeger}}\`)"
+        - "traefik.http.routers.jaeger.entrypoints=websecure"
+        - "traefik.http.routers.jaeger.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
+    depends_on:
+      - elasticsearch
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.0
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    networks:
+      - {{network_name}}
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.elasticsearch.rule=Host(\`{{url_elasticsearch}}\`)"
+        - "traefik.http.routers.elasticsearch.entrypoints=websecure"
+        - "traefik.http.routers.elasticsearch.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.elasticsearch.loadbalancer.server.port=9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.10.0
+    ports:
+      - "5601:5601"
+    networks:
+      - {{network_name}}
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.kibana.rule=Host(\`{{url_kibana}}\`)"
+        - "traefik.http.routers.kibana.entrypoints=websecure"
+        - "traefik.http.routers.kibana.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.kibana.loadbalancer.server.port=5601"
+    depends_on:
+      - elasticsearch
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - {{network_name}}
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.grafana.rule=Host(\`{{url_grafana}}\`)"
+        - "traefik.http.routers.grafana.entrypoints=websecure"
+        - "traefik.http.routers.grafana.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+    depends_on:
+      - elasticsearch
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    restart: unless-stopped
+
+    networks:
+      - $nome_rede_interna
+
+    ports:
+      - "9100:9100"
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.node-exporter.rule=Host(\`$url_nodeexporter\`)
+        - traefik.http.services.node-exporter.loadbalancer.server.port=9100
+        - traefik.http.routers.node-exporter.service=node-exporter
+        - traefik.http.routers.node-exporter.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.node-exporter.entrypoints=websecure
+        - traefik.http.routers.node-exporter.tls=true
+
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090" # Prometheus web interface
+    networks:
+      - {{network_name}}
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.prometheus.rule=Host(\`{{url_prometheus}}\`)
+        - traefik.http.services.prometheus.loadbalancer.server.port=9090
+        - traefik.http.routers.prometheus.service=prometheus
+        - traefik.http.routers.prometheus.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.prometheus.entrypoints=websecure
+        - traefik.http.routers.prometheus.tls=true
 
 volumes:
   vol_shared:
@@ -5771,9 +5900,71 @@ get_network_name(){
 
 #################################### BEGIN OF STACK CONFIGURATION #################################
 
+# Function to manage the Prometheus configuration
+manage_prometheus_config() {
+    local file_path=$1    # File path for the Prometheus configuration
+    shift                 # Shift to access remaining arguments as targets
+    local new_targets=("$@") # New targets passed as arguments
+
+    # If the file does not exist, create a new one with the provided targets
+    if [[ ! -f "$file_path" ]]; then
+        echo "File does not exist. Creating a new Prometheus configuration file."
+        cat <<EOL > "$file_path"
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets: []
+    scheme: http
+    timeout: 10s
+    api_version: v2
+scrape_configs:
+- job_name: 'traefik'
+  metrics_path: '/metrics'
+  static_configs:
+    - targets: ['traefik:8082']
+- job_name: prometheus
+  honor_timestamps: true
+  metrics_path: /metrics
+  scheme: http
+  static_configs:
+    - targets: [$(printf '"%s",' "${new_targets[@]}" | sed 's/,$//')]
+EOL
+        info "Prometheus configuration file created at: $file_path"
+        return
+    fi
+
+    info "File exists. Checking for duplicate targets and appending new targets if needed."
+
+    # Extract current targets from the file
+    current_targets=$(grep -oP '(?<=- targets: \[).*(?=\])' "$file_path" | tr -d '"')
+
+    # If current_targets is empty, initialize it as an empty array
+    if [[ -z "$current_targets" ]]; then
+        current_targets=()
+    fi
+
+    # Combine the current targets and new targets
+    combined_targets=($(\
+    echo "${current_targets[@]}" "${new_targets[@]}" | \
+    tr ' ' '\n' | sort -u | tr '\n' ' '))
+
+    # Update the targets in the file
+    sed -i.bak "/- targets: \[/c\  - targets: [$(\
+      printf '"%s",' "${combined_targets[@]}" | \
+      sed 's/,$//'\
+    )]" "$file_path"
+
+
+    info "Updated Prometheus configuration file at: $file_path"
+}
+
 # Function to generate configuration files for traefik
-generate_config_traefik() {
-  local stack_name="traefik"
+generate_config_startup() {
+  local stack_name="startup"
 
   highlight "Gathering $stack_name configuration"
 
@@ -5786,7 +5977,7 @@ generate_config_traefik() {
           "validate_fn": "validate_email_value" 
       },
       {
-          "name": "domain_name",
+          "name": "url_traefik",
           "label": "Traefik Domain Name",
           "description": "Domain name for Traefik",
           "required": "yes",
@@ -5805,6 +5996,34 @@ generate_config_traefik() {
           "description": "Password for Traefik dashboard",
           "required": "yes",
           "validate_fn": "validate_password" 
+      },
+      {
+          "name": "url_jaeger",
+          "label": "Jaeger Domain Name",
+          "description": "Domain for tracing tool",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      },
+      {
+          "name": "url_prometheus",
+          "label": "Prometheus Domain Name",
+          "description": "Domain name for logs and metrics",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      },
+      {
+          "name": "url_node",
+          "label": "Node Domain Name",
+          "description": "Domain name for Node",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      },
+      {
+          "name": "url_grafana",
+          "label": "Grafana Domain Name",
+          "description": "Domain name for Grafana",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
       }
   ]'
 
@@ -5814,6 +6033,11 @@ generate_config_traefik() {
     error "Unable to retrieve Traefik configuration."
     return 1
   fi
+
+  prometheus_config_path="/etc/prometheus/prometheus.yml"
+  manage_prometheus_config "$prometheus_config_path" \
+    "https://$url_prometheus" "https://$url_jaeger" \
+    "https://$url_grafana" "https://$url_node"
 
   local network_name="$(get_network_name)"
 
@@ -5962,7 +6186,7 @@ generate_config_portainer() {
             "portainer_credentials": $portainer_credentials,
             "network_name": $network_name
         },
-        "dependencies": {},
+        "dependencies": ["startup"],
         "prepare": [],
         "finalize": []
     }' | jq . || {
@@ -6004,7 +6228,7 @@ generate_config_redis() {
                 "volume_name": $volume_name,
                 "network_name": $network_name
             },
-            "dependencies": {},
+            "dependencies": ["startup", "portainer"],
             "prepare": [],
             "finalize": []
         }' | jq . || {
@@ -6039,7 +6263,7 @@ generate_config_postgres() {
               "db_user": $db_user,
               "db_password": $db_password
           },
-          "dependencies": [],
+          "dependencies": ["startup", "portainer"],
           "prepare": [],
           "finalize": []
       }' | jq . || {
@@ -6094,7 +6318,7 @@ generate_config_whoami() {
               "domain_name": $domain_name,
               "network_name": $network_name,
           },
-          "dependencies": [],
+          "dependencies": ["startup", "portainer"],
           "prepare": [],
           "finalize": []
       }' | jq . || {
@@ -6121,10 +6345,10 @@ deploy_stack_portainer() {
   deploy_stack 'portainer'
 }
 
-deploy_stack_traefik_and_portainer() {
+deploy_stack_startup_and_portainer() {
   cleanup
   clean_screen  
-  deploy_stack 'traefik'
+  deploy_stack 'startup'
 
   if [[ $? -ne 0 ]]; then
     return 1
@@ -6166,7 +6390,7 @@ define_menu_stacks(){
 
   item_1="$(
       build_menu_item "Traefik & Portainer" \
-      "Deploy" "deploy_stack_traefik_and_portainer"
+      "Deploy" "deploy_stack_startup_and_portainer"
   )"
   item_2="$(
     build_menu_item "postgres" "Deploy" "deploy_stack_postgres" 
@@ -6385,8 +6609,8 @@ main() {
   # Perform initialization
   server_config_fname="${HOME}/server_info.json"
 
-  #initialize_server_info
-  #clear
+  initialize_server_info
+  clear
 
   define_menus
 
