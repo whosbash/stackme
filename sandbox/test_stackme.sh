@@ -4581,7 +4581,6 @@ deploy_stack_pipeline() {
   local setUp_actions
   prepare_actions=$(echo "$config_json" | jq -r '.prepare?')
   finalize_actions=$(echo "$config_json" | jq -r '.finalize?')
-  stack_variables="$(echo "$config_json" | jq -r '.variables[]?')"
 
   # Check if jq returned an error
   if [[ $? -ne 0 ]]; then
@@ -6643,4 +6642,3 @@ main() {
 
 # Call the main function
 main "$@"
-
