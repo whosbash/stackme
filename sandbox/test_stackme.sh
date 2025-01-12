@@ -5487,8 +5487,8 @@ services:
     command:
       - "--api.dashboard=true"
       - "--providers.docker.swarmMode=true"
-      - "--providers.docker.endpoint=unix:///var/run/docker.sock"
-      - "--providers.docker.exposedbydefault=false"
+      #- "--providers.docker.endpoint=unix:///var/run/docker.sock"
+      #- "--providers.docker.exposedbydefault=false"
       - "--providers.docker.network={{network_name}}"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
@@ -5675,7 +5675,6 @@ volumes:
   vol_certificates:
     external: true
     name: volume_swarm_certificates
-  
 
 networks:
   {{network_name}}:
