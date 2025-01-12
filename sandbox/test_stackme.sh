@@ -4735,33 +4735,85 @@ BASE_TEMPLATE='<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{email_title}}</title>
   <style>
-    body { font-family: Arial, sans-serif; background-color: #f9f9fb; margin: 0; padding: 0; color: #333; }
-    .container { margin: 20px auto; padding: 20px; max-width: 600px; background-color: #ffffff; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); }
-    .header { text-align: center; background-color: #4caf50; color: #ffffff; padding: 20px; border-radius: 10px 10px 0 0; }
-    .header img { max-width: 80px; margin-bottom: 10px; }
-    .header h1 { font-size: 26px; margin: 0; }
-    .content { padding: 20px; }
-    .footer { text-align: center; padding: 20px 0; color: #aaaaaa; border-top: 1px solid #eeeeee; }
-    .footer img { width: 24px; height: 24px; vertical-align: middle; }
-    .footer a { text-decoration: none; color: #aaaaaa; }
+    body { 
+      font-family: Arial, sans-serif; 
+      background-color: #f9f9fb; 
+      margin: 0; 
+      padding: 0; 
+      color: #333; 
+      line-height: 1.6; /* Improve readability */
+    }
+    .container { 
+      margin: 20px auto; 
+      padding: 20px; 
+      max-width: 600px; 
+      background-color: #ffffff; 
+      border-radius: 10px; 
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); 
+    }
+    .header { 
+      text-align: center; 
+      background-color: #4caf50; 
+      color: #ffffff; 
+      padding: 20px; 
+      border-radius: 10px 10px 0 0; 
+    }
+    .header img { 
+      max-width: 80px; 
+      margin-bottom: 10px; 
+    }
+    .header h1 { 
+      font-size: 1.6em; /* Scalable font size */
+      margin: 0; 
+    }
+    .content { 
+      padding: 20px; 
+      font-size: 1em; /* Adjust for readability */
+    }
+    .footer { 
+      text-align: center; 
+      padding: 20px 0; 
+      color: #aaaaaa; 
+      border-top: 1px solid #eeeeee; 
+      font-size: 0.9em; /* Slightly smaller font for footer */
+    }
+    .footer img { 
+      width: 24px; 
+      height: 24px; 
+      vertical-align: middle; 
+    }
+    .footer a { 
+      text-decoration: none; 
+      color: #aaaaaa; 
+    }
 
     /* Button Styling */
     .button {
-      display: inline-block;
-      margin-top: 20px;
-      padding: 10px 20px;
-      background-color: #4caf50;
-      color: #ffffff;
-      text-decoration: none;
-      font-size: 16px;
+      display: inline-block; /* Inline-block to size button to its content */
+      margin: 20px auto; /* Center button horizontally */
+      padding: 12px 25px;
+      background-color: #4caf50; /* Green background */
+      color: #ffffff; /* White text */
+      text-decoration: none; /* No underline */
+      font-size: 1em; /* Scalable font size */
+      font-weight: bold;
       border-radius: 5px;
       text-align: center;
+      cursor: pointer;
+      transition: background-color 0.3s ease; /* Smooth hover effect */
     }
     .button:hover {
       background-color: #45a049;
     }
+    .button:active {
+      background-color: #3e8e41; /* Click feedback */
+    }
+    .button:focus {
+      outline: 3px solid #4caf50; /* Accessibility for keyboard navigation */
+      outline-offset: 2px;
+    }
 
-    /* Link Styling */
+    /* Global Link Styling */
     a {
       color: #4caf50; /* Green text */
       font-weight: bold; /* Bold text */
@@ -4770,7 +4822,11 @@ BASE_TEMPLATE='<!DOCTYPE html>
     a:hover {
       text-decoration: underline; /* Underline on hover */
     }
-  </style>
+    a:focus {
+      outline: 3px solid #4caf50; /* Accessibility for keyboard navigation */
+      outline-offset: 2px;
+    }
+</style>
 </head>
 <body>
   <section class="container">
@@ -4815,18 +4871,18 @@ generate_html() {
   echo "$email_html"
 }
 
-# Example usage
+# Function to generate HTML for an email
 test_smtp_html() {
   # Content for the email
   local email_content="<p>Hi there,</p>
 <p>We are thrilled to have you onboard! Explore the amazing features of StackMe and elevate your workflow.</p>
-<a href=\"https://github.com/whosbash/stackme\" class=\"button\">Get Started</a>
 <p>If you have any questions, feel free to submit an issue to 
 <a href=\"https://github.com/whosbash/stackme/issues\" title=\"Visit our Issues page on GitHub\">our repository</a>. We're here to help!</p>"
 
   # Generate the email HTML
   generate_html "$BASE_TEMPLATE" "Welcome to StackMe" "Welcome to StackMe" "$email_content"
 }
+
 
 # Function to send a test email using swaks
 send_email() {
@@ -5010,7 +5066,7 @@ load_smtp_information(){
     return 1
   fi
 
-  info "Loaded SMTP configuration: $smtp_json"
+  info "Loaded SMTP configuration from file: $filename"
   
   echo "$smtp_json"
 }
@@ -6294,8 +6350,8 @@ main() {
   # Perform initialization
   server_config_fname="${HOME}/server_info.json"
 
-  initialize_server_info
-  clear
+  #initialize_server_info
+  #clear
 
   define_menus
 
