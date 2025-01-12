@@ -5908,7 +5908,7 @@ manage_prometheus_config() {
 
     # If the file does not exist, create a new one with the provided targets
     if [[ ! -f "$file_path" ]]; then
-        echo "File does not exist. Creating a new Prometheus configuration file."
+        info "File does not exist. Creating a new Prometheus configuration file."
         cat <<EOL > "$file_path"
 global:
   scrape_interval: 15s
@@ -6042,39 +6042,16 @@ generate_config_startup() {
     return 1
   fi
 
-  collected_object=process_prompt_items "$collected_items"
+  collected_object="$(process_prompt_items "$collected_items")"
 
-  email_ssl="$(\
-    echo "$collected_object" | jq -r '.email_ssl'
-  )"
-
-  url_traefik="$(\
-    echo "$collected_object" | jq -r '.url_traefik'
-  )"
-
-  url_jaeger="$(\
-    echo "$collected_object" | jq -r '.url_jaeger'
-  )"
-
-  url_prometheus="$(\
-    echo "$collected_object" | jq -r '.url_prometheus'
-  )"
-
-  url_node="$(\
-    echo "$collected_object" | jq -r '.url_node'
-  )"
-
-  url_grafana="$(\
-    echo "$collected_object" | jq -r '.url_grafana'
-  )"
-
-  dashboard_username="$(\
-    echo "$collected_object" | jq -r '.dashboard_username'
-  )"
-
-  dashboard_password="$(\
-    echo "$collected_object" | jq -r '.dashboard_password'
-  )"
+  email_ssl="$(echo "$collected_object" | jq -r '.email_ssl')"
+  url_traefik="$(echo "$collected_object" | jq -r '.url_traefik')"
+  url_jaeger="$(echo "$collected_object" | jq -r '.url_jaeger')"
+  url_prometheus="$(echo "$collected_object" | jq -r '.url_prometheus')"
+  url_node="$(echo "$collected_object" | jq -r '.url_node')"
+  url_grafana="$(echo "$collected_object" | jq -r '.url_grafana')"
+  dashboard_username="$(echo "$collected_object" | jq -r '.dashboard_username')"
+  dashboard_password="$(echo "$collected_object" | jq -r '.dashboard_password')"
 
   dashboard_credentials="$(
         htpasswd -nbB "$dashboard_username" "$dashboard_password" | \
@@ -6082,7 +6059,7 @@ generate_config_startup() {
   )"
 
   # Ensure everything is quoted correctly
-  prometheus_config_path="/etc/prometheus/prometheus.yml"
+  prometheus_config_path="${HOME}/prometheus.yml"
   manage_prometheus_config "$prometheus_config_path" \
     "https://$url_prometheus" "https://$url_jaeger" \
     "https://$url_grafana" "https://$url_node"
@@ -6619,7 +6596,7 @@ parse_args() {
     esac
   done
 }
-
+                                                                                                                                                                                                 
 # Main script execution
 main() {
   parse_args "$@"
@@ -6642,6 +6619,9 @@ main() {
   start_main_menu
 }
 
-# Call the main function
-main "$@"
+# # Call the main function
+# main "$@"
 
+generate_config_startup
+
+wait_for_input
