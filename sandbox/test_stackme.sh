@@ -4632,6 +4632,8 @@ deploy_stack_pipeline() {
     replace_mustache_variables "$($compose_template_func)" stack_variables \
   )"
   stack_handle_exit "$?" 5 "$message"
+  echo "$substituted_template" >&2
+  wait_for_input
 
   # Step 6: Write the substituted template to the compose file
 
