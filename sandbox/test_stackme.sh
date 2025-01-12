@@ -5696,7 +5696,7 @@ services:
         - traefik.http.routers.whoami.entrypoints=websecure
         - traefik.http.routers.whoami.priority=1
         - traefik.http.routers.whoami.tls.certresolver=letsencryptresolver
-        - traefik.http.services.whoami.loadbalancer.server.port='80'
+        - traefik.http.services.whoami.loadbalancer.server.port=80
 
 networks:
   {{network_name}}:
