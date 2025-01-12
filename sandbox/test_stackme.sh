@@ -483,7 +483,7 @@ step() {
 step_info() {
   local current=$1
   local total=$2
-  local message=$3
+  local message="$3"
   local has_timestamp=${4:-$HAS_TIMESTAMP}
 
   step $current $total "$message" "info" $has_timestamp
@@ -493,7 +493,7 @@ step_info() {
 step_success() {
   local current=$1
   local total=$2
-  local message=$3
+  local message="$3"
   local has_timestamp=${4:-$HAS_TIMESTAMP}
 
   step $current $total "$message" "success" $has_timestamp
@@ -503,7 +503,7 @@ step_success() {
 step_failure() {
   local current=$1
   local total=$2
-  local message=$3
+  local message="$3"
   local has_timestamp=${4:-$HAS_TIMESTAMP}
 
   step $current $total "$message" "failure" $has_timestamp
@@ -513,7 +513,7 @@ step_failure() {
 step_error() {
   local current=$1
   local total=$2
-  local message=$3
+  local message="$3"
   local has_timestamp=${4:-$HAS_TIMESTAMP}
 
   step $current $total "$message" "error" $has_timestamp
@@ -523,7 +523,7 @@ step_error() {
 step_warning() {
   local current=$1
   local total=$2
-  local message=$3
+  local message="$3"
   local has_timestamp=${4:-$HAS_TIMESTAMP}
 
   step $current $total "$message" "warning" $has_timestamp
@@ -533,7 +533,7 @@ step_warning() {
 step_progress() {
   local current=$1
   local total=$2
-  local message=$3
+  local message="$3"
   local has_timestamp=${4:-$HAS_TIMESTAMP}
 
   step $current $total "$message" "progress" $has_timestamp
