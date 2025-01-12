@@ -4658,7 +4658,7 @@ deploy_stack_pipeline() {
   fi
 
   # Step 8: Deploy the service on Docker Swarm
-  if [ "$stack_name" == "traefik" ] || [ "$stack_name" == "portainer" ]; then
+  if [ "$stack_name" == "startup" ] || [ "$stack_name" == "portainer" ]; then
     message="Deploying stack on Docker Swarm"
     stack_step_progress 8 "$message"
 
