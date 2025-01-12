@@ -5551,7 +5551,6 @@ services:
       - JAEGER_STORAGE_TYPE=elasticsearch
       - JAEGER_ES_SERVER_URL=http://elasticsearch:9200
       - JAEGER_ES_INDEX_PREFIX=jaeger
-    restart: always
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
       interval: 30s
@@ -5587,8 +5586,6 @@ services:
         - "traefik.http.routers.elasticsearch.entrypoints=websecure"
         - "traefik.http.routers.elasticsearch.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.elasticsearch.loadbalancer.server.port=9200"
-    volumes:
-      - esdata:/usr/share/elasticsearch/data
 
   kibana:
     image: docker.elastic.co/kibana/kibana:7.10.0
@@ -5678,8 +5675,6 @@ volumes:
   vol_certificates:
     external: true
     name: volume_swarm_certificates
-  esdata:
-    external: true
   
 
 networks:
