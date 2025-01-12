@@ -1060,7 +1060,6 @@ write_json() {
   return 0
 }
 
-
 # Function to load JSON from a file
 load_json() {
   local config_file="$1"
@@ -3736,6 +3735,41 @@ navigate_menu() {
 
 ################################## BEGIN OF DOCKER DEPLOYMENT UTILS ################################
 
+# Function to map stacks to services and convert to JSON object
+map_stacks_to_services() {
+  # Fetch all stacks
+  stacks=($(docker stack ls --format "{{.Name}}"))
+
+  # Initialize an empty JSON object for the stack to service mapping
+  json_object='{}'
+
+  # Check if there are any stacks in the swarm
+  if [ ${#stacks[@]} -eq 0 ]; then
+    echo "No stacks found in the swarm."
+    exit 0
+  fi
+
+  # Loop through each stack to list its services and build the JSON object
+  for stack in "${stacks[@]}"; do
+    # Fetch the services for the current stack
+    services=($(docker stack services "$stack" --format "{{.Name}}"))
+
+    # Initialize an empty JSON array to store services for the current stack
+    services_json_array='[]'
+
+    # Append each service to the JSON array
+    for service in "${services[@]}"; do
+      services_json_array=$(append_to_json_array "$services_json_array" "\"$service\"")
+    done
+
+    # Add the services JSON array to the main JSON object under the stack key
+    json_object=$(echo "$json_object" | jq ". + {\"$stack\": $services_json_array}")
+  done
+
+  # Output the final JSON object
+  echo "$json_object"
+}
+
 # Function to get the latest stable version
 get_latest_stable_version() {
   local image_name=$1
@@ -6019,10 +6053,6 @@ generate_config_whoami() {
   local stack_name='whoami'
   local container_port='80'
 
-  # Step 1: Retrieve network name
-  step_info 1 $total_steps "Retrieving network name"
-  network_name="$(get_network_name)"
-
   # Prompting step 
   prompt_items='[
       {
@@ -6034,13 +6064,17 @@ generate_config_whoami() {
       }
   ]'
 
-  step_info 2 $total_steps "Prompting required WhoAmI information"
+  step_info 1 $total_steps "Prompting required WhoAmI information"
   collected_items="$(run_collection_process "$prompt_items")"
 
   if [[ "$collected_items" == "[]" ]]; then
-    step_error 2 $total_steps "Unable to prompt Portainer configuration."
+    step_error 1 $total_steps "Unable to prompt Portainer configuration."
     return 1
   fi
+
+  # Step 2: Retrieve network name
+  step_info 2 $total_steps "Retrieving network name"
+  network_name="$(get_network_name)"
 
   domain_name="$(\
     get_variable_value_from_collection "$collected_items" "domain_name" \
