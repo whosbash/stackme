@@ -3518,43 +3518,6 @@ handle_quit_key(){
   return 1
 }
 
-handle_search_key(){
-  local current_idx="$1"                    # Reference to the current index
-  local -n menu_options_ref="$2"            # Reference to the menu options array
-  local -n original_menu_options_ref="$3"   # Reference to the original menu options array
-  
-  echo -ne "${faded_color}Search: ${reset_color}" >&2
-  read -e -r search_key
-
-  # Clear the line if the prompt disappears after backspace
-  echo -ne "\033[2K\r"
-
-  if [[ "$search_key" == "r" ]]; then
-    menu_options_ref=("${original_menu_options_ref[@]}")
-    return
-  fi
-
-  local filtered_options=()
-  for option in "${original_menu_options_ref[@]}"; do
-    label=$(echo "$option" | jq -r '.label // empty')
-    description=$(echo "$option" | jq -r '.description // empty')
-    if [[ "$label" == *"$search_key"* || "$description" == *"$search_key"* ]]; then
-      filtered_options+=("$option")
-    fi
-  done
-
-  if [[ ${#filtered_options[@]} -eq 0 ]]; then
-    menu_options_ref=("${original_menu_options_ref[@]}")
-    warning "No matches found, resetting to original options."
-    sleep 0.5
-  else
-    menu_options_ref=("${filtered_options[@]}")
-    current_idx=0
-  fi
-
-  echo $current_idx
-}
-
 # Enhanced animated transition between menus with spinning loader and text effects
 transition_to_menu() {
   local new_menu="$1"
@@ -3687,9 +3650,45 @@ navigate_menu() {
 
     # Start search
     "/")
-        current_idx=$(\
-          handle_search_key "$current_idx" menu_options original_menu_options
-        )
+        echo -ne "${faded_color}Search: ${reset_color}" >&2
+        read -e -r search_key
+
+        # Clear the line if the prompt disappears after backspace
+        echo -ne "\033[2K\r"
+
+        # Reset to original options if 'r' is pressed
+        if [[ "$search_key" == "r" ]]; then
+          menu_options=("${original_menu_options[@]}")
+          current_idx=0  # Reset the index to 0 if 'r' is pressed
+          return
+        fi
+
+        local filtered_options=()
+        shopt -s nocasematch
+        for option in "${original_menu_options[@]}"; do
+          # Extract label and description using jq
+          label=$(echo "$option" | jq -r '.label // empty')
+          description=$(echo "$option" | jq -r '.description // empty')
+
+          # Match search_key against label or description
+          if [[ "$label" == *"$search_key"* || "$description" == *"$search_key"* ]]; then
+            filtered_options+=("$option")
+          fi
+        done
+
+        # Turn it off after the loop
+        shopt -u nocasematch  
+
+        # If no matches, reset to original options
+        if [[ ${#filtered_options[@]} -eq 0 ]]; then
+          menu_options_ref=("${original_menu_options[@]}")
+          warning "No matches found, resetting to original options."
+          sleep 0.5
+        else
+          # Update filtered options and reset index
+          menu_options=("${filtered_options[@]}")
+          current_idx=0  # Reset the index after filtering
+        fi
 
         is_new_page=1
         ;;
