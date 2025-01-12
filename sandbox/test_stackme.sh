@@ -98,6 +98,7 @@ select_color="\033[1;34m"    # Blue for select (↵)
 warning_color="\033[1;33m"   # Warning color (Yellow)
 back_color="\033[2m"         # Magenta for return (r)
 quit_color="\033[1;31m"      # Red for quit (q)
+exit_color="\033[1;31m"      # Exit color (x)
 search_color="\033[1;36m"    # Search color (/)
 goto_color="\033[1;36m"      # Go-to page color (g)
 help_color="\033[1;35m"      # Help color (h)
@@ -1504,6 +1505,7 @@ show_help() {
   echo -e "${back_color}r${reset_color}   - Return to menu begin"
   echo -e "${search_color}/${reset_color}   - Search on current menu"
   echo -e "${quit_color}q${reset_color}   - Return to previous menu / Quit the application"
+  echo -e "${exit_color}x${reset_color}   - Exit the application"
   echo -e "${help_color}h${reset_color}   - Show this help menu"
 }
 
@@ -3279,6 +3281,7 @@ render_menu() {
   local search_option="${search_color}/${reset_color}: Search"
   local help_option="${help_color}h${reset_color}: Help"
   local quit_option=""
+  local exit_option="${help_color}x${reset_color}: Exit"
   
   if (( num_options > page_size )); then
     lr_nav_option="${highlight_color}◁▷${reset_color}: Pages"
@@ -3301,6 +3304,7 @@ render_menu() {
     "$search_option"
     "$back_option"
     "$help_option"
+    "$exit_option"
   )
 
   # Conditionally add non-empty options
@@ -3712,6 +3716,10 @@ navigate_menu() {
       else
         continue
       fi
+      ;;
+    "x")
+      kill -TERM -$$
+      exit 0
       ;;
 
     *)

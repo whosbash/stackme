@@ -19,7 +19,7 @@ services:
       - "--certificatesresolvers.letsencryptresolver.acme.httpchallenge=true"
       - "--certificatesresolvers.letsencryptresolver.acme.httpchallenge.entrypoint=web"
       - "--certificatesresolvers.letsencryptresolver.acme.storage=/etc/traefik/letsencrypt/acme.json"
-      - "--certificatesresolvers.letsencryptresolver.acme.email=brunolnetto@gmail..com"
+      - "--certificatesresolvers.letsencryptresolver.acme.email=brunolnetto@gmail.com"
       - "--certificatesresolvers.letsencryptresolver.acme.dnschallenge=true"
       - "--log.level=DEBUG"
       - "--log.format=common"
@@ -63,19 +63,10 @@ services:
         - "traefik.http.routers.dashboard.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.dummy-svc.loadbalancer.server.port=9999"
         - "traefik.http.routers.dashboard.middlewares=myauth"
-        - "traefik.http.middlewares.myauth.basicauth.users=traefik:$$2y$$05$$jY47JNA4e718TdrZxEcdB.Lri9PtE2rrZWTFxw7yX2/GFqol3QQCK"
+        - "traefik.http.middlewares.myauth.basicauth.users=traefik:$$2y$$05$$UA5vnUFHQBOSaCxu43hqNuGpJsHhg/U8fMaFaSWvJOIZjObPHXEf6"
 
   jaeger:
     image: jaegertracing/all-in-one:1.43
-    environment:
-      - JAEGER_STORAGE_TYPE=elasticsearch
-      - JAEGER_ES_SERVER_URL=http://elasticsearch:9200
-      - JAEGER_ES_INDEX_PREFIX=jaeger
-    restart: always
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
-      interval: 30s
-      retries: 3
     ports:
       - "6831:6831/udp" # Jaeger agent
       - "16686:16686"   # Jaeger UI
@@ -84,112 +75,133 @@ services:
     deploy:
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.jaeger.rule=Host(`jaeger.persev.info`)"
+        - "traefik.http.routers.jaeger.rule=Host(\jaeger.persev.info\)"
         - "traefik.http.routers.jaeger.entrypoints=websecure"
         - "traefik.http.routers.jaeger.tls.certresolver=letsencryptresolver"
-        - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
-    depends_on:
-      - elasticsearch
+        - "traefik.http.services.jaeger.loadbalancer.server.port=16686
 
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.0
-    environment:
-      - discovery.type=single-node
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
-    ports:
-      - "9200:9200"
-    networks:
-      - my_network
-    deploy:
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.elasticsearch.rule=Host(`elasticsearch.persev.info`)"
-        - "traefik.http.routers.elasticsearch.entrypoints=websecure"
-        - "traefik.http.routers.elasticsearch.tls.certresolver=letsencryptresolver"
-        - "traefik.http.services.elasticsearch.loadbalancer.server.port=9200"
-    volumes:
-      - esdata:/usr/share/elasticsearch/data
+#  jaeger:
+#    image: jaegertracing/all-in-one:1.43
+#    environment:
+#      - JAEGER_STORAGE_TYPE=elasticsearch
+#      - JAEGER_ES_SERVER_URL=http://elasticsearch:9200
+#      - JAEGER_ES_INDEX_PREFIX=jaeger
+#    healthcheck:
+#      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+#      interval: 30s
+#      retries: 3
+#    ports:
+#      - "6831:6831/udp" # Jaeger agent
+#      - "16686:16686"   # Jaeger UI
+#    networks:
+#      - my_network
+#    deploy:
+#      labels:
+#        - "traefik.enable=true"
+#        - "traefik.http.routers.jaeger.rule=Host(`jaeger.persev.info`)"
+#        - "traefik.http.routers.jaeger.entrypoints=websecure"
+#        - "traefik.http.routers.jaeger.tls.certresolver=letsencryptresolver"
+#        - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
+#    depends_on:
+#      - elasticsearch
+#
+#  elasticsearch:
+#    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.0
+#    environment:
+#      - discovery.type=single-node
+#      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+#    ports:
+#      - "9200:9200"
+#    networks:
+#      - my_network
+#    deploy:
+#      labels:
+#        - "traefik.enable=true"
+#        - "traefik.http.routers.elasticsearch.rule=Host(`elasticsearch.persev.info`)"
+#        - "traefik.http.routers.elasticsearch.entrypoints=websecure"
+#        - "traefik.http.routers.elasticsearch.tls.certresolver=letsencryptresolver"
+#        - "traefik.http.services.elasticsearch.loadbalancer.server.port=9200"
 
-  kibana:
-    image: docker.elastic.co/kibana/kibana:7.10.0
-    ports:
-      - "5601:5601"
-    networks:
-      - my_network
-    deploy:
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.kibana.rule=Host(`kibana.persev.info`)"
-        - "traefik.http.routers.kibana.entrypoints=websecure"
-        - "traefik.http.routers.kibana.tls.certresolver=letsencryptresolver"
-        - "traefik.http.services.kibana.loadbalancer.server.port=5601"
-    depends_on:
-      - elasticsearch
+#   kibana:
+#     image: docker.elastic.co/kibana/kibana:7.10.0
+#     ports:
+#       - "5601:5601"
+#     networks:
+#       - my_network
+#     deploy:
+#       labels:
+#         - "traefik.enable=true"
+#         - "traefik.http.routers.kibana.rule=Host(`kibana.persev.info`)"
+#         - "traefik.http.routers.kibana.entrypoints=websecure"
+#         - "traefik.http.routers.kibana.tls.certresolver=letsencryptresolver"
+#         - "traefik.http.services.kibana.loadbalancer.server.port=5601"
+#     depends_on:
+#       - elasticsearch
 
-  grafana:
-    image: grafana/grafana
-    ports:
-      - "3000:3000"
-    networks:
-      - my_network
-    deploy:
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.grafana.rule=Host(`grafana.persev.info`)"
-        - "traefik.http.routers.grafana.entrypoints=websecure"
-        - "traefik.http.routers.grafana.tls.certresolver=letsencryptresolver"
-        - "traefik.http.services.grafana.loadbalancer.server.port=3000"
-    depends_on:
-      - elasticsearch
+#  grafana:
+#    image: grafana/grafana
+#    ports:
+#      - "3000:3000"
+#    networks:
+#      - my_network
+#    deploy:
+#      labels:
+#        - "traefik.enable=true"
+#        - "traefik.http.routers.grafana.rule=Host(`grafana.persev.info`)"
+#        - "traefik.http.routers.grafana.entrypoints=websecure"
+#        - "traefik.http.routers.grafana.tls.certresolver=letsencryptresolver"
+#        - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+#    depends_on:
+#      - elasticsearch
 
-  node-exporter:
-    image: prom/node-exporter:latest
-    restart: unless-stopped
+#   node-exporter:
+#     image: prom/node-exporter:latest
+#     restart: unless-stopped
+#
+#     networks:
+#       - my_network
+#
+#     ports:
+#       - "9100:9100"
+#
+#     deploy:
+#       mode: replicated
+#       replicas: 1
+#       placement:
+#         constraints:
+#           - node.role == manager
+#       labels:
+#         - traefik.enable=true
+#         - traefik.http.routers.node-exporter.rule=Host(`node.persev.info`)
+#         - traefik.http.services.node-exporter.loadbalancer.server.port=9100
+#         - traefik.http.routers.node-exporter.service=node-exporter
+#         - traefik.http.routers.node-exporter.tls.certresolver=letsencryptresolver
+#         - traefik.http.routers.node-exporter.entrypoints=websecure
+#         - traefik.http.routers.node-exporter.tls=true
 
-    networks:
-      - my_network
-
-    ports:
-      - "9100:9100"
-
-    deploy:
-      mode: replicated
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-      labels:
-        - traefik.enable=true
-        - traefik.http.routers.node-exporter.rule=Host(`node.persev.info`)
-        - traefik.http.services.node-exporter.loadbalancer.server.port=9100
-        - traefik.http.routers.node-exporter.service=node-exporter
-        - traefik.http.routers.node-exporter.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.node-exporter.entrypoints=websecure
-        - traefik.http.routers.node-exporter.tls=true
-
-  prometheus:
-    image: prom/prometheus:v2.47.0
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090" # Prometheus web interface
-    networks:
-      - my_network
-
-    deploy:
-      mode: replicated
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-      labels:
-        - traefik.enable=true
-        - traefik.http.routers.prometheus.rule=Host(`prometheus.persev.info`)
-        - traefik.http.services.prometheus.loadbalancer.server.port=9090
-        - traefik.http.routers.prometheus.service=prometheus
-        - traefik.http.routers.prometheus.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.prometheus.entrypoints=websecure
-        - traefik.http.routers.prometheus.tls=true
+#  prometheus:
+#    image: prom/prometheus:v2.47.0
+#    volumes:
+#      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+#    ports:
+#      - "9090:9090" # Prometheus web interface
+#    networks:
+#      - my_network
+#
+#    deploy:
+#      mode: replicated
+#      replicas: 1
+#      placement:
+#        constraints:
+#          - node.role == manager
+#      labels:
+#        - traefik.enable=true
+#        - traefik.http.routers.prometheus.rule=Host(`prometheus.persev.info`)
+#        - traefik.http.services.prometheus.loadbalancer.server.port=9090
+#        - traefik.http.routers.prometheus.service=prometheus
+#        - traefik.http.routers.prometheus.tls.certresolver=letsencryptresolver
+#        - traefik.http.routers.prometheus.entrypoints=websecure
+#        - traefik.http.routers.prometheus.tls=true
 
 volumes:
   vol_shared:
@@ -198,8 +210,6 @@ volumes:
   vol_certificates:
     external: true
     name: volume_swarm_certificates
-  esdata:
-    external: true
 
 networks:
   my_network:
