@@ -5487,8 +5487,8 @@ services:
     command:
       - "--api.dashboard=true"
       - "--providers.docker.swarmMode=true"
-      #- "--providers.docker.endpoint=unix:///var/run/docker.sock"
-      #- "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.endpoint=unix:///var/run/docker.sock"
+      - "--providers.docker.exposedbydefault=false"
       - "--providers.docker.network={{network_name}}"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
@@ -5618,31 +5618,6 @@ services:
         - "traefik.http.services.grafana.loadbalancer.server.port=3000"
     depends_on:
       - elasticsearch
-
-  node-exporter:
-    image: prom/node-exporter:latest
-    restart: unless-stopped
-
-    networks:
-      - {{network_name}}
-
-    ports:
-      - "9100:9100"
-
-    deploy:
-      mode: replicated
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-      labels:
-        - traefik.enable=true
-        - traefik.http.routers.node-exporter.rule=Host(\`{{url_node}}\`)
-        - traefik.http.services.node-exporter.loadbalancer.server.port=9100
-        - traefik.http.routers.node-exporter.service=node-exporter
-        - traefik.http.routers.node-exporter.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.node-exporter.entrypoints=websecure
-        - traefik.http.routers.node-exporter.tls=true
 
   prometheus:
     image: prom/prometheus:v2.47.0
