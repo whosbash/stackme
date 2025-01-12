@@ -5545,6 +5545,21 @@ services:
         - "traefik.http.routers.dashboard.middlewares=myauth"
         - "traefik.http.middlewares.myauth.basicauth.users={{dashboard_credentials}}"
 
+    jaeger:
+      image: jaegertracing/all-in-one:1.43
+      ports:
+        - "6831:6831/udp" # Jaeger agent
+        - "16686:16686"   # Jaeger UI
+      networks:
+        - {{network_name}}
+      deploy:
+        labels:
+          - "traefik.enable=true"
+          - "traefik.http.routers.jaeger.rule=Host(\{{url_jaeger}}\)"
+          - "traefik.http.routers.jaeger.entrypoints=websecure"
+          - "traefik.http.routers.jaeger.tls.certresolver=letsencryptresolver"
+          - "traefik.http.services.jaeger.loadbalancer.server.port=16686
+
 #  jaeger:
 #    image: jaegertracing/all-in-one:1.43
 #    environment:
@@ -5644,29 +5659,29 @@ services:
 #         - traefik.http.routers.node-exporter.entrypoints=websecure
 #         - traefik.http.routers.node-exporter.tls=true
 
-  prometheus:
-    image: prom/prometheus:v2.47.0
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090" # Prometheus web interface
-    networks:
-      - {{network_name}}
-
-    deploy:
-      mode: replicated
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-      labels:
-        - traefik.enable=true
-        - traefik.http.routers.prometheus.rule=Host(\`{{url_prometheus}}\`)
-        - traefik.http.services.prometheus.loadbalancer.server.port=9090
-        - traefik.http.routers.prometheus.service=prometheus
-        - traefik.http.routers.prometheus.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.prometheus.entrypoints=websecure
-        - traefik.http.routers.prometheus.tls=true
+#  prometheus:
+#    image: prom/prometheus:v2.47.0
+#    volumes:
+#      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+#    ports:
+#      - "9090:9090" # Prometheus web interface
+#    networks:
+#      - {{network_name}}
+#
+#    deploy:
+#      mode: replicated
+#      replicas: 1
+#      placement:
+#        constraints:
+#          - node.role == manager
+#      labels:
+#        - traefik.enable=true
+#        - traefik.http.routers.prometheus.rule=Host(\`{{url_prometheus}}\`)
+#        - traefik.http.services.prometheus.loadbalancer.server.port=9090
+#        - traefik.http.routers.prometheus.service=prometheus
+#        - traefik.http.routers.prometheus.tls.certresolver=letsencryptresolver
+#        - traefik.http.routers.prometheus.entrypoints=websecure
+#        - traefik.http.routers.prometheus.tls=true
 
 volumes:
   vol_shared:
