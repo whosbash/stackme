@@ -5962,7 +5962,7 @@ EOL
     info "Updated Prometheus configuration file at: $file_path"
 }
 
-# Function to generate configuration files for traefik
+# Function to generate configuration files for startup
 generate_config_startup() {
   local stack_name="startup"
 
@@ -6332,10 +6332,10 @@ generate_config_whoami() {
 ################################ BEGIN OF STACK DEPLOYMENT FUNCTIONS ##############################
 
 # Function to deploy a traefik service
-deploy_stack_traefik() {
+deploy_stack_startup() {
   cleanup
   clean_screen
-  deploy_stack 'traefik'
+  deploy_stack 'startup'
 }
 
 # Function to deploy a portainer service
@@ -6389,8 +6389,9 @@ define_menu_stacks(){
   menu_name="Stacks"
 
   item_1="$(
-      build_menu_item "Traefik & Portainer" \
-      "Deploy" "deploy_stack_startup_and_portainer"
+      build_menu_item "Startup" \
+      "Traefik & Jager & Prometheus & ElasticSearch & Kibana & Grafana & Portainer" \
+      "deploy_stack_startup_and_portainer"
   )"
   item_2="$(
     build_menu_item "postgres" "Deploy" "deploy_stack_postgres" 

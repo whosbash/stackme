@@ -1,56 +1,56 @@
 #!/bin/bash
 
-# Function to display machine specs
-generate_machine_specs() {
-  echo "Machine Specifications"
-  echo "======================="
+manage_prometheus_config() {
+    local file_path=$1    # File path for the Prometheus configuration
+    shift                 # Shift to access remaining arguments as targets
+    local new_targets=("$@") # New targets passed as arguments
 
-  # Basic Information
-  echo "Hostname: $(hostname)"
-  echo "Operating System: $(lsb_release -d | cut -f2)"
-  echo "Kernel Version: $(uname -r)"
+    # If the file does not exist, create a new one with the provided targets
+    if [[ ! -f "$file_path" ]]; then
+        echo "File does not exist. Creating a new Prometheus configuration file."
+        cat <<EOL > "$file_path"
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets: []
+    scheme: http
+    timeout: 10s
+    api_version: v2
+scrape_configs:
+- job_name: prometheus
+  honor_timestamps: true
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  metrics_path: /metrics
+  scheme: http
+  static_configs:
+  - targets: [$(printf '"%s",' "${new_targets[@]}" | sed 's/,$//')]
+EOL
+        info "Prometheus configuration file created at: $file_path"
+        return
+    fi
 
-  # Processor (CPU)
-  echo "Model: $(lscpu | grep 'Model name' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//')"
-  echo "Cores: $(lscpu | grep '^CPU(s):' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//')"
-  echo "Threads: $(lscpu | grep '^Thread(s) per core:' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//')"
-  echo "Clock Speed: $(lscpu | grep 'MHz' | awk -F ':' '{print $2}' | sed 's/^[[:space:]]*//') MHz"
+    info "File exists. Checking for duplicate targets and appending new targets if needed."
 
-  # Memory (RAM)
-  echo "Total: $(free -h | grep Mem: | awk '{print $2}')"
+    # Extract current targets from the file
+    current_targets=$(grep -oP '(?<=- targets: \[).*(?=\])' "$file_path" | tr -d '"')
 
-  # Storage
-  echo "Disk Usage:"
-  df -h --output=source,fstype,size,used,avail,pcent | grep -E '^/dev'
+    # Deduplicate targets by combining current and new, ensuring uniqueness
+    combined_targets=($(echo "${current_targets[@]}" "${new_targets[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
 
-  # GPU
-  if command -v lspci &>/dev/null; then
-    echo "$(lspci | grep -i 'vga\|3d\|2d')"
-  else
-    echo "lspci command not found. GPU info unavailable."
-  fi
+    # Replace the targets line in the configuration file
+    sed -i.bak "/- targets: \[/c\  - targets: [$(printf '"%s",' "${combined_targets[@]}" | sed 's/,$//')]" "$file_path"
 
-  # Network
-  echo "Ethernet: $(ip -4 addr show | grep 'state UP' -A2 | grep inet | awk '{print $2}')"
-  echo "Wi-Fi: $(nmcli device status | grep wifi | awk '{print $1, $3, $4}')"
-
-  # Virtualization and Containers
-  if [[ $(lscpu | grep Virtualization) ]]; then
-    echo "Virtualization: Enabled ($(lscpu | grep Virtualization | awk '{print $2}') supported)"
-  else
-    echo "Virtualization: Not supported or disabled"
-  fi
-  echo "Docker Version: $(docker --version 2>/dev/null || echo "Not installed")"
-
-  # Power (if laptop)
-  if command -v upower &>/dev/null; then
-    upower -i $(upower -e | grep BAT) | grep -E "state|to full|percentage"
-  else
-    echo "Battery information unavailable."
-  fi
-
-  echo -e "\nSpecifications collected successfully."
+    info "Updated Prometheus configuration file at: $file_path"
 }
 
-# Run the function
-generate_machine_specs
+# Usage
+# Replace the target URLs with your actual targets
+manage_prometheus_config "./prometheus.yml" "http://localhost:9090" "http://localhost:8080"
+cat './prometheus.yml'
+manage_prometheus_config "./prometheus.yml" "http://localhost:9100" "http://localhost:9090"
+cat './prometheus.yml'
