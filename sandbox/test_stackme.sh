@@ -5555,7 +5555,7 @@ services:
     deploy:
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.jaeger.rule=Host(\{{url_jaeger}}\)"
+        - "traefik.http.routers.jaeger.rule=Host(\`{{url_jaeger}}\`)"
         - "traefik.http.routers.jaeger.entrypoints=websecure"
         - "traefik.http.routers.jaeger.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.jaeger.loadbalancer.server.port=16686
