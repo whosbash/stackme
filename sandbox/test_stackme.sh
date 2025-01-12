@@ -6611,17 +6611,13 @@ main() {
   # Perform initialization
   server_config_fname="${HOME}/server_info.json"
 
-  # initialize_server_info
-  # clear
+  initialize_server_info
+  clear
 
   define_menus
 
   start_main_menu
 }
 
-# # Call the main function
-# main "$@"
-
-generate_config_startup
-
-wait_for_input
+# Call the main function
+main "$@"
