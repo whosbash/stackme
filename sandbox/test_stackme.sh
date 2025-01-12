@@ -5587,37 +5587,62 @@ services:
         - "traefik.http.routers.elasticsearch.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.elasticsearch.loadbalancer.server.port=9200"
 
-  kibana:
-    image: docker.elastic.co/kibana/kibana:7.10.0
-    ports:
-      - "5601:5601"
-    networks:
-      - {{network_name}}
-    deploy:
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.kibana.rule=Host(\`{{url_kibana}}\`)"
-        - "traefik.http.routers.kibana.entrypoints=websecure"
-        - "traefik.http.routers.kibana.tls.certresolver=letsencryptresolver"
-        - "traefik.http.services.kibana.loadbalancer.server.port=5601"
-    depends_on:
-      - elasticsearch
+  # kibana:
+  #   image: docker.elastic.co/kibana/kibana:7.10.0
+  #   ports:
+  #     - "5601:5601"
+  #   networks:
+  #     - {{network_name}}
+  #   deploy:
+  #     labels:
+  #       - "traefik.enable=true"
+  #       - "traefik.http.routers.kibana.rule=Host(\`{{url_kibana}}\`)"
+  #       - "traefik.http.routers.kibana.entrypoints=websecure"
+  #       - "traefik.http.routers.kibana.tls.certresolver=letsencryptresolver"
+  #       - "traefik.http.services.kibana.loadbalancer.server.port=5601"
+  #   depends_on:
+  #     - elasticsearch
 
-  grafana:
-    image: grafana/grafana
-    ports:
-      - "3000:3000"
-    networks:
-      - {{network_name}}
-    deploy:
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.grafana.rule=Host(\`{{url_grafana}}\`)"
-        - "traefik.http.routers.grafana.entrypoints=websecure"
-        - "traefik.http.routers.grafana.tls.certresolver=letsencryptresolver"
-        - "traefik.http.services.grafana.loadbalancer.server.port=3000"
-    depends_on:
-      - elasticsearch
+  #grafana:
+  #  image: grafana/grafana
+  #  ports:
+  #    - "3000:3000"
+  #  networks:
+  #    - {{network_name}}
+  #  deploy:
+  #    labels:
+  #      - "traefik.enable=true"
+  #      - "traefik.http.routers.grafana.rule=Host(\`{{url_grafana}}\`)"
+  #      - "traefik.http.routers.grafana.entrypoints=websecure"
+  #      - "traefik.http.routers.grafana.tls.certresolver=letsencryptresolver"
+  #      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+  #  depends_on:
+  #    - elasticsearch
+
+  # node-exporter:
+  #   image: prom/node-exporter:latest
+  #   restart: unless-stopped
+  # 
+  #   networks:
+  #     - {{network_name}}
+  # 
+  #   ports:
+  #     - "9100:9100"
+  # 
+  #   deploy:
+  #     mode: replicated
+  #     replicas: 1
+  #     placement:
+  #       constraints:
+  #         - node.role == manager
+  #     labels:
+  #       - traefik.enable=true
+  #       - traefik.http.routers.node-exporter.rule=Host(\`{{url_node}}\`)
+  #       - traefik.http.services.node-exporter.loadbalancer.server.port=9100
+  #       - traefik.http.routers.node-exporter.service=node-exporter
+  #       - traefik.http.routers.node-exporter.tls.certresolver=letsencryptresolver
+  #       - traefik.http.routers.node-exporter.entrypoints=websecure
+  #       - traefik.http.routers.node-exporter.tls=true
 
   prometheus:
     image: prom/prometheus:v2.47.0
