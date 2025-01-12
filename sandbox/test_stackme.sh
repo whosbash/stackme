@@ -6105,6 +6105,8 @@ generate_config_startup() {
           "url_jaeger": $url_jaeger,
           "url_prometheus": $url_prometheus,
           "url_node": $url_node,
+          "url_kibana": $url_kibana,
+          "url_elasticsearch": $url_elasticsearch,
           "url_grafana": $url_grafana,          
           "network_name": $network_name
         },
@@ -6641,3 +6643,4 @@ main() {
 
 # Call the main function
 main "$@"
+
