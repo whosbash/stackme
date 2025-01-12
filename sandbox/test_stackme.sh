@@ -6053,6 +6053,8 @@ generate_config_whoami() {
   local stack_name='whoami'
   local container_port='80'
 
+  total_steps=2
+
   # Prompting step 
   prompt_items='[
       {
