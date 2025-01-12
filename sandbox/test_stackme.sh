@@ -5678,6 +5678,9 @@ volumes:
   vol_certificates:
     external: true
     name: volume_swarm_certificates
+  esdata:
+    external: true
+  
 
 networks:
   {{network_name}}:
