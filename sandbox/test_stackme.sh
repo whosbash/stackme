@@ -6034,11 +6034,6 @@ generate_config_startup() {
     return 1
   fi
 
-  prometheus_config_path="/etc/prometheus/prometheus.yml"
-  manage_prometheus_config "$prometheus_config_path" \
-    "https://$url_prometheus" "https://$url_jaeger" \
-    "https://$url_grafana" "https://$url_node"
-
   local network_name="$(get_network_name)"
 
   if [[ -z "$network_name" ]]; then
@@ -6047,20 +6042,38 @@ generate_config_startup() {
     return 1
   fi
 
+  collected_object=process_prompt_items "$collected_items"
+
   email_ssl="$(\
-    get_variable_value_from_collection "$collected_items" "email_ssl"
+    echo "$collected_object" | jq -r '.email_ssl'
   )"
 
-  domain_name="$(\
-    get_variable_value_from_collection "$collected_items" "domain_name"
+  url_traefik="$(\
+    echo "$collected_object" | jq -r '.url_traefik'
+  )"
+
+  url_jaeger="$(\
+    echo "$collected_object" | jq -r '.url_jaeger'
+  )"
+
+  url_prometheus="$(\
+    echo "$collected_object" | jq -r '.url_prometheus'
+  )"
+
+  url_node="$(\
+    echo "$collected_object" | jq -r '.url_node'
+  )"
+
+  url_grafana="$(\
+    echo "$collected_object" | jq -r '.url_grafana'
   )"
 
   dashboard_username="$(\
-    get_variable_value_from_collection "$collected_items" "dashboard_username"
+    echo "$collected_object" | jq -r '.dashboard_username'
   )"
 
   dashboard_password="$(\
-    get_variable_value_from_collection "$collected_items" "dashboard_password"
+    echo "$collected_object" | jq -r '.dashboard_password'
   )"
 
   dashboard_credentials="$(
@@ -6068,24 +6081,35 @@ generate_config_startup() {
         sed -e 's/\$/\$\$/g' -e 's/\\\//\//g'
   )"
 
-  info "Hashed credentials: $dashboard_credentials" >&2
-
-  local network_name="$(get_network_name)"  
+  # Ensure everything is quoted correctly
+  prometheus_config_path="/etc/prometheus/prometheus.yml"
+  manage_prometheus_config "$prometheus_config_path" \
+    "https://$url_prometheus" "https://$url_jaeger" \
+    "https://$url_grafana" "https://$url_node"
 
   # Ensure everything is quoted correctly
   jq -n \
     --arg stack_name "$stack_name" \
-    --arg email_ssl $email_ssl \
-    --arg domain_name $domain_name \
-    --arg dashboard_credentials $dashboard_credentials \
+    --arg email_ssl "$email_ssl" \
+    --arg url_traefik "$url_traefik" \
+    --arg url_jaeger "$url_jaeger" \
+    --arg url_prometheus "$url_prometheus" \
+    --arg url_node "$url_node" \
+    --arg url_grafana "$url_grafana" \
+    --arg dashboard_credentials "$dashboard_credentials" \
     --arg network_name "$network_name" \
     '{
         "name": $stack_name,
         "variables": {
-            "email_ssl": $email_ssl,
-            "domain_name": $domain_name,
-            "dashboard_credentials": $dashboard_credentials,
-            "network_name": $network_name,
+          "stack_name": $stack_name,
+          "email_ssl": $email_ssl,
+          "url_traefik": $url_traefik,
+          "dashboard_credentials": $dashboard_credentials,
+          "url_jaeger": $url_jaeger,
+          "url_prometheus": $url_prometheus,
+          "url_node": $url_node,
+          "url_grafana": $url_grafana,          
+          "network_name": $network_name
         },
         "dependencies": {},
         "prepare": [],
@@ -6347,7 +6371,7 @@ deploy_stack_portainer() {
 
 deploy_stack_startup_and_portainer() {
   cleanup
-  clean_screen  
+  clean_screen
   deploy_stack 'startup'
 
   if [[ $? -ne 0 ]]; then
@@ -6610,8 +6634,8 @@ main() {
   # Perform initialization
   server_config_fname="${HOME}/server_info.json"
 
-  initialize_server_info
-  clear
+  # initialize_server_info
+  # clear
 
   define_menus
 
