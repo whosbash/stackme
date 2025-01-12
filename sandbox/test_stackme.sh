@@ -5545,20 +5545,20 @@ services:
         - "traefik.http.routers.dashboard.middlewares=myauth"
         - "traefik.http.middlewares.myauth.basicauth.users={{dashboard_credentials}}"
 
-    jaeger:
-      image: jaegertracing/all-in-one:1.43
-      ports:
-        - "6831:6831/udp" # Jaeger agent
-        - "16686:16686"   # Jaeger UI
-      networks:
-        - {{network_name}}
-      deploy:
-        labels:
-          - "traefik.enable=true"
-          - "traefik.http.routers.jaeger.rule=Host(\{{url_jaeger}}\)"
-          - "traefik.http.routers.jaeger.entrypoints=websecure"
-          - "traefik.http.routers.jaeger.tls.certresolver=letsencryptresolver"
-          - "traefik.http.services.jaeger.loadbalancer.server.port=16686
+  jaeger:
+    image: jaegertracing/all-in-one:1.43
+    ports:
+      - "6831:6831/udp" # Jaeger agent
+      - "16686:16686"   # Jaeger UI
+    networks:
+      - {{network_name}}
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.jaeger.rule=Host(\{{url_jaeger}}\)"
+        - "traefik.http.routers.jaeger.entrypoints=websecure"
+        - "traefik.http.routers.jaeger.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.jaeger.loadbalancer.server.port=16686
 
 #  jaeger:
 #    image: jaegertracing/all-in-one:1.43
