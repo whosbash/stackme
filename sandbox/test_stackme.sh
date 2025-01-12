@@ -5628,7 +5628,7 @@ services:
     restart: unless-stopped
 
     networks:
-      - $nome_rede_interna
+      - {{network_name}}
 
     ports:
       - "9100:9100"
@@ -6066,6 +6066,8 @@ generate_config_startup() {
   url_prometheus="$(echo "$collected_object" | jq -r '.url_prometheus')"
   url_node="$(echo "$collected_object" | jq -r '.url_node')"
   url_grafana="$(echo "$collected_object" | jq -r '.url_grafana')"
+  url_kibana="$(echo "$collected_object" | jq -r '.url_kibana')"
+  url_elasticsearch="$(echo "$collected_object" | jq -r '.url_elasticsearch')"
   dashboard_username="$(echo "$collected_object" | jq -r '.dashboard_username')"
   dashboard_password="$(echo "$collected_object" | jq -r '.dashboard_password')"
 
@@ -6089,6 +6091,8 @@ generate_config_startup() {
     --arg url_prometheus "$url_prometheus" \
     --arg url_node "$url_node" \
     --arg url_grafana "$url_grafana" \
+    --arg url_kibana "$url_kibana" \
+    --arg url_elasticsearch "$url_elasticsearch" \
     --arg dashboard_credentials "$dashboard_credentials" \
     --arg network_name "$network_name" \
     '{
