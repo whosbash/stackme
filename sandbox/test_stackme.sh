@@ -5641,7 +5641,7 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.node-exporter.rule=Host(\`$url_nodeexporter\`)
+        - traefik.http.routers.node-exporter.rule=Host(\`{{url_node}}\`)
         - traefik.http.services.node-exporter.loadbalancer.server.port=9100
         - traefik.http.routers.node-exporter.service=node-exporter
         - traefik.http.routers.node-exporter.tls.certresolver=letsencryptresolver
@@ -6005,6 +6005,20 @@ generate_config_startup() {
           "description": "Domain for tracing tool",
           "required": "yes",
           "validate_fn": "validate_url_suffix" 
+      },
+      {
+          "name": "url_kibana",
+          "label": "Kibana Domain Name",
+          "description": "Domain name for Kibana",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      },
+      {
+          "name": "url_elasticsearch",
+          "label": "Elasticsearch Domain Name",
+          "description": "Domain name for Elasticsearch",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
       },
       {
           "name": "url_prometheus",
