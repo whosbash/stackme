@@ -392,6 +392,7 @@ debug() {
   local message="$1"                     # Step message
   local timestamp="${2:-$HAS_TIMESTAMP}" # Optional timestamp flag
   display 'debug' "$message" $timestamp >&2
+  wait_for_input
 }
 
 # Function to display critical formatted messages
@@ -448,6 +449,7 @@ failure() {
   local message="$1"                     # Step message
   local timestamp="${2:-$HAS_TIMESTAMP}" # Optional timestamp flag
   display 'failure' "$message" $timestamp >&2
+  wait_for_input
 }
 
 # Function to display tip formatted messages
@@ -4682,6 +4684,8 @@ deploy_stack_pipeline() {
   local stack_name="$1" # stack name (e.g., redis, postgres)
   local config_json="$2" # JSON data with stack setup cofiguration
 
+  debug "$config_json"
+
   total_steps=10
 
   stack_step_progress(){
@@ -4914,20 +4918,13 @@ deploy_stack() {
     return 1
   fi
 
-  echo "$config_json" >&2
+  debug "$config_json"
 
   # Check required fields
   validate_stack_config "$stack_name" "$config_json"
 
   if [ $? -ne 0 ]; then
     failure "Stack $stack_name configuration validation failed."
-    wait_for_input
-    return 1
-  fi
-
-  if [ $? -ne 0 ]; then
-    failure "Stack $stack_name configuration validation failed."
-    wait_for_input
     return 1
   fi
 
