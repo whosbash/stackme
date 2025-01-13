@@ -5803,29 +5803,29 @@ services:
     depends_on:
       - elasticsearch
 
-  node-exporter:
-    image: prom/node-exporter:latest
-  
-    networks:
-      - {{network_name}}
-  
-    ports:
-      - "9100:9100"
-  
-    deploy:
-      mode: replicated
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-      labels:
-        - traefik.enable=true
-        - traefik.http.routers.node-exporter.rule=Host(\`{{url_node}}\`)
-        - traefik.http.services.node-exporter.loadbalancer.server.port=9100
-        - traefik.http.routers.node-exporter.service=node-exporter
-        - traefik.http.routers.node-exporter.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.node-exporter.entrypoints=websecure
-        - traefik.http.routers.node-exporter.tls=true
+#  node-exporter:
+#    image: prom/node-exporter:latest
+#  
+#    networks:
+#      - {{network_name}}
+#  
+#    ports:
+#      - "9100:9100"
+#  
+#    deploy:
+#      mode: replicated
+#      replicas: 1
+#      placement:
+#        constraints:
+#          - node.role == manager
+#      labels:
+#        - traefik.enable=true
+#        - traefik.http.routers.node-exporter.rule=Host(\`{{url_node}}\`)
+#        - traefik.http.services.node-exporter.loadbalancer.server.port=9100
+#        - traefik.http.routers.node-exporter.service=node-exporter
+#        - traefik.http.routers.node-exporter.tls.certresolver=letsencryptresolver
+#        - traefik.http.routers.node-exporter.entrypoints=websecure
+#        - traefik.http.routers.node-exporter.tls=true
 
   prometheus:
     image: prom/prometheus:v2.47.0
@@ -6136,6 +6136,13 @@ generate_config_startup() {
           "validate_fn": "validate_password" 
       },
       {
+          "name": "url_prometheus",
+          "label": "Prometheus Domain Name",
+          "description": "Domain name for logs and metrics",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      },
+      {
           "name": "url_jaeger",
           "label": "Jaeger Domain Name",
           "description": "Domain for tracing tool",
@@ -6150,26 +6157,19 @@ generate_config_startup() {
           "validate_fn": "validate_url_suffix" 
       },
       {
-          "name": "url_prometheus",
-          "label": "Prometheus Domain Name",
-          "description": "Domain name for logs and metrics",
-          "required": "yes",
-          "validate_fn": "validate_url_suffix" 
-      },
-      {
-          "name": "url_node",
-          "label": "Node Domain Name",
-          "description": "Domain name for Node",
-          "required": "yes",
-          "validate_fn": "validate_url_suffix" 
-      },
-      {
           "name": "url_grafana",
           "label": "Grafana Domain Name",
           "description": "Domain name for Grafana",
           "required": "yes",
           "validate_fn": "validate_url_suffix" 
       }
+      #{
+      #    "name": "url_node",
+      #    "label": "Node Domain Name",
+      #    "description": "Domain name for Node",
+      #    "required": "yes",
+      #    "validate_fn": "validate_url_suffix" 
+      #}
   ]'
 
   collected_items="$(run_collection_process "$prompt_items")"
@@ -6213,7 +6213,7 @@ generate_config_startup() {
     --scrape_interval "10s" \
     --targets "$url_node,$url_prometheus")"
 
-  manage_prometheus_config_file "$url_prometheus" "$url_jaeger" "$url_node"
+  manage_prometheus_config_file "$url_prometheus" "$url_jaeger" #"$url_node"
 
   # Ensure everything is quoted correctly
   jq -n \
@@ -6222,7 +6222,6 @@ generate_config_startup() {
     --arg url_traefik "$url_traefik" \
     --arg url_jaeger "$url_jaeger" \
     --arg url_prometheus "$url_prometheus" \
-    --arg url_node "$url_node" \
     --arg url_grafana "$url_grafana" \
     --arg url_kibana "$url_kibana" \
     --arg dashboard_credentials "$dashboard_credentials" \
@@ -6236,7 +6235,6 @@ generate_config_startup() {
           "dashboard_credentials": $dashboard_credentials,
           "url_jaeger": $url_jaeger,
           "url_prometheus": $url_prometheus,
-          "url_node": $url_node,
           "url_kibana": $url_kibana,
           "url_grafana": $url_grafana,          
           "network_name": $network_name
@@ -6781,6 +6779,5 @@ main() {
 # # Call the main function
 # main "$@"
 
-manage_prometheus_config_file "a" "b" "c"
 
 wait_for_input
