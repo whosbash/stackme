@@ -1505,8 +1505,8 @@ show_help() {
   echo -e "${back_color}r${reset_color}   - Return to menu begin"
   echo -e "${search_color}/${reset_color}   - Search on current menu"
   echo -e "${quit_color}q${reset_color}   - Return to previous menu / Quit the application"
-  echo -e "${exit_color}x${reset_color}   - Exit the application"
   echo -e "${help_color}h${reset_color}   - Show this help menu"
+  echo -e "${exit_color}x${reset_color}   - Exit the application"
 }
 
 # Function to clean up mustache variables
@@ -3304,13 +3304,14 @@ render_menu() {
     "$search_option"
     "$back_option"
     "$help_option"
-    "$exit_option"
   )
 
   # Conditionally add non-empty options
   [[ -n "$lr_nav_option" ]] && keyboard_options+=("$lr_nav_option")
   [[ -n "$goto_nav_option" ]] && keyboard_options+=("$goto_nav_option")
   [[ -n "$quit_option" ]] && keyboard_options+=("$quit_option")
+
+  keyboard_options+=("$exit_option")
 
   local keyboard_options_string=$(join_array ", " "${keyboard_options[@]}")
   
