@@ -4728,6 +4728,7 @@ deploy_stack_pipeline() {
     echo "$config_json" | \
     jq -r '.variables | to_entries | .[] | "\(.key)=\(.value)"')
 
+  debug "Stack variables: "
   debug "${stack_variables[@]}"
 
   highlight "Deploying stack '$stack_name'"
