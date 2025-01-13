@@ -4809,8 +4809,6 @@ deploy_stack_pipeline() {
     replace_mustache_variables "$($compose_template_func)" stack_variables \
   )"
   stack_handle_exit "$?" 5 "$message"
-  echo "$substituted_template" >&2
-  wait_for_input
 
   # Step 6: Write the substituted template to the compose file
 
@@ -4910,16 +4908,22 @@ deploy_stack() {
 
   # Generate the stack JSON configuration
   local config_json
-  config_function="generate_config_$stack_name"
-  config_json=$(eval "$config_function")
+  config_json=$(eval "generate_config_$stack_name")
 
   if [ -z "$config_json" ]; then
-    
     return 1
   fi
 
+  echo "$config_json" >&2
+
   # Check required fields
   validate_stack_config "$stack_name" "$config_json"
+
+  if [ $? -ne 0 ]; then
+    failure "Stack $stack_name configuration validation failed."
+    wait_for_input
+    return 1
+  fi
 
   if [ $? -ne 0 ]; then
     failure "Stack $stack_name configuration validation failed."
