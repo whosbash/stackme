@@ -5928,9 +5928,6 @@ alerting:
   alertmanagers:
   - static_configs:
     - targets: []
-    scheme: http
-    timeout: 10s
-    api_version: v2
 scrape_configs:
 - job_name: 'traefik'
   metrics_path: '/metrics'
@@ -5939,7 +5936,7 @@ scrape_configs:
 - job_name: prometheus
   honor_timestamps: true
   metrics_path: /metrics
-  scheme: http
+  scheme: https
   static_configs:
     - targets: [$(printf '"%s",' "${new_targets[@]}" | sed 's/,$//')]
 EOL
@@ -6087,8 +6084,7 @@ generate_config_startup() {
   # Ensure everything is quoted correctly
   prometheus_config_path="$STACKS_FOLDER/prometheus.yml"
   manage_prometheus_config "$prometheus_config_path" \
-    "https://$url_prometheus" "https://$url_jaeger" \
-    "https://$url_grafana" "https://$url_node"
+    "$url_prometheus" "$url_jaeger" "$url_grafana" "$url_node"
 
   # Ensure everything is quoted correctly
   jq -n \
