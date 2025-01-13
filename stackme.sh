@@ -3082,6 +3082,9 @@ finish_session() {
 # Trap SIGINT (Ctrl+C) and EXIT (script termination) to invoke the cleanup function
 trap finish_session SIGINT EXIT
 
+# Trap SIGTERM (KILL) and EXIT (script termination) to invoke the cleanup function
+trap finish_session TERM EXIT
+
 # Function to shift a message in the background
 shift_message() {
     local message="$1"
