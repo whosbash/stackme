@@ -1216,7 +1216,7 @@ EOF
   check_existing_job_name "$filename" "$job_name"
   
   if [[ $? -eq 0 ]]; then
-    echo "Error: job_name '$job_name' already exists in $filename." >&2
+    error "job_name '$job_name' already exists in $filename." >&2
     return 1
   fi
 
@@ -4721,12 +4721,16 @@ deploy_stack_pipeline() {
 
   debug "$config_json"
 
+  echo "$config_json" | jq . >&2
+
   # Parse JSON data and populate associative array
   while IFS="=" read -r key value; do
     stack_variables["$key"]="$value"
   done < <(\
     echo "$config_json" | \
-    jq -r '.variables | to_entries | .[] | "\(.key)=\(.value)"')
+    jq -r '.variables | to_entries | .[] | "\(.key)=\(.value | tostring)"'\
+  )
+
 
   debug "Stack variables: "
   debug "${stack_variables[@]}"
@@ -5381,7 +5385,7 @@ install_all_packages() {
 # Function to prepare the environment
 update_and_install_packages() {
   # Function constants
-  local total_steps=3
+  local total_steps=4
 
   # Check if the script is running as root
   if [ "$EUID" -ne 0 ]; then
