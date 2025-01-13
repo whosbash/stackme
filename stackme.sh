@@ -6566,16 +6566,21 @@ start_main_menu(){
 
 # Display help message
 usage() {
+  joined_arrows="$(join_array "," "${!ARROWS[@]}")"
+
+
   usage_messages=(
     "Usage: $0 [options]"
     "Options:"
     "  -i, --install           Install required packages."
     "  -c, --clean             Clean docker environment."
+    "  -a, --arrow             Arrow style: {$joined_arrows}."
     "  -h, --help              Display this help message and exit."
   )
   format_array "info" usage_messages
 
   display_parallel usage_messages
+  sleep 1
 
   exit 1
 }
@@ -6608,6 +6613,7 @@ parse_args() {
       ;;
     -h | --help)
       usage
+      break
       ;;
     --)
       shift
@@ -6622,7 +6628,7 @@ parse_args() {
     esac
   done
 }
-                                                                                                                                                                                                 
+
 # Main script execution
 main() {
   parse_args "$@"
@@ -6637,8 +6643,8 @@ main() {
   # Perform initialization
   server_config_fname="${HOME}/server_info.json"
 
-  initialize_server_info
-  clear
+  # initialize_server_info
+  # clear
 
   define_menus
 
