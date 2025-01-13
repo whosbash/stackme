@@ -4719,12 +4719,16 @@ deploy_stack_pipeline() {
   # Declare an associative array to hold service variables
   declare -A stack_variables
 
+  debug "$config_json"
+
   # Parse JSON data and populate associative array
   while IFS="=" read -r key value; do
     stack_variables["$key"]="$value"
   done < <(\
     echo "$config_json" | \
     jq -r '.variables | to_entries | .[] | "\(.key)=\(.value)"')
+
+  debug "${stack_variables[@]}"
 
   highlight "Deploying stack '$stack_name'"
 
@@ -6174,8 +6178,6 @@ generate_config_startup() {
     return 1
   fi
 
-  echo "Debug 1" >&2
-
   local network_name="$(get_network_name)"
 
   if [[ -z "$network_name" ]]; then
@@ -6183,8 +6185,6 @@ generate_config_startup() {
     error "Unable to retrieve network name. $reason"
     return 1
   fi
-
-  debug "Debug 2"
 
   collected_object="$(process_prompt_items "$collected_items")"
 
@@ -6207,8 +6207,6 @@ generate_config_startup() {
 
   # Ensure everything is quoted correctly
   manage_prometheus_config_file "$url_prometheus" "$url_jaeger" #"$url_node"
-
-  debug "Debug 3"
 
   # Ensure everything is quoted correctly
   jq -n \
