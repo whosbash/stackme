@@ -5405,14 +5405,22 @@ update_and_install_packages() {
   wait_apt_lock 5 60
 
   # Install required apt packages quietly
-  packages=(
+  apt_packages=(
     "sudo" "apt-utils" "apparmor-utils" "apache2-utils" "jq" "python3" 
     "docker" "figlet" "swaks" "netcat" "vnstat" "network-manager" "upower"
   )
   step_message="Installing required apt-get packages"
   step_progress 3 $total_steps "$step_message"
-  install_all_packages "apt-get" "${packages[@]}"
+  install_all_packages "apt-get" "${apt_packages[@]}"
   handle_exit $? 3 $total_steps "$step_message"
+
+  snap_packages=(
+    "yq"
+  )
+  step_message="Installing required snao packages"
+  step_progress 4 $total_steps "$step_message"
+  install_all_packages "snap" "${snap_packages[@]}"
+  handle_exit $? 4 $total_steps "$step_message"
 
   success "Packages installed successfully."
 
