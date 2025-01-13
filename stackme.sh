@@ -6163,13 +6163,6 @@ generate_config_startup() {
           "required": "yes",
           "validate_fn": "validate_url_suffix" 
       }
-      #{
-      #    "name": "url_node",
-      #    "label": "Node Domain Name",
-      #    "description": "Domain name for Node",
-      #    "required": "yes",
-      #    "validate_fn": "validate_url_suffix" 
-      #}
   ]'
 
   collected_items="$(run_collection_process "$prompt_items")"
@@ -6191,13 +6184,13 @@ generate_config_startup() {
 
   email_ssl="$(echo "$collected_object" | jq -r '.email_ssl')"
   url_traefik="$(echo "$collected_object" | jq -r '.url_traefik')"
-  url_jaeger="$(echo "$collected_object" | jq -r '.url_jaeger')"
-  url_prometheus="$(echo "$collected_object" | jq -r '.url_prometheus')"
-  url_node="$(echo "$collected_object" | jq -r '.url_node')"
-  url_grafana="$(echo "$collected_object" | jq -r '.url_grafana')"
-  url_kibana="$(echo "$collected_object" | jq -r '.url_kibana')"
   dashboard_username="$(echo "$collected_object" | jq -r '.dashboard_username')"
   dashboard_password="$(echo "$collected_object" | jq -r '.dashboard_password')"
+  
+  url_jaeger="$(echo "$collected_object" | jq -r '.url_jaeger')"
+  url_prometheus="$(echo "$collected_object" | jq -r '.url_prometheus')"
+  url_grafana="$(echo "$collected_object" | jq -r '.url_grafana')"
+  url_kibana="$(echo "$collected_object" | jq -r '.url_kibana')"
 
   dashboard_credentials="$(
         htpasswd -nbB "$dashboard_username" "$dashboard_password" | \
