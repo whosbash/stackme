@@ -5591,16 +5591,20 @@ services:
       - "9200:9200"
     networks:
       - {{network_name}}
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
     deploy:
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.elasticsearch.rule=Host(\`{{url_elasticsearch}}\`)"
-        - "traefik.http.routers.elasticsearch.entrypoints=websecure"
-        - "traefik.http.routers.elasticsearch.tls.certresolver=letsencryptresolver"
-        - "traefik.http.services.elasticsearch.loadbalancer.server.port=9200"
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
 
   kibana:
     image: docker.elastic.co/kibana/kibana:7.10.0
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
     ports:
       - "5601:5601"
     networks:
@@ -5612,6 +5616,8 @@ services:
         - "traefik.http.routers.kibana.entrypoints=websecure"
         - "traefik.http.routers.kibana.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.kibana.loadbalancer.server.port=5601"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
     depends_on:
       - elasticsearch
 
@@ -5633,7 +5639,6 @@ services:
 
   node-exporter:
     image: prom/node-exporter:latest
-    restart: unless-stopped
   
     networks:
       - {{network_name}}
@@ -5687,6 +5692,9 @@ volumes:
   vol_certificates:
     external: true
     name: volume_swarm_certificates
+  es_data:
+    external: true
+    name: volume_es_data
 
 networks:
   {{network_name}}:
@@ -6019,13 +6027,6 @@ generate_config_startup() {
           "validate_fn": "validate_url_suffix" 
       },
       {
-          "name": "url_elasticsearch",
-          "label": "Elasticsearch Domain Name",
-          "description": "Domain name for Elasticsearch",
-          "required": "yes",
-          "validate_fn": "validate_url_suffix"
-      },
-      {
           "name": "url_prometheus",
           "label": "Prometheus Domain Name",
           "description": "Domain name for logs and metrics",
@@ -6072,7 +6073,6 @@ generate_config_startup() {
   url_node="$(echo "$collected_object" | jq -r '.url_node')"
   url_grafana="$(echo "$collected_object" | jq -r '.url_grafana')"
   url_kibana="$(echo "$collected_object" | jq -r '.url_kibana')"
-  url_elasticsearch="$(echo "$collected_object" | jq -r '.url_elasticsearch')"
   dashboard_username="$(echo "$collected_object" | jq -r '.dashboard_username')"
   dashboard_password="$(echo "$collected_object" | jq -r '.dashboard_password')"
 
@@ -6096,7 +6096,6 @@ generate_config_startup() {
     --arg url_node "$url_node" \
     --arg url_grafana "$url_grafana" \
     --arg url_kibana "$url_kibana" \
-    --arg url_elasticsearch "$url_elasticsearch" \
     --arg dashboard_credentials "$dashboard_credentials" \
     --arg network_name "$network_name" \
     '{
@@ -6110,7 +6109,6 @@ generate_config_startup() {
           "url_prometheus": $url_prometheus,
           "url_node": $url_node,
           "url_kibana": $url_kibana,
-          "url_elasticsearch": $url_elasticsearch,
           "url_grafana": $url_grafana,          
           "network_name": $network_name
         },
