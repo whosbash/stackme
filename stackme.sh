@@ -6198,14 +6198,6 @@ generate_config_startup() {
   )"
 
   # Ensure everything is quoted correctly
-  prometheus_config_path="$STACKS_FOLDER/prometheus.yml"
-  prometheus_scrape_config="$(create_scrape_config --job_name "prometheus" \
-    --metrics_path "/metrics" \
-    --honor_timestamps "false" \
-    --honor_labels "true" \
-    --scrape_interval "10s" \
-    --targets "$url_node,$url_prometheus")"
-
   manage_prometheus_config_file "$url_prometheus" "$url_jaeger" #"$url_node"
 
   # Ensure everything is quoted correctly
