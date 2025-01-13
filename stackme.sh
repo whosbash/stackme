@@ -4923,6 +4923,7 @@ deploy_stack() {
 
   if [ $? -ne 0 ]; then
     failure "Stack $stack_name configuration validation failed."
+    wait_for_input
     return 1
   fi
 
