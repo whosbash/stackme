@@ -6177,6 +6177,8 @@ generate_config_startup() {
     return 1
   fi
 
+  echo "Debug 1" >&2
+
   local network_name="$(get_network_name)"
 
   if [[ -z "$network_name" ]]; then
@@ -6185,7 +6187,11 @@ generate_config_startup() {
     return 1
   fi
 
+  debug "Debug 2"
+
   collected_object="$(process_prompt_items "$collected_items")"
+
+  debug "$collected_object"
 
   email_ssl="$(echo "$collected_object" | jq -r '.email_ssl')"
   url_traefik="$(echo "$collected_object" | jq -r '.url_traefik')"
@@ -6204,6 +6210,8 @@ generate_config_startup() {
 
   # Ensure everything is quoted correctly
   manage_prometheus_config_file "$url_prometheus" "$url_jaeger" #"$url_node"
+
+  debug "Debug 3"
 
   # Ensure everything is quoted correctly
   jq -n \
