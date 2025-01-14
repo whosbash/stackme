@@ -4811,6 +4811,9 @@ deploy_stack_pipeline() {
   )"
   stack_handle_exit "$?" 5 "$message"
 
+  debug "$substituted_template"
+  wait_for_input
+
   # Step 6: Write the substituted template to the compose file
 
   # Create folder stacks on home path
@@ -6345,7 +6348,7 @@ generate_config_monitor(){
   step_info 3 $total_steps "Add scrape_configs to prometheus.yml"
 
   # Ensure everything is quoted correctly
-  manage_prometheus_config_file "$url_prometheus" "$url_jaeger"
+  manage_prometheus_config_file "$url_prometheus" "$url_jaeger" "$url_node_exporter"
 
   # Ensure everything is quoted correctly
   jq -n \
@@ -6830,3 +6833,4 @@ main() {
 
 # Call the main function
 main "$@"
+
