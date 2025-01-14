@@ -3344,8 +3344,7 @@ render_options() {
       option="${option_label}"
     else
       option="${option_label}: ${truncated_option_desc}"
-    fi
-    
+    fi    
     
     menu_lines+=("$option")
   done
@@ -3732,8 +3731,6 @@ transition_to_menu() {
 navigate_menu() {
   local menu_name="$1"
 
-  echo "$menu_name" >&2
-
   clean_screen
   transition_to_menu "$menu_name"
   clean_screen
@@ -3747,6 +3744,10 @@ navigate_menu() {
   if ! is_menu_in_history "$menu_name"; then
       push_menu_in_history "$menu_name"
   fi
+
+  echo -e "$menu_json"
+
+  wait_for_input
 
   local title page_size menu_items_json
   local menu_options=()
@@ -6696,16 +6697,13 @@ define_menu_health(){
     build_menu_item "Package Updates" "install" \
       "diplay_header 'Package Updates' && update_and_check_packages && wait_for_input" \
   )"
-
-  page_size=5
-
   items=(
     "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" \
     "$item_6" "$item_7" "$item_8" "$item_9" "$item_10"
   )
 
   menu_object="$(
-    build_menu "$menu_name" $page_size "${items[@]}"
+    build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}"
   )"
 
   define_menu "$menu_name" "$menu_object"
@@ -6715,21 +6713,15 @@ define_menu_health(){
 define_menu_main(){
   menu_name="Main"
 
-  item_1="$(\
-    build_menu_item "Stacks" "explore" "navigate_menu 'Stacks'"\
-  )"
-  item_2="$(\
-    build_menu_item "Utilities" "explore" "navigate_menu 'Utilities'"\
-  )"
-  item_3="$(\
-    build_menu_item "Health" "diagnose" "navigate_menu 'Health'"\
-  )"
+  item_1="$(build_menu_item "Stacks" "explore" "navigate_menu 'Stacks'")"
+  item_2="$(build_menu_item "Utilities" "explore" "navigate_menu 'Utilities'")"
+  item_3="$(build_menu_item "Health" "diagnose" "navigate_menu 'Health'")"
 
   items=(
     "$item_1" "$item_2" "$item_3"
   )
 
-  menu_object="$(build_menu "$menu_name" $page_size "${items[@]}")"
+  menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
 
   define_menu "$menu_name" "$menu_object"
 }
@@ -6830,8 +6822,8 @@ main() {
   # Perform initialization
   server_config_fname="${HOME}/server_info.json"
 
-  initialize_server_info
-  clear
+  # initialize_server_info
+  # clear
 
   define_menus
 
