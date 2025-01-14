@@ -4146,11 +4146,14 @@ is_portainer_credentials_correct() {
 # Function to signup on portainer
 signup_on_portainer() {
   local portainer_url="$1"
-  local credentials="$2"
-
+  local username="$2"
+  local password="$3"
+  
+  echo "Username: $username" >&2
+  echo "Password: $password" >&2
+ 
   # Prepare credentials in JSON format
   echo "Credentials: $credentials" >&2
-
   # Validate and reformat JSON
   credentials=$(echo "$credentials" | jq -c . 2>/dev/null)
   if [ $? -ne 0 ]; then
@@ -6275,11 +6278,7 @@ generate_config_portainer() {
             {
                 "name": "signup_on_portainer",
                 "description": "Signup on portainer",
-                "command": (
-                    "signup_on_portainer " + 
-                    $portainer_url + " " + 
-                    (@json ($portainer_username | tojson + ":" + $portainer_password | tojson))
-                )
+                "command": ("signup_on_portainer \"" + $portainer_url + "\" \"" + $portainer_username + "\" \"" + $portainer_password + "\"")
             }
         ]
     }' | jq . || {
