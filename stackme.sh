@@ -3745,10 +3745,6 @@ navigate_menu() {
       push_menu_in_history "$menu_name"
   fi
 
-  echo -e "$menu_json"
-
-  wait_for_input
-
   local title page_size menu_items_json
   local menu_options=()
   local debounce_time=0.25
@@ -4686,8 +4682,6 @@ deploy_stack_pipeline() {
   local stack_name="$1" # stack name (e.g., redis, postgres)
   local config_json="$2" # JSON data with stack setup cofiguration
 
-  debug "$config_json"
-
   total_steps=10
 
   stack_step_progress(){
@@ -4721,8 +4715,6 @@ deploy_stack_pipeline() {
   # Declare an associative array to hold service variables
   declare -A stack_variables
 
-  debug "$config_json"
-
   # Parse JSON data and populate associative array
   while IFS="=" read -r key value; do
     stack_variables["$key"]="$value"
@@ -4753,9 +4745,9 @@ deploy_stack_pipeline() {
         dependency_message="Deploying dependency: $dependency"
         stack_step_progress 1 "$dependency_message"
 
-        # Fetch JSON for the dependency
-        deploy_stack "$dependency"
-        stack_handle_exit "$?" 1 "$dependency_message"  
+        # # Fetch JSON for the dependency
+        # deploy_stack "$dependency"
+        # stack_handle_exit "$?" 1 "$dependency_message"  
       else
         dependency_message="Dependency \"$dependency\" already exists"
         stack_step_warning 1 "$dependency_message"
@@ -6822,8 +6814,8 @@ main() {
   # Perform initialization
   server_config_fname="${HOME}/server_info.json"
 
-  # initialize_server_info
-  # clear
+  initialize_server_info
+  clear
 
   define_menus
 
