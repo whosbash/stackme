@@ -5735,134 +5735,6 @@ services:
         - "traefik.http.routers.dashboard.middlewares=myauth"
         - "traefik.http.middlewares.myauth.basicauth.users={{dashboard_credentials}}"
 
-  jaeger:
-    image: jaegertracing/all-in-one:1.43
-    environment:
-      - JAEGER_STORAGE_TYPE=elasticsearch
-      - JAEGER_ES_SERVER_URL=http://elasticsearch:9200
-      - JAEGER_ES_INDEX_PREFIX=jaeger
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
-      interval: 30s
-      retries: 3
-    ports:
-      - "6831:6831/udp" # Jaeger agent
-      - "16686:16686"   # Jaeger UI
-    networks:
-      - {{network_name}}
-    deploy:
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.jaeger.rule=Host(\`{{url_jaeger}}\`)"
-        - "traefik.http.routers.jaeger.entrypoints=websecure"
-        - "traefik.http.routers.jaeger.tls.certresolver=letsencryptresolver"
-        - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
-    depends_on:
-      - elasticsearch
-
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.0
-    environment:
-      - discovery.type=single-node
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
-    ports:
-      - "9200:9200"
-    networks:
-      - {{network_name}}
-    volumes:
-      - es_data:/usr/share/elasticsearch/data
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-          cpus: '1.0'
-        reservations:
-          memory: 1G
-
-#  kibana:
-#    image: docker.elastic.co/kibana/kibana:7.10.0
-#    environment:
-#      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-#    ports:
-#      - "5601:5601"
-#    networks:
-#      - {{network_name}}
-#    deploy:
-#      labels:
-#        - "traefik.enable=true"
-#        - "traefik.http.routers.kibana.rule=Host(\`{{url_kibana}}\`)"
-#        - "traefik.http.routers.kibana.entrypoints=websecure"
-#        - "traefik.http.routers.kibana.tls.certresolver=letsencryptresolver"
-#        - "traefik.http.services.kibana.loadbalancer.server.port=5601"
-#    volumes:
-#      - es_data:/usr/share/elasticsearch/data
-#    depends_on:
-#      - elasticsearch
-#
-#  grafana:
-#    image: grafana/grafana
-#    ports:
-#      - "3000:3000"
-#    networks:
-#      - {{network_name}}
-#    deploy:
-#      labels:
-#        - "traefik.enable=true"
-#        - "traefik.http.routers.grafana.rule=Host(\`{{url_grafana}}\`)"
-#        - "traefik.http.routers.grafana.entrypoints=websecure"
-#        - "traefik.http.routers.grafana.tls.certresolver=letsencryptresolver"
-#        - "traefik.http.services.grafana.loadbalancer.server.port=3000"
-#    depends_on:
-#      - elasticsearch
-#
-#  node-exporter:
-#    image: prom/node-exporter:latest
-#  
-#    networks:
-#      - {{network_name}}
-#  
-#    ports:
-#      - "9100:9100"
-#  
-#    deploy:
-#      mode: replicated
-#      replicas: 1
-#      placement:
-#        constraints:
-#          - node.role == manager
-#      labels:
-#        - traefik.enable=true
-#        - traefik.http.routers.node-exporter.rule=Host(\`{{url_node}}\`)
-#        - traefik.http.services.node-exporter.loadbalancer.server.port=9100
-#        - traefik.http.routers.node-exporter.service=node-exporter
-#        - traefik.http.routers.node-exporter.tls.certresolver=letsencryptresolver
-#        - traefik.http.routers.node-exporter.entrypoints=websecure
-#        - traefik.http.routers.node-exporter.tls=true
-
-  prometheus:
-    image: prom/prometheus:v2.47.0
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090" # Prometheus web interface
-    networks:
-      - {{network_name}}
-
-    deploy:
-      mode: replicated
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-      labels:
-        - traefik.enable=true
-        - traefik.http.routers.prometheus.rule=Host(\`{{url_prometheus}}\`)
-        - traefik.http.services.prometheus.loadbalancer.server.port=9090
-        - traefik.http.routers.prometheus.service=prometheus
-        - traefik.http.routers.prometheus.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.prometheus.entrypoints=websecure
-        - traefik.http.routers.prometheus.tls=true
-
 volumes:
   vol_shared:
     external: true
@@ -5940,6 +5812,131 @@ networks:
 EOL
 }
 
+# Function to generate compose file for Monitor
+compose_monitor(){
+  cat <<EOL
+version: '3'
+
+services:
+  grafana:
+    image: grafana/grafana:10.2.2
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - ./grafana/dashboard.yml:/etc/grafana/provisioning/dashboards/dashboard.yml
+      - ./grafana/hotrod_metrics_logs.json:/etc/grafana/provisioning/dashboards/hotrod_metrics_logs.json
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.grafana.rule=Host(\`{{url_grafana}}\`)"
+        - "traefik.http.routers.grafana.entrypoints=websecure"
+        - "traefik.http.routers.grafana.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/api/prom/push'
+
+  loki:
+    image: grafana/loki:2.9.2
+    ports:
+      - '3100:3100'
+    command: -config.file=/etc/loki/local-config.yaml
+    # send Loki traces to Jaeger
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
+      - JAEGER_SAMPLER_TYPE=const
+      - JAEGER_SAMPLER_PARAM=1
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/api/prom/push'
+        # Prevent container from being stuck when shutting down
+        # https://github.com/grafana/loki/issues/2361#issuecomment-718024318
+        loki-timeout: 1s
+        loki-max-backoff: 1s
+        loki-retries: 1
+  
+    jaeger:
+    image: jaegertracing/all-in-one:1.51
+    ports:
+      - '6831:6831'
+      - '16686:16686'
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/api/prom/push'
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.jaeger.rule=Host(\`{{url_jaeger}}\`)"
+        - "traefik.http.routers.jaeger.entrypoints=websecure"
+        - "traefik.http.routers.jaeger.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
+
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090" # Prometheus web interface
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/api/prom/push'
+    networks:
+      - {{network_name}}
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.prometheus.rule=Host(\`{{url_prometheus}}\`)
+        - traefik.http.services.prometheus.loadbalancer.server.port=9090
+        - traefik.http.routers.prometheus.service=prometheus
+        - traefik.http.routers.prometheus.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.prometheus.entrypoints=websecure
+        - traefik.http.routers.prometheus.tls=true
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    restart: unless-stopped
+
+    networks:
+      - {{network_name}}
+
+    ports:
+      - "9100:9100"
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.node-exporter.rule=Host(\`{{url_node_exporter}}\`)
+        - traefik.http.services.node-exporter.loadbalancer.server.port=9100
+        - traefik.http.routers.node-exporter.service=node-exporter
+        - traefik.http.routers.node-exporter.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.node-exporter.entrypoints=websecure
+        - traefik.http.routers.node-exporter.tls=true
+
+networks:
+  {{network_name}}:
+    external: true
+    attachable: true
+EOL
+}
+
 # Function to generate compose file for Redis
 compose_redis() {
   cat <<EOL
@@ -5983,11 +5980,13 @@ services:
     environment:
       - POSTGRES_PASSWORD={{db_password}}
       - PG_MAX_CONNECTIONS=500
-    ## Uncomment the following line to use a custom configuration file
-    # ports:
-    #   - 5432:5432
+    
+    ports:
+      - 5432:5432
+    
     volumes:
       - {{volume_name}}:/var/lib/postgresql/data
+    
     networks:
       - {{network_name}}
 
