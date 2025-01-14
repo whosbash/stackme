@@ -4146,14 +4146,9 @@ is_portainer_credentials_correct() {
 # Function to signup on portainer
 signup_on_portainer() {
   local portainer_url="$1"
-  local username="$2"
-  local password="$3"
-
-  echo "Username: $username" >&2
-  echo "Password: $password" >&2
+  local credentials="$2"
 
   # Prepare credentials in JSON format
-  credentials="{\"username\":\"$username\",\"password\":\"$password\"}"
   echo "Credentials: $credentials" >&2
 
   # Validate and reformat JSON
@@ -4813,7 +4808,6 @@ deploy_stack_pipeline() {
   stack_handle_exit "$?" 5 "$message"
 
   debug "$substituted_template"
-  wait_for_input
 
   # Step 6: Write the substituted template to the compose file
 
@@ -6275,7 +6269,6 @@ generate_config_portainer() {
             "portainer_agent_version": $portainer_agent_version,
             "portainer_ce_version": $portainer_ce_version,
             "portainer_url": $portainer_url,
-            "portainer_credentials": $portainer_credentials,
             "network_name": $network_name
         },
         "dependencies": ["traefik"],
@@ -6284,7 +6277,7 @@ generate_config_portainer() {
             {
                 "name": "signup_on_portainer",
                 "description": "Signup on portainer",
-                "command": "signup_on_portainer $portainer_url $portainer_username $portainer_password"
+                "command": "signup_on_portainer $portainer_url $portainer_credentials"
             }
         ]
     }' | jq . || {
