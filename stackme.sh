@@ -6245,13 +6245,10 @@ generate_config_startup() {
           "url_grafana": $url_grafana,          
           "network_name": $network_name
         },
-        "dependencies": {},
+        "dependencies": [],
         "prepare": [],
         "finalize": []
-    }' | jq . || {
-        error "Failed to generate JSON"
-        return 1
-    }
+    }'
 }
 
 # Function to generate configuration files for portainer
