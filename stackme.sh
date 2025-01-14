@@ -6296,22 +6296,114 @@ generate_config_portainer() {
     }
 }
 
+generate_config_monitor(){
+  local stack_name="monitor"
+  
+  total_steps=4
+
+  prompt_items='[
+      {
+          "name": "url_prometheus",
+          "label": "Prometheus Domain Name",
+          "description": "Domain name for logs and metrics",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      },
+      {
+          "name": "url_jaeger",
+          "label": "Jaeger Domain Name",
+          "description": "Domain for tracing tool",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      },
+      {
+          "name": "url_grafana",
+          "label": "Grafana Domain Name",
+          "description": "Domain name for Grafana",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      },
+      {
+          "name": "url_node_exporter",
+          "label": "Node Exporter Domain Name",
+          "description": "Domain name for Node Exporter",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      }
+  ]'
+
+  step_info 1 $total_steps "Prompting required Monitor information"
+  collected_items="$(run_collection_process "$prompt_items")"
+
+  if [[ "$collected_items" == "[]" ]]; then
+    step_error 1 $total_steps "Unable to prompt Monitor configuration."
+    return 1
+  fi
+
+  collected_object="$(process_prompt_items "$collected_items")"
+
+  url_jaeger="$(echo "$collected_object" | jq -r '.url_jaeger')"
+  url_prometheus="$(echo "$collected_object" | jq -r '.url_prometheus')"
+  url_grafana="$(echo "$collected_object" | jq -r '.url_grafana')"
+
+  step_info 2 $total_steps "Retrieving network name"
+  local network_name="$(get_network_name)"
+
+  if [[ -z "$network_name" ]]; then
+    reason="Either stackme was not initialized properly or server_info.json file is corrupted."
+    error "Unable to retrieve network name. $reason"
+    return 1
+  fi
+
+  step_info 3 $total_steps "Add scrape_configs to prometheus.yml"
+
+  # Ensure everything is quoted correctly
+  manage_prometheus_config_file "$url_prometheus" "$url_jaeger"
+
+  # Ensure everything is quoted correctly
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg url_jaeger "$url_jaeger" \
+    --arg url_prometheus "$url_prometheus" \
+    --arg url_grafana "$url_grafana" \
+    --arg url_node_exporter "$url_node_exporter" \
+    --arg url_kibana "$url_kibana" \
+    --arg network_name "$network_name" \
+    '{
+        "name": $stack_name,
+        "variables": {
+          "stack_name": $stack_name,
+          "url_jaeger": $url_jaeger,
+          "url_prometheus": $url_prometheus,
+          "url_node_exporter": $url_node_exporter,
+          "url_grafana": $url_grafana,
+          "url_kibana": $url_kibana,
+          "network_name": $network_name
+        },
+        "dependencies": ["traefik"],
+        "prepare": [],
+        "finalize": []
+    }'
+}
+
 # Function to generate configuration files for redis
 generate_config_redis() {
   local stack_name = 'redis'
-
-  local network_name="$(get_network_name)"
 
   highlight "Gathering $stack_name configuration"
 
   total_steps=1
 
   step_message="Retrieving Redis image version"
-  step_info 1 $total_steps 
+  step_info 1 $total_steps "$step_message"
   local image_version="$(get_latest_stable_version "redis")"
   handle_exit "$?" 1 $total_steps "$step_message"
   
   info "Redis version: $image_version"
+
+  step_message="Retrieving network name"
+  step_info 2 $total_steps "$step_message"
+  local network_name="$(get_network_name)"
 
   jq -n \
     --arg stack_name "$stack_name" \
@@ -6344,7 +6436,15 @@ generate_config_postgres() {
   local image_version='15'
 
   local postgres_user="postgres"
+
+  step_message="Generating use postgres password"
+  step_info 1 $total_steps "$step_message"
+  local network_name="$(get_network_name)"
+
   local postgres_password="$(random_string)"
+
+  step_message="Retrieving network name"
+  step_info 2 $total_steps "$step_message"
 
   # Ensure everything is quoted correctly
   jq -n \
@@ -6446,18 +6546,43 @@ deploy_stack_portainer() {
   deploy_stack 'portainer'
 }
 
-deploy_stack_startup_and_portainer() {
+rollback_stack(){
   cleanup
   clean_screen
-  deploy_stack 'startup'
+
+  docker stack rm "$1"
+}
+
+deploy_stack_startup() {
+  deploy_stack_traefik
 
   if [[ $? -ne 0 ]]; then
+    failure "Portainer deployment failed. Rolling back..."
+
+    rollback_stack "traefik"
     return 1
   fi
 
-  clean_screen
+  deploy_stack_portainer
 
-  deploy_stack 'portainer'
+  if [[ $? -ne 0 ]]; then
+    failure "Portainer deployment failed. Rolling back..."
+
+    rollback_stack "traefik"
+    rollback_stack "portainer"
+    return 1
+  fi
+
+  deploy_stack_monitor
+
+  if [[ $? -ne 0 ]]; then
+    failure "Monitor deployment failed. Rolling back..."
+
+    rollback_stack "traefik"
+    rollback_stack "portainer"
+    rollback_stack "monitor"
+    return 1
+  fi
 }
 
 # Function to deploy a PostgreSQL stack
@@ -6541,41 +6666,41 @@ define_menu_health(){
 
   item_1="$(\
     build_menu_item "Machine specifications" "describe" \
-    "diplay_header 'Machine specifications' && generate_machine_specs && wait_for_input"
+      "diplay_header 'Machine specifications' && generate_machine_specs && wait_for_input"
   )"
   item_2="$(
     build_menu_item "Awake Usage" "describe" \
-    "diplay_header 'Uptime' && uptime_usage && wait_for_input"
+      "diplay_header 'Uptime' && uptime_usage && wait_for_input"
   )"
   item_3="$(
     build_menu_item "Memory Usage" "describe" \
-    "diplay_header 'Memory' && memory_usage && wait_for_input"
+      "diplay_header 'Memory' && memory_usage && wait_for_input"
   )"
   item_4="$(
     build_menu_item "Disk Usage" "describe" \
-    "diplay_header 'Disk' && disk_usage && wait_for_input"
+      "diplay_header 'Disk' && disk_usage && wait_for_input"
   )"
   item_5="$(
     build_menu_item "Network" "describe" \
-    "diplay_header 'Network' && network_usage && wait_for_input"
+      "diplay_header 'Network' && network_usage && wait_for_input"
   )"
   item_6="$(\
     build_menu_item "Top Processes" "list" \
-    "diplay_header 'Processes' && top_processes && wait_for_input" \
+      "diplay_header 'Processes' && top_processes && wait_for_input" \
   )"
   item_7="$(\
     build_menu_item "Security" "diagnose" \
-    "diplay_header 'Security' && security_diagnostics && wait_for_input")"
+      "diplay_header 'Security' && security_diagnostics && wait_for_input")"
   item_8="$(\
     build_menu_item "Load Average" "describe" \
-    "diplay_header 'Load Average' && load_average && wait_for_input")"
+      "diplay_header 'Load Average' && load_average && wait_for_input")"
   item_9="$(\
     build_menu_item "Bandwidth" "describe" \
-    "diplay_header 'Bandwidth' && bandwidth_usage && wait_for_input" \
+      "diplay_header 'Bandwidth' && bandwidth_usage && wait_for_input" \
   )"
   item_10="$(\
     build_menu_item "Package Updates" "install" \
-    "diplay_header 'Package Updates' && update_and_check_packages && wait_for_input" \
+      "diplay_header 'Package Updates' && update_and_check_packages && wait_for_input" \
   )"
 
   page_size=5
