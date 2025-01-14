@@ -6533,6 +6533,12 @@ deploy_stack_portainer() {
   deploy_stack 'portainer'
 }
 
+deploy_stack_monitor() {
+  cleanup
+  clean_screen
+  deploy_stack 'monitor'
+}
+
 rollback_stack(){
   cleanup
   clean_screen
