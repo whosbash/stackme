@@ -2712,6 +2712,7 @@ wait_for_input() {
   prompt_message="$(format "question" "$prompt_message")"
   echo -n "$prompt_message" >&2  # Display the message without a newline
   read -n 1 -s user_input    # Wait for a single character input, suppress echo
+  echo >&2
 }
 
 # Function to prompt user and wait for any key press
@@ -5855,7 +5856,7 @@ services:
         loki-max-backoff: 1s
         loki-retries: 1
   
-    jaeger:
+  jaeger:
     image: jaegertracing/all-in-one:1.51
     ports:
       - '6831:6831'
@@ -6279,7 +6280,13 @@ generate_config_portainer() {
         },
         "dependencies": ["traefik"],
         "prepare": [],
-        "finalize": []
+        "finalize": [
+            {
+                "name": "signup_on_portainer",
+                "description": "Signup on portainer",
+                "command": "signup_on_portainer $portainer_url $portainer_username $portainer_password"
+            }
+        ]
     }' | jq . || {
         echo "Failed to generate JSON"
         return 1
@@ -6543,10 +6550,19 @@ deploy_stack_monitor() {
 }
 
 rollback_stack(){
+  local stack_name="$1"
+  
   cleanup
   clean_screen
 
-  docker stack rm "$1"
+  docker stack rm "$stack_name"
+
+  if [[ $? -ne 0 ]]; then
+    failure "Rollback of stack $stack_name failed"
+    return 1
+  fi
+
+  success "Rollback of stack $stack_name successful"
 }
 
 deploy_stack_startup() {
