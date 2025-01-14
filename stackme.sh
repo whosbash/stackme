@@ -6277,7 +6277,7 @@ generate_config_portainer() {
             {
                 "name": "signup_on_portainer",
                 "description": "Signup on portainer",
-                "command": "signup_on_portainer $portainer_url $portainer_credentials"
+                "command": "signup_on_portainer \($portainer_url) \($portainer_credentials)"
             }
         ]
     }' | jq . || {
