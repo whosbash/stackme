@@ -4842,7 +4842,7 @@ deploy_stack_pipeline() {
   fi
 
   # Step 8: Deploy the service on Docker Swarm
-  if [ "$stack_name" == "startup" ] || [ "$stack_name" == "portainer" ]; then
+  if [ "$stack_name" == "traefik" ] || [ "$stack_name" == "portainer" ]; then
     message="Deploying stack on Docker Swarm"
     stack_step_progress 8 "$message"
 
@@ -5664,7 +5664,7 @@ initialize_server_info() {
 ####################################### BEGIN OF COMPOSE FILES #####################################
 
 # Function to generate compose file for Traefik
-compose_startup() {
+compose_traefik() {
   CERT_PATH="/etc/traefik/letsencrypt/acme.json"
   
   cat <<EOL
@@ -6113,8 +6113,8 @@ manage_prometheus_config_file() {
 }
 
 # Function to generate configuration files for startup
-generate_config_startup() {
-  local stack_name="startup"
+generate_config_traefik() {
+  local stack_name="traefik"
 
   highlight "Gathering $stack_name configuration"
 
@@ -6146,34 +6146,6 @@ generate_config_startup() {
           "description": "Password for Traefik dashboard",
           "required": "yes",
           "validate_fn": "validate_password" 
-      },
-      {
-          "name": "url_prometheus",
-          "label": "Prometheus Domain Name",
-          "description": "Domain name for logs and metrics",
-          "required": "yes",
-          "validate_fn": "validate_url_suffix" 
-      },
-      {
-          "name": "url_jaeger",
-          "label": "Jaeger Domain Name",
-          "description": "Domain for tracing tool",
-          "required": "yes",
-          "validate_fn": "validate_url_suffix" 
-      },
-      {
-          "name": "url_kibana",
-          "label": "Kibana Domain Name",
-          "description": "Domain name for Kibana",
-          "required": "yes",
-          "validate_fn": "validate_url_suffix" 
-      },
-      {
-          "name": "url_grafana",
-          "label": "Grafana Domain Name",
-          "description": "Domain name for Grafana",
-          "required": "yes",
-          "validate_fn": "validate_url_suffix" 
       }
   ]'
 
@@ -6184,6 +6156,18 @@ generate_config_startup() {
     return 1
   fi
 
+  collected_object="$(process_prompt_items "$collected_items")"
+
+  email_ssl="$(echo "$collected_object" | jq -r '.email_ssl')"
+  url_traefik="$(echo "$collected_object" | jq -r '.url_traefik')"
+  dashboard_username="$(echo "$collected_object" | jq -r '.dashboard_username')"
+  dashboard_password="$(echo "$collected_object" | jq -r '.dashboard_password')"
+
+  dashboard_credentials="$(
+        htpasswd -nbB "$dashboard_username" "$dashboard_password" | \
+        sed -e 's/\$/\$\$/g' -e 's/\\\//\//g'
+  )"
+
   local network_name="$(get_network_name)"
 
   if [[ -z "$network_name" ]]; then
@@ -6192,35 +6176,11 @@ generate_config_startup() {
     return 1
   fi
 
-  collected_object="$(process_prompt_items "$collected_items")"
-
-  email_ssl="$(echo "$collected_object" | jq -r '.email_ssl')"
-  url_traefik="$(echo "$collected_object" | jq -r '.url_traefik')"
-  dashboard_username="$(echo "$collected_object" | jq -r '.dashboard_username')"
-  dashboard_password="$(echo "$collected_object" | jq -r '.dashboard_password')"
-  
-  url_jaeger="$(echo "$collected_object" | jq -r '.url_jaeger')"
-  url_prometheus="$(echo "$collected_object" | jq -r '.url_prometheus')"
-  url_grafana="$(echo "$collected_object" | jq -r '.url_grafana')"
-  url_kibana="$(echo "$collected_object" | jq -r '.url_kibana')"
-
-  dashboard_credentials="$(
-        htpasswd -nbB "$dashboard_username" "$dashboard_password" | \
-        sed -e 's/\$/\$\$/g' -e 's/\\\//\//g'
-  )"
-
-  # Ensure everything is quoted correctly
-  manage_prometheus_config_file "$url_prometheus" "$url_jaeger"
-
   # Ensure everything is quoted correctly
   jq -n \
     --arg stack_name "$stack_name" \
     --arg email_ssl "$email_ssl" \
     --arg url_traefik "$url_traefik" \
-    --arg url_jaeger "$url_jaeger" \
-    --arg url_prometheus "$url_prometheus" \
-    --arg url_grafana "$url_grafana" \
-    --arg url_kibana "$url_kibana" \
     --arg dashboard_credentials "$dashboard_credentials" \
     --arg network_name "$network_name" \
     '{
@@ -6229,11 +6189,7 @@ generate_config_startup() {
           "stack_name": $stack_name,
           "email_ssl": $email_ssl,
           "url_traefik": $url_traefik,
-          "dashboard_credentials": $dashboard_credentials,
-          "url_jaeger": $url_jaeger,
-          "url_prometheus": $url_prometheus,
-          "url_kibana": $url_kibana,
-          "url_grafana": $url_grafana,          
+          "dashboard_credentials": $dashboard_credentials,          
           "network_name": $network_name
         },
         "dependencies": [],
@@ -6332,7 +6288,7 @@ generate_config_portainer() {
             "portainer_credentials": $portainer_credentials,
             "network_name": $network_name
         },
-        "dependencies": ["startup"],
+        "dependencies": ["traefik"],
         "prepare": [],
         "finalize": []
     }' | jq . || {
@@ -6374,7 +6330,7 @@ generate_config_redis() {
                 "volume_name": $volume_name,
                 "network_name": $network_name
             },
-            "dependencies": ["startup", "portainer"],
+            "dependencies": ["traefik", "portainer"],
             "prepare": [],
             "finalize": []
         }' | jq . || {
@@ -6409,7 +6365,7 @@ generate_config_postgres() {
               "db_user": $db_user,
               "db_password": $db_password
           },
-          "dependencies": ["startup", "portainer"],
+          "dependencies": ["traefik", "portainer"],
           "prepare": [],
           "finalize": []
       }' | jq . || {
@@ -6464,7 +6420,7 @@ generate_config_whoami() {
               "domain_name": $domain_name,
               "network_name": $network_name,
           },
-          "dependencies": ["startup", "portainer"],
+          "dependencies": ["traefik", "portainer"],
           "prepare": [],
           "finalize": []
       }' | jq . || {
@@ -6478,10 +6434,10 @@ generate_config_whoami() {
 ################################ BEGIN OF STACK DEPLOYMENT FUNCTIONS ##############################
 
 # Function to deploy a traefik service
-deploy_stack_startup() {
+deploy_stack_traefik() {
   cleanup
   clean_screen
-  deploy_stack 'startup'
+  deploy_stack 'traefik'
 }
 
 # Function to deploy a portainer service
@@ -6536,8 +6492,8 @@ define_menu_stacks(){
 
   item_1="$(
       build_menu_item "Startup" \
-      "Traefik & Jager & Prometheus & ElasticSearch & Kibana & Grafana & Portainer" \
-      "deploy_stack_startup_and_portainer"
+      "Traefik & Portainer & Jaeger & Prometheus & Grafana" \
+      "deploy_stack_startup"
   )"
   item_2="$(
     build_menu_item "postgres" "Deploy" "deploy_stack_postgres" 
@@ -6555,7 +6511,7 @@ define_menu_stacks(){
     "$item_1" "$item_2" "$item_3" "$item_4"
   )
 
-  menu_object="$(build_menu "$menu_name" $page_size "${items[@]}")"
+  menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
 
   define_menu "$menu_name" "$menu_object"
 }
@@ -6565,21 +6521,17 @@ define_menu_utilities(){
   menu_name="Utilities"
 
   item_1="$(\
-    build_menu_item "Test SMPT e-mail" \
-    "Send" "send_smtp_test_email" \
+    build_menu_item "Test SMPT e-mail" "Send" "send_smtp_test_email" \
   )"
   item_2="$(
-    build_menu_item "Send Machine Specifications" \
-    "Send" "send_machine_specs_email"\
+    build_menu_item "Send Machine Specifications" "Send" "send_machine_specs_email"\
   )"
 
   items=(
     "$item_1" "$item_2"
   )
 
-  page_size=5
-
-  menu_object="$(build_menu "$menu_name" $page_size "${items[@]}")"
+  menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
 
   define_menu "$menu_name" "$menu_object"
 }
