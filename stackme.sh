@@ -4728,12 +4728,6 @@ deploy_stack_pipeline() {
     jq -r '.variables | to_entries | .[] | "\(.key)=\(.value | tostring)"'\
   )
 
-  # Print array content for debugging
-  echo "Stack Variables:" >&2
-  for key in "${!stack_variables[@]}"; do
-    echo "$key=${stack_variables[$key]}" >&2
-  done
-
   highlight "Deploying stack '$stack_name'"
 
   # Step 1: Deploy Dependencies
@@ -5880,7 +5874,6 @@ volumes:
 
 networks:
   {{network_name}}:
-    external: true
     attachable: true
 EOL
 }
@@ -6766,8 +6759,8 @@ main() {
   # Perform initialization
   server_config_fname="${HOME}/server_info.json"
 
-  # initialize_server_info
-  # clear
+  initialize_server_info
+  clear
 
   define_menus
 
