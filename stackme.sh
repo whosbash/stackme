@@ -6259,6 +6259,7 @@ generate_config_portainer() {
   --arg portainer_url "$portainer_url" \
   --arg portainer_username "$portainer_username" \
   --arg portainer_password "$portainer_password" \
+  --argjson portainer_credentials "$portainer_credentials" \
   --arg network_name "$network_name" \
   '{
         "variables": {
@@ -6274,7 +6275,7 @@ generate_config_portainer() {
             {
                 "name": "signup_on_portainer",
                 "description": "Signup on portainer",
-                "command": ("signup_on_portainer " + $portainer_url + " '\''{\"username\":\"" + $portainer_username + "\",\"password\":\"" + $portainer_password + "\"}'\'")
+                "command": ("signup_on_portainer " + $portainer_url + " \047" + ($portainer_username | tojson) + ":" + ($portainer_password | tojson) + "\047")
             }
         ]
     }' | jq . || {
