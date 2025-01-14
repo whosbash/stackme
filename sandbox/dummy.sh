@@ -77,7 +77,6 @@ create_scrape_config() {
     }'
 }
 
-
 # Function to add scrape_config to YAML file
 add_scrape_config() {
   # Input parameters
