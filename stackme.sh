@@ -1216,7 +1216,7 @@ EOF
   check_existing_job_name "$filename" "$job_name"
   
   if [[ $? -eq 0 ]]; then
-    error "job_name '$job_name' already exists in $filename." >&2
+    warning "job_name '$job_name' already exists in $filename." >&2
     return 1
   fi
 
@@ -6207,7 +6207,7 @@ generate_config_startup() {
   )"
 
   # Ensure everything is quoted correctly
-  manage_prometheus_config_file "$url_prometheus" "$url_jaeger" #"$url_node"
+  manage_prometheus_config_file "$url_prometheus" "$url_jaeger"
 
   # Ensure everything is quoted correctly
   jq -n \
