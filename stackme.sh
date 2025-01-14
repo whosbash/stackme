@@ -4848,8 +4848,10 @@ deploy_stack_pipeline() {
     portainer_config_json="$(load_json "$STACKS_FOLDER/portainer_config.json")"
     echo "$portainer_config_json" >&2
   
-    portainer_url="$(echo "$portainer_config_json" | jq -r '.variables.portainer_url')"
-    portainer_credentials="$(echo "$portainer_config_json" | jq -r '.variables.portainer_credentials')"
+    portainer_url="$(\
+      echo "$portainer_config_json" | jq -r '.variables.portainer_url')"
+    portainer_credentials="$(\
+      echo "$portainer_config_json" | jq -r '.variables.portainer_credentials')"
 
     upload_stack_on_portainer "$portainer_url" "$portainer_credentials" "$stack_name" "$compose_path"
   fi
@@ -6270,6 +6272,7 @@ generate_config_portainer() {
             "portainer_agent_version": $portainer_agent_version,
             "portainer_ce_version": $portainer_ce_version,
             "portainer_url": $portainer_url,
+            "portainer_credentials": $portainer_credentials,
             "network_name": $network_name
         },
         "dependencies": ["traefik"],
