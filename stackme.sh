@@ -2708,9 +2708,8 @@ wait_for_input() {
 
   # Display the prompt message and wait for user input (one character)
   prompt_message="$(format "question" "$prompt_message")"
-  echo -n "$prompt_message"  # Display the message without a newline
+  echo -n "$prompt_message" >&2  # Display the message without a newline
   read -n 1 -s user_input    # Wait for a single character input, suppress echo
-  echo                    # Print a newline after input
 }
 
 # Function to prompt user and wait for any key press
@@ -4721,8 +4720,6 @@ deploy_stack_pipeline() {
 
   debug "$config_json"
 
-  echo "$config_json" | jq . >&2
-
   # Parse JSON data and populate associative array
   while IFS="=" read -r key value; do
     stack_variables["$key"]="$value"
@@ -4731,9 +4728,11 @@ deploy_stack_pipeline() {
     jq -r '.variables | to_entries | .[] | "\(.key)=\(.value | tostring)"'\
   )
 
-
-  debug "Stack variables: "
-  debug "${stack_variables[@]}"
+  # Print array content for debugging
+  echo "Stack Variables:" >&2
+  for key in "${!stack_variables[@]}"; do
+    echo "$key=${stack_variables[$key]}" >&2
+  done
 
   highlight "Deploying stack '$stack_name'"
 
@@ -4926,8 +4925,6 @@ deploy_stack() {
   if [ -z "$config_json" ]; then
     return 1
   fi
-
-  debug "$config_json"
 
   # Check required fields
   validate_stack_config "$stack_name" "$config_json"
@@ -6200,8 +6197,6 @@ generate_config_startup() {
   fi
 
   collected_object="$(process_prompt_items "$collected_items")"
-
-  debug "$collected_object"
 
   email_ssl="$(echo "$collected_object" | jq -r '.email_ssl')"
   url_traefik="$(echo "$collected_object" | jq -r '.url_traefik')"
