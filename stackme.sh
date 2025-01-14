@@ -6275,7 +6275,7 @@ generate_config_portainer() {
             {
                 "name": "signup_on_portainer",
                 "description": "Signup on portainer",
-                "command": ("signup_on_portainer " + $portainer_url + " \047" + ($portainer_username | tojson) + ":" + ($portainer_password | tojson) + "\047")
+                "command": ("signup_on_portainer " + $portainer_url + " " + (@json {username: $portainer_username, password: $portainer_password}))
             }
         ]
     }' | jq . || {
@@ -6542,9 +6542,6 @@ deploy_stack_monitor() {
 
 rollback_stack(){
   local stack_name="$1"
-  
-  cleanup
-  clean_screen
 
   docker stack rm "$stack_name"
 
