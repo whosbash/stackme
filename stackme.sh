@@ -5786,42 +5786,42 @@ services:
         reservations:
           memory: 1G
 
-  kibana:
-    image: docker.elastic.co/kibana/kibana:7.10.0
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-    ports:
-      - "5601:5601"
-    networks:
-      - {{network_name}}
-    deploy:
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.kibana.rule=Host(\`{{url_kibana}}\`)"
-        - "traefik.http.routers.kibana.entrypoints=websecure"
-        - "traefik.http.routers.kibana.tls.certresolver=letsencryptresolver"
-        - "traefik.http.services.kibana.loadbalancer.server.port=5601"
-    volumes:
-      - es_data:/usr/share/elasticsearch/data
-    depends_on:
-      - elasticsearch
-
-  grafana:
-    image: grafana/grafana
-    ports:
-      - "3000:3000"
-    networks:
-      - {{network_name}}
-    deploy:
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.grafana.rule=Host(\`{{url_grafana}}\`)"
-        - "traefik.http.routers.grafana.entrypoints=websecure"
-        - "traefik.http.routers.grafana.tls.certresolver=letsencryptresolver"
-        - "traefik.http.services.grafana.loadbalancer.server.port=3000"
-    depends_on:
-      - elasticsearch
-
+#  kibana:
+#    image: docker.elastic.co/kibana/kibana:7.10.0
+#    environment:
+#      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+#    ports:
+#      - "5601:5601"
+#    networks:
+#      - {{network_name}}
+#    deploy:
+#      labels:
+#        - "traefik.enable=true"
+#        - "traefik.http.routers.kibana.rule=Host(\`{{url_kibana}}\`)"
+#        - "traefik.http.routers.kibana.entrypoints=websecure"
+#        - "traefik.http.routers.kibana.tls.certresolver=letsencryptresolver"
+#        - "traefik.http.services.kibana.loadbalancer.server.port=5601"
+#    volumes:
+#      - es_data:/usr/share/elasticsearch/data
+#    depends_on:
+#      - elasticsearch
+#
+#  grafana:
+#    image: grafana/grafana
+#    ports:
+#      - "3000:3000"
+#    networks:
+#      - {{network_name}}
+#    deploy:
+#      labels:
+#        - "traefik.enable=true"
+#        - "traefik.http.routers.grafana.rule=Host(\`{{url_grafana}}\`)"
+#        - "traefik.http.routers.grafana.entrypoints=websecure"
+#        - "traefik.http.routers.grafana.tls.certresolver=letsencryptresolver"
+#        - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+#    depends_on:
+#      - elasticsearch
+#
 #  node-exporter:
 #    image: prom/node-exporter:latest
 #  
