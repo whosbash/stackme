@@ -5874,6 +5874,7 @@ volumes:
 
 networks:
   {{network_name}}:
+    external: true
     attachable: true
 EOL
 }
