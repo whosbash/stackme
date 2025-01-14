@@ -140,6 +140,8 @@ STACKS_FOLDER="${HOME}/stacks"
 DEFAULT_ARROW_OPTION='diamond'
 USER_DEFINED_ARROW=""
 
+DEFAULT_PAGE_SIZE=5
+
 ############################# BEGIN OF DISPLAY-RELATED FUNCTIONS #############################
 
 # Function to display a message with improved formatting
@@ -6652,8 +6654,6 @@ define_menu_main(){
   item_3="$(\
     build_menu_item "Health" "diagnose" "navigate_menu 'Health'"\
   )"
-  
-  page_size=5
 
   items=(
     "$item_1" "$item_2" "$item_3"
