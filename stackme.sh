@@ -4807,8 +4807,6 @@ deploy_stack_pipeline() {
   )"
   stack_handle_exit "$?" 5 "$message"
 
-  debug "$substituted_template"
-
   # Step 6: Write the substituted template to the compose file
 
   # Create folder stacks on home path
@@ -6277,7 +6275,7 @@ generate_config_portainer() {
             {
                 "name": "signup_on_portainer",
                 "description": "Signup on portainer",
-                "command": "signup_on_portainer \($portainer_url) \($portainer_credentials)"
+                "command": ("signup_on_portainer " + $portainer_url + " " + @sh $portainer_credentials)
             }
         ]
     }' | jq . || {
