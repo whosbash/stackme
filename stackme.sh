@@ -6275,7 +6275,11 @@ generate_config_portainer() {
             {
                 "name": "signup_on_portainer",
                 "description": "Signup on portainer",
-                "command": ("signup_on_portainer " + $portainer_url + " " + (@json {username: $portainer_username, password: $portainer_password}))
+                "command": (
+                    "signup_on_portainer " + 
+                    $portainer_url + " " + 
+                    (@json ($portainer_username | tojson + ":" + $portainer_password | tojson))
+                )
             }
         ]
     }' | jq . || {
