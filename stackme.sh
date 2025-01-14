@@ -6248,17 +6248,11 @@ generate_config_portainer() {
     return 1
   fi
 
-  portainer_url="$(\
-    get_variable_value_from_collection "$collected_items" "portainer_url" \
-  )"
+  collected_object="$(process_prompt_items "$collected_items")"
 
-  portainer_username="$(\
-    get_variable_value_from_collection "$collected_items" "portainer_username"
-  )"
-
-  portainer_password="$(\
-    get_variable_value_from_collection "$collected_items" "portainer_password"
-  )"
+  portainer_url="$(echo "$collected_object" | jq -r '.portainer_url')"
+  portainer_username="$(echo "$collected_object" | jq -r '.portainer_username')"
+  portainer_password="$(echo "$collected_object" | jq -r '.portainer_password')"
 
   portainer_credentials="$(
     jq -n \
