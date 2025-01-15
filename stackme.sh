@@ -5345,7 +5345,7 @@ install_package() {
     info "Starting installation of package: $package"
 
     # Try to install the package and check for success
-    if ! DEBIAN_FRONTEND=noninteractive $command install "$package" -yq >/dev/null 2>&1; then
+    if ! DEBIAN_FRONTEND=noninteractive $command install "$package" >/dev/null 2>&1; then
       error "Failed to install package: $package. Check logs for more details."
     else
       success "Successfully installed package: $package"
@@ -5403,7 +5403,7 @@ update_and_install_packages() {
   )
   step_message="Installing required apt-get packages"
   step_progress 3 $total_steps "$step_message"
-  install_all_packages "apt-get" "${apt_packages[@]}"
+  install_all_packages "apt-get -yq" "${apt_packages[@]}"
   handle_exit $? 3 $total_steps "$step_message"
 
   snap_packages=(
@@ -6824,4 +6824,3 @@ main() {
 
 # Call the main function
 main "$@"
-
