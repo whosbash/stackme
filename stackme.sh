@@ -6618,10 +6618,8 @@ define_menu_stacks(){
     build_menu_item "whoami" "Deploy" "deploy_stack_whoami"
   )"
 
-  page_size=5
-
   items=(
-    "$item_1" "$item_2" "$item_3" "$item_4" "$item_4" "$item_5"
+    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5"
   )
 
   menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
