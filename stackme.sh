@@ -5816,10 +5816,6 @@ services:
     image: grafana/grafana:10.2.2
     ports:
       - '3000:3000'
-    volumes:
-      - ./grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
-      - ./grafana/dashboard.yml:/etc/grafana/provisioning/dashboards/dashboard.yml
-      - ./grafana/hotrod_metrics_logs.json:/etc/grafana/provisioning/dashboards/hotrod_metrics_logs.json
     deploy:
       mode: replicated
       replicas: 1
@@ -5830,9 +5826,7 @@ services:
         - "traefik.http.routers.grafana.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.grafana.loadbalancer.server.port=3000"
     logging:
-      driver: loki
-      options:
-        loki-url: 'http://localhost:3100/api/prom/push'
+      driver: json-file
 
   loki:
     image: grafana/loki:2.9.2
@@ -5845,15 +5839,10 @@ services:
       - JAEGER_AGENT_PORT=6831
       - JAEGER_SAMPLER_TYPE=const
       - JAEGER_SAMPLER_PARAM=1
+    volumes:
+      - ./local-config.yaml:/etc/loki/local-config.yaml
     logging:
-      driver: loki
-      options:
-        loki-url: 'http://localhost:3100/api/prom/push'
-        # Prevent container from being stuck when shutting down
-        # https://github.com/grafana/loki/issues/2361#issuecomment-718024318
-        loki-timeout: 1s
-        loki-max-backoff: 1s
-        loki-retries: 1
+      driver: json-file
   
   jaeger:
     image: jaegertracing/all-in-one:1.51
@@ -5861,7 +5850,7 @@ services:
       - '6831:6831'
       - '16686:16686'
     logging:
-      driver: loki
+      driver: json-file
       options:
         loki-url: 'http://localhost:3100/api/prom/push'
     deploy:
@@ -5883,9 +5872,7 @@ services:
     command:
       - --config.file=/etc/prometheus/prometheus.yml
     logging:
-      driver: loki
-      options:
-        loki-url: 'http://localhost:3100/api/prom/push'
+      driver: json-file
     networks:
       - {{network_name}}
     deploy:
@@ -6372,8 +6359,14 @@ generate_config_monitor(){
           "url_kibana": $url_kibana,
           "network_name": $network_name
         },
-        "dependencies": ["traefik"],
-        "prepare": [],
+        "dependencies": ["traefik", "portainer"],
+        "prepare": [
+          {
+              "name": "install_loki_plugin",
+              "description": "Required plugin loki is installed",
+              "command": ("signup_on_portainer \"" + $portainer_url + "\" \"" + $portainer_username + "\" \"" + $portainer_password + "\"")
+          }
+        ],
         "finalize": []
     }'
 }
