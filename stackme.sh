@@ -6576,17 +6576,6 @@ deploy_stack_startup() {
     rollback_stack "portainer"
     return 1
   fi
-
-  deploy_stack_monitor
-
-  if [[ $? -ne 0 ]]; then
-    failure "Monitor deployment failed. Rolling back..."
-
-    rollback_stack "traefik"
-    rollback_stack "portainer"
-    rollback_stack "monitor"
-    return 1
-  fi
 }
 
 # Function to deploy a PostgreSQL stack
@@ -6620,23 +6609,28 @@ define_menu_stacks(){
 
   item_1="$(
       build_menu_item "Startup" \
-      "Traefik & Portainer & Jaeger & Prometheus & Grafana" \
+      "Traefik & Portainer" \
       "deploy_stack_startup"
   )"
   item_2="$(
-    build_menu_item "postgres" "Deploy" "deploy_stack_postgres" 
+      build_menu_item "Monitor" \
+      "" \
+      "deploy_stack_monitor"
   )"
   item_3="$(
-    build_menu_item "redis" "Deploy" "deploy_stack_redis" 
+    build_menu_item "postgres" "Deploy" "deploy_stack_postgres" 
   )"
   item_4="$(
+    build_menu_item "redis" "Deploy" "deploy_stack_redis" 
+  )"
+  item_5="$(
     build_menu_item "whoami" "Deploy" "deploy_stack_whoami"
   )"
 
   page_size=5
 
   items=(
-    "$item_1" "$item_2" "$item_3" "$item_4"
+    "$item_1" "$item_2" "$item_3" "$item_4" "$item_4" "$item_5"
   )
 
   menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
