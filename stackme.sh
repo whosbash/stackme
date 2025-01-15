@@ -5839,8 +5839,6 @@ services:
       - JAEGER_AGENT_PORT=6831
       - JAEGER_SAMPLER_TYPE=const
       - JAEGER_SAMPLER_PARAM=1
-    volumes:
-      - ./local-config.yaml:/etc/loki/local-config.yaml
     logging:
       driver: json-file
   
