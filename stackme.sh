@@ -5821,6 +5821,11 @@ services:
       - ./grafana/dashboard.yml:/etc/grafana/provisioning/dashboards/dashboard.yml
       - ./grafana/hotrod_metrics_logs.json:/etc/grafana/provisioning/dashboards/hotrod_metrics_logs.json
     deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.grafana.rule=Host(\`{{url_grafana}}\`)"
@@ -5863,6 +5868,11 @@ services:
       options:
         loki-url: 'http://localhost:3100/api/prom/push'
     deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.jaeger.rule=Host(\`{{url_jaeger}}\`)"
