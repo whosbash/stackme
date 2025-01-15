@@ -5823,9 +5823,6 @@ services:
     deploy:
       mode: replicated
       replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.grafana.rule=Host(\`{{url_grafana}}\`)"
@@ -5870,9 +5867,6 @@ services:
     deploy:
       mode: replicated
       replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.jaeger.rule=Host(\`{{url_jaeger}}\`)"
@@ -5897,9 +5891,6 @@ services:
     deploy:
       mode: replicated
       replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
       labels:
         - traefik.enable=true
         - traefik.http.routers.prometheus.rule=Host(\`{{url_prometheus}}\`)
@@ -5922,9 +5913,6 @@ services:
     deploy:
       mode: replicated
       replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
       labels:
         - traefik.enable=true
         - traefik.http.routers.node-exporter.rule=Host(\`{{url_node_exporter}}\`)
