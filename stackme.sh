@@ -6441,13 +6441,7 @@ EOL
           "network_name": $network_name
         },
         "dependencies": ["traefik", "portainer"],
-        "prepare": [
-          {
-              "name": "install_loki_plugin",
-              "description": "Required plugin loki is installed",
-              "command": ("signup_on_portainer \"" + $portainer_url + "\" \"" + $portainer_username + "\" \"" + $portainer_password + "\"")
-          }
-        ],
+        "prepare": [],
         "finalize": []
     }'
 }
