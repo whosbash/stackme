@@ -1627,8 +1627,7 @@ update_and_check_packages() {
 
             # Ask for confirmation
             message="${yellow}Would you like to update and upgrade the packages? (Y/n)${normal}"
-            if handle_confirmation_prompt \
-              "$message" "update_packages" "y" "5"; then
+            if handle_confirmation_prompt "$message" "y" 5; then
                 echo ""
 
                 # Update and upgrade without logging output
@@ -2700,20 +2699,30 @@ display_error_items() {
     done
 }
 
-# Function to wait for any letter or command to continue
 wait_for_input() {
-  local prompt_message="$1"
+  local timeout="$1"                # Timeout is the first argument
+  local prompt_message="${2:-Press any key to continue...}"  # Default prompt message if not provided
 
-  # If no message is provided, set a default prompt
-  if [[ -z "$prompt_message" ]]; then
-    prompt_message="Press any key to continue..."
-  fi
-
-  # Display the prompt message and wait for user input (one character)
+  # Format the message
   prompt_message="$(format "question" "$prompt_message")"
+
+  # Display the prompt message
   echo -n "$prompt_message" >&2  # Display the message without a newline
-  read -n 1 -s user_input    # Wait for a single character input, suppress echo
-  echo >&2
+
+  if [[ -n "$timeout" ]]; then
+    # Countdown loop for the timeout
+    for ((i = timeout; i > 0; i--)); do
+      echo -ne "\r${prompt_message} (${i}s remaining)" >&2
+      read -n 1 -s -t 1 user_input && { echo >&2; return 0; }  # Exit on key press
+    done
+    echo -e "\r${prompt_message} (Timed out)" >&2  # Timeout message
+    return 1  # Timeout
+  else
+    # Wait for key press without a timeout
+    read -n 1 -s user_input
+    echo >&2
+    return 0
+  fi
 }
 
 # Function to prompt user and wait for any key press
@@ -2774,49 +2783,51 @@ get_menu_item_action() {
 }
 
 # Function to display a message, move the cursor, and read user input with an optional timeout
+# Function to display a message, read user input, and handle a timeout
 request_input() {
   local message="$1"
-  local cursor_move="$2"
-  local variable_name="$3"
-  local timeout="$4"  # Optional timeout value in seconds
+  local variable_name="$2"
+  local timeout="$3"  # Optional timeout value in seconds
 
   echo -ne "$message" >&2
-  tput cuf "$cursor_move" # Move cursor forward by the specified number of characters
 
+  # Use read with or without timeout
   if [[ -n "$timeout" ]]; then
     read -rsn1 -t "$timeout" "$variable_name" || eval "$variable_name=''"  # Timeout or empty input
   else
     read -rsn1 "$variable_name" # No timeout
   fi
+
+  # Trim leading/trailing spaces
+  eval "$variable_name=\$(echo -n \"\${$variable_name}\" | tr -d '[:space:]')"
 }
 
 # Function to request confirmation (yes/no)
 request_confirmation() {
   local message="$1"
-  local confirm_variable_name="$2"
-  local default_value="${3:-false}"
-  local timeout="$4"
+  local default_value="${2:-y}"
+  local timeout="$3"
 
-  local user_input=""
-  request_input "$message" 1 user_input "$timeout"
+  local user_input=''
+  request_input "$message" user_input "$timeout"
 
   # Use default value if input is empty
-  if [[ -z "$user_input" && "$default_value" != "false" ]]; then
+  if [[ -z "$user_input" ]]; then
     user_input="$default_value"
   fi
 
   # Validate the input
   while [[ ! "$user_input" =~ ^[yYnN]$ ]]; do
-    # Display the error message and prompt again on a new line
-    echo -e "${faded_color}\nInvalid input \"$user_input\"." >&2
-    echo -e "Please enter 'y' for yes or 'n' for no.${reset_color}" >&2
-
-    # Re-prompt the user
-    request_input "$message" 1 user_input # Move 1 character forward
+    echo -e "\nInvalid input \"$user_input\". Please enter 'y' for yes or 'n' for no." >&2
+    user_input=''
+    request_input "$message" user_input "$timeout"
+    if [[ -z "$user_input" ]]; then
+      user_input="$default_value"
+    fi
   done
 
-  # Assign the validated input to the confirmation variable
-  printf -v "$confirm_variable_name" "%s" "$user_input"
+  # Normalize the input to lowercase and trim spaces
+  echo "$user_input" | tr '[:upper:]' '[:lower:]'
 }
 
 # Function to display invalid input message
@@ -2836,19 +2847,20 @@ display_invalid_input_message() {
 # Function to handle confirmation prompt
 handle_confirmation_prompt() {
     local prompt_message=$1
-    local confirm_var=$2
-    local default_value=${3:-false}
-    local timeout=$4
+    local default_value=${2:-false}
+    local timeout=$3
 
     while true; do
         # Request confirmation from the user
-        request_confirmation "$prompt_message" "$confirm_var" "$default_value" "$timeout"
+        confirm_var=$(\
+          request_confirmation "$prompt_message" "$default_value" "$timeout"
+        )
 
         # Validate input
-        case "${!confirm_var}" in
+        case "$confirm_var" in
             [yY]) return 0 ;; # Confirmed
             [nN]) return 1 ;; # Declined
-            *) display_invalid_input_message "${!confirm_var}" "$prompt_message" ;;
+            *) display_invalid_input_message "$confirm_var" "$prompt_message" ;;
         esac
     done
 }
@@ -3650,7 +3662,7 @@ handle_enter_key(){
   option_label="$(get_menu_item_label "$menu_item")"
   question="Are you sure you want to select \"$option_label\"? (Y/n)"
   message="${faded_color}$question${reset_color}"
-  if handle_confirmation_prompt "$message" confirm 'n'; then
+  if handle_confirmation_prompt "$message" 'n'; then
       option_action=$(get_menu_item_action "$menu_item")
 
       clean_screen
@@ -3670,8 +3682,10 @@ handle_enter_key(){
 }
 
 handle_quit_key(){
+  local confirm_exit
+
   message="${faded_color}Are you sure you want to exit this menu? (y/n)${reset_color}"
-  request_confirmation "$message" confirm_exit false
+  confirm_exit="$(request_confirmation "$message" "y")"
 
   if [[ "${confirm_exit}" == "y" || "${confirm_exit}" == "Y" ]]; then
     clean_screen
@@ -5428,7 +5442,7 @@ update_and_install_packages() {
   snap_packages=(
     "yq"
   )
-  step_message="Installing required snao packages"
+  step_message="Installing required snap packages"
   step_progress 4 $total_steps "$step_message"
   install_all_packages "snap" "${snap_packages[@]}"
   handle_exit $? 4 $total_steps "$step_message"
@@ -6931,3 +6945,25 @@ main() {
 
 # Call the main function
 main "$@"
+
+# stack_name="postgres"
+# stack_exists "$stack_name"
+# 
+# if [[ $? -eq 0 ]]; then
+#   prompt_message="${yellow}Stack exists. Would you like to remove it? (Y/n)${normal}"
+#   if handle_confirmation_prompt "$prompt_message" "y" 5; then
+#     echo "Stack $stack_name removed!"
+#   else
+#     echo "Stack $stack_name not removed!"
+#   fi
+# 
+# else
+#   prompt_message="${yellow}Stack $stack_name does not exist. Would you like to install it? (Y/n)${normal}"
+#   if handle_confirmation_prompt "$prompt_message" "y" 5; then
+#     echo "Stack $stack_name removed!"
+#   else
+#     echo "Stack $stack_name not removed!"
+#   fi
+# fi
+
+wait_for_input 5
