@@ -6696,7 +6696,7 @@ define_menu_stacks(){
   )"
   item_2="$(
       build_menu_item "Monitor" \
-      "Jaeger & Prometheus & Grafana" \
+      "Jaeger & Prometheus & Node Exporter & Grafana & Kibana " \
       "deploy_stack_monitor"
   )"
   item_3="$(
