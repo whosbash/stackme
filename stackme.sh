@@ -6408,7 +6408,7 @@ generate_config_monitor(){
   step_info 3 $total_steps "Add scrape_configs to prometheus.yml"
 
   # Ensure everything is quoted correctly
-  prometheus_config_path="${STACKME_FOLDER}/prometheus.yml"
+  prometheus_config_path="${STACKME_FOLDER}/prometheus/prometheus.yml"
   manage_prometheus_config_file "$prometheus_config_path" \
     "$url_prometheus" "$url_jaeger" "$url_node_exporter" "$url_cadvisor"
 
@@ -6696,7 +6696,7 @@ define_menu_stacks(){
   )"
   item_2="$(
       build_menu_item "Monitor" \
-      "Jaeger & Prometheus & Node Exporter & Grafana & Kibana " \
+      "Jaeger & Prometheus & Node Exporter & Grafana & Kibana & " \
       "deploy_stack_monitor"
   )"
   item_3="$(
