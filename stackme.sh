@@ -134,7 +134,8 @@ HAS_TIMESTAMP=true
 HEADER_LENGTH=120
 
 # Default arrow
-STACKS_FOLDER="${HOME}/stacks"
+STACKME_FOLDER="/opt/stackme"
+STACKS_FOLDER="$STACKME_FOLDER/stacks"
 
 # Default arrow
 DEFAULT_ARROW_OPTION='diamond'
@@ -5552,7 +5553,7 @@ get_server_info() {
 
 # Function to initialize the server information
 initialize_server_info() {
-  total_steps=6
+  total_steps=7
   server_filename="${HOME}/server_info.json"
 
   # Step 1: Check if server_info.json exists and is valid
@@ -5591,64 +5592,70 @@ initialize_server_info() {
   echo "$server_info_json" > "$server_filename"
   step_success 1 $total_steps "Server information saved to file $server_filename"
 
+  step_message="Create stackme folder"
+  step_progress 2 $total_steps "$step_message" 
+  mkdir -p "$STACKME_FOLDER"
+  
+  handle_exit $? 2 $total_steps "$step_message"
+
   # Update /etc/hosts
   step_message="Add name to server name in hosts file at path /etc/hosts"
-  step_progress 2 $total_steps "$step_message"
+  step_progress 3 $total_steps "$step_message"
   # Ensure /etc/hosts has the correct entry
   if ! grep -q "^127.0.0.1[[:space:]]$server_name" /etc/hosts; then
     sed -i "/^127.0.0.1[[:space:]]/d" /etc/hosts  # Remove old entries
     echo "127.0.0.1 $server_name" >> /etc/hosts
   else
-    step_info 2 $total_steps "$server_name is already present in /etc/hosts"
+    step_info 3 $total_steps "$server_name is already present in /etc/hosts"
   fi
 
-  handle_exit $? 2 $total_steps "$step_message"
+  handle_exit $? 3 $total_steps "$step_message"
 
     # Set Hostname
   step_message="Set Hostname"
-  step_progress 3 $total_steps "$step_message"
+  step_progress 4 $total_steps "$step_message"
 
   current_hostname="$(hostnamectl --static)"
 
   if [[ "$current_hostname" != "$server_name" ]]; then
     hostnamectl set-hostname "$server_name"
-    handle_exit $? 3 $total_steps "Set Hostname"
+    handle_exit $? 4 $total_steps "Set Hostname"
 
-    step_success 3 $total_steps "Hostname set to $server_name"
+    step_success 4 $total_steps "Hostname set to $server_name"
 
     # Allow a brief delay for changes to propagate
     sleep 1
   else
-      step_info 3 $total_steps "Hostname is already set to $server_name"
+      step_info 4 $total_steps "Hostname is already set to $server_name"
   fi
 
   # Install docker
   step_message="Installing Docker"
-  step_progress 4 $total_steps "$step_message"
+  step_progress 5 $total_steps "$step_message"
   install_docker
-  handle_exit $? 4 $total_steps "$step_message"
+  handle_exit $? 5 $total_steps "$step_message"
 
   # Initialize Docker Swarm
   step_message="Docker Swarm initialization"
-  step_progress 5 $total_steps "$step_message"
+  step_progress 6 $total_steps "$step_message"
 
   read -r ip _ <<<$(
     hostname -I | tr ' ' '\n' | grep -v '^127\.0\.0\.1' | tr '\n' ' '
   )
   if is_swarm_active; then
-    step_warning 5 $total_steps "Swarm is already active"
+    step_warning 6 $total_steps "Swarm is already active"
   else
     # server_ip=$(curl ipinfo.io/ip)
     docker swarm init --advertise-addr $ip 2>&1
     
-    handle_exit $? 5 $total_steps "$step_message"
+    handle_exit $? 6 $total_steps "$step_message"
   fi
 
   # Initialize Network
   message="Network initialization"
-  step_progress 6 $total_steps "$message"
+  step_progress 7 $total_steps "$message"
   create_network_if_not_exists "$network_name"
-  handle_exit $? 6 $total_steps "$step_message"
+  handle_exit $? 7 $total_steps "$step_message"
 
   success "Server initialization complete"
 
@@ -5866,8 +5873,6 @@ services:
       - '16686:16686'
     logging:
       driver: json-file
-      options:
-        loki-url: 'http://localhost:3100/api/prom/push'
     deploy:
       mode: replicated
       replicas: 1
@@ -5881,7 +5886,7 @@ services:
   prometheus:
     image: prom/prometheus:v2.48.0
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - /opt/stackme/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090" # Prometheus web interface
     command:
@@ -6122,9 +6127,11 @@ get_network_name(){
 #################################### BEGIN OF STACK CONFIGURATION #################################
 
 manage_prometheus_config_file() {
+  local prometheus_config_path="$1"
+  shift
   local targets=("$@") # New targets passed as arguments
 
-  prometheus_config_path="$STACKS_FOLDER/prometheus.yml"
+  
   prometheus_scrape_config="$(create_scrape_config_object --job_name "prometheus" \
     --metrics_path "/metrics" \
     --honor_timestamps "false" \
@@ -6401,11 +6408,18 @@ generate_config_monitor(){
   step_info 3 $total_steps "Add scrape_configs to prometheus.yml"
 
   # Ensure everything is quoted correctly
-  manage_prometheus_config_file "$url_prometheus" "$url_jaeger" "$url_node_exporter" "$url_cadvisor"
+  prometheus_config_path="${STACKME_FOLDER}/prometheus.yml"
+  manage_prometheus_config_file "$prometheus_config_path" \
+    "$url_prometheus" "$url_jaeger" "$url_node_exporter" "$url_cadvisor"
+
+  handle_exit "$?" 3 "$total_steps" "$message"  
 
   message="Creating datasource.yml"
   step_info 4 $total_steps "$message"
-  cat > "${STACKS_FOLDER}/datasource.yml" <<EOL
+
+  mkdir -p "${STACKME_FOLDER}/prometheus"
+  
+  cat > "${STACKME_FOLDER}/prometheus/datasource.yml" <<EOL
 apiVersion: 1
 datasources:
 - name: Prometheus
@@ -6423,9 +6437,9 @@ EOL
     --arg stack_name "$stack_name" \
     --arg url_jaeger "$url_jaeger" \
     --arg url_prometheus "$url_prometheus" \
-    --arg url_grafana "$url_grafana" \
     --arg url_node_exporter "$url_node_exporter" \
     --arg url_cadvisor "$url_cadvisor" \
+    --arg url_grafana "$url_grafana" \
     --arg url_kibana "$url_kibana" \
     --arg network_name "$network_name" \
     '{
@@ -6470,7 +6484,7 @@ generate_config_redis() {
     --arg image_version "$image_version" \
     --arg container_port "6379" \
     --arg redis_url "redis://redis:6379" \
-    --arg volume_name "${stack_name}_data" \
+    --arg volume_name "redis_data" \
     --arg network_name "$network_name" \
     '{
             "name": $stack_name,
@@ -6512,7 +6526,7 @@ generate_config_postgres() {
     --arg image_version "$image_version" \
     --arg db_user "$postgres_user" \
     --arg db_password "$postgres_password" \
-    --arg volume_name "${stack_name}_data" \
+    --arg volume_name "postgres_data" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
@@ -6889,8 +6903,6 @@ main() {
   clear
 
   # Perform initialization
-  server_config_fname="${HOME}/server_info.json"
-
   initialize_server_info
   clear
 
