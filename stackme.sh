@@ -5823,8 +5823,26 @@ services:
         - "traefik.enable=true"
         - "traefik.http.routers.grafana.rule=Host(\`{{url_grafana}}\`)"
         - "traefik.http.routers.grafana.entrypoints=websecure"
+        - "traefik.http.routers.grafana.service=grafana"
         - "traefik.http.routers.grafana.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+    logging:
+      driver: json-file
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.15.1
+    ports:
+      - '5601:5601'
+    deploy:
+      mode: replicated
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.kibana.rule=Host(\`{{url_kibana}}\`)"
+        - "traefik.http.routers.kibana.entrypoints=websecure"
+        - "traefik.http.routers.kibana.service=kibana"
+        - "traefik.http.routers.kibana.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.kibana.loadbalancer.server.port=5601"
     logging:
       driver: json-file
 
@@ -5832,7 +5850,6 @@ services:
     image: grafana/loki:2.9.2
     ports:
       - '3100:3100'
-    command: -config.file=/etc/loki/local-config.yaml
     # send Loki traces to Jaeger
     environment:
       - JAEGER_AGENT_HOST=jaeger
@@ -5906,6 +5923,38 @@ services:
         - traefik.http.routers.node-exporter.tls.certresolver=letsencryptresolver
         - traefik.http.routers.node-exporter.entrypoints=websecure
         - traefik.http.routers.node-exporter.tls=true
+  
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor
+    restart: unless-stopped
+
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup
+      - /var/lib/docker/:/var/lib/docker:ro
+
+    networks:
+      - {{network_name}}
+
+    ports:
+      - "8181:8080"
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.cadvisor.rule=Host(\`{{url_cadvisor}}\`)
+        - traefik.http.services.cadvisor.loadbalancer.server.port=8080
+        - traefik.http.routers.cadvisor.service=cadvisor
+        - traefik.http.routers.cadvisor.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.cadvisor.entrypoints=websecure
+        - traefik.http.routers.cadvisor.tls=true
 
 networks:
   {{network_name}}:
@@ -6294,6 +6343,20 @@ generate_config_monitor(){
           "validate_fn": "validate_url_suffix" 
       },
       {
+          "name": "url_node_exporter",
+          "label": "Node Exporter Domain Name",
+          "description": "Domain name for Node Exporter",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      },
+      {
+          "name": "url_cadvisor",
+          "label": "cAdvisor Domain Name",
+          "description": "Domain name for cAdvisor",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      },
+      {
           "name": "url_grafana",
           "label": "Grafana Domain Name",
           "description": "Domain name for Grafana",
@@ -6301,11 +6364,11 @@ generate_config_monitor(){
           "validate_fn": "validate_url_suffix" 
       },
       {
-          "name": "url_node_exporter",
-          "label": "Node Exporter Domain Name",
-          "description": "Domain name for Node Exporter",
-          "required": "yes",
-          "validate_fn": "validate_url_suffix" 
+        "name": "url_kibana",
+        "label": "Kibana Domain Name",
+        "description": "Domain name for Kibana",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
       }
   ]'
 
@@ -6322,6 +6385,9 @@ generate_config_monitor(){
   url_jaeger="$(echo "$collected_object" | jq -r '.url_jaeger')"
   url_prometheus="$(echo "$collected_object" | jq -r '.url_prometheus')"
   url_grafana="$(echo "$collected_object" | jq -r '.url_grafana')"
+  url_node_exporter="$(echo "$collected_object" | jq -r '.url_node_exporter')"
+  url_cadvisor="$(echo "$collected_object" | jq -r '.url_cadvisor')"
+  url_kibana="$(echo "$collected_object" | jq -r '.url_kibana')"
 
   step_info 2 $total_steps "Retrieving network name"
   local network_name="$(get_network_name)"
@@ -6335,7 +6401,22 @@ generate_config_monitor(){
   step_info 3 $total_steps "Add scrape_configs to prometheus.yml"
 
   # Ensure everything is quoted correctly
-  manage_prometheus_config_file "$url_prometheus" "$url_jaeger" "$url_node_exporter"
+  manage_prometheus_config_file "$url_prometheus" "$url_jaeger" "$url_node_exporter" "$url_cadvisor"
+
+  message="Creating datasource.yml"
+  step_info 4 $total_steps "$message"
+  cat > "${STACKS_FOLDER}/datasource.yml" <<EOL
+apiVersion: 1
+datasources:
+- name: Prometheus
+  type: prometheus
+  url: https://$url_prometheus
+  isDefault: true
+  access: proxy
+  editable: true
+EOL
+
+  handle_exit "$?" 4 "$total_steps" "$message" 
 
   # Ensure everything is quoted correctly
   jq -n \
@@ -6344,6 +6425,7 @@ generate_config_monitor(){
     --arg url_prometheus "$url_prometheus" \
     --arg url_grafana "$url_grafana" \
     --arg url_node_exporter "$url_node_exporter" \
+    --arg url_cadvisor "$url_cadvisor" \
     --arg url_kibana "$url_kibana" \
     --arg network_name "$network_name" \
     '{
@@ -6353,6 +6435,7 @@ generate_config_monitor(){
           "url_jaeger": $url_jaeger,
           "url_prometheus": $url_prometheus,
           "url_node_exporter": $url_node_exporter,
+          "url_cadvisor": $url_cadvisor,
           "url_grafana": $url_grafana,
           "url_kibana": $url_kibana,
           "network_name": $network_name
