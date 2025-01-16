@@ -5328,11 +5328,29 @@ send_machine_specs_email(){
 
 ###################################### BEGIN OF SETUP FUNCTIONS ###################################
 
-# Function to check if a package is already installed
+# Generalized function to check if a package is already installed
 is_package_installed() {
   local package="$1"
-  dpkg -l | grep -q "$package"
+
+  # Check for dpkg packages
+  if dpkg -l | grep -q "^ii.*$package"; then
+    return 0
+  fi
+
+  # Check for snap packages
+  if snap list | grep -q "^$package"; then
+    return 0
+  fi
+
+  # Check if the command exists in PATH (binary check)
+  if command -v "$package" > /dev/null 2>&1; then
+    return 0
+  fi
+
+  # If none of the checks match, return not installed
+  return 1
 }
+
 
 # Function to install a package
 install_package() {
