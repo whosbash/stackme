@@ -4844,9 +4844,10 @@ deploy_stack_pipeline() {
 
   remove_compose_if_failed_deployment "$compose_path" "$exit_code"
 
-  if [ $exit_code -ne 1 ]; then
-    return 1
-  fi
+  # FIX: Early return when there is an issue
+  #if [ $exit_code -ne 1 ]; then
+  #  return 1
+  #fi
 
   # Step 8: Deploy the service on Docker Swarm
   if [ "$stack_name" == "traefik" ] || [ "$stack_name" == "portainer" ]; then
@@ -4874,9 +4875,10 @@ deploy_stack_pipeline() {
 
   remove_compose_if_failed_deployment "$compose_path" "$exit_code"
 
-  if [ $exit_code -ne 1 ]; then
-    return 1
-  fi
+  # FIX: Early return when there is an issue
+  #if [ $exit_code -ne 1 ]; then
+  #  return 1
+  #fi
 
   # Validate JSON
   if ! echo "$finalize_actions" | jq empty; then
