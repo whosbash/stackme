@@ -1184,6 +1184,8 @@ add_scrape_config_object() {
   local filename="$1"
   local scrape_config="$2"
 
+  debug "Adding scrape_config to $filename"
+
   # Step 1: Check if the file exists
   if [[ ! -f "$filename" ]]; then
     # Step 1: Check if the file exists, and create the directory if necessary
@@ -1194,12 +1196,12 @@ add_scrape_config_object() {
 
       # Ensure the directory exists
       if [[ ! -d "$dir" ]]; then
-        echo "Directory $dir does not exist. Creating it."
+        info "Directory $dir does not exist. Creating it."
         mkdir -p "$dir"
       fi
     fi
 
-    echo "File $filename does not exist. Initializing with default content."
+    info "File $filename does not exist. Initializing with default content."
     cat <<EOF > "$filename"
 global:
   scrape_interval: 15s
@@ -1225,7 +1227,7 @@ EOF
 
   # Step 3: Add the scrape_config to the YAML file
   yq eval -i ".scrape_configs += [$scrape_config]" "$filename"
-  echo "Added scrape_config for job '$job_name' to $filename."
+  success "Added scrape_config for job '$job_name' to $filename."
 }
 
 # Function to check if a job_name exists in the scrape_configs of a YAML file
@@ -6162,7 +6164,6 @@ manage_prometheus_config_file() {
   local prometheus_config_path="$1"
   shift
   local targets=("$@") # New targets passed as arguments
-
   
   prometheus_scrape_config="$(create_scrape_config_object --job_name "prometheus" \
     --metrics_path "/metrics" \
@@ -6170,6 +6171,8 @@ manage_prometheus_config_file() {
     --honor_labels "true" \
     --scrape_interval "10s" \
     --targets "$(join_array ',' "${targets[@]}")")"
+
+    debug "$prometheus_scrape_config"
 
   add_scrape_config_object "$prometheus_config_path" "$prometheus_scrape_config"
 
