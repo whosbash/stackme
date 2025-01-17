@@ -6208,8 +6208,7 @@ services:
       start_period: 30s
     restart: always
     depends_on:
-      airflow-init:
-        condition: service_completed_successfully
+      - airflow-init
 
   airflow-scheduler:
     <<: *airflow-common
@@ -6222,8 +6221,7 @@ services:
       start_period: 30s
     restart: always
     depends_on:
-      airflow-init:
-        condition: service_completed_successfully
+      - airflow-init
 
   airflow-worker:
     <<: *airflow-common
@@ -6246,8 +6244,7 @@ services:
     extra_hosts: 
       - "host.docker.internal:host-gateway"
     depends_on:
-      airflow-init:
-        condition: service_completed_successfully
+      - airflow-init
 
   airflow-triggerer:
     <<: *airflow-common
@@ -6260,8 +6257,7 @@ services:
       start_period: 30s
     restart: always
     depends_on:
-      airflow-init:
-        condition: service_completed_successfully
+      - airflow-init
 
   airflow-init:
     <<: *airflow-common
@@ -6366,8 +6362,7 @@ services:
       start_period: 30s
     restart: always
     depends_on:
-      airflow-init:
-        condition: service_completed_successfully
+      - airflow-init
 EOL
 }
 
