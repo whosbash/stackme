@@ -4771,7 +4771,6 @@ deploy_stack_pipeline() {
         dependency_message="Dependency \"$dependency\" already exists. Skipping..."
         stack_step_warning 1 "$dependency_message"
       fi
-      wait_for_input
     done
   fi
 
@@ -4845,10 +4844,6 @@ deploy_stack_pipeline() {
 
   remove_compose_if_failed_deployment "$compose_path" "$exit_code"
 
-  if [ $? -ne 1 ]; then
-    return 1
-  fi
-
   # Step 8: Deploy the service on Docker Swarm
   if [ "$stack_name" == "traefik" ] || [ "$stack_name" == "portainer" ]; then
     message="Deploying stack on Docker Swarm"
@@ -4874,10 +4869,6 @@ deploy_stack_pipeline() {
   stack_handle_exit "$exit_code" 8 "$message"
 
   remove_compose_if_failed_deployment "$compose_path" "$exit_code"
-
-  if [ $exit_code -ne 1 ]; then
-    return 1
-  fi
 
   # Validate JSON
   if ! echo "$finalize_actions" | jq empty; then
