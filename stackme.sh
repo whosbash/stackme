@@ -4756,8 +4756,11 @@ deploy_stack_pipeline() {
     stack_step_warning 1 "No dependencies to deploy"
   else
     echo "$dependencies" | jq -c '.[]' | while IFS= read -r dependency; do
+      dependency=$(echo "$dependency" | xargs)  # Trim whitespace
+      stack_info "Processing dependency: $dependency"
+
       # Check if stack dependency exists on docker
-      if ! docker stack ls | grep -q "$dependency"; then
+      if ! docker stack ls --format '{{.Name}}' | grep -q "$dependency"; then
         dependency_message="Deploying dependency: $dependency"
         stack_step_progress 1 "$dependency_message"
 
