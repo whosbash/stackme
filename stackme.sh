@@ -5863,6 +5863,16 @@ services:
     logging:
       driver: json-file
 
+  elasticsearch:
+    image: elasticsearch:7.8.1
+    ports:
+      - 9200:9200
+    environment:
+      discovery.type: 'single-node'
+      xpack.security.enabled: 'true'
+      ELASTIC_PASSWORD: '{{elasticsearch_password}}'
+      ES_JAVA_OPTS: '-Xmx2g -Xms2g'
+
   kibana:
     image: docker.elastic.co/kibana/kibana:7.15.1
     ports:
@@ -6709,9 +6719,36 @@ deploy_stack_whoami() {
   deploy_stack 'whoami'
 }
 
+# Function to deploy a airflow service
+deploy_stack_airflow() {
+  cleanup
+  clean_screen
+  deploy_stack 'airflow'
+}
+
 ################################# END OF STACK DEPLOYMENT FUNCTIONS ################################
 
 ##################################### BEGIN OF MENU DEFINITIONS ####################################
+
+# Stacks
+define_menu_stacks_databases(){
+  menu_name="Databases"
+
+  item_1="$(
+    build_menu_item "postgres" "Deploy" "deploy_stack_postgres" 
+  )"
+  item_2="$(
+    build_menu_item "redis" "Deploy" "deploy_stack_redis" 
+  )"
+
+  items=(
+    "$item_1" "$item_2"
+  )
+
+  menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
+
+  define_menu "$menu_name" "$menu_object"
+}
 
 # Stacks
 define_menu_stacks(){
@@ -6728,17 +6765,20 @@ define_menu_stacks(){
       "deploy_stack_monitor"
   )"
   item_3="$(
-    build_menu_item "postgres" "Deploy" "deploy_stack_postgres" 
+      build_menu_item "Monitor" \
+      "Jaeger & Prometheus & Node Exporter & Grafana & Kibana & " \
+      "deploy_stack_monitor"
   )"
   item_4="$(
-    build_menu_item "redis" "Deploy" "deploy_stack_redis" 
-  )"
-  item_5="$(
     build_menu_item "whoami" "Deploy" "deploy_stack_whoami"
   )"
+  item_4="$(
+    build_menu_item "airflow" "Deploy" "deploy_stack_airflow"
+  )"
+
 
   items=(
-    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5"
+    "$item_1" "$item_2" "$item_3" "$item_4"
   )
 
   menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
@@ -6841,6 +6881,7 @@ define_menu_main(){
 define_menus(){
     define_menu_main
     define_menu_stacks
+    define_menu_stacks_databases
     define_menu_utilities
     define_menu_health
 }
