@@ -6185,6 +6185,8 @@ services:
     <<: *airflow-common
     environment:
         <<: *airflow-common-env
+    networks:
+      - {{network_name}}
     user: "${AIRFLOW_UID}:0"
     entrypoint: ["bash"]
 
@@ -6209,6 +6211,8 @@ services:
     restart: always
     depends_on:
       - airflow-init
+    networks:
+      - {{network_name}}
 
   airflow-scheduler:
     <<: *airflow-common
@@ -6222,6 +6226,8 @@ services:
     restart: always
     depends_on:
       - airflow-init
+    networks:
+      - {{network_name}}
 
   airflow-worker:
     <<: *airflow-common
@@ -6245,6 +6251,8 @@ services:
       - "host.docker.internal:host-gateway"
     depends_on:
       - airflow-init
+    networks:
+      - {{network_name}}
 
   airflow-triggerer:
     <<: *airflow-common
@@ -6258,6 +6266,8 @@ services:
     restart: always
     depends_on:
       - airflow-init
+    networks:
+      - {{network_name}}
 
   airflow-init:
     <<: *airflow-common
@@ -6323,6 +6333,8 @@ services:
     user: "0:0"
     volumes:
       - .:/sources
+    networks:
+      - {{network_name}}
 
   airflow-cli:
     <<: *airflow-common
@@ -6356,6 +6368,12 @@ services:
     restart: always
     depends_on:
       - airflow-init
+    networks:
+      - {{network_name}}
+
+networks:
+  {{network_name}}:
+    external: true
 EOL
 }
 
