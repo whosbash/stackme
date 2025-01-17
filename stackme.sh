@@ -1215,6 +1215,8 @@ scrape_configs:
 EOF
   fi
 
+  debug "File $filename exists."
+
   # Step 2: Check if the job_name already exists
   local job_name
   job_name=$(echo "$scrape_config" | jq -r '.job_name')
@@ -1238,13 +1240,7 @@ check_existing_job_name() {
 
   # Validate inputs
   if [[ -z "$filename" || -z "$job_name" ]]; then
-    echo "Error: Filename and job_name are required." >&2
-    return 1
-  fi
-
-  # Check if the YAML file exists
-  if [[ ! -f "$filename" ]]; then
-    echo "Error: File '$filename' does not exist." >&2
+    error "Filename and job_name are required."
     return 1
   fi
 
