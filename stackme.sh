@@ -3903,7 +3903,7 @@ navigate_menu() {
       ;;
     "x")
       kill -TERM -$$
-      exit 0
+      finish_session
       ;;
 
     *)
