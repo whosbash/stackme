@@ -5773,9 +5773,6 @@ volumes:
   vol_certificates:
     external: true
     name: volume_swarm_certificates
-  es_data:
-    external: true
-    name: volume_es_data
 
 networks:
   {{network_name}}:
