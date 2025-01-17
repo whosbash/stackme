@@ -134,7 +134,8 @@ HAS_TIMESTAMP=true
 HEADER_LENGTH=120
 
 # Default arrow
-STACKS_FOLDER="${HOME}/stacks"
+STACKME_FOLDER="/opt/stackme"
+STACKS_FOLDER="$STACKME_FOLDER/stacks"
 
 # Default arrow
 DEFAULT_ARROW_OPTION='diamond'
@@ -1183,6 +1184,8 @@ add_scrape_config_object() {
   local filename="$1"
   local scrape_config="$2"
 
+  debug "Adding scrape_config to $filename"
+
   # Step 1: Check if the file exists
   if [[ ! -f "$filename" ]]; then
     # Step 1: Check if the file exists, and create the directory if necessary
@@ -1193,12 +1196,12 @@ add_scrape_config_object() {
 
       # Ensure the directory exists
       if [[ ! -d "$dir" ]]; then
-        echo "Directory $dir does not exist. Creating it."
+        info "Directory $dir does not exist. Creating it."
         mkdir -p "$dir"
       fi
     fi
 
-    echo "File $filename does not exist. Initializing with default content."
+    info "File $filename does not exist. Initializing with default content."
     cat <<EOF > "$filename"
 global:
   scrape_interval: 15s
@@ -1212,6 +1215,8 @@ scrape_configs:
 EOF
   fi
 
+  debug "File $filename exists."
+
   # Step 2: Check if the job_name already exists
   local job_name
   job_name=$(echo "$scrape_config" | jq -r '.job_name')
@@ -1224,7 +1229,7 @@ EOF
 
   # Step 3: Add the scrape_config to the YAML file
   yq eval -i ".scrape_configs += [$scrape_config]" "$filename"
-  echo "Added scrape_config for job '$job_name' to $filename."
+  success "Added scrape_config for job '$job_name' to $filename."
 }
 
 # Function to check if a job_name exists in the scrape_configs of a YAML file
@@ -1235,13 +1240,7 @@ check_existing_job_name() {
 
   # Validate inputs
   if [[ -z "$filename" || -z "$job_name" ]]; then
-    echo "Error: Filename and job_name are required." >&2
-    return 1
-  fi
-
-  # Check if the YAML file exists
-  if [[ ! -f "$filename" ]]; then
-    echo "Error: File '$filename' does not exist." >&2
+    error "Filename and job_name are required."
     return 1
   fi
 
@@ -1626,8 +1625,7 @@ update_and_check_packages() {
 
             # Ask for confirmation
             message="${yellow}Would you like to update and upgrade the packages? (Y/n)${normal}"
-            if handle_confirmation_prompt \
-              "$message" "update_packages" "y" "5"; then
+            if handle_confirmation_prompt "$message" "y" 5; then
                 echo ""
 
                 # Update and upgrade without logging output
@@ -2699,19 +2697,30 @@ display_error_items() {
     done
 }
 
-# Function to wait for any letter or command to continue
 wait_for_input() {
-  local prompt_message="$1"
+  local timeout="$1"                # Timeout is the first argument
+  local prompt_message="${2:-Press any key to continue...}"  # Default prompt message if not provided
 
-  # If no message is provided, set a default prompt
-  if [[ -z "$prompt_message" ]]; then
-    prompt_message="Press any key to continue..."
-  fi
-
-  # Display the prompt message and wait for user input (one character)
+  # Format the message
   prompt_message="$(format "question" "$prompt_message")"
+
+  # Display the prompt message
   echo -n "$prompt_message" >&2  # Display the message without a newline
-  read -n 1 -s user_input    # Wait for a single character input, suppress echo
+
+  if [[ -n "$timeout" ]]; then
+    # Countdown loop for the timeout
+    for ((i = timeout; i > 0; i--)); do
+      echo -ne "\r${prompt_message} (${i}s remaining)" >&2
+      read -n 1 -s -t 1 user_input && { echo >&2; return 0; }  # Exit on key press
+    done
+    echo -e "\r${prompt_message} (Timed out)" >&2  # Timeout message
+    return 1  # Timeout
+  else
+    # Wait for key press without a timeout
+    read -n 1 -s user_input
+    echo >&2
+    return 0
+  fi
 }
 
 # Function to prompt user and wait for any key press
@@ -2772,49 +2781,51 @@ get_menu_item_action() {
 }
 
 # Function to display a message, move the cursor, and read user input with an optional timeout
+# Function to display a message, read user input, and handle a timeout
 request_input() {
   local message="$1"
-  local cursor_move="$2"
-  local variable_name="$3"
-  local timeout="$4"  # Optional timeout value in seconds
+  local variable_name="$2"
+  local timeout="$3"  # Optional timeout value in seconds
 
   echo -ne "$message" >&2
-  tput cuf "$cursor_move" # Move cursor forward by the specified number of characters
 
+  # Use read with or without timeout
   if [[ -n "$timeout" ]]; then
     read -rsn1 -t "$timeout" "$variable_name" || eval "$variable_name=''"  # Timeout or empty input
   else
     read -rsn1 "$variable_name" # No timeout
   fi
+
+  # Trim leading/trailing spaces
+  eval "$variable_name=\$(echo -n \"\${$variable_name}\" | tr -d '[:space:]')"
 }
 
 # Function to request confirmation (yes/no)
 request_confirmation() {
   local message="$1"
-  local confirm_variable_name="$2"
-  local default_value="${3:-false}"
-  local timeout="$4"
+  local default_value="${2:-y}"
+  local timeout="$3"
 
-  local user_input=""
-  request_input "$message" 1 user_input "$timeout"
+  local user_input=''
+  request_input "$message" user_input "$timeout"
 
   # Use default value if input is empty
-  if [[ -z "$user_input" && "$default_value" != "false" ]]; then
+  if [[ -z "$user_input" ]]; then
     user_input="$default_value"
   fi
 
   # Validate the input
   while [[ ! "$user_input" =~ ^[yYnN]$ ]]; do
-    # Display the error message and prompt again on a new line
-    echo -e "${faded_color}\nInvalid input \"$user_input\"." >&2
-    echo -e "Please enter 'y' for yes or 'n' for no.${reset_color}" >&2
-
-    # Re-prompt the user
-    request_input "$message" 1 user_input # Move 1 character forward
+    echo -e "\nInvalid input \"$user_input\". Please enter 'y' for yes or 'n' for no." >&2
+    user_input=''
+    request_input "$message" user_input "$timeout"
+    if [[ -z "$user_input" ]]; then
+      user_input="$default_value"
+    fi
   done
 
-  # Assign the validated input to the confirmation variable
-  printf -v "$confirm_variable_name" "%s" "$user_input"
+  # Normalize the input to lowercase and trim spaces
+  echo "$user_input" | tr '[:upper:]' '[:lower:]'
 }
 
 # Function to display invalid input message
@@ -2834,19 +2845,20 @@ display_invalid_input_message() {
 # Function to handle confirmation prompt
 handle_confirmation_prompt() {
     local prompt_message=$1
-    local confirm_var=$2
-    local default_value=${3:-false}
-    local timeout=$4
+    local default_value=${2:-false}
+    local timeout=$3
 
     while true; do
         # Request confirmation from the user
-        request_confirmation "$prompt_message" "$confirm_var" "$default_value" "$timeout"
+        confirm_var=$(\
+          request_confirmation "$prompt_message" "$default_value" "$timeout"
+        )
 
         # Validate input
-        case "${!confirm_var}" in
+        case "$confirm_var" in
             [yY]) return 0 ;; # Confirmed
             [nN]) return 1 ;; # Declined
-            *) display_invalid_input_message "${!confirm_var}" "$prompt_message" ;;
+            *) display_invalid_input_message "$confirm_var" "$prompt_message" ;;
         esac
     done
 }
@@ -3648,7 +3660,7 @@ handle_enter_key(){
   option_label="$(get_menu_item_label "$menu_item")"
   question="Are you sure you want to select \"$option_label\"? (Y/n)"
   message="${faded_color}$question${reset_color}"
-  if handle_confirmation_prompt "$message" confirm 'n'; then
+  if handle_confirmation_prompt "$message" 'n'; then
       option_action=$(get_menu_item_action "$menu_item")
 
       clean_screen
@@ -3668,8 +3680,10 @@ handle_enter_key(){
 }
 
 handle_quit_key(){
+  local confirm_exit
+
   message="${faded_color}Are you sure you want to exit this menu? (y/n)${reset_color}"
-  request_confirmation "$message" confirm_exit false
+  confirm_exit="$(request_confirmation "$message" "y")"
 
   if [[ "${confirm_exit}" == "y" || "${confirm_exit}" == "Y" ]]; then
     clean_screen
@@ -3889,7 +3903,7 @@ navigate_menu() {
       ;;
     "x")
       kill -TERM -$$
-      exit 0
+      finish_session
       ;;
 
     *)
@@ -4147,14 +4161,12 @@ signup_on_portainer() {
   local portainer_url="$1"
   local username="$2"
   local password="$3"
-
+  
   echo "Username: $username" >&2
   echo "Password: $password" >&2
-
+ 
   # Prepare credentials in JSON format
-  credentials="{\"username\":\"$username\",\"password\":\"$password\"}"
   echo "Credentials: $credentials" >&2
-
   # Validate and reformat JSON
   credentials=$(echo "$credentials" | jq -c . 2>/dev/null)
   if [ $? -ne 0 ]; then
@@ -4410,7 +4422,7 @@ upload_stack_on_portainer() {
   fi
 
   # Upload the stack
-  info "Uploading stack: ${stack_name}..."
+  info "Uploading stack: ${stack_name}... (It may take mostly less than 5 minutes. Ctrl+C if it takes longer.)"
   resource="stacks/create/swarm/file"
   content_type="application/json"
   url="$(get_api_url "https" "$portainer_url" "$resource")"
@@ -4536,7 +4548,7 @@ remove_compose_if_failed_deployment() {
   fi
 
   if [ "$exit_code" -ne 0 ]; then
-    #rm -f "$compose_path"
+    rm -f "$compose_path"
     warning "Deployment failed. Docker Compose file \"$compose_path\" was removed."
     wait_for_input
     return 1
@@ -4684,6 +4696,14 @@ deploy_stack_pipeline() {
 
   total_steps=10
 
+  stack_step(){
+    type="$1" 
+    step="$2"
+    message="$3"
+    stack_message="[$stack_name] $message"
+    step_progress $step $total_steps "$stack_message"
+  }
+
   stack_step_progress(){
     stack_step "progress" "$1" "$2"
   }
@@ -4694,14 +4714,6 @@ deploy_stack_pipeline() {
   
   stack_step_error(){
     stack_step "error" "$1" "$2"
-  }
-
-  stack_step(){
-    type="$1" 
-    step="$2"
-    message="$3"
-    stack_message="[$stack_name] $message"
-    step_progress $step $total_steps "$stack_message"
   }
 
   stack_handle_exit(){
@@ -4735,21 +4747,28 @@ deploy_stack_pipeline() {
       return 1
   fi
 
+  if [[ "$dependencies" != "[]" ]]; then
+      info "Required dependencies: $dependencies"
+  fi
+
   # Check if there are dependencies, and if none, display a message
   if [ "$(echo "$dependencies" | jq length)" -eq 0 ]; then
     stack_step_warning 1 "No dependencies to deploy"
   else
     echo "$dependencies" | jq -c '.[]' | while IFS= read -r dependency; do
+      dependency=$(echo "$dependency" | sed -e 's/^"//' -e 's/"$//')
+      info "Processing dependency: $dependency"
+
       # Check if stack dependency exists on docker
-      if ! docker stack ls | grep -q "$dependency"; then
+      if ! docker stack ls --format '{{.Name}}' | grep -q "$dependency"; then
         dependency_message="Deploying dependency: $dependency"
         stack_step_progress 1 "$dependency_message"
 
-        # # Fetch JSON for the dependency
-        # deploy_stack "$dependency"
-        # stack_handle_exit "$?" 1 "$dependency_message"  
+        # Fetch JSON for the dependency
+        deploy_stack "$dependency"
+        stack_handle_exit "$?" 1 "$dependency_message"
       else
-        dependency_message="Dependency \"$dependency\" already exists"
+        dependency_message="Dependency \"$dependency\" already exists. Skipping..."
         stack_step_warning 1 "$dependency_message"
       fi
     done
@@ -4760,12 +4779,6 @@ deploy_stack_pipeline() {
   local setUp_actions
   prepare_actions=$(echo "$config_json" | jq -r '.prepare?')
   finalize_actions=$(echo "$config_json" | jq -r '.finalize?')
-
-  # Check if jq returned an error
-  if [[ $? -ne 0 ]]; then
-    stack_step_error 2 "Error parsing prepare actions: $prepare_actions"
-    exit 1
-  fi
 
   # Validate JSON
   if ! echo "$prepare_actions" | jq empty; then
@@ -4825,14 +4838,16 @@ deploy_stack_pipeline() {
   message="Validating Docker Compose file" 
   stack_step_progress 7 "$message" 
   validate_compose_file "$compose_path"
+
   exit_code="$?"
   stack_handle_exit "$exit_code" 7 "$message"
 
-  remove_compose_if_failed_deployment "$compose_path" "$exit_code" 
+  remove_compose_if_failed_deployment "$compose_path" "$exit_code"
 
-  if [ $? -ne 0 ]; then
-    return 1
-  fi
+  # FIX: Early return when there is an issue
+  #if [ $exit_code -ne 1 ]; then
+  #  return 1
+  #fi
 
   # Step 8: Deploy the service on Docker Swarm
   if [ "$stack_name" == "traefik" ] || [ "$stack_name" == "portainer" ]; then
@@ -4846,23 +4861,24 @@ deploy_stack_pipeline() {
     stack_step_progress 8 "$message"
 
     # Get Portainer credentials
-    portainer_config_json="$(load_json "$STACKS_FOLDER/portainer_config.json")"
-    echo "$portainer_config_json" >&2
-  
-    portainer_url="$(echo "$portainer_config_json" | jq -r '.variables.portainer_url')"
-    portainer_credentials="$(echo "$portainer_config_json" | jq -r '.variables.portainer_credentials')"
+    portainer_config_json="$(load_json "$STACKS_FOLDER/portainer_config.json")" 
+    portainer_url="$(\
+      echo "$portainer_config_json" | jq -r '.variables.portainer_url')"
+    portainer_credentials="$(\
+      echo "$portainer_config_json" | jq -r '.variables.portainer_credentials')"
 
     upload_stack_on_portainer "$portainer_url" "$portainer_credentials" "$stack_name" "$compose_path"
   fi
 
-  exit_code=0
-  stack_handle_exit $exit_code 8 "$message"
+  exit_code="$?"
+  stack_handle_exit "$exit_code" 8 "$message"
 
   remove_compose_if_failed_deployment "$compose_path" "$exit_code"
 
-  if [ $? -ne 0 ]; then
-    return 1
-  fi
+  # FIX: Early return when there is an issue
+  #if [ $exit_code -ne 1 ]; then
+  #  return 1
+  #fi
 
   # Validate JSON
   if ! echo "$finalize_actions" | jq empty; then
@@ -4877,8 +4893,6 @@ deploy_stack_pipeline() {
 
     echo "$finalize_actions" | jq -c '.[]' | while IFS= read -r action; do
       action_name=$(echo "$action" | jq -r '.name')
-
-      echo "$action" >&2
 
       message="Executing finalize action: $action_name"
       stack_step_error 9 "$message"
@@ -4895,7 +4909,9 @@ deploy_stack_pipeline() {
   message="Saving stack configuration"
   stack_step_progress 10 "$message"
   write_json "$config_path" "$config_json"
-  stack_handle_exit $? 10 "$message"
+  
+  exit_code="$?"
+  stack_handle_exit "$exit_code" 10 "$message"
 
   # Final Success Message
   deploy_success_message "$stack_name"
@@ -5326,11 +5342,29 @@ send_machine_specs_email(){
 
 ###################################### BEGIN OF SETUP FUNCTIONS ###################################
 
-# Function to check if a package is already installed
+# Generalized function to check if a package is already installed
 is_package_installed() {
   local package="$1"
-  dpkg -l | grep -q "$package"
+
+  # Check for dpkg packages
+  if dpkg -l | grep -q "^ii.*$package"; then
+    return 0
+  fi
+
+  # Check for snap packages
+  if snap list | grep -q "^$package"; then
+    return 0
+  fi
+
+  # Check if the command exists in PATH (binary check)
+  if command -v "$package" > /dev/null 2>&1; then
+    return 0
+  fi
+
+  # If none of the checks match, return not installed
+  return 1
 }
+
 
 # Function to install a package
 install_package() {
@@ -5344,7 +5378,7 @@ install_package() {
     info "Starting installation of package: $package"
 
     # Try to install the package and check for success
-    if ! DEBIAN_FRONTEND=noninteractive $command install "$package" -yq >/dev/null 2>&1; then
+    if ! DEBIAN_FRONTEND=noninteractive $command install "$package" >/dev/null 2>&1; then
       error "Failed to install package: $package. Check logs for more details."
     else
       success "Successfully installed package: $package"
@@ -5402,13 +5436,13 @@ update_and_install_packages() {
   )
   step_message="Installing required apt-get packages"
   step_progress 3 $total_steps "$step_message"
-  install_all_packages "apt-get" "${apt_packages[@]}"
+  install_all_packages "apt-get -yq" "${apt_packages[@]}"
   handle_exit $? 3 $total_steps "$step_message"
 
   snap_packages=(
     "yq"
   )
-  step_message="Installing required snao packages"
+  step_message="Installing required snap packages"
   step_progress 4 $total_steps "$step_message"
   install_all_packages "snap" "${snap_packages[@]}"
   handle_exit $? 4 $total_steps "$step_message"
@@ -5551,7 +5585,7 @@ get_server_info() {
 
 # Function to initialize the server information
 initialize_server_info() {
-  total_steps=6
+  total_steps=7
   server_filename="${HOME}/server_info.json"
 
   # Step 1: Check if server_info.json exists and is valid
@@ -5590,64 +5624,70 @@ initialize_server_info() {
   echo "$server_info_json" > "$server_filename"
   step_success 1 $total_steps "Server information saved to file $server_filename"
 
+  step_message="Create stackme folder"
+  step_progress 2 $total_steps "$step_message" 
+  mkdir -p "$STACKME_FOLDER"
+  
+  handle_exit $? 2 $total_steps "$step_message"
+
   # Update /etc/hosts
   step_message="Add name to server name in hosts file at path /etc/hosts"
-  step_progress 2 $total_steps "$step_message"
+  step_progress 3 $total_steps "$step_message"
   # Ensure /etc/hosts has the correct entry
   if ! grep -q "^127.0.0.1[[:space:]]$server_name" /etc/hosts; then
     sed -i "/^127.0.0.1[[:space:]]/d" /etc/hosts  # Remove old entries
     echo "127.0.0.1 $server_name" >> /etc/hosts
   else
-    step_info 2 $total_steps "$server_name is already present in /etc/hosts"
+    step_info 3 $total_steps "$server_name is already present in /etc/hosts"
   fi
 
-  handle_exit $? 2 $total_steps "$step_message"
+  handle_exit $? 3 $total_steps "$step_message"
 
     # Set Hostname
   step_message="Set Hostname"
-  step_progress 3 $total_steps "$step_message"
+  step_progress 4 $total_steps "$step_message"
 
   current_hostname="$(hostnamectl --static)"
 
   if [[ "$current_hostname" != "$server_name" ]]; then
     hostnamectl set-hostname "$server_name"
-    handle_exit $? 3 $total_steps "Set Hostname"
+    handle_exit $? 4 $total_steps "Set Hostname"
 
-    step_success 3 $total_steps "Hostname set to $server_name"
+    step_success 4 $total_steps "Hostname set to $server_name"
 
     # Allow a brief delay for changes to propagate
     sleep 1
   else
-      step_info 3 $total_steps "Hostname is already set to $server_name"
+      step_info 4 $total_steps "Hostname is already set to $server_name"
   fi
 
   # Install docker
   step_message="Installing Docker"
-  step_progress 4 $total_steps "$step_message"
+  step_progress 5 $total_steps "$step_message"
   install_docker
-  handle_exit $? 4 $total_steps "$step_message"
+  handle_exit $? 5 $total_steps "$step_message"
 
   # Initialize Docker Swarm
   step_message="Docker Swarm initialization"
-  step_progress 5 $total_steps "$step_message"
+  step_progress 6 $total_steps "$step_message"
 
   read -r ip _ <<<$(
     hostname -I | tr ' ' '\n' | grep -v '^127\.0\.0\.1' | tr '\n' ' '
   )
   if is_swarm_active; then
-    step_warning 5 $total_steps "Swarm is already active"
+    step_warning 6 $total_steps "Swarm is already active"
   else
     # server_ip=$(curl ipinfo.io/ip)
     docker swarm init --advertise-addr $ip 2>&1
     
-    handle_exit $? 5 $total_steps "$step_message"
+    handle_exit $? 6 $total_steps "$step_message"
   fi
 
   # Initialize Network
   message="Network initialization"
-  step_progress 6 $total_steps "$message"
+  step_progress 7 $total_steps "$message"
   create_network_if_not_exists "$network_name"
-  handle_exit $? 6 $total_steps "$step_message"
+  handle_exit $? 7 $total_steps "$step_message"
 
   success "Server initialization complete"
 
@@ -5735,9 +5775,6 @@ volumes:
   vol_certificates:
     external: true
     name: volume_swarm_certificates
-  es_data:
-    external: true
-    name: volume_es_data
 
 networks:
   {{network_name}}:
@@ -5815,27 +5852,50 @@ services:
     image: grafana/grafana:10.2.2
     ports:
       - '3000:3000'
-    volumes:
-      - ./grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
-      - ./grafana/dashboard.yml:/etc/grafana/provisioning/dashboards/dashboard.yml
-      - ./grafana/hotrod_metrics_logs.json:/etc/grafana/provisioning/dashboards/hotrod_metrics_logs.json
     deploy:
+      mode: replicated
+      replicas: 1
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.grafana.rule=Host(\`{{url_grafana}}\`)"
         - "traefik.http.routers.grafana.entrypoints=websecure"
+        - "traefik.http.routers.grafana.service=grafana"
         - "traefik.http.routers.grafana.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.grafana.loadbalancer.server.port=3000"
     logging:
-      driver: loki
-      options:
-        loki-url: 'http://localhost:3100/api/prom/push'
+      driver: json-file
+
+  elasticsearch:
+    image: elasticsearch:7.8.1
+    ports:
+      - 9200:9200
+    environment:
+      discovery.type: 'single-node'
+      xpack.security.enabled: 'true'
+      ELASTIC_PASSWORD: '{{elasticsearch_password}}'
+      ES_JAVA_OPTS: '-Xmx2g -Xms2g'
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.15.1
+    ports:
+      - '5601:5601'
+    deploy:
+      mode: replicated
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.kibana.rule=Host(\`{{url_kibana}}\`)"
+        - "traefik.http.routers.kibana.entrypoints=websecure"
+        - "traefik.http.routers.kibana.service=kibana"
+        - "traefik.http.routers.kibana.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.kibana.loadbalancer.server.port=5601"
+    logging:
+      driver: json-file
 
   loki:
     image: grafana/loki:2.9.2
     ports:
       - '3100:3100'
-    command: -config.file=/etc/loki/local-config.yaml
     # send Loki traces to Jaeger
     environment:
       - JAEGER_AGENT_HOST=jaeger
@@ -5843,25 +5903,18 @@ services:
       - JAEGER_SAMPLER_TYPE=const
       - JAEGER_SAMPLER_PARAM=1
     logging:
-      driver: loki
-      options:
-        loki-url: 'http://localhost:3100/api/prom/push'
-        # Prevent container from being stuck when shutting down
-        # https://github.com/grafana/loki/issues/2361#issuecomment-718024318
-        loki-timeout: 1s
-        loki-max-backoff: 1s
-        loki-retries: 1
-  
-    jaeger:
+      driver: json-file
+
+  jaeger:
     image: jaegertracing/all-in-one:1.51
     ports:
       - '6831:6831'
       - '16686:16686'
     logging:
-      driver: loki
-      options:
-        loki-url: 'http://localhost:3100/api/prom/push'
+      driver: json-file
     deploy:
+      mode: replicated
+      replicas: 1
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.jaeger.rule=Host(\`{{url_jaeger}}\`)"
@@ -5872,23 +5925,18 @@ services:
   prometheus:
     image: prom/prometheus:v2.48.0
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - /opt/stackme/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090" # Prometheus web interface
     command:
       - --config.file=/etc/prometheus/prometheus.yml
     logging:
-      driver: loki
-      options:
-        loki-url: 'http://localhost:3100/api/prom/push'
+      driver: json-file
     networks:
       - {{network_name}}
     deploy:
       mode: replicated
       replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
       labels:
         - traefik.enable=true
         - traefik.http.routers.prometheus.rule=Host(\`{{url_prometheus}}\`)
@@ -5911,9 +5959,6 @@ services:
     deploy:
       mode: replicated
       replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
       labels:
         - traefik.enable=true
         - traefik.http.routers.node-exporter.rule=Host(\`{{url_node_exporter}}\`)
@@ -5922,6 +5967,38 @@ services:
         - traefik.http.routers.node-exporter.tls.certresolver=letsencryptresolver
         - traefik.http.routers.node-exporter.entrypoints=websecure
         - traefik.http.routers.node-exporter.tls=true
+  
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor
+    restart: unless-stopped
+
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup
+      - /var/lib/docker/:/var/lib/docker:ro
+
+    networks:
+      - {{network_name}}
+
+    ports:
+      - "8181:8080"
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.cadvisor.rule=Host(\`{{url_cadvisor}}\`)
+        - traefik.http.services.cadvisor.loadbalancer.server.port=8080
+        - traefik.http.routers.cadvisor.service=cadvisor
+        - traefik.http.routers.cadvisor.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.cadvisor.entrypoints=websecure
+        - traefik.http.routers.cadvisor.tls=true
 
 networks:
   {{network_name}}:
@@ -6020,6 +6097,344 @@ networks:
 EOL
 }
 
+compose_airflow(){
+  cat <<EOL
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+# Basic Airflow cluster configuration for CeleryExecutor with Redis and PostgreSQL.
+#
+# WARNING: This configuration is for local development. Do not use it in a production deployment.
+#
+# This configuration supports basic configuration using environment variables or an .env file
+# The following variables are supported:
+#
+# AIRFLOW_IMAGE_NAME           - Docker image name used to run Airflow.
+#                                Default: apache/airflow:2.9.3
+# AIRFLOW_UID                  - User ID in Airflow containers
+#                                Default: 50000
+# AIRFLOW_PROJ_DIR             - Base path to which all the files will be volumed.
+#                                Default: .
+# Those configurations are useful mostly in case of standalone testing/running Airflow in test/try-out mode
+#
+# _AIRFLOW_WWW_USER_USERNAME   - Username for the administrator account (if requested).
+#                                Default: airflow
+# _AIRFLOW_WWW_USER_PASSWORD   - Password for the administrator account (if requested).
+#                                Default: airflow
+# _PIP_ADDITIONAL_REQUIREMENTS - Additional PIP requirements to add when starting all containers.
+#                                Use this option ONLY for quick checks. Installing requirements at container
+#                                startup is done EVERY TIME the service is started.
+#                                A better way is to build a custom image or extend the official image
+#                                as described in https://airflow.apache.org/docs/docker-stack/build.html.
+#                                Default: ''
+#
+# Feel free to modify this file to suit your needs.
+---
+x-airflow-common:
+  &airflow-common
+  # In order to add custom dependencies or upgrade provider packages you can use your extended image.
+  # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
+  # and uncomment the "build" line below, Then run \`docker-compose build\` to build the images.
+  image: apache/airflow:2.10.0
+  # build: .
+  environment:
+    &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+    AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+    AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
+    AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+    # yamllint disable rule:line-length
+    # Use simple http server on scheduler for health checks
+    # See https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
+    # yamllint enable rule:line-length
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+    # WARNING: Use _PIP_ADDITIONAL_REQUIREMENTS option ONLY for a quick checks
+    # for other purpose (development, test and especially production usage) build/extend Airflow image.
+    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+    # The following line can be used to set a custom config file, stored in the local config folder
+    # If you want to use it, outcomment it and replace airflow.cfg with the name of your config file
+    # AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
+  volumes:
+    - /opt/stackme/stacks/airflow/dags:/opt/airflow/dags
+    - /opt/stackme/stacks/airflow/logs:/opt/airflow/logs
+    - /opt/stackme/stacks/airflow/config:/opt/airflow/config
+    - /opt/stackme/stacks/airflow/plugins:/opt/airflow/plugins
+  user: "${AIRFLOW_UID:-50000}:0"
+
+services:
+  airflow-python:
+    <<: *airflow-common
+    environment:
+        <<: *airflow-common-env
+    networks:
+      - {{network_name}}
+    user: "${AIRFLOW_UID}:0"
+    entrypoint: ["bash"]
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    deploy:
+      mode: global
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.whoami.rule=Host(\`{{url_airflow}}\`)
+        - traefik.http.routers.whoami.entrypoints=websecure
+        - traefik.http.routers.whoami.priority=1
+        - traefik.http.routers.whoami.tls.certresolver=letsencryptresolver
+        - traefik.http.services.whoami.loadbalancer.server.port=8080
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      - airflow-init
+    networks:
+      - {{network_name}}
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      - airflow-init
+    networks:
+      - {{network_name}}
+
+  airflow-worker:
+    <<: *airflow-common
+    command: celery worker
+    healthcheck:
+      # yamllint disable rule:line-length
+      test:
+        - "CMD-SHELL"
+        - 'celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}" || celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    environment:
+      <<: *airflow-common-env
+      # Required to handle warm shutdown of the celery workers properly
+      # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
+      DUMB_INIT_SETSID: "0"
+    restart: always
+    extra_hosts: 
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - airflow-init
+    networks:
+      - {{network_name}}
+
+  airflow-triggerer:
+    <<: *airflow-common
+    command: triggerer
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      - airflow-init
+    networks:
+      - {{network_name}}
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    # yamllint disable rule:line-length
+    command:
+      - -c
+      - |
+        if [[ -z "${AIRFLOW_UID}" ]]; then
+          echo
+          echo -e "\033[1;33mWARNING!!!: AIRFLOW_UID not set!\e[0m"
+          echo "If you are on Linux, you SHOULD follow the instructions below to set "
+          echo "AIRFLOW_UID environment variable, otherwise files will be owned by root."
+          echo "For other operating systems you can get rid of the warning with manually created .env file:"
+          echo "    See: https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#setting-the-right-airflow-user"
+          echo
+        fi
+        one_meg=1048576
+        mem_available=$$(($$(getconf _PHYS_PAGES) * $$(getconf PAGE_SIZE) / one_meg))
+        cpus_available=$$(grep -cE 'cpu[0-9]+' /proc/stat)
+        disk_available=$$(df / | tail -1 | awk '{print $$4}')
+        warning_resources="false"
+        if (( mem_available < 4000 )) ; then
+          echo
+          echo -e "\033[1;33mWARNING!!!: Not enough memory available for Docker.\e[0m"
+          echo "At least 4GB of memory required. You have $$(numfmt --to iec $$((mem_available * one_meg)))"
+          echo
+          warning_resources="true"
+        fi
+        if (( cpus_available < 2 )); then
+          echo
+          echo -e "\033[1;33mWARNING!!!: Not enough CPUS available for Docker.\e[0m"
+          echo "At least 2 CPUs recommended. You have $${cpus_available}"
+          echo
+          warning_resources="true"
+        fi
+        if (( disk_available < one_meg * 10 )); then
+          echo
+          echo -e "\033[1;33mWARNING!!!: Not enough Disk space available for Docker.\e[0m"
+          echo "At least 10 GBs recommended. You have $$(numfmt --to iec $$((disk_available * 1024 )))"
+          echo
+          warning_resources="true"
+        fi
+        if [[ $${warning_resources} == "true" ]]; then
+          echo
+          echo -e "\033[1;33mWARNING!!!: You have not enough resources to run Airflow (see above)!\e[0m"
+          echo "Please follow the instructions to increase amount of resources available:"
+          echo "   https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#before-you-begin"
+          echo
+        fi
+        mkdir -p /sources/logs /sources/dags /sources/plugins
+        chown -R "${AIRFLOW_UID}:0" /sources/{logs,dags,plugins}
+        airflow db migrate
+        exec /entrypoint airflow version
+    # yamllint enable rule:line-length
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: airflow
+      _AIRFLOW_WWW_USER_PASSWORD: airflow
+      _PIP_ADDITIONAL_REQUIREMENTS: ''
+    user: "0:0"
+    volumes:
+      - .:/sources
+    networks:
+      - {{network_name}}
+
+  airflow-cli:
+    <<: *airflow-common
+    environment:
+      <<: *airflow-common-env
+      CONNECTION_CHECK_MAX_COUNT: "0"
+    # Workaround for entrypoint issue. See: https://github.com/apache/airflow/issues/16252
+    command:
+      - bash
+      - -c
+      - airflow
+
+  flower:
+    <<: *airflow-common
+    command: celery flower
+    deploy:
+      mode: global
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.whoami.rule=Host(\`{{url_flower}}\`)
+        - traefik.http.routers.whoami.entrypoints=websecure
+        - traefik.http.routers.whoami.priority=1
+        - traefik.http.routers.whoami.tls.certresolver=letsencryptresolver
+        - traefik.http.services.whoami.loadbalancer.server.port=5555
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:5555/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      - airflow-init
+    networks:
+      - {{network_name}}
+
+networks:
+  {{network_name}}:
+    external: true
+EOL
+}
+
+compose_metabase(){
+  cat <<EOL
+version: "3.7"
+services:
+
+  metabase:
+    image: metabase/metabase:latest
+
+    volumes:
+      - metabase_data:/metabase3-data
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Url MetaBase
+      - MB_SITE_URL=https://{{url_metabase}}
+      - MB_REDIRECT_ALL_REQUESTS_TO_HTTPS=true
+      - MB_JETTY_PORT=3000
+      - MB_JETTY_HOST=0.0.0.0
+
+      ## Dados postgres
+      - MB_DB_MIGRATION_LOCATION=none
+      - MB_DB_TYPE=postgres
+      - MB_DB_DBNAME=metabase
+      - MB_DB_PORT=5432
+      - MB_DB_USER=postgres
+      - MB_DB_PASS={{postgres_password}}
+      - MB_DB_HOST=postgres
+      - MB_AUTOMIGRATE=false
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.metabase.rule=Host(\`{{url_metabase}}\`)
+        - traefik.http.services.metabas.loadbalancer.server.port=3000
+        - traefik.http.routers.metabase.service=metabase
+        - traefik.http.routers.metabase.entrypoints=websecure
+        - traefik.http.routers.metabase.tls=true
+        - traefik.http.routers.metabase.tls.certresolver=letsencryptresolver
+
+volumes:
+  metabase_data:
+    external: true
+    name: metabase_data
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}
+EOL
+}
+
 ######################################## END OF COMPOSE FILES #####################################
 
 ############################# BEGIN OF STACK DEPLOYMENT UTILITARY FUNCTIONS #######################
@@ -6089,15 +6504,18 @@ get_network_name(){
 #################################### BEGIN OF STACK CONFIGURATION #################################
 
 manage_prometheus_config_file() {
+  local prometheus_config_path="$1"
+  shift
   local targets=("$@") # New targets passed as arguments
-
-  prometheus_config_path="$STACKS_FOLDER/prometheus.yml"
+  
   prometheus_scrape_config="$(create_scrape_config_object --job_name "prometheus" \
     --metrics_path "/metrics" \
     --honor_timestamps "false" \
     --honor_labels "true" \
     --scrape_interval "10s" \
     --targets "$(join_array ',' "${targets[@]}")")"
+
+    debug "$prometheus_scrape_config"
 
   add_scrape_config_object "$prometheus_config_path" "$prometheus_scrape_config"
 
@@ -6276,7 +6694,13 @@ generate_config_portainer() {
         },
         "dependencies": ["traefik"],
         "prepare": [],
-        "finalize": []
+        "finalize": [
+            {
+                "name": "signup_on_portainer",
+                "description": "Signup on portainer",
+                "command": ("signup_on_portainer \"" + $portainer_url + "\" \"" + $portainer_username + "\" \"" + $portainer_password + "\"")
+            }
+        ]
     }' | jq . || {
         echo "Failed to generate JSON"
         return 1
@@ -6304,6 +6728,20 @@ generate_config_monitor(){
           "validate_fn": "validate_url_suffix" 
       },
       {
+          "name": "url_node_exporter",
+          "label": "Node Exporter Domain Name",
+          "description": "Domain name for Node Exporter",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      },
+      {
+          "name": "url_cadvisor",
+          "label": "cAdvisor Domain Name",
+          "description": "Domain name for cAdvisor",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      },
+      {
           "name": "url_grafana",
           "label": "Grafana Domain Name",
           "description": "Domain name for Grafana",
@@ -6311,11 +6749,11 @@ generate_config_monitor(){
           "validate_fn": "validate_url_suffix" 
       },
       {
-          "name": "url_node_exporter",
-          "label": "Node Exporter Domain Name",
-          "description": "Domain name for Node Exporter",
-          "required": "yes",
-          "validate_fn": "validate_url_suffix" 
+        "name": "url_kibana",
+        "label": "Kibana Domain Name",
+        "description": "Domain name for Kibana",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
       }
   ]'
 
@@ -6332,6 +6770,9 @@ generate_config_monitor(){
   url_jaeger="$(echo "$collected_object" | jq -r '.url_jaeger')"
   url_prometheus="$(echo "$collected_object" | jq -r '.url_prometheus')"
   url_grafana="$(echo "$collected_object" | jq -r '.url_grafana')"
+  url_node_exporter="$(echo "$collected_object" | jq -r '.url_node_exporter')"
+  url_cadvisor="$(echo "$collected_object" | jq -r '.url_cadvisor')"
+  url_kibana="$(echo "$collected_object" | jq -r '.url_kibana')"
 
   step_info 2 $total_steps "Retrieving network name"
   local network_name="$(get_network_name)"
@@ -6345,15 +6786,52 @@ generate_config_monitor(){
   step_info 3 $total_steps "Add scrape_configs to prometheus.yml"
 
   # Ensure everything is quoted correctly
-  manage_prometheus_config_file "$url_prometheus" "$url_jaeger"
+  prometheus_config_path="${STACKME_FOLDER}/prometheus/prometheus.yml"
+  manage_prometheus_config_file "$prometheus_config_path" \
+    "$url_prometheus" "$url_jaeger" "$url_node_exporter" "$url_cadvisor"
+
+  handle_exit "$?" 3 "$total_steps" "$message"  
+
+  message="Creating datasource.yml"
+  step_info 4 $total_steps "$message"
+
+  mkdir -p "${STACKME_FOLDER}/prometheus"
+  
+  cat > "${STACKME_FOLDER}/prometheus/datasource.yml" <<EOL
+apiVersion: 1
+datasources:
+- name: Prometheus
+  type: prometheus
+  url: https://$url_prometheus
+  isDefault: true
+  access: proxy
+  editable: true
+EOL
+
+  handle_exit "$?" 4 "$total_steps" "$message" 
+
+cat > "${STACKME_FOLDER}/prometheus/datasource.yml" <<EOL
+# To allow connections from remote users, set this parameter to a non-loopback address.
+server.host: "0.0.0.0"
+
+# The URLs of the Elasticsearch instances to use for all your queries.
+elasticsearch.hosts: ["http://elasticsearch:9200"]
+
+# the username and password that the Kibana server uses to perform maintenance on the Kibana
+# index at startup. Your Kibana users still need to authenticate with Elasticsearch, which
+# is proxied through the Kibana server.
+elasticsearch.username: "elastic"
+elasticsearch.password: "<your_password>"
+EOL
 
   # Ensure everything is quoted correctly
   jq -n \
     --arg stack_name "$stack_name" \
     --arg url_jaeger "$url_jaeger" \
     --arg url_prometheus "$url_prometheus" \
-    --arg url_grafana "$url_grafana" \
     --arg url_node_exporter "$url_node_exporter" \
+    --arg url_cadvisor "$url_cadvisor" \
+    --arg url_grafana "$url_grafana" \
     --arg url_kibana "$url_kibana" \
     --arg network_name "$network_name" \
     '{
@@ -6363,11 +6841,12 @@ generate_config_monitor(){
           "url_jaeger": $url_jaeger,
           "url_prometheus": $url_prometheus,
           "url_node_exporter": $url_node_exporter,
+          "url_cadvisor": $url_cadvisor,
           "url_grafana": $url_grafana,
           "url_kibana": $url_kibana,
           "network_name": $network_name
         },
-        "dependencies": ["traefik"],
+        "dependencies": ["traefik", "portainer"],
         "prepare": [],
         "finalize": []
     }'
@@ -6375,7 +6854,7 @@ generate_config_monitor(){
 
 # Function to generate configuration files for redis
 generate_config_redis() {
-  local stack_name = 'redis'
+  local stack_name='redis'
 
   highlight "Gathering $stack_name configuration"
 
@@ -6397,7 +6876,7 @@ generate_config_redis() {
     --arg image_version "$image_version" \
     --arg container_port "6379" \
     --arg redis_url "redis://redis:6379" \
-    --arg volume_name "${stack_name}_data" \
+    --arg volume_name "redis_data" \
     --arg network_name "$network_name" \
     '{
             "name": $stack_name,
@@ -6439,7 +6918,7 @@ generate_config_postgres() {
     --arg image_version "$image_version" \
     --arg db_user "$postgres_user" \
     --arg db_password "$postgres_password" \
-    --arg volume_name "${stack_name}_data" \
+    --arg volume_name "postgres_data" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
@@ -6515,6 +6994,129 @@ generate_config_whoami() {
     } 
 }
 
+# Function to generate Airflow service configuration JSON
+generate_config_airflow() {
+  local stack_name='airflow'
+
+  total_steps=2
+
+  # Prompting step 
+  prompt_items='[
+      {
+          "name": "url_airflow",
+          "label": "Airflow domain name",
+          "description": "URL to access Airflow remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      },
+      {
+          "name": "url_flower",
+          "label": "Flower domain name",
+          "description": "URL to access Flower remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      }
+  ]'
+
+  step_info 1 $total_steps "Prompting required Airflow information"
+  collected_items="$(run_collection_process "$prompt_items")"
+
+  if [[ "$collected_items" == "[]" ]]; then
+    step_error 1 $total_steps "Unable to prompt Portainer configuration."
+    return 1
+  fi
+
+  url_airflow="$(\
+    get_variable_value_from_collection "$collected_items" "url_airflow" \
+  )"
+  url_flower="$(\
+    get_variable_value_from_collection "$collected_items" "url_flower" \
+  )"
+
+  # Step 2: Create Airflow folders
+  step_info 2 $total_steps "Creating Airflow folders"
+  mkdir -p "$STACKS_FOLDER/airflow/"{config,logs,dags,plugins}
+
+  # Step 3: Retrieve network name
+  step_info 3 $total_steps "Retrieving network name"
+  network_name="$(get_network_name)"
+
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg url_airflow "$url_airflow" \
+    --arg url_flower "$url_flower" \
+    --arg network_name "$network_name" \
+    '{
+          "name": $stack_name,
+          "variables": {
+              "stack_name": $stack_name,
+              "url_airflow": $url_airflow,
+              "url_flower": $url_flower,
+              "network_name": $network_name,
+          },
+          "dependencies": ["traefik", "portainer", "postgres", "redis"],
+          "prepare": [],
+          "finalize": []
+      }' | jq . || {
+        error "Failed to generate JSON"
+        return 1
+    } 
+}
+
+# Function to generate Metabase service configuration JSON
+generate_config_metabase() {
+  local stack_name='metabase'
+
+  total_steps=2
+
+  # Prompting step 
+  prompt_items='[
+      {
+          "name": "url_metabase",
+          "label": "Metabase domain name",
+          "description": "URL to access Metabase remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      }
+  ]'
+
+  step_info 1 $total_steps "Prompting required Airflow information"
+  collected_items="$(run_collection_process "$prompt_items")"
+
+  if [[ "$collected_items" == "[]" ]]; then
+    step_error 1 $total_steps "Unable to prompt Portainer configuration."
+    return 1
+  fi
+
+  # Step 2: Retrieve network name
+  step_info 2 $total_steps "Retrieving network name"
+  network_name="$(get_network_name)"
+
+  url_metabase="$(\
+    get_variable_value_from_collection "$collected_items" "url_metabase" \
+  )"
+
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg url_metabase "$url_metabase" \
+    --arg network_name "$network_name" \
+    '{
+          "name": $stack_name,
+          "variables": {
+              "stack_name": $stack_name,
+              "url_airflow": $url_airflow,
+              "url_flower": $url_flower,
+              "network_name": $network_name,
+          },
+          "dependencies": ["traefik", "portainer", "postgres", "redis"],
+          "prepare": [],
+          "finalize": []
+      }' | jq . || {
+        error "Failed to generate JSON"
+        return 1
+    } 
+}
+
 #################################### END OF STACK CONFIGURATION ###################################
 
 ################################ BEGIN OF STACK DEPLOYMENT FUNCTIONS ##############################
@@ -6540,10 +7142,16 @@ deploy_stack_monitor() {
 }
 
 rollback_stack(){
-  cleanup
-  clean_screen
+  local stack_name="$1"
 
-  docker stack rm "$1"
+  docker stack rm "$stack_name"
+
+  if [[ $? -ne 0 ]]; then
+    failure "Rollback of stack $stack_name failed"
+    return 1
+  fi
+
+  success "Rollback of stack $stack_name successful"
 }
 
 deploy_stack_startup() {
@@ -6563,17 +7171,6 @@ deploy_stack_startup() {
 
     rollback_stack "traefik"
     rollback_stack "portainer"
-    return 1
-  fi
-
-  deploy_stack_monitor
-
-  if [[ $? -ne 0 ]]; then
-    failure "Monitor deployment failed. Rolling back..."
-
-    rollback_stack "traefik"
-    rollback_stack "portainer"
-    rollback_stack "monitor"
     return 1
   fi
 }
@@ -6599,9 +7196,36 @@ deploy_stack_whoami() {
   deploy_stack 'whoami'
 }
 
+# Function to deploy a airflow service
+deploy_stack_airflow() {
+  cleanup
+  clean_screen
+  deploy_stack 'airflow'
+}
+
 ################################# END OF STACK DEPLOYMENT FUNCTIONS ################################
 
 ##################################### BEGIN OF MENU DEFINITIONS ####################################
+
+# Stacks
+define_menu_stacks_databases(){
+  menu_name="Databases"
+
+  item_1="$(
+    build_menu_item "postgres" "Deploy" "deploy_stack_postgres" 
+  )"
+  item_2="$(
+    build_menu_item "redis" "Deploy" "deploy_stack_redis" 
+  )"
+
+  items=(
+    "$item_1" "$item_2"
+  )
+
+  menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
+
+  define_menu "$menu_name" "$menu_object"
+}
 
 # Stacks
 define_menu_stacks(){
@@ -6609,26 +7233,37 @@ define_menu_stacks(){
 
   item_1="$(
       build_menu_item "Startup" \
-      "Traefik & Portainer & Jaeger & Prometheus & Grafana" \
+      "Traefik & Portainer" \
       "deploy_stack_startup"
   )"
   item_2="$(
-    build_menu_item "postgres" "Deploy" "deploy_stack_postgres" 
+      build_menu_item "Monitor" \
+      "Jaeger & Prometheus & Node Exporter & Grafana & Kibana & " \
+      "deploy_stack_monitor"
   )"
   item_3="$(
-    build_menu_item "redis" "Deploy" "deploy_stack_redis" 
+      build_menu_item "Databases" \
+      "Postgres & Redis" \
+      "navigate_menu 'Databases'"
   )"
   item_4="$(
-    build_menu_item "whoami" "Deploy" "deploy_stack_whoami"
+    build_menu_item "whoami" \
+      "Deploy" \
+      "deploy_stack_whoami"
+  )"
+  item_5="$(
+    build_menu_item "airflow" \
+      "Deploy" \
+      "deploy_stack_airflow"
   )"
 
-  page_size=5
 
   items=(
-    "$item_1" "$item_2" "$item_3" "$item_4"
+    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5"
   )
 
-  menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
+  page_size=10
+  menu_object="$(build_menu "$menu_name" $page_size "${items[@]}")"
 
   define_menu "$menu_name" "$menu_object"
 }
@@ -6728,6 +7363,7 @@ define_menu_main(){
 define_menus(){
     define_menu_main
     define_menu_stacks
+    define_menu_stacks_databases
     define_menu_utilities
     define_menu_health
 }
@@ -6818,8 +7454,6 @@ main() {
   clear
 
   # Perform initialization
-  server_config_fname="${HOME}/server_info.json"
-
   initialize_server_info
   clear
 
@@ -6830,3 +7464,25 @@ main() {
 
 # Call the main function
 main "$@"
+
+# stack_name="postgres"
+# stack_exists "$stack_name"
+# 
+# if [[ $? -eq 0 ]]; then
+#   prompt_message="${yellow}Stack exists. Would you like to remove it? (Y/n)${normal}"
+#   if handle_confirmation_prompt "$prompt_message" "y" 5; then
+#     echo "Stack $stack_name removed!"
+#   else
+#     echo "Stack $stack_name not removed!"
+#   fi
+# 
+# else
+#   prompt_message="${yellow}Stack $stack_name does not exist. Would you like to install it? (Y/n)${normal}"
+#   if handle_confirmation_prompt "$prompt_message" "y" 5; then
+#     echo "Stack $stack_name removed!"
+#   else
+#     echo "Stack $stack_name not removed!"
+#   fi
+# fi
+
+wait_for_input 5
