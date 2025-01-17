@@ -7117,7 +7117,7 @@ define_menu_stacks(){
   )"
   item_3="$(
       build_menu_item "Databases" \
-      "Postgres & Redis &" \
+      "Postgres & Redis" \
       "deploy_stack_stacks_databases"
   )"
   item_4="$(
@@ -7125,7 +7125,7 @@ define_menu_stacks(){
       "Deploy" \
       "deploy_stack_whoami"
   )"
-  item_4="$(
+  item_5="$(
     build_menu_item "airflow" \
       "Deploy" \
       "deploy_stack_airflow"
@@ -7133,7 +7133,7 @@ define_menu_stacks(){
 
 
   items=(
-    "$item_1" "$item_2" "$item_3" "$item_4"
+    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5"
   )
 
   page_size=10
