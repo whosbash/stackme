@@ -4422,7 +4422,7 @@ upload_stack_on_portainer() {
   fi
 
   # Upload the stack
-  info "Uploading stack: ${stack_name}..."
+  info "Uploading stack: ${stack_name}... (It may take mostly less than 5 minutes. Ctrl+C if it takes longer.)"
   resource="stacks/create/swarm/file"
   content_type="application/json"
   url="$(get_api_url "https" "$portainer_url" "$resource")"
@@ -4548,7 +4548,7 @@ remove_compose_if_failed_deployment() {
   fi
 
   if [ "$exit_code" -ne 0 ]; then
-    #rm -f "$compose_path"
+    rm -f "$compose_path"
     warning "Deployment failed. Docker Compose file \"$compose_path\" was removed."
     wait_for_input
     return 1
@@ -4696,6 +4696,14 @@ deploy_stack_pipeline() {
 
   total_steps=10
 
+  stack_step(){
+    type="$1" 
+    step="$2"
+    message="$3"
+    stack_message="[$stack_name] $message"
+    step_progress $step $total_steps "$stack_message"
+  }
+
   stack_step_progress(){
     stack_step "progress" "$1" "$2"
   }
@@ -4706,14 +4714,6 @@ deploy_stack_pipeline() {
   
   stack_step_error(){
     stack_step "error" "$1" "$2"
-  }
-
-  stack_step(){
-    type="$1" 
-    step="$2"
-    message="$3"
-    stack_message="[$stack_name] $message"
-    step_progress $step $total_steps "$stack_message"
   }
 
   stack_handle_exit(){
@@ -4747,6 +4747,10 @@ deploy_stack_pipeline() {
       return 1
   fi
 
+  if [[ "$dependencies" ~= '[]' ]] then
+    info "Required dependencies: $dependencies"
+  fi
+
   # Check if there are dependencies, and if none, display a message
   if [ "$(echo "$dependencies" | jq length)" -eq 0 ]; then
     stack_step_warning 1 "No dependencies to deploy"
@@ -4757,11 +4761,11 @@ deploy_stack_pipeline() {
         dependency_message="Deploying dependency: $dependency"
         stack_step_progress 1 "$dependency_message"
 
-        # # Fetch JSON for the dependency
-        # deploy_stack "$dependency"
-        # stack_handle_exit "$?" 1 "$dependency_message"  
+        # Fetch JSON for the dependency
+        deploy_stack "$dependency"
+        stack_handle_exit "$?" 1 "$dependency_message"
       else
-        dependency_message="Dependency \"$dependency\" already exists"
+        dependency_message="Dependency \"$dependency\" already exists. Skipping..."
         stack_step_warning 1 "$dependency_message"
       fi
     done
@@ -4772,12 +4776,6 @@ deploy_stack_pipeline() {
   local setUp_actions
   prepare_actions=$(echo "$config_json" | jq -r '.prepare?')
   finalize_actions=$(echo "$config_json" | jq -r '.finalize?')
-
-  # Check if jq returned an error
-  if [[ $? -ne 0 ]]; then
-    stack_step_error 2 "Error parsing prepare actions: $prepare_actions"
-    exit 1
-  fi
 
   # Validate JSON
   if ! echo "$prepare_actions" | jq empty; then
@@ -4837,12 +4835,13 @@ deploy_stack_pipeline() {
   message="Validating Docker Compose file" 
   stack_step_progress 7 "$message" 
   validate_compose_file "$compose_path"
+
   exit_code="$?"
   stack_handle_exit "$exit_code" 7 "$message"
 
-  remove_compose_if_failed_deployment "$compose_path" "$exit_code" 
+  remove_compose_if_failed_deployment "$compose_path" "$exit_code"
 
-  if [ $? -ne 0 ]; then
+  if [ $? -ne 1 ]; then
     return 1
   fi
 
@@ -4858,9 +4857,7 @@ deploy_stack_pipeline() {
     stack_step_progress 8 "$message"
 
     # Get Portainer credentials
-    portainer_config_json="$(load_json "$STACKS_FOLDER/portainer_config.json")"
-    echo "$portainer_config_json" >&2
-  
+    portainer_config_json="$(load_json "$STACKS_FOLDER/portainer_config.json")" 
     portainer_url="$(\
       echo "$portainer_config_json" | jq -r '.variables.portainer_url')"
     portainer_credentials="$(\
@@ -4869,12 +4866,12 @@ deploy_stack_pipeline() {
     upload_stack_on_portainer "$portainer_url" "$portainer_credentials" "$stack_name" "$compose_path"
   fi
 
-  exit_code=0
-  stack_handle_exit $exit_code 8 "$message"
+  exit_code="$?"
+  stack_handle_exit "$exit_code" 8 "$message"
 
   remove_compose_if_failed_deployment "$compose_path" "$exit_code"
 
-  if [ $? -ne 0 ]; then
+  if [ $exit_code -ne 1 ]; then
     return 1
   fi
 
@@ -4892,8 +4889,6 @@ deploy_stack_pipeline() {
     echo "$finalize_actions" | jq -c '.[]' | while IFS= read -r action; do
       action_name=$(echo "$action" | jq -r '.name')
 
-      echo "$action" >&2
-
       message="Executing finalize action: $action_name"
       stack_step_error 9 "$message"
 
@@ -4909,7 +4904,9 @@ deploy_stack_pipeline() {
   message="Saving stack configuration"
   stack_step_progress 10 "$message"
   write_json "$config_path" "$config_json"
-  stack_handle_exit $? 10 "$message"
+  
+  exit_code="$?"
+  stack_handle_exit "$exit_code" 10 "$message"
 
   # Final Success Message
   deploy_success_message "$stack_name"
@@ -6357,6 +6354,64 @@ services:
 EOL
 }
 
+compose_metabase(){
+  cat <<EOL
+version: "3.7"
+services:
+
+  metabase:
+    image: metabase/metabase:latest
+
+    volumes:
+      - metabase_data:/metabase3-data
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Url MetaBase
+      - MB_SITE_URL=https://{{url_metabase}}
+      - MB_REDIRECT_ALL_REQUESTS_TO_HTTPS=true
+      - MB_JETTY_PORT=3000
+      - MB_JETTY_HOST=0.0.0.0
+
+      ## Dados postgres
+      - MB_DB_MIGRATION_LOCATION=none
+      - MB_DB_TYPE=postgres
+      - MB_DB_DBNAME=metabase
+      - MB_DB_PORT=5432
+      - MB_DB_USER=postgres
+      - MB_DB_PASS={{postgres_password}}
+      - MB_DB_HOST=postgres
+      - MB_AUTOMIGRATE=false
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.metabase.rule=Host(\`{{url_metabase}}\`)
+        - traefik.http.services.metabas.loadbalancer.server.port=3000
+        - traefik.http.routers.metabase.service=metabase
+        - traefik.http.routers.metabase.entrypoints=websecure
+        - traefik.http.routers.metabase.tls=true
+        - traefik.http.routers.metabase.tls.certresolver=letsencryptresolver
+
+volumes:
+  metabase_data:
+    external: true
+    name: metabase_data
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}
+EOL
+}
+
 ######################################## END OF COMPOSE FILES #####################################
 
 ############################# BEGIN OF STACK DEPLOYMENT UTILITARY FUNCTIONS #######################
@@ -6916,6 +6971,7 @@ generate_config_whoami() {
     } 
 }
 
+# Function to generate Airflow service configuration JSON
 generate_config_airflow() {
   local stack_name='airflow'
 
@@ -6951,14 +7007,71 @@ generate_config_airflow() {
   step_info 2 $total_steps "Retrieving network name"
   network_name="$(get_network_name)"
 
-  domain_name="$(\
-    get_variable_value_from_collection "$collected_items" "domain_name" \
+  url_airflow="$(\
+    get_variable_value_from_collection "$collected_items" "url_airflow" \
+  )"
+  url_flower="$(\
+    get_variable_value_from_collection "$collected_items" "url_flower" \
   )"
 
   jq -n \
     --arg stack_name "$stack_name" \
     --arg url_airflow "$url_airflow" \
     --arg url_flower "$url_flower" \
+    --arg network_name "$network_name" \
+    '{
+          "name": $stack_name,
+          "variables": {
+              "stack_name": $stack_name,
+              "url_airflow": $url_airflow,
+              "url_flower": $url_flower,
+              "network_name": $network_name,
+          },
+          "dependencies": ["traefik", "portainer", "postgres", "redis"],
+          "prepare": [],
+          "finalize": []
+      }' | jq . || {
+        error "Failed to generate JSON"
+        return 1
+    } 
+}
+
+# Function to generate Metabase service configuration JSON
+generate_config_metabase() {
+  local stack_name='metabase'
+
+  total_steps=2
+
+  # Prompting step 
+  prompt_items='[
+      {
+          "name": "url_metabase",
+          "label": "Metabase domain name",
+          "description": "URL to access Metabase remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      }
+  ]'
+
+  step_info 1 $total_steps "Prompting required Airflow information"
+  collected_items="$(run_collection_process "$prompt_items")"
+
+  if [[ "$collected_items" == "[]" ]]; then
+    step_error 1 $total_steps "Unable to prompt Portainer configuration."
+    return 1
+  fi
+
+  # Step 2: Retrieve network name
+  step_info 2 $total_steps "Retrieving network name"
+  network_name="$(get_network_name)"
+
+  url_metabase="$(\
+    get_variable_value_from_collection "$collected_items" "url_metabase" \
+  )"
+
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg url_metabase "$url_metabase" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
