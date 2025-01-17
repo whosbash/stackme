@@ -4747,8 +4747,8 @@ deploy_stack_pipeline() {
       return 1
   fi
 
-  if [[ "$dependencies" ~= '[]' ]] then
-    info "Required dependencies: $dependencies"
+  if [[ "$dependencies" != "[]" ]]; then
+      info "Required dependencies: $dependencies"
   fi
 
   # Check if there are dependencies, and if none, display a message
