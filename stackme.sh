@@ -4771,7 +4771,7 @@ deploy_stack_pipeline() {
         dependency_message="Dependency \"$dependency\" already exists. Skipping..."
         stack_step_warning 1 "$dependency_message"
       fi
-      wait_for_inputs
+      wait_for_input
     done
   fi
 
