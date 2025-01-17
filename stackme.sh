@@ -4844,6 +4844,10 @@ deploy_stack_pipeline() {
 
   remove_compose_if_failed_deployment "$compose_path" "$exit_code"
 
+  if [ $exit_code -ne 1 ]; then
+    return 1
+  fi
+
   # Step 8: Deploy the service on Docker Swarm
   if [ "$stack_name" == "traefik" ] || [ "$stack_name" == "portainer" ]; then
     message="Deploying stack on Docker Swarm"
@@ -4869,6 +4873,10 @@ deploy_stack_pipeline() {
   stack_handle_exit "$exit_code" 8 "$message"
 
   remove_compose_if_failed_deployment "$compose_path" "$exit_code"
+
+  if [ $exit_code -ne 1 ]; then
+    return 1
+  fi
 
   # Validate JSON
   if ! echo "$finalize_actions" | jq empty; then
@@ -6826,7 +6834,7 @@ EOL
 
 # Function to generate configuration files for redis
 generate_config_redis() {
-  local stack_name = 'redis'
+  local stack_name='redis'
 
   highlight "Gathering $stack_name configuration"
 
