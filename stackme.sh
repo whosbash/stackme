@@ -6181,8 +6181,6 @@ x-airflow-common:
 services:
   airflow-python:
     <<: *airflow-common
-    profiles:
-        - debug
     environment:
         <<: *airflow-common-env
     user: "${AIRFLOW_UID}:0"
@@ -6326,8 +6324,6 @@ services:
 
   airflow-cli:
     <<: *airflow-common
-    profiles:
-      - debug
     environment:
       <<: *airflow-common-env
       CONNECTION_CHECK_MAX_COUNT: "0"
@@ -6337,14 +6333,9 @@ services:
       - -c
       - airflow
 
-  # You can enable flower by adding "--profile flower" option e.g. docker-compose --profile flower up
-  # or by explicitly targeted on the command line e.g. docker-compose up flower.
-  # See: https://docs.docker.com/compose/profiles/
   flower:
     <<: *airflow-common
     command: celery flower
-    profiles:
-      - flower
     deploy:
       mode: global
       labels:
