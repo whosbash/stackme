@@ -6169,10 +6169,10 @@ x-airflow-common:
     # If you want to use it, outcomment it and replace airflow.cfg with the name of your config file
     # AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
   volumes:
-    - ./dags:/opt/airflow/dags
-    - ./logs:/opt/airflow/logs
-    - ./config:/opt/airflow/config
-    - ./plugins:/opt/airflow/plugins
+    - /opt/stackme/airflow/dags:/opt/airflow/dags
+    - /opt/stackme/airflow/logs:/opt/airflow/logs
+    - /opt/stackme/airflow/config:/opt/airflow/config
+    - /opt/stackme/airflow/plugins:/opt/airflow/plugins
   user: "${AIRFLOW_UID:-50000}:0"
 
 services:
@@ -7003,16 +7003,20 @@ generate_config_airflow() {
     return 1
   fi
 
-  # Step 2: Retrieve network name
-  step_info 2 $total_steps "Retrieving network name"
-  network_name="$(get_network_name)"
-
   url_airflow="$(\
     get_variable_value_from_collection "$collected_items" "url_airflow" \
   )"
   url_flower="$(\
     get_variable_value_from_collection "$collected_items" "url_flower" \
   )"
+
+  # Step 2: Create Airflow folders
+  step_info 2 $total_steps "Creating Airflow folders"
+  mkdir -p "$STACKS_FOLDER/airflow/"{config,logs,dags,plugins}
+
+  # Step 3: Retrieve network name
+  step_info 3 $total_steps "Retrieving network name"
+  network_name="$(get_network_name)"
 
   jq -n \
     --arg stack_name "$stack_name" \
