@@ -6020,17 +6020,17 @@ services:
         "--appendonly",
         "yes",
         "--port",
-        "{{container_port}}"
+        "6379"
     ]
     volumes:
-      - {{volume_name}}:/data
+      - redis_data:/data
     networks:
       - {{network_name}}
 
 volumes:
-  {{volume_name}}:
+  redis_data:
     external: true
-    name: {{volume_name}}
+    name: redis_data
 
 networks:
   {{network_name}}:
@@ -6046,7 +6046,7 @@ version: '3'
 
 services:
   postgres:
-    image: postgres:{{image_version}}
+    image: postgres:15
     environment:
       - POSTGRES_PASSWORD={{db_password}}
       - PG_MAX_CONNECTIONS=500
@@ -6055,14 +6055,113 @@ services:
       - 5432:5432
     
     volumes:
-      - {{volume_name}}:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     
     networks:
       - {{network_name}}
 
 volumes:
-  {{volume_name}}:
+  postgres_data:
     external: true
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}
+EOL
+}
+
+compose_pgvector(){
+  cat <<EOL
+version: "3.7"
+services:
+  pgvector:
+    image: pgvector/pgvector:pg16
+
+    volumes:
+      - pgvector:/var/lib/postgresql/data
+
+    networks:
+      - {{network_name}}
+
+    ports:
+      - 5433:5432
+
+    environment:
+      ## Senha do postgres 
+      - POSTGRES_PASSWORD={{db_password}}
+
+      ## Maximo de Conexões
+      #- PG_MAX_CONNECTIONS=500
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+
+volumes:
+  pgvector:
+    external: true
+    name: pgvector
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}
+EOL
+}
+
+compose_mysql(){
+  cat <<EOL
+version: "3.7"
+services:
+
+  mysql:
+    image: percona/percona-server:8.0
+    command:
+      [
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_general_ci",
+        "--sql-mode=",
+        "--default-authentication-plugin=caching_sha2_password",
+        "--max-allowed-packet=512MB",
+      ]
+
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+    networks:
+      - {{network_name}}
+
+    ports:
+      - 3306:3306
+
+    environment:
+      ## MYSQL Password
+      - MYSQL_ROOT_PASSWORD={{db_password}}
+
+      ## TimeZone
+      - TZ=America/Sao_Paulo
+
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+
+volumes:
+  mysql_data:
+    external: true
+    name: mysql_data
 
 networks:
   {{network_name}}:
@@ -6852,6 +6951,45 @@ EOL
     }'
 }
 
+# Function to generate Postgres service configuration JSON
+generate_config_database() {
+  local stack_name="$1"
+  local image_version="$2"
+
+  local postgres_user="postgres"
+
+  step_message="Generating use postgres password"
+  step_info 1 $total_steps "$step_message"
+  local network_name="$(get_network_name)"
+
+  local db_password="$(random_string)"
+
+  step_message="Retrieving network name"
+  step_info 2 $total_steps "$step_message"
+
+  # Ensure everything is quoted correctly
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg image_version "$image_version" \
+    --arg db_password "$db_password" \
+    --arg network_name "$network_name" \
+    '{
+          "name": $stack_name,
+          "variables": {
+              "stack_name": $stack_name,
+              "image_version": $image_version,
+              "db_password": $db_password,
+              "network_name": $network_name
+          },
+          "dependencies": ["traefik", "portainer"],
+          "prepare": [],
+          "finalize": []
+      }' | jq . || {
+        error "Failed to generate JSON"
+        return 1
+    }
+}
+
 # Function to generate configuration files for redis
 generate_config_redis() {
   local stack_name='redis'
@@ -6874,17 +7012,11 @@ generate_config_redis() {
   jq -n \
     --arg stack_name "$stack_name" \
     --arg image_version "$image_version" \
-    --arg container_port "6379" \
-    --arg redis_url "redis://redis:6379" \
-    --arg volume_name "redis_data" \
     --arg network_name "$network_name" \
     '{
             "name": $stack_name,
             "variables": {
                 "image_version": $image_version,
-                "container_port": $container_port,
-                "redis_url": $redis_url,
-                "volume_name": $volume_name,
                 "network_name": $network_name
             },
             "dependencies": ["traefik", "portainer"],
@@ -6907,7 +7039,7 @@ generate_config_postgres() {
   step_info 1 $total_steps "$step_message"
   local network_name="$(get_network_name)"
 
-  local postgres_password="$(random_string)"
+  local db_password="$(random_string)"
 
   step_message="Retrieving network name"
   step_info 2 $total_steps "$step_message"
@@ -6916,19 +7048,83 @@ generate_config_postgres() {
   jq -n \
     --arg stack_name "$stack_name" \
     --arg image_version "$image_version" \
-    --arg db_user "$postgres_user" \
-    --arg db_password "$postgres_password" \
-    --arg volume_name "postgres_data" \
+    --arg db_password "$db_password" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
           "variables": {
               "stack_name": $stack_name,
               "image_version": $image_version,
-              "volume_name": $volume_name,
-              "network_name": $network_name,
-              "db_user": $db_user,
-              "db_password": $db_password
+              "db_password": $db_password,
+              "network_name": $network_name
+          },
+          "dependencies": ["traefik", "portainer"],
+          "prepare": [],
+          "finalize": []
+      }' | jq . || {
+        error "Failed to generate JSON"
+        return 1
+    }
+}
+
+# Function to generate PgVector service configuration JSON
+generate_config_pgvector() {
+  local stack_name='pgvector'
+
+  step_message="Generating use pgvector password"
+  step_info 1 $total_steps "$step_message"
+  local network_name="$(get_network_name)"
+
+  local db_password="$(random_string)"
+
+  step_message="Retrieving network name"
+  step_info 2 $total_steps "$step_message"
+
+  # Ensure everything is quoted correctly
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg db_password "$pgvector_password" \
+    --arg network_name "$network_name" \
+    '{
+          "name": $stack_name,
+          "variables": {
+              "stack_name": $stack_name,
+              "db_password": $db_password,
+              "network_name": $network_name
+          },
+          "dependencies": ["traefik", "portainer"],
+          "prepare": [],
+          "finalize": []
+      }' | jq . || {
+        error "Failed to generate JSON"
+        return 1
+    }
+}
+
+# Function to generate MySQL service configuration JSON
+generate_config_mysql() {
+  local stack_name='mysql'
+
+  step_message="Generating use MySQL password"
+  step_info 1 $total_steps "$step_message"
+  local network_name="$(get_network_name)"
+
+  local db_password="$(random_string)"
+
+  step_message="Retrieving network name"
+  step_info 2 $total_steps "$step_message"
+
+  # Ensure everything is quoted correctly
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg db_password "$pgvector_password" \
+    --arg network_name "$network_name" \
+    '{
+          "name": $stack_name,
+          "variables": {
+              "stack_name": $stack_name,
+              "db_password": $db_password,
+              "network_name": $network_name
           },
           "dependencies": ["traefik", "portainer"],
           "prepare": [],
