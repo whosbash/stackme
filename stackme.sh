@@ -4757,7 +4757,7 @@ deploy_stack_pipeline() {
   else
     echo "$dependencies" | jq -c '.[]' | while IFS= read -r dependency; do
       dependency=$(echo "$dependency" | xargs)  # Trim whitespace
-      stack_info "Processing dependency: $dependency"
+      info "Processing dependency: $dependency"
 
       # Check if stack dependency exists on docker
       if ! docker stack ls --format '{{.Name}}' | grep -q "$dependency"; then
