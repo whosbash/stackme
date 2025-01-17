@@ -6174,10 +6174,10 @@ x-airflow-common:
     # If you want to use it, outcomment it and replace airflow.cfg with the name of your config file
     # AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
   volumes:
-    - /opt/stackme/airflow/dags:/opt/airflow/dags
-    - /opt/stackme/airflow/logs:/opt/airflow/logs
-    - /opt/stackme/airflow/config:/opt/airflow/config
-    - /opt/stackme/airflow/plugins:/opt/airflow/plugins
+    - /opt/stackme/stacks/airflow/dags:/opt/airflow/dags
+    - /opt/stackme/stacks/airflow/logs:/opt/airflow/logs
+    - /opt/stackme/stacks/airflow/config:/opt/airflow/config
+    - /opt/stackme/stacks/airflow/plugins:/opt/airflow/plugins
   user: "${AIRFLOW_UID:-50000}:0"
 
 services:
