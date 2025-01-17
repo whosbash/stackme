@@ -7113,7 +7113,7 @@ define_menu_stacks(){
   item_3="$(
       build_menu_item "Databases" \
       "Postgres & Redis" \
-      "deploy_stack_stacks_databases"
+      "navigate_menu 'Stacks'"
   )"
   item_4="$(
     build_menu_item "whoami" \
