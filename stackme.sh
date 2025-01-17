@@ -5902,7 +5902,7 @@ services:
       - JAEGER_SAMPLER_PARAM=1
     logging:
       driver: json-file
-  
+
   jaeger:
     image: jaegertracing/all-in-one:1.51
     ports:
@@ -6746,6 +6746,20 @@ EOL
 
   handle_exit "$?" 4 "$total_steps" "$message" 
 
+cat > "${STACKME_FOLDER}/prometheus/datasource.yml" <<EOL
+# To allow connections from remote users, set this parameter to a non-loopback address.
+server.host: "0.0.0.0"
+
+# The URLs of the Elasticsearch instances to use for all your queries.
+elasticsearch.hosts: ["http://elasticsearch:9200"]
+
+# the username and password that the Kibana server uses to perform maintenance on the Kibana
+# index at startup. Your Kibana users still need to authenticate with Elasticsearch, which
+# is proxied through the Kibana server.
+elasticsearch.username: "elastic"
+elasticsearch.password: "<your_password>"
+EOL
+
   # Ensure everything is quoted correctly
   jq -n \
     --arg stack_name "$stack_name" \
@@ -7102,15 +7116,19 @@ define_menu_stacks(){
       "deploy_stack_monitor"
   )"
   item_3="$(
-      build_menu_item "Monitor" \
-      "Jaeger & Prometheus & Node Exporter & Grafana & Kibana & " \
-      "deploy_stack_monitor"
+      build_menu_item "Databases" \
+      "Postgres & Redis &" \
+      "deploy_stack_stacks_databases"
   )"
   item_4="$(
-    build_menu_item "whoami" "Deploy" "deploy_stack_whoami"
+    build_menu_item "whoami" \
+      "Deploy" \
+      "deploy_stack_whoami"
   )"
   item_4="$(
-    build_menu_item "airflow" "Deploy" "deploy_stack_airflow"
+    build_menu_item "airflow" \
+      "Deploy" \
+      "deploy_stack_airflow"
   )"
 
 
@@ -7118,7 +7136,8 @@ define_menu_stacks(){
     "$item_1" "$item_2" "$item_3" "$item_4"
   )
 
-  menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
+  page_size=10
+  menu_object="$(build_menu "$menu_name" $page_size "${items[@]}")"
 
   define_menu "$menu_name" "$menu_object"
 }
