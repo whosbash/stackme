@@ -4045,7 +4045,7 @@ get_latest_stable_version() {
   # Fetch the first page to determine total pages
   response=$(curl -fsSL "$base_url" || echo "")
   if [ -z "$response" ] || [ "$(echo "$response" | jq -r '.count')" == "null" ]; then
-    echo "Image '$image_name' not found or registry unavailable."
+    warning "Image '$image_name' not found or registry unavailable."
     return 1
   fi
 
@@ -4086,7 +4086,7 @@ get_latest_stable_version() {
     echo "$latest_version"
     return 0
   else
-    echo "No stable version found for $image_name."
+    warning "No stable version found for $image_name."
     return 1
   fi
 }
@@ -4100,26 +4100,6 @@ stack_exists() {
   else
     return 1 # Stack does not exist
   fi
-}
-
-# Function to list the services of a stack
-list_stack_services() {
-  local stack_name=$1
-  declare -a services_array
-
-  # Check if stack exists
-  if ! docker stack ls --format '{{.Name}}' | grep -q "^$stack_name\$"; then
-    error "Stack '$stack_name' does not exist."
-    return 1
-  fi
-
-  info "Fetching services for stack: $stack_name"
-
-  # Get the services associated with the specified stack and store them in an array
-  services_array=($(docker stack services "$stack_name" --format '{{.Name}}'))
-
-  # Optionally return the array as a result (useful if called from another script)
-  echo "${services_array[@]}"
 }
 
 # Function to list the required fields on a stack docker-compose
@@ -4138,6 +4118,20 @@ list_stack_compose_required_fields() {
   fi
 }
 
+# Function to rollback a stack
+rollback_stack(){
+  local stack_name="$1"
+
+  docker stack rm "$stack_name"
+
+  if [[ $? -ne 0 ]]; then
+    failure "Rollback of stack $stack_name failed"
+    return 1
+  fi
+
+  success "Rollback of stack $stack_name successful"
+}
+
 # Function to check if Docker Swarm is active
 is_swarm_active() {
   local state=$(\
@@ -4145,7 +4139,7 @@ is_swarm_active() {
     tr -d '\n' | tr -d ' '\
   )
   if [[ -z "$state" ]]; then
-    echo "Swarm state is empty or undefined." >&2
+    warning "Swarm state is empty or undefined." >&2
     return 1
   fi
   if [[ "$state" == "active" ]]; then
