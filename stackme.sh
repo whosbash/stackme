@@ -6046,7 +6046,7 @@ version: '3'
 
 services:
   postgres:
-    image: postgres:15
+    image: postgres:{{image_version}}
     environment:
       - POSTGRES_PASSWORD={{db_password}}
       - PG_MAX_CONNECTIONS=500
@@ -6075,8 +6075,9 @@ compose_pgvector(){
   cat <<EOL
 version: "3.7"
 services:
+
   pgvector:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:{{image_version}}
 
     volumes:
       - pgvector:/var/lib/postgresql/data
@@ -6091,7 +6092,7 @@ services:
       ## Senha do postgres 
       - POSTGRES_PASSWORD={{db_password}}
 
-      ## Maximo de Conexões
+      ## Max connections
       #- PG_MAX_CONNECTIONS=500
 
     deploy:
@@ -6123,7 +6124,7 @@ version: "3.7"
 services:
 
   mysql:
-    image: percona/percona-server:8.0
+    image: percona/percona-server:{{image_version}}
     command:
       [
         "--character-set-server=utf8mb4",
@@ -6554,7 +6555,7 @@ create_postgres_database() {
   local db_exists
 
   # Display a message about the database creation attempt
-  info "Creating PostgreSQL database: $db_name in POstgres container"
+  info "Creating PostgreSQL database: $db_name in Postgres container"
 
   # Check if the container is running
   container_id=$(docker ps -q --filter "name=^postgres")
@@ -6955,22 +6956,19 @@ EOL
 generate_config_database() {
   local stack_name="$1"
   local image_version="$2"
+  local db_username="$3"
 
-  local postgres_user="postgres"
-
-  step_message="Generating use postgres password"
-  step_info 1 $total_steps "$step_message"
-  local network_name="$(get_network_name)"
-
+  info "Generating use postgres password"
   local db_password="$(random_string)"
-
-  step_message="Retrieving network name"
-  step_info 2 $total_steps "$step_message"
+  
+  info "Retrieving network name"
+  local network_name="$(get_network_name)"
 
   # Ensure everything is quoted correctly
   jq -n \
     --arg stack_name "$stack_name" \
     --arg image_version "$image_version" \
+    --arg db_username "$db_username" \
     --arg db_password "$db_password" \
     --arg network_name "$network_name" \
     '{
@@ -6978,6 +6976,7 @@ generate_config_database() {
           "variables": {
               "stack_name": $stack_name,
               "image_version": $image_version,
+              "db_username": $db_username,
               "db_password": $db_password,
               "network_name": $network_name
           },
@@ -7005,27 +7004,7 @@ generate_config_redis() {
   
   info "Redis version: $image_version"
 
-  step_message="Retrieving network name"
-  step_info 2 $total_steps "$step_message"
-  local network_name="$(get_network_name)"
-
-  jq -n \
-    --arg stack_name "$stack_name" \
-    --arg image_version "$image_version" \
-    --arg network_name "$network_name" \
-    '{
-            "name": $stack_name,
-            "variables": {
-                "image_version": $image_version,
-                "network_name": $network_name
-            },
-            "dependencies": ["traefik", "portainer"],
-            "prepare": [],
-            "finalize": []
-        }' | jq . || {
-            error "Failed to generate JSON"
-            return 1
-        }
+  generate_config_database "$stack_name" "$image_version"
 }
 
 # Function to generate Postgres service configuration JSON
@@ -7033,106 +7012,33 @@ generate_config_postgres() {
   local stack_name='postgres'
   local image_version='15'
 
-  local postgres_user="postgres"
+  local db_username="postgres"
 
-  step_message="Generating use postgres password"
-  step_info 1 $total_steps "$step_message"
-  local network_name="$(get_network_name)"
-
-  local db_password="$(random_string)"
-
-  step_message="Retrieving network name"
-  step_info 2 $total_steps "$step_message"
-
-  # Ensure everything is quoted correctly
-  jq -n \
-    --arg stack_name "$stack_name" \
-    --arg image_version "$image_version" \
-    --arg db_password "$db_password" \
-    --arg network_name "$network_name" \
-    '{
-          "name": $stack_name,
-          "variables": {
-              "stack_name": $stack_name,
-              "image_version": $image_version,
-              "db_password": $db_password,
-              "network_name": $network_name
-          },
-          "dependencies": ["traefik", "portainer"],
-          "prepare": [],
-          "finalize": []
-      }' | jq . || {
-        error "Failed to generate JSON"
-        return 1
-    }
+  generate_config_database "$stack_name" "$image_version" "$db_username"
 }
 
 # Function to generate PgVector service configuration JSON
 generate_config_pgvector() {
   local stack_name='pgvector'
+  local image_version='pg16'
 
-  step_message="Generating use pgvector password"
-  step_info 1 $total_steps "$step_message"
-  local network_name="$(get_network_name)"
-
-  local db_password="$(random_string)"
-
-  step_message="Retrieving network name"
-  step_info 2 $total_steps "$step_message"
-
-  # Ensure everything is quoted correctly
-  jq -n \
-    --arg stack_name "$stack_name" \
-    --arg db_password "$pgvector_password" \
-    --arg network_name "$network_name" \
-    '{
-          "name": $stack_name,
-          "variables": {
-              "stack_name": $stack_name,
-              "db_password": $db_password,
-              "network_name": $network_name
-          },
-          "dependencies": ["traefik", "portainer"],
-          "prepare": [],
-          "finalize": []
-      }' | jq . || {
-        error "Failed to generate JSON"
-        return 1
-    }
+  generate_config_database "$stack_name" "$image_version"
 }
 
 # Function to generate MySQL service configuration JSON
 generate_config_mysql() {
   local stack_name='mysql'
+  local image_version='8.0'
 
-  step_message="Generating use MySQL password"
-  step_info 1 $total_steps "$step_message"
-  local network_name="$(get_network_name)"
+  generate_config_database "$stack_name" "$image_version"
+}
 
-  local db_password="$(random_string)"
+# Function to generate MongoDB service configuration JSON
+generate_config_mongodb() {
+  local stack_name='mongodb'
+  local image_version='4.4'
 
-  step_message="Retrieving network name"
-  step_info 2 $total_steps "$step_message"
-
-  # Ensure everything is quoted correctly
-  jq -n \
-    --arg stack_name "$stack_name" \
-    --arg db_password "$pgvector_password" \
-    --arg network_name "$network_name" \
-    '{
-          "name": $stack_name,
-          "variables": {
-              "stack_name": $stack_name,
-              "db_password": $db_password,
-              "network_name": $network_name
-          },
-          "dependencies": ["traefik", "portainer"],
-          "prepare": [],
-          "finalize": []
-      }' | jq . || {
-        error "Failed to generate JSON"
-        return 1
-    }
+  generate_config_database "$stack_name" "$image_version"
 }
 
 generate_config_whoami() {
@@ -7385,6 +7291,20 @@ deploy_stack_redis() {
   deploy_stack 'redis'
 }
 
+# Function to deploy a MySQL service
+deploy_stack_mysql() {
+  cleanup
+  clean_screen
+  deploy_stack 'mysql'
+}
+
+# Function to deploy a MongoDB service
+deploy_stack_mongodb() {
+  cleanup
+  clean_screen
+  deploy_stack 'mongodb'
+}
+
 # Function to deploy a whoami service
 deploy_stack_whoami() {
   cleanup
@@ -7413,9 +7333,15 @@ define_menu_stacks_databases(){
   item_2="$(
     build_menu_item "redis" "Deploy" "deploy_stack_redis" 
   )"
+  item_3="$(
+    build_menu_item "mysql" "Deploy" "deploy_stack_mysql" 
+  )"
+  item_4="$(
+    build_menu_item "mongodb" "Deploy" "deploy_stack_mongodb" 
+  )"
 
   items=(
-    "$item_1" "$item_2"
+    "$item_1" "$item_2" "$item_3" "$item_4"
   )
 
   menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
