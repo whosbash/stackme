@@ -6171,6 +6171,606 @@ networks:
 EOL
 }
 
+compose_mongodb(){
+  cat <<EOL
+version: "3.7"
+services:
+  mongodb:
+    image: mongo:{{image_version}}
+    command: mongod --port 27017
+
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_dump:/dump
+      - mongodb_configdb_data:/data/configdb
+
+    networks:
+      - {{network_name}}
+    
+    ports:
+      - 27017:27017
+
+    environment:
+      ## Dados de acesso
+      - MONGO_INITDB_ROOT_USERNAME={{db_username}}
+      - MONGO_INITDB_ROOT_PASSWORD={{db_password}}
+      - PUID=1000
+      - PGID=1000
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2048M
+
+volumes:
+  mongodb_data:
+    external: true
+    name: mongodb_data
+  mongodb_dump:
+    external: true
+    name: mongodb_dump
+  mongodb_configdb_data:
+    external: true
+    name: mongodb_configdb_data
+
+networks:
+  {{network_name}}:
+    name: {{network_name}}
+    external: true
+EOL
+}
+
+compose_nocodb(){
+  cat <<EOL
+version: "3.7"
+services:
+
+  nocodb: 
+    image: nocodb/nocodb:latest
+
+    volumes: 
+      - nocodb_data:/usr/app/data
+
+    networks:
+      - {{network_name}}
+
+    environment: 
+      ## Nocobase URL
+      - NC_PUBLIC_URL=https://{{url_nocodb}}
+
+      ## Database parameters
+      - NC_DB=pg://postgres:5432?u=postgres&p={{db_password}}&d=nocodb
+
+      ## Disable telemetry
+      - NC_DISABLE_TELE=true  
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.nocodb.rule=Host(\`{{url_nocodb}}\`)
+        - traefik.http.routers.nocodb.entrypoints=websecure
+        - traefik.http.services.nocodb.loadbalancer.server.port=8080
+        - traefik.http.routers.nocodb.service=nocodb
+        - traefik.http.routers.nocodb.tls.certresolver=letsencryptresolver
+        - com.centurylinklabs.watchtower.enable=true
+
+volumes:
+  nocodb_data:
+    external: true
+    name: nocodb_data
+
+networks:
+  {{network_name}}:
+    name: {{network_name}}
+    external: true
+EOL
+}
+
+compose_odoo(){
+  cat <<EOL
+version: "3.7"
+services:
+  odoo_app:
+    image: odoo:18.0
+
+    volumes:
+      - odoo_app_data:/var/lib/odoo
+      - odoo_app_config:/etc/odoo
+      - odoo_app_addons:/mnt/extra-addons
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Dedicated Database
+      - HOST=odoo_db
+      - USER=odoo
+      - PASSWORD={{db_password}}
+
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.odoo_app.rule=Host(\`{{url_odoo}}\`)
+        - traefik.http.routers.odoo_app.entrypoints=websecure
+        - traefik.http.routers.odoo_app.tls=true
+        - traefik.http.routers.odoo_app.service=odoo_app
+        - traefik.http.routers.odoo_app.tls.certresolver=letsencryptresolver
+        - traefik.http.services.odoo_app.loadbalancer.server.port=8069
+
+  odoo_db:
+    image: postgres:15
+
+    volumes:
+      - odoo_db_data:/var/lib/postgresql/data/pgdata
+
+    networks:
+      - {{network_name}}
+    
+    ports:
+      - 543:45432
+
+    environment:
+      ## Dados Postgres
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD={{db_password}}
+      - POSTGRES_USER=odoo
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+
+volumes:
+  odoo_app_data:
+    external: true
+    name: odoo_app_data
+  odoo_app_config:
+    external: true
+    name: odoo_app_config
+  odoo_app_addons:
+    external: true
+    name: odoo_app_addons
+  odoo_db_data:
+    external: true
+    name: odoo_db_data
+
+networks:
+  {{network_name}}:
+    external: true
+    attachable: true
+    name: {{network_name}}
+EOL
+}
+
+compose_rabbitmq(){
+  cat <<EOL
+version: "3.7"
+services:
+  rabbitmq:
+    image: rabbitmq:management
+    command: rabbitmq-server
+
+    hostname: rabbitmq
+
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+    networks:
+      - {{network_name}}
+    ports:
+      - 5672:5672
+      - 15672:15672
+
+    environment:
+      RABBITMQ_DEFAULT_USER: {{rabbitmq_username}}
+      RABBITMQ_DEFAULT_PASS: {{rabbitmq_password}}
+      RABBITMQ_ERLANG_COOKIE: {{cookie_key}}
+      RABBITMQ_DEFAULT_VHOST: "/"
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.rabbitmq.rule=Host(\`{{url_rabbitmq}}\`)
+        - traefik.http.routers.rabbitmq.entrypoints=websecure
+        - traefik.http.routers.rabbitmq.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.rabbitmq.service=rabbitmq
+        - traefik.http.services.rabbitmq.loadbalancer.server.port=15672
+
+volumes:
+  rabbitmq_data:
+    external: true
+
+networks:
+  {{network_name}}:
+    external: true
+EOL
+}
+
+compose_minio(){
+  cat <<EOL
+version: "3.7"
+services:
+  minio:
+    image: quay.io/minio/minio:latest ## Versão do Minio
+    command: server /data --console-address ":9001"
+
+    volumes:
+      - minio_data:/data
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Minio Config
+      - MINIO_ROOT_USER={{minio_username}}
+      - MINIO_ROOT_PASSWORD={{minio_password}}
+
+      ## Minio Url 
+      - MINIO_BROWSER_REDIRECT_URL=https://$url_minio ## Url do minio
+      
+      # TAKE NOTE: Comment this line if there is an error when logging in 
+      - MINIO_SERVER_URL=https://{{url_s3}} ## S3 Url
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.minio_public.rule=Host(\`{{url_s3}}\`) ## S3 Url
+        - traefik.http.routers.minio_public.entrypoints=websecure
+        - traefik.http.routers.minio_public.tls.certresolver=letsencryptresolver
+        - traefik.http.services.minio_public.loadbalancer.server.port=9000
+        - traefik.http.services.minio_public.loadbalancer.passHostHeader=true
+        - traefik.http.routers.minio_public.service=minio_public
+        - traefik.http.routers.minio_console.rule=Host(\`{{url_minio}}\`) ## Minio Url 
+        - traefik.http.routers.minio_console.entrypoints=websecure
+        - traefik.http.routers.minio_console.tls.certresolver=letsencryptresolver
+        - traefik.http.services.minio_console.loadbalancer.server.port=9001
+        - traefik.http.services.minio_console.loadbalancer.passHostHeader=true
+        - traefik.http.routers.minio_console.service=minio_console
+
+volumes:
+  minio_data:
+    external: true
+    name: minio_data
+
+networks:
+  {{network_name}}: ## Nome da rede interna
+    external: true
+    name: {{network_name}}
+EOL
+}
+
+compose_uptime_kuma(){
+  cat <<EOL
+version: "3.7"
+services:
+  uptimekuma:
+    image: louislam/uptime-kuma:latest
+
+    volumes:
+      - uptimekuma:/app/data
+
+    networks:
+      - {{network_name}}
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.uptimekuma.rule=Host(\`{{url_uptimekuma}}\`)
+        - traefik.http.routers.uptimekuma.entrypoints=websecure
+        - traefik.http.routers.uptimekuma.tls.certresolver=letsencryptresolver
+        - traefik.http.services.uptimekuma.loadBalancer.server.port=3001
+        - traefik.http.routers.uptimekuma.service=uptimekuma
+
+volumes:
+  uptimekuma:
+    external: true
+    name: uptimekuma
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}
+EOL
+}
+
+compose_quepasa(){
+  cat <<EOL
+version: "3.7"
+services:
+  quepasa:
+    image: deividms/quepasa:latest ## Imagem/versão do Quepasa
+      
+    volumes:
+      - quepasa_volume:/opt/quepasa
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Dados de acesso
+      - DOMAIN={{url_quepasa}}
+
+      ## Email Quepasa
+      - EMAIL={{email_quepasa}}
+      - QUEPASA_BASIC_AUTH_USER={{email_quepasa}}
+      - QUEPASA_BASIC_AUTH_PASSWORD={{email_quepasa}}
+
+      ## Mobile Quepasa
+      - APP_TITLE={{quepasa_title}}
+
+      ## TimeZone
+      - TZ=America/Sao_Paulo
+
+      ## WhatsApp Settings
+      - GROUPS=true
+      - BROADCASTS=false
+      - READRECEIPTS=forcedfals
+      - CALLS=true
+      - READUPDATE=false
+      - LOGLEVEL=DEBUG
+
+      ## Configurações quepasa
+      - QUEPASA_HOST_NAME=Quepasa
+      - QUEPASA_MEMORY_LIMIT=4096M
+      - WEBSOCKETSSL=true
+      - REMOVEDIGIT9=true
+      - SIGNING_SECRET={{quepasa_key}}
+
+      ## Webhook
+      #- WEBHOOK_QUEPASA={{url_webhook}}/webhook/quepasa
+      #- WEBHOOK_TESTE_QUEPASA={{n8n_url}}/webhook-test/quepasa
+            
+      ## Portas
+      - QUEPASA_EXTERNAL_PORT=31000
+      - QUEPASA_INTERNAL_PORT=31000
+      - WEBAPIPORT=31000
+
+      ## Outras configurações
+      - DEBUGREQUESTS=false
+      - SYNOPSISLENGTH=500
+      - METRICS_HOST=
+      - METRICS_PORT=9392
+      - MIGRATIONS=/builder/migrations
+      - DEBUGJSONMESSAGES=false
+      - HTTPLOGS=false
+
+      ## WHATSMEOW SERVICE
+      - WHATSMEOW_LOGLEVEL=WARN
+      - WHATSMEOW_DBLOGLEVEL=WARN
+
+      ## Env Mode
+      - APP_ENV=production
+      - NODE_ENV=production
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+          constraints:
+          - node.role == manager
+      resources:
+          limits:
+              cpus: "2"
+              memory: 2096M
+                      
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.quepasa.rule=Host(\`{{url_quepasa}}\`)
+        - traefik.http.routers.quepasa.tls=true
+        - traefik.http.routers.quepasa.entrypoints=web,websecure
+        - traefik.http.routers.quepasa.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.quepasa.service=quepasa
+        - traefik.http.routers.quepasa.priority=1      
+        - traefik.http.middlewares.quepasa.headers.SSLRedirect=true
+        - traefik.http.middlewares.quepasa.headers.STSSeconds=315360000
+        - traefik.http.middlewares.quepasa.headers.browserXSSFilter=true
+        - traefik.http.middlewares.quepasa.headers.contentTypeNosniff=true
+        - traefik.http.middlewares.quepasa.headers.forceSTSHeader=true
+        - traefik.http.middlewares.quepasa.headers.SSLHost=\${QUEPASA_HOST}
+        - traefik.http.middlewares.quepasa.headers.STSIncludeSubdomains=true
+        - traefik.http.middlewares.quepasa.headers.STSPreload=true
+        - traefik.http.services.quepasa.loadbalancer.server.port=31000
+        - traefik.http.services.quepasa.loadbalancer.passHostHeader=true              
+
+volumes:
+  quepasa_volume:
+    external: true
+    name: quepasa_volume
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}
+EOL
+}
+
+compose_typebot(){
+  cat <<EOL
+version: "3.7"
+services:
+  typebot_builder:
+    image: baptistearno/typebot-builder:{{typebot_version}} ## Versão do Builder do Typebot
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Dados do Postgres
+      - DATABASE_URL=postgresql://postgres:{{db_password}}@postgres:5432/typebot
+
+      ## Encryption key
+      - ENCRYPTION_SECRET={{typebot_key}}
+
+      ## Plano Padrão (das novas contas)
+      - DEFAULT_WORKSPACE_PLAN=UNLIMITED
+
+      ## Urls do typebot
+      - NEXTAUTH_URL=https://{{url_typebot}} ## URL Builder
+      - NEXT_PUBLIC_VIEWER_URL=https://{{url_viewer}} ## URL Viewer
+      - NEXTAUTH_URL_INTERNAL=http://localhost:3000
+
+      ## Desativer/ativar novos cadastros
+      - DISABLE_SIGNUP=false
+
+      ## Dados do SMTP
+      - ADMIN_EMAIL={{email_typebot}} ## Email SMTP
+      - NEXT_PUBLIC_SMTP_FROM='Suporte' <{{email_typebot}}>
+      - SMTP_AUTH_DISABLED=false
+      - SMTP_USERNAME={{email_typebot_username}}
+      - SMTP_PASSWORD={{email_typebot_password}}
+      - SMTP_HOST={{smtp_email_typebot_smtp}}
+      - SMTP_PORT={{smtp_typebot_port}}
+      - SMTP_SECURE={{smtp_secure_typebot}}
+      
+
+      ## Dados Google Cloud
+      #- GOOGLE_AUTH_CLIENT_ID=
+      #- GOOGLE_SHEETS_CLIENT_ID=
+      #- GOOGLE_AUTH_CLIENT_SECRET=
+      #- GOOGLE_SHEETS_CLIENT_SECRET=
+      #- NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY=
+
+      ## Dados do Minio/S3
+      - S3_ACCESS_KEY={{s3_access_key}}
+      - S3_SECRET_KEY={{s3_secret_key}}
+      - S3_BUCKET=typebot
+      - S3_ENDPOINT={{url_s3}}
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - io.portainer.accesscontrol.users=admin
+        - traefik.enable=true
+        - traefik.http.routers.typebot_builder.rule=Host(\`{{url_typebot}}\`) ## Typebot Builder Url
+        - traefik.http.routers.typebot_builder.entrypoints=websecure
+        - traefik.http.routers.typebot_builder.tls.certresolver=letsencryptresolver
+        - traefik.http.services.typebot_builder.loadbalancer.server.port=3000
+        - traefik.http.services.typebot_builder.loadbalancer.passHostHeader=true
+        - traefik.http.routers.typebot_builder.service=typebot_builder
+
+  typebot_viewer:
+    image: baptistearno/typebot-viewer:{{image_version}}
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Dados do Postgres
+      - DATABASE_URL=postgresql://postgres:{{db_password}}@postgres:5432/typebot
+
+      ## Encryption key
+      - ENCRYPTION_SECRET={{typebot_key}}
+
+      ## Plano Padrão (das novas contas)
+      - DEFAULT_WORKSPACE_PLAN=UNLIMITED
+
+      ## Typebot URLs
+      - NEXTAUTH_URL=https://{{url_typebot}}
+      - NEXT_PUBLIC_VIEWER_URL=https://{{url_viewer}}
+      - NEXTAUTH_URL_INTERNAL=http://localhost:3000
+
+      ## Disable/enable new registrations
+      - DISABLE_SIGNUP=false
+
+      ## Typebot SMTP 
+      - ADMIN_EMAIL={{type_botemail}}
+      - NEXT_PUBLIC_SMTP_FROM='Helpdesk' <{{email_typebot}}>
+      - SMTP_AUTH_DISABLED=false
+      - SMTP_USERNAME={{email_typebot_username}}
+      - SMTP_PASSWORD={{email_typebot_password}}
+      - SMTP_HOST={{smtp_email_typebot_smtp}}
+      - SMTP_PORT={{smtp_typebot_port}}
+      - SMTP_SECURE={{smtp_secure_typebot}}
+
+      ## Dados Google Cloud
+      #- GOOGLE_AUTH_CLIENT_ID=
+      #- GOOGLE_SHEETS_CLIENT_ID=
+      #- GOOGLE_AUTH_CLIENT_SECRET=
+      #- GOOGLE_SHEETS_CLIENT_SECRET=
+      #- NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY=
+
+      ## Dados do Minio/S3
+      - S3_ACCESS_KEY={{s3_access_key}}
+      - S3_SECRET_KEY={{s3_secret_key}}
+      - S3_BUCKET=typebot
+      - S3_ENDPOINT={{url_s3}}
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - io.portainer.accesscontrol.users=admin
+        - traefik.enable=true
+        - traefik.http.routers.typebot_viewer.rule=Host(\`{{url_viewer}}\`)
+        - traefik.http.routers.typebot_viewer.entrypoints=websecure
+        - traefik.http.routers.typebot_viewer.tls.certresolver=letsencryptresolver
+        - traefik.http.services.typebot_viewer.loadbalancer.server.port=3000
+        - traefik.http.services.typebot_viewer.loadbalancer.passHostHeader=true
+        - traefik.http.routers.typebot_viewer.service=typebot_viewer
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}
+EOL
+}
+
 compose_whoami(){
   cat <<EOL
 version: '3'
