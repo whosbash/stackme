@@ -5555,7 +5555,7 @@ request_smtp_information(){
 # Function to save SMTP information
 save_smtp_information(){
   collected_items="$(request_smtp_information)"
-  filename="${HOME}/smtp_info.json"
+  filename="$STACKME_FOLDER/smtp_info.json"
 
   if [[ "$collected_items" == "[]" ]]; then
     error "Unable to retrieve SMTP configuration."
@@ -5598,7 +5598,7 @@ read_json(){
 
 # Function to load SMTP configuration from file
 load_smtp_information(){
-  filename="${HOME}/smtp_info.json"
+  filename="$STACKME_FOLDER/smtp_info.json"
   smtp_json=$(read_json "$filename")
 
   if [[ -z "$smtp_json" ]]; then
@@ -5727,13 +5727,6 @@ install_all_packages() {
 update_and_install_packages() {
   # Function constants
   local total_steps=4
-
-  # Check if the script is running as root
-  if [ "$EUID" -ne 0 ]; then
-    failure "Please run this script as root or use sudo."
-    sleep 2
-    exit 1
-  fi
 
   highlight "Preparing environment"
 
@@ -5907,7 +5900,7 @@ get_server_info() {
 # Function to initialize the server information
 initialize_server_info() {
   total_steps=7
-  server_filename="${HOME}/server_info.json"
+  server_filename="$STACKME_FOLDER/server_info.json"
 
   # Step 1: Check if server_info.json exists and is valid
   message="Initialization of server information"
@@ -6734,12 +6727,102 @@ networks:
 EOL
 }
 
+compose_kafka(){
+  cat <<EOL
+version: '3.9'
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://{{url_kafka_broker}}:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == worker
+        labels:
+          - traefik.enable=true
+          - traefik.http.routers.kafka-broker.entrypoints=websecure
+          - traefik.http.routers.kafka-broker.rule=Host(`{{url_kafka_broker}}`)
+          - traefik.http.routers.kafka-broker.tls.certresolver=letsencryptresolver
+          - traefik.http.services.kafka-broker.loadbalancer.server.port=9094
+
+    networks:
+      - {{network_name}}
+
+  kafka-rest-proxy:
+    image: confluentinc/cp-kafka-rest:7.5.0
+    ports:
+      - "8082:8082"
+    environment:
+      KAFKA_REST_HOST_NAME: kafka-rest-proxy
+      KAFKA_REST_LISTENERS: http://0.0.0.0:8082
+      KAFKA_REST_BOOTSTRAP_SERVERS: kafka:9092
+    deploy:
+      replicas: 1
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.kafka-rest.entrypoints=websecure
+        - traefik.http.routers.kafka-rest.rule=Host(\`{{url_kafka_rest}}\`)
+        - traefik.http.routers.kafka-rest.tls.certresolver=letsencryptresolver
+        - traefik.http.services.kafka-rest.loadbalancer.server.port=8082
+    networks:
+      - {{network_name}}
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    deploy:
+      replicas: 1
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.kafka-ui.entrypoints=websecure
+        - traefik.http.routers.kafka-ui.rule=Host(\`{{url_kafka_ui}}\`)
+        - traefik.http.routers.kafka-ui.tls.certresolver=letsencryptresolver
+        - traefik.http.services.kafka-ui.loadbalancer.server.port=8080
+    networks:
+      - {{network_name}}
+
+networks:
+  {{network_name}}:
+    name: {{network_name}}
+    external: true
+EOL
+}
+
 compose_minio(){
   cat <<EOL
 version: "3.7"
 services:
   minio:
-    image: quay.io/minio/minio:latest ## Versão do Minio
+    image: quay.io/minio/minio:latest
     command: server /data --console-address ":9001"
 
     volumes:
@@ -6754,10 +6837,10 @@ services:
       - MINIO_ROOT_PASSWORD={{minio_password}}
 
       ## Minio Url 
-      - MINIO_BROWSER_REDIRECT_URL=https://$url_minio ## Url do minio
+      - MINIO_BROWSER_REDIRECT_URL=https://{{url_minio}}
       
       # TAKE NOTE: Comment this line if there is an error when logging in 
-      - MINIO_SERVER_URL=https://{{url_s3}} ## S3 Url
+      - MINIO_SERVER_URL=https://{{url_s3}}
 
     deploy:
       mode: replicated
@@ -6767,13 +6850,13 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.minio_public.rule=Host(\`{{url_s3}}\`) ## S3 Url
+        - traefik.http.routers.minio_public.rule=Host(\`{{url_s3}}\`)
         - traefik.http.routers.minio_public.entrypoints=websecure
         - traefik.http.routers.minio_public.tls.certresolver=letsencryptresolver
         - traefik.http.services.minio_public.loadbalancer.server.port=9000
         - traefik.http.services.minio_public.loadbalancer.passHostHeader=true
         - traefik.http.routers.minio_public.service=minio_public
-        - traefik.http.routers.minio_console.rule=Host(\`{{url_minio}}\`) ## Minio Url 
+        - traefik.http.routers.minio_console.rule=Host(\`{{url_minio}}\`)
         - traefik.http.routers.minio_console.entrypoints=websecure
         - traefik.http.routers.minio_console.tls.certresolver=letsencryptresolver
         - traefik.http.services.minio_console.loadbalancer.server.port=9001
@@ -6786,7 +6869,7 @@ volumes:
     name: minio_data
 
 networks:
-  {{network_name}}: ## Nome da rede interna
+  {{network_name}}:
     external: true
     name: {{network_name}}
 EOL
@@ -6840,7 +6923,7 @@ compose_quepasa(){
 version: "3.7"
 services:
   quepasa:
-    image: deividms/quepasa:latest ## Imagem/versão do Quepasa
+    image: deividms/quepasa:latest
       
     volumes:
       - quepasa_volume:/opt/quepasa
@@ -6951,7 +7034,7 @@ compose_typebot(){
 version: "3.7"
 services:
   typebot_builder:
-    image: baptistearno/typebot-builder:{{typebot_version}} ## Versão do Builder do Typebot
+    image: baptistearno/typebot-builder:{{typebot_version}}
 
     networks:
       - {{network_name}}
@@ -7011,7 +7094,7 @@ services:
       labels:
         - io.portainer.accesscontrol.users=admin
         - traefik.enable=true
-        - traefik.http.routers.typebot_builder.rule=Host(\`{{url_typebot}}\`) ## Typebot Builder Url
+        - traefik.http.routers.typebot_builder.rule=Host(\`{{url_typebot}}\`)
         - traefik.http.routers.typebot_builder.entrypoints=websecure
         - traefik.http.routers.typebot_builder.tls.certresolver=letsencryptresolver
         - traefik.http.services.typebot_builder.loadbalancer.server.port=3000
@@ -7052,7 +7135,7 @@ services:
       - SMTP_PORT={{smtp_typebot_port}}
       - SMTP_SECURE={{smtp_secure_typebot}}
 
-      ## Dados Google Cloud
+      ## Google Cloud
       #- GOOGLE_AUTH_CLIENT_ID=
       #- GOOGLE_SHEETS_CLIENT_ID=
       #- GOOGLE_AUTH_CLIENT_SECRET=
@@ -7106,7 +7189,7 @@ services:
       mode: global
       labels:
         - traefik.enable=true
-        - traefik.http.routers.whoami.rule=Host(\`{{domain_name}}\`)
+        - traefik.http.routers.whoami.rule=Host(\`{{url_whoami}}\`)
         - traefik.http.routers.whoami.entrypoints=websecure
         - traefik.http.routers.whoami.priority=1
         - traefik.http.routers.whoami.tls.certresolver=letsencryptresolver
@@ -7176,8 +7259,8 @@ x-airflow-common:
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:{{postgres_password}}@postgres/airflow
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:{{postgres_password}}@postgres/airflow
     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
@@ -7190,7 +7273,7 @@ x-airflow-common:
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
     # WARNING: Use _PIP_ADDITIONAL_REQUIREMENTS option ONLY for a quick checks
     # for other purpose (development, test and especially production usage) build/extend Airflow image.
-    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+    _PIP_ADDITIONAL_REQUIREMENTS: -
     # The following line can be used to set a custom config file, stored in the local config folder
     # If you want to use it, outcomment it and replace airflow.cfg with the name of your config file
     # AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
@@ -7460,15 +7543,17 @@ EOL
 
 ############################# BEGIN OF STACK DEPLOYMENT UTILITARY FUNCTIONS #######################
 
-# Function to get the password from a JSON file
-get_postgres_password() {
-  local config_file=$1
-  password_postgres=$(jq -r '.password' $config_file)
-  echo "$password_postgres"
+# Function to get the password from a configuration 
+fetch_postgres_password() {
+  local config_file="$STACKS_DIR/postgres_config.json"
+  
+  postgres_password=$(cat $config_file | jq -r '.variables.postgres_password')
+  jq -n --arg postgres_password "$password_postgres" \
+    '{"postgres_password": $password_postgres}'
 }
 
 # Function to create a PostgreSQL database
-create_postgres_database() {
+create_database_postgres() {
   local db_name="$1"
   local db_user="postgres"
 
@@ -7506,7 +7591,7 @@ create_postgres_database() {
 }
 
 get_network_name(){
-  server_info_filename="${HOME}/server_info.json"
+  server_info_filename="$STACKME_FOLDER/server_info.json"
   
   if [[ ! -f "$server_info_filename" ]]; then
     error "File $server_info_filename not found."
@@ -7616,16 +7701,19 @@ generate_config_traefik() {
     --arg network_name "$network_name" \
     '{
         "name": $stack_name,
+        "target": "swarm",
         "variables": {
-          "stack_name": $stack_name,
           "email_ssl": $email_ssl,
           "url_traefik": $url_traefik,
           "dashboard_credentials": $dashboard_credentials,          
           "network_name": $network_name
         },
         "dependencies": [],
-        "prepare": [],
-        "finalize": []
+        "actions": {
+          "refresh": [],
+          "prepare": [],
+          "finalize": []
+        }
     }'
 }
 
@@ -7704,9 +7792,10 @@ generate_config_portainer() {
   --arg portainer_password "$portainer_password" \
   --argjson portainer_credentials "$portainer_credentials" \
   --arg network_name "$network_name" \
-  '{
+  '{  
+        "name": $stack_name,
+        "target": "swarm",
         "variables": {
-            "stack_name": $stack_name,
             "portainer_agent_version": $portainer_agent_version,
             "portainer_ce_version": $portainer_ce_version,
             "portainer_url": $portainer_url,
@@ -7714,14 +7803,17 @@ generate_config_portainer() {
             "network_name": $network_name
         },
         "dependencies": ["traefik"],
-        "prepare": [],
-        "finalize": [
-            {
-                "name": "signup_on_portainer",
-                "description": "Signup on portainer",
-                "command": ("signup_on_portainer \"" + $portainer_url + "\" \"" + $portainer_username + "\" \"" + $portainer_password + "\"")
-            }
-        ]
+        "actions": {
+            "refresh": [],
+            "prepare": [],
+            "finalize": [
+                {
+                    "name": "signup_on_portainer",
+                    "description": "Signup on portainer",
+                    "command": ("signup_on_portainer \"" + $portainer_url + "\" \"" + $portainer_username + "\" \"" + $portainer_password + "\"")
+                }
+            ]
+        }
     }' | jq . || {
         echo "Failed to generate JSON"
         return 1
@@ -7813,7 +7905,7 @@ generate_config_monitor(){
 
   handle_exit "$?" 3 "$total_steps" "$message"  
 
-  message="Creating datasource.yml"
+  message="Creating file datasource.yml"
   step_info 4 $total_steps "$message"
 
   mkdir -p "${STACKME_FOLDER}/prometheus"
@@ -7831,20 +7923,6 @@ EOL
 
   handle_exit "$?" 4 "$total_steps" "$message" 
 
-cat > "${STACKME_FOLDER}/prometheus/datasource.yml" <<EOL
-# To allow connections from remote users, set this parameter to a non-loopback address.
-server.host: "0.0.0.0"
-
-# The URLs of the Elasticsearch instances to use for all your queries.
-elasticsearch.hosts: ["http://elasticsearch:9200"]
-
-# the username and password that the Kibana server uses to perform maintenance on the Kibana
-# index at startup. Your Kibana users still need to authenticate with Elasticsearch, which
-# is proxied through the Kibana server.
-elasticsearch.username: "elastic"
-elasticsearch.password: "<your_password>"
-EOL
-
   # Ensure everything is quoted correctly
   jq -n \
     --arg stack_name "$stack_name" \
@@ -7857,8 +7935,8 @@ EOL
     --arg network_name "$network_name" \
     '{
         "name": $stack_name,
+        "target": "portainer",
         "variables": {
-          "stack_name": $stack_name,
           "url_jaeger": $url_jaeger,
           "url_prometheus": $url_prometheus,
           "url_node_exporter": $url_node_exporter,
@@ -7868,8 +7946,11 @@ EOL
           "network_name": $network_name
         },
         "dependencies": ["traefik", "portainer"],
-        "prepare": [],
-        "finalize": []
+        "actions": {
+          "refresh": [],
+          "prepare": [],
+          "finalize": []
+        }
     }'
 }
 
@@ -7894,16 +7975,19 @@ generate_config_database() {
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
+          "target": "portainer",
           "variables": {
-              "stack_name": $stack_name,
               "image_version": $image_version,
               "db_username": $db_username,
               "db_password": $db_password,
               "network_name": $network_name
           },
           "dependencies": ["traefik", "portainer"],
-          "prepare": [],
-          "finalize": []
+          "actions": {
+            "refresh": [],
+            "prepare": [],
+            "finalize": []
+          }
       }' | jq . || {
         error "Failed to generate JSON"
         return 1
@@ -7971,7 +8055,7 @@ generate_config_whoami() {
   # Prompting step 
   prompt_items='[
       {
-          "name": "domain_name",
+          "name": "url_whoami",
           "label": "Whoami domain name",
           "description": "URL to access Whoami remotely",
           "required": "yes",
@@ -7992,25 +8076,28 @@ generate_config_whoami() {
   network_name="$(get_network_name)"
 
   domain_name="$(\
-    get_variable_value_from_collection "$collected_items" "domain_name" \
+    get_variable_value_from_collection "$collected_items" "url_whoami" \
   )"
 
   jq -n \
     --arg stack_name "$stack_name" \
     --arg container_port "$container_port" \
-    --arg domain_name "$domain_name" \
+    --arg url_whoami "$url_whoami" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
+          "target": "portainer",
           "variables": {
-              "stack_name": $stack_name,
               "container_port": $container_port,
-              "domain_name": $domain_name,
+              "url_whoami": $url_whoami,
               "network_name": $network_name,
           },
           "dependencies": ["traefik", "portainer"],
-          "prepare": [],
-          "finalize": []
+          "actions": {
+            "refresh": [],
+            "prepare": [],
+            "finalize": []
+          }
       }' | jq . || {
         error "Failed to generate JSON"
         return 1
@@ -8071,15 +8158,24 @@ generate_config_airflow() {
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
+          "target": "portainer",
           "variables": {
-              "stack_name": $stack_name,
               "url_airflow": $url_airflow,
               "url_flower": $url_flower,
               "network_name": $network_name,
           },
           "dependencies": ["traefik", "portainer", "postgres", "redis"],
-          "prepare": [],
-          "finalize": []
+          "actions": {
+            "refresh": [
+              {
+                "name": "fetch_postgres_password",
+                "description": "Fetching postgres password",
+                "command": "fetch_postgres_password",
+              }
+            ],
+            "prepare": [],
+            "finalize": []
+          }
       }' | jq . || {
         error "Failed to generate JSON"
         return 1
@@ -8125,15 +8221,24 @@ generate_config_metabase() {
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
+          "target": "portainer",
           "variables": {
-              "stack_name": $stack_name,
               "url_airflow": $url_airflow,
               "url_flower": $url_flower,
               "network_name": $network_name,
           },
           "dependencies": ["traefik", "portainer", "postgres", "redis"],
-          "prepare": [],
-          "finalize": []
+          "actions": {
+            "refresh": [
+              {
+                "name": "fetch_postgres_password",
+                "description": "Fetching postgres password",
+                "command": "fetch_postgres_password",
+              }
+            ],
+            "prepare": [],
+            "finalize": []
+          }
       }' | jq . || {
         error "Failed to generate JSON"
         return 1
@@ -8158,25 +8263,6 @@ deploy_stack_portainer() {
   deploy_stack 'portainer'
 }
 
-deploy_stack_monitor() {
-  cleanup
-  clean_screen
-  deploy_stack 'monitor'
-}
-
-rollback_stack(){
-  local stack_name="$1"
-
-  docker stack rm "$stack_name"
-
-  if [[ $? -ne 0 ]]; then
-    failure "Rollback of stack $stack_name failed"
-    return 1
-  fi
-
-  success "Rollback of stack $stack_name successful"
-}
-
 deploy_stack_startup() {
   deploy_stack_traefik
 
@@ -8196,6 +8282,12 @@ deploy_stack_startup() {
     rollback_stack "portainer"
     return 1
   fi
+}
+
+deploy_stack_monitor() {
+  cleanup
+  clean_screen
+  deploy_stack 'monitor'
 }
 
 # Function to deploy a PostgreSQL stack
@@ -8270,6 +8362,28 @@ define_menu_stacks_databases(){
   define_menu "$menu_name" "$menu_object"
 }
 
+define_menu_miscelaneous(){
+  menu_name="Stacks"
+
+  item_1="$(
+    build_menu_item "whoami" "Deploy" "deploy_stack_whoami" 
+  )"
+  item_2="$(
+    build_menu_item "airflow" "Deploy" "deploy_stack_airflow" 
+  )"
+  item_3="$(
+    build_menu_item "metabase" "Deploy" "deploy_stack_metabase"
+  )"
+
+  items=(
+    "$item_1" "$item_2" "$item_3"
+  )
+
+  menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
+
+  define_menu "$menu_name" "$menu_object"
+}
+
 # Stacks
 define_menu_stacks(){
   menu_name="Stacks"
@@ -8286,20 +8400,14 @@ define_menu_stacks(){
   )"
   item_3="$(
       build_menu_item "Databases" \
-      "Postgres & Redis" \
+      "Postgres & Redis & MySQL & MongoDB & " \
       "navigate_menu 'Databases'"
   )"
   item_4="$(
-    build_menu_item "whoami" \
-      "Deploy" \
-      "deploy_stack_whoami"
+    build_menu_item "Miscelaneous" \
+      "Whoami & Airflow & " \
+      "navigate_menu 'Miscelaneous'"
   )"
-  item_5="$(
-    build_menu_item "airflow" \
-      "Deploy" \
-      "deploy_stack_airflow"
-  )"
-
 
   items=(
     "$item_1" "$item_2" "$item_3" "$item_4" "$item_5"
@@ -8316,10 +8424,12 @@ define_menu_utilities(){
   menu_name="Utilities"
 
   item_1="$(\
-    build_menu_item "Test SMPT e-mail" "Send" "send_smtp_test_email" \
+    build_menu_item "Test SMPT e-mail" \
+      "Send" "send_smtp_test_email" \
   )"
   item_2="$(
-    build_menu_item "Send Machine Specifications" "Send" "send_machine_specs_email"\
+    build_menu_item "Send Machine Specifications" \
+      "Send" "send_machine_specs_email"\
   )"
 
   items=(
@@ -8405,8 +8515,12 @@ define_menu_main(){
 # Populate MENUS
 define_menus(){
     define_menu_main
+    
+    # Stacks and its submenus
     define_menu_stacks
     define_menu_stacks_databases
+    define_menu_miscelaneous
+    
     define_menu_utilities
     define_menu_health
 }
@@ -8439,6 +8553,29 @@ usage() {
   sleep 1
 
   exit 1
+}
+
+startup() {
+  set_arrow
+  clear
+
+  # Check if the script is running as root
+  if [ "$EUID" -ne 0 ]; then
+    failure "Please run this script as root or use sudo."
+    sleep 2
+    exit 1
+  fi
+
+  # Install required packages
+  update_and_install_packages
+  clear
+
+  # Perform initialization
+  initialize_server_info
+  clear
+
+  # Define menus on registry
+  define_menus
 }
 
 # Parse command-line arguments
@@ -8489,18 +8626,8 @@ parse_args() {
 main() {
   parse_args "$@"
 
-  set_arrow
-  clear
-
-  # Install required packages
-  update_and_install_packages
-  clear
-
-  # Perform initialization
-  initialize_server_info
-  clear
-
-  define_menus
+  # Perform startup tasks
+  startup
 
   start_main_menu
 }
@@ -8508,8 +8635,19 @@ main() {
 # Call the main function
 main "$@"
 
+# Function to check if a stack exists by name
+stack_exists() {
+  local stack_name="$1"
+  # Check if the stack exists by listing stacks and filtering by name
+  if docker stack ls --format '{{.Name}}' | grep -q "^$stack_name$"; then
+    return 0
+  else
+    return 1 # Stack does not exist
+  fi
+}
+
 # stack_name="postgres"
-# stack_exists "$stack_name"
+# stack_exists "$stack_name"0
 # 
 # if [[ $? -eq 0 ]]; then
 #   prompt_message="${yellow}Stack exists. Would you like to remove it? (Y/n)${normal}"
@@ -8527,5 +8665,4 @@ main "$@"
 #     echo "Stack $stack_name not removed!"
 #   fi
 # fi
-
-wait_for_input 5
+# wait_for_input 5
