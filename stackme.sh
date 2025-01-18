@@ -5263,7 +5263,7 @@ deploy_stack() {
   clean_screen
 
   # Deploy the n8n service using the JSON
-  deploy_stack_pipeline "$stack_name" "$config_json"
+  deploy_stack_pipeline "$stack_config"
 }
 
 ################################ END OF GENERAL DEPLOYMENT FUNCTIONS ##############################
