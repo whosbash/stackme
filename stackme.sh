@@ -545,6 +545,27 @@ step_progress() {
   step $current $total "$message" "progress" $has_timestamp
 }
 
+stack_step(){
+  stack_name="$1"
+  type="$2" 
+  step="$3"
+  message="$4"
+  stack_message="[$stack_name] $message"
+  step $step $total_steps "$stack_message" "$type"
+}
+
+stack_step_progress(){
+  stack_step "$1" "progress" "$2" "$3"
+}
+
+stack_step_warning(){
+  stack_step "$1" "warning" "$2" "$3"
+}
+  
+stack_step_error(){
+  stack_step "$1" "error" "$2" "$3"
+}
+
 # Function to display a boxed text
 boxed_text() {
   local word=${1:-"Hello"}                        # Default word to render
