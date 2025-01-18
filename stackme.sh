@@ -4748,234 +4748,495 @@ execute_action() {
   fi
 }
 
-# Function to deploy a service
-deploy_stack_pipeline() {
-  # Arguments
-  local stack_name="$1" # stack name (e.g., redis, postgres)
-  local config_json="$2" # JSON data with stack setup cofiguration
+# Function to deploy dependencies
+deploy_dependencies() {
+  local stack_name="$1"
+  local dependencies_json="$2"
 
-  total_steps=10
+  info "Deploying dependencies for stack '$stack_name'"
 
-  stack_step(){
-    type="$1" 
-    step="$2"
-    message="$3"
-    stack_message="[$stack_name] $message"
-    step_progress $step $total_steps "$stack_message"
-  }
+  # Parse dependencies JSON and iterate through each dependency
+  echo "$dependencies_json" | jq -c '.[]' | while IFS= read -r dependency; do
+    dependency=$(echo "$dependency" | sed -e 's/^"//' -e 's/"$//')
+    info "Processing dependency: $dependency"
 
-  stack_step_progress(){
-    stack_step "progress" "$1" "$2"
-  }
-
-  stack_step_warning(){
-    stack_step "warning" "$1" "$2"
-  }
-  
-  stack_step_error(){
-    stack_step "error" "$1" "$2"
-  }
-
-  stack_handle_exit(){
-    exit_code="$1" 
-    step="$2"
-    message="$3"
-    stack_message="[$stack_name] $message"
-    handle_exit "$exit_code" "$step" $total_steps "$stack_message"
-  }
-
-  # Declare an associative array to hold service variables
-  declare -A stack_variables
-
-  # Parse JSON data and populate associative array
-  while IFS="=" read -r key value; do
-    stack_variables["$key"]="$value"
-  done < <(\
-    echo "$config_json" | \
-    jq -r '.variables | to_entries | .[] | "\(.key)=\(.value | tostring)"'\
-  )
-
-  highlight "Deploying stack '$stack_name'"
-
-  # Step 1: Deploy Dependencies
-  stack_step_progress 1 "Checking and deploying dependencies"
-  local dependencies=$(echo "$config_json" | jq -c '.dependencies // []')
-
-  # Validate JSON
-  if ! echo "$dependencies" | jq empty; then
-      stack_step_error 9 "Invalid JSON in dependencies: $dependencies"
-      return 1
-  fi
-
-  if [[ "$dependencies" != "[]" ]]; then
-      info "Required dependencies: $dependencies"
-  fi
-
-  # Check if there are dependencies, and if none, display a message
-  if [ "$(echo "$dependencies" | jq length)" -eq 0 ]; then
-    stack_step_warning 1 "No dependencies to deploy"
-  else
-    echo "$dependencies" | jq -c '.[]' | while IFS= read -r dependency; do
-      dependency=$(echo "$dependency" | sed -e 's/^"//' -e 's/"$//')
-      info "Processing dependency: $dependency"
-
-      # Check if stack dependency exists on docker
-      if ! docker stack ls --format '{{.Name}}' | grep -q "$dependency"; then
-        dependency_message="Deploying dependency: $dependency"
-        stack_step_progress 1 "$dependency_message"
-
-        # Fetch JSON for the dependency
-        deploy_stack "$dependency"
-        stack_handle_exit "$?" 1 "$dependency_message"
-      else
-        dependency_message="Dependency \"$dependency\" already exists. Skipping..."
-        stack_step_warning 1 "$dependency_message"
+    if ! docker stack ls --format '{{.Name}}' | grep -q "$dependency"; then
+      info "Deploying dependency: $dependency"
+      deploy_stack "$dependency"
+      if [ $? -ne 0 ]; then
+        error "Failed to deploy dependency: $dependency"
+        return 1
       fi
-    done
-  fi
+    else
+      warning "Dependency \"$dependency\" already exists. Skipping..."
+    fi
+  done
+}
 
-  # Step 2: Gather setUp actions
-  stack_step_progress 2 "Gathering prepare actions"
-  local setUp_actions
-  prepare_actions=$(echo "$config_json" | jq -r '.prepare?')
-  finalize_actions=$(echo "$config_json" | jq -r '.finalize?')
+# Function to execute a refresh action (command must output JSON)
+execute_refresh_actions() {
+  local refresh_actions="$1"
+  local stack_variables="$2"
 
-  # Validate JSON
-  if ! echo "$prepare_actions" | jq empty; then
-      stack_step_error 9 "Invalid JSON in prepare_actions: $prepare_actions"
+  for action in $(echo "$refresh_actions" | jq -c '.[]'); do
+    local action_name
+    action_name=$(echo "$action" | jq -r '.name')
+
+    local command
+    command=$(echo "$action" | jq -r '.command')
+
+    # Execute the command and capture its output (must be a valid JSON)
+    step_info "Executing refresh action: $action_name"
+    command_output=$(eval "$command") || {
+      error "Failed to execute refresh action: $action_name"
       return 1
+    }
+
+    # Validate if the output is a valid JSON object
+    echo "$command_output" | jq empty > /dev/null 2>&1 || {
+      error "Refresh action '$action_name' did not return a valid JSON."
+      return 1
+    }
+
+    # Merge the command output with the existing stack variables using add_json_objects
+    stack_variables=$(add_json_objects "$stack_variables" "$command_output") || {
+      error "Failed to update stack variables after executing '$action_name'"
+      return 1
+    }
+  done
+
+  echo "$stack_variables"
+}
+
+# Function to execute prepare actions
+execute_prepare_actions() {
+  local prepare_actions_json="$1"
+  local stack_variables="$2"
+
+  if [ "$(echo "$prepare_actions_json" | jq length)" -eq 0 ]; then
+    warning "No prepare actions to execute."
+    return 0
   fi
 
-  # Step 3: Run setUp actions individually
-  if [ "$(echo "$prepare_actions" | jq length)" -eq 0 ]; then
-    echo "$prepare_actions" | jq -c '.[]' | while IFS= read -r action; do
-      # Perform the action (you can define custom functions to execute these steps)
-      action_name=$(echo "$action" | jq -r '.name')
-      
-      message="Executing prepare action: $action_name"
-      stack_step_error 3 "$message"
+  echo "$prepare_actions_json" | jq -c '.[]' | while IFS= read -r action; do
+    local action_name
+    action_name=$(echo "$action" | jq -r '.name')
+    info "Executing prepare action: $action_name"
 
-      # Call an appropriate function to handle this setUp action
-      execute_action "$action" "$variables"
-      stack_handle_exit $? 3 "$message"
-    done
-  else
-    stack_step_warning 3 "No prepare actions defined"
-  fi
+    execute_action "$action" "$stack_variables"
+    if [ $? -ne 0 ]; then
+      error "Failed to execute prepare action: $action_name"
+      return 1
+    fi
+  done
+}
 
-  # Step 4: Build service-related file paths and Docker Compose template
-  message="Building stack filepaths"
-  stack_step_progress 4 "$message"
-  stack_info="$(build_stack_info "$stack_name")"
+# Function to build the Docker Compose template
+build_compose_template() {
+  local stack_name="$1"
+  local stack_variables="$2"
 
-  # Extract values from the JSON output
-  local config_path=$(echo "$stack_info" | jq -r '.config_path')
-  local compose_path=$(echo "$stack_info" | jq -r '.compose_path')
-  local compose_template_func=$(echo "$stack_info" | jq -r '.compose_func')
+  info "Building Docker Compose template for stack '$stack_name'"
 
-  stack_handle_exit $? 4 "$message"
+  # Get stack info
+  local stack_info
+  stack_info=$(build_stack_info "$stack_name")
 
-  # Step 5: Retrieve and substitute variables in Docker Compose template
-  message="Creating Docker Compose template"
-  stack_step_progress 5 "$message"
+  # Extract paths and function for template generation
+  local config_path
+  config_path=$(echo "$stack_info" | jq -r '.config_path')
+  local compose_path
+  compose_path=$(echo "$stack_info" | jq -r '.compose_path')
+  local compose_template_func
+  compose_template_func=$(echo "$stack_info" | jq -r '.compose_func')
+
+  # Generate the substituted template
   local substituted_template
-  substituted_template="$(\
-    replace_mustache_variables "$($compose_template_func)" stack_variables \
-  )"
-  stack_handle_exit "$?" 5 "$message"
+  substituted_template=$(replace_mustache_variables "$($compose_template_func)" "$stack_variables")
 
-  # Step 6: Write the substituted template to the compose file
-
-  # Create folder stacks on home path
-  mkdir -p "$STACKS_FOLDER"
-
-  message="Writing Docker Compose template"
-  stack_step_progress 6 "$message" 
+  # Write the template to the compose file
   echo "$substituted_template" >"$compose_path"
-  stack_handle_exit $? 6 "$message"
-
-  # Step 7: Validate the Docker Compose file
-  message="Validating Docker Compose file" 
-  stack_step_progress 7 "$message" 
-  validate_compose_file "$compose_path"
-
-  exit_code="$?"
-  stack_handle_exit "$exit_code" 7 "$message"
-
-  remove_compose_if_failed_deployment "$compose_path" "$exit_code"
-
-  # FIX: Early return when there is an issue
-  #if [ $exit_code -ne 1 ]; then
-  #  return 1
-  #fi
-
-  # Step 8: Deploy the service on Docker Swarm
-  if [ "$stack_name" == "traefik" ] || [ "$stack_name" == "portainer" ]; then
-    message="Deploying stack on Docker Swarm"
-    stack_step_progress 8 "$message"
-
-    deploy_stack_on_swarm "$stack_name" "$compose_path"
-
-  else
-    message="Deploying stack on Portainer"
-    stack_step_progress 8 "$message"
-
-    # Get Portainer credentials
-    portainer_config_json="$(load_json "$STACKS_FOLDER/portainer_config.json")" 
-    portainer_url="$(\
-      echo "$portainer_config_json" | jq -r '.variables.portainer_url')"
-    portainer_credentials="$(\
-      echo "$portainer_config_json" | jq -r '.variables.portainer_credentials')"
-
-    upload_stack_on_portainer "$portainer_url" "$portainer_credentials" "$stack_name" "$compose_path"
+  if [ $? -ne 0 ]; then
+    error "Failed to write Docker Compose template to $compose_path"
+    return 1
   fi
 
-  exit_code="$?"
-  stack_handle_exit "$exit_code" 8 "$message"
+  echo "$compose_path"
+}
 
-  remove_compose_if_failed_deployment "$compose_path" "$exit_code"
+# Function to deploy the stack on the target
+deploy_stack_on_target() {
+  local stack_name="$1"
+  local compose_path="$2"
+  local target="$3"
 
-  # FIX: Early return when there is an issue
-  #if [ $exit_code -ne 1 ]; then
-  #  return 1
-  #fi
+  case "$target" in
+    swarm)
+      info "Deploying stack '$stack_name' on Docker Swarm"
+      docker stack deploy -c "$compose_path" "$stack_name"
+      ;;
+    portainer)
+      info "Deploying stack '$stack_name' on Portainer"
+      local portainer_config_json
+      portainer_config_json=$(\
+        load_json "$STACKS_FOLDER/portainer_config.json"\
+      )
+      local portainer_url
+      portainer_url=$(\
+        echo "$portainer_config_json" | jq -r '.variables.portainer_url'\
+      )
+      local portainer_credentials
+      portainer_credentials=$(\
+        echo "$portainer_config_json" | jq -r '.variables.portainer_credentials'\
+      )
 
-  # Validate JSON
-  if ! echo "$finalize_actions" | jq empty; then
-      stack_step_error 9 "Invalid JSON in finalize_actions: $finalize_actions"
+      upload_stack_on_portainer "$portainer_url" "$portainer_credentials" \
+        "$stack_name" "$compose_path"
+      ;;
+    *)
+      error "Unknown deployment target: $target"
       return 1
+      ;;
+  esac
+
+  if [ $? -ne 0 ]; then
+    error "Failed to deploy stack '$stack_name' on $target"
+    return 1
+  fi
+}
+
+# Function to execute finalize actions
+execute_finalize_actions() {
+  local finalize_actions_json="$1"
+  local stack_variables="$2"
+
+  if [ "$(echo "$finalize_actions_json" | jq length)" -eq 0 ]; then
+    warning "No finalize actions to execute."
+    return 0
   fi
 
-  # Step 9: Run finalize actions individually
-  if echo "$finalize_actions" | jq -e '. | type == "array" and length > 0' > /dev/null 2>&1; then
-    message="Executing finalize actions"
-    stack_step_progress 9 "$message"
+  echo "$finalize_actions_json" | jq -c '.[]' | while IFS= read -r action; do
+    local action_name
+    action_name=$(echo "$action" | jq -r '.name')
+    info "Executing finalize action: $action_name"
 
-    echo "$finalize_actions" | jq -c '.[]' | while IFS= read -r action; do
-      action_name=$(echo "$action" | jq -r '.name')
+    execute_action "$action" "$stack_variables"
+    if [ $? -ne 0 ]; then
+      error "Failed to execute finalize action: $action_name"
+      return 1
+    fi
+  done
+}
 
-      message="Executing finalize action: $action_name"
-      stack_step_error 9 "$message"
 
-      # Perform the action
-      execute_action "$action" "$variables"
-      stack_handle_exit $? 9 "$message"
-    done
-  else
-    stack_step_warning 9 "No finalize actions defined"
-  fi
+# # Function to deploy a service
+# deploy_stack_pipeline() {
+#   # Arguments
+#   local stack_name="$1" # stack name (e.g., redis, postgres)
+#   local config_json="$2" # JSON data with stack setup cofiguration
+# 
+#   total_steps=10
+# 
+#   stack_step(){
+#     type="$1" 
+#     step="$2"
+#     message="$3"
+#     stack_message="[$stack_name] $message"
+#     step_progress $step $total_steps "$stack_message"
+#   }
+# 
+#   stack_step_progress(){
+#     stack_step "progress" "$1" "$2"
+#   }
+# 
+#   stack_step_warning(){
+#     stack_step "warning" "$1" "$2"
+#   }
+#   
+#   stack_step_error(){
+#     stack_step "error" "$1" "$2"
+#   }
+# 
+#   stack_handle_exit(){
+#     exit_code="$1" 
+#     step="$2"
+#     message="$3"
+#     stack_message="[$stack_name] $message"
+#     handle_exit "$exit_code" "$step" $total_steps "$stack_message"
+#   }
+# 
+#   # Declare an associative array to hold service variables
+#   declare -A stack_variables
+# 
+#   # Parse JSON data and populate associative array
+#   while IFS="=" read -r key value; do
+#     stack_variables["$key"]="$value"
+#   done < <(\
+#     echo "$config_json" | \
+#     jq -r '.variables | to_entries | .[] | "\(.key)=\(.value | tostring)"'\
+#   )
+# 
+#   highlight "Deploying stack '$stack_name'"
+# 
+#   # Step 1: Deploy Dependencies
+#   stack_step_progress 1 "Checking and deploying dependencies"
+#   local dependencies=$(echo "$config_json" | jq -c '.dependencies // []')
+# 
+#   # Validate JSON
+#   if ! echo "$dependencies" | jq empty; then
+#       stack_step_error 9 "Invalid JSON in dependencies: $dependencies"
+#       return 1
+#   fi
+# 
+#   if [[ "$dependencies" != "[]" ]]; then
+#       info "Required dependencies: $dependencies"
+#   fi
+# 
+#   # Check if there are dependencies, and if none, display a message
+#   if [ "$(echo "$dependencies" | jq length)" -eq 0 ]; then
+#     stack_step_warning 1 "No dependencies to deploy"
+#   else
+#     echo "$dependencies" | jq -c '.[]' | while IFS= read -r dependency; do
+#       dependency=$(echo "$dependency" | sed -e 's/^"//' -e 's/"$//')
+#       info "Processing dependency: $dependency"
+# 
+#       # Check if stack dependency exists on docker
+#       if ! docker stack ls --format '{{.Name}}' | grep -q "$dependency"; then
+#         dependency_message="Deploying dependency: $dependency"
+#         stack_step_progress 1 "$dependency_message"
+# 
+#         # Fetch JSON for the dependency
+#         deploy_stack "$dependency"
+#         stack_handle_exit "$?" 1 "$dependency_message"
+#       else
+#         dependency_message="Dependency \"$dependency\" already exists. Skipping..."
+#         stack_step_warning 1 "$dependency_message"
+#       fi
+#     done
+#   fi
+# 
+#   # Step 2: Gather setUp actions
+#   stack_step_progress 2 "Gathering prepare actions"
+#   local setUp_actions
+#   prepare_actions=$(echo "$config_json" | jq -r '.prepare?')
+#   finalize_actions=$(echo "$config_json" | jq -r '.finalize?')
+# 
+#   # Validate JSON
+#   if ! echo "$prepare_actions" | jq empty; then
+#       stack_step_error 9 "Invalid JSON in prepare_actions: $prepare_actions"
+#       return 1
+#   fi
+# 
+#   # Step 3: Run setUp actions individually
+#   if [ "$(echo "$prepare_actions" | jq length)" -eq 0 ]; then
+#     echo "$prepare_actions" | jq -c '.[]' | while IFS= read -r action; do
+#       # Perform the action (you can define custom functions to execute these steps)
+#       action_name=$(echo "$action" | jq -r '.name')
+#       
+#       message="Executing prepare action: $action_name"
+#       stack_step_error 3 "$message"
+# 
+#       # Call an appropriate function to handle this setUp action
+#       execute_action "$action" "$variables"
+#       stack_handle_exit $? 3 "$message"
+#     done
+#   else
+#     stack_step_warning 3 "No prepare actions defined"
+#   fi
+# 
+#   # Step 4: Build service-related file paths and Docker Compose template
+#   message="Building stack filepaths"
+#   stack_step_progress 4 "$message"
+#   stack_info="$(build_stack_info "$stack_name")"
+# 
+#   # Extract values from the JSON output
+#   local config_path=$(echo "$stack_info" | jq -r '.config_path')
+#   local compose_path=$(echo "$stack_info" | jq -r '.compose_path')
+#   local compose_template_func=$(echo "$stack_info" | jq -r '.compose_func')
+# 
+#   stack_handle_exit $? 4 "$message"
+# 
+#   # Step 5: Retrieve and substitute variables in Docker Compose template
+#   message="Creating Docker Compose template"
+#   stack_step_progress 5 "$message"
+#   local substituted_template
+#   substituted_template="$(\
+#     replace_mustache_variables "$($compose_template_func)" stack_variables \
+#   )"
+#   stack_handle_exit "$?" 5 "$message"
+# 
+#   # Step 6: Write the substituted template to the compose file
+# 
+#   # Create folder stacks on home path
+#   mkdir -p "$STACKS_FOLDER"
+# 
+#   message="Writing Docker Compose template"
+#   stack_step_progress 6 "$message" 
+#   echo "$substituted_template" >"$compose_path"
+#   stack_handle_exit $? 6 "$message"
+# 
+#   # Step 7: Validate the Docker Compose file
+#   message="Validating Docker Compose file" 
+#   stack_step_progress 7 "$message" 
+#   validate_compose_file "$compose_path"
+# 
+#   exit_code="$?"
+#   stack_handle_exit "$exit_code" 7 "$message"
+# 
+#   remove_compose_if_failed_deployment "$compose_path" "$exit_code"
+# 
+#   # FIX: Early return when there is an issue
+#   #if [ $exit_code -ne 1 ]; then
+#   #  return 1
+#   #fi
+# 
+#   # Step 8: Deploy the service on Docker Swarm
+#   if [ "$stack_name" == "traefik" ] || [ "$stack_name" == "portainer" ]; then
+#     message="Deploying stack on Docker Swarm"
+#     stack_step_progress 8 "$message"
+# 
+#     deploy_stack_on_swarm "$stack_name" "$compose_path"
+# 
+#   else
+#     message="Deploying stack on Portainer"
+#     stack_step_progress 8 "$message"
+# 
+#     # Get Portainer credentials
+#     portainer_config_json="$(load_json "$STACKS_FOLDER/portainer_config.json")" 
+#     portainer_url="$(\
+#       echo "$portainer_config_json" | jq -r '.variables.portainer_url')"
+#     portainer_credentials="$(\
+#       echo "$portainer_config_json" | jq -r '.variables.portainer_credentials')"
+# 
+#     upload_stack_on_portainer "$portainer_url" "$portainer_credentials" "$stack_name" "$compose_path"
+#   fi
+# 
+#   exit_code="$?"
+#   stack_handle_exit "$exit_code" 8 "$message"
+# 
+#   remove_compose_if_failed_deployment "$compose_path" "$exit_code"
+# 
+#   # FIX: Early return when there is an issue
+#   #if [ $exit_code -ne 1 ]; then
+#   #  return 1
+#   #fi
+# 
+#   # Validate JSON
+#   if ! echo "$finalize_actions" | jq empty; then
+#       stack_step_error 9 "Invalid JSON in finalize_actions: $finalize_actions"
+#       return 1
+#   fi
+# 
+#   # Step 9: Run finalize actions individually
+#   if echo "$finalize_actions" | jq -e '. | type == "array" and length > 0' > /dev/null 2>&1; then
+#     message="Executing finalize actions"
+#     stack_step_progress 9 "$message"
+# 
+#     echo "$finalize_actions" | jq -c '.[]' | while IFS= read -r action; do
+#       action_name=$(echo "$action" | jq -r '.name')
+# 
+#       message="Executing finalize action: $action_name"
+#       stack_step_error 9 "$message"
+# 
+#       # Perform the action
+#       execute_action "$action" "$variables"
+#       stack_handle_exit $? 9 "$message"
+#     done
+#   else
+#     stack_step_warning 9 "No finalize actions defined"
+#   fi
+# 
+#   # Step 9: Save service-specific information to a configuration file
+#   message="Saving stack configuration"
+#   stack_step_progress 10 "$message"
+#   write_json "$config_path" "$config_json"
+#   
+#   exit_code="$?"
+#   stack_handle_exit "$exit_code" 10 "$message"
+# 
+#   # Final Success Message
+#   deploy_success_message "$stack_name"
+# 
+#   wait_for_input
+# }
 
-  # Step 9: Save service-specific information to a configuration file
-  message="Saving stack configuration"
-  stack_step_progress 10 "$message"
-  write_json "$config_path" "$config_json"
-  
-  exit_code="$?"
-  stack_handle_exit "$exit_code" 10 "$message"
+deploy_stack_pipeline() {
+  local config_json="$1"
 
-  # Final Success Message
+  local stack_name="$(echo "$config_json" | jq -r '.name')"
+
+  total_steps=7
+
+  # Parse stack variables
+  local stack_variables
+  stack_variables=$(parse_stack_variables "$config_json")
+
+  highlight "Starting deployment pipeline for stack '$stack_name'"
+
+  # Step 1: Deploy dependencies
+  step_info 1 $total_steps "Deploying dependencies"
+  local dependencies
+  dependencies=$(echo "$config_json" | jq -r '.dependencies // []')
+  deploy_dependencies "$stack_name" "$dependencies" || {
+    failure "Failed to deploy dependencies"
+    return 1
+  }
+
+  # Step 2: Execute refresh actions
+  step_info 2 $total_steps "Executing refresh actions"
+  local refresh_actions
+  refresh_actions=$(echo "$config_json" | jq -r '.actions.refresh // []')
+  stack_variables=$(\
+    execute_refresh_actions "$refresh_actions" "$stack_variables"
+  ) || {
+    failure "Failed to execute refresh actions"
+    return 1
+  }
+
+  # Step 3: Execute prepare actions
+  step_info 3 $total_steps "Executing prepare actions"
+  local prepare_actions
+  prepare_actions=$(echo "$config_json" | jq -r '.actions.prepare // []')
+  execute_prepare_actions "$prepare_actions" "$stack_variables" || {
+    failure "Failed to execute prepare actions"
+    return 1
+  }
+
+  # Step 4: Build and substitute Docker Compose template
+  step_info 4 $total_steps "Building Docker Compose template"
+  local compose_path
+  compose_path=$(build_compose_template "$stack_name" "$stack_variables") || {
+    failure "Failed to build Docker Compose template"
+    return 1
+  }
+
+  # Step 5: Deploy the stack on the target
+  step_info 5 $total_steps "Deploying stack on target"
+  local target
+  target=$(echo "$config_json" | jq -r '.target // "swarm"')
+  deploy_stack_on_target "$stack_name" "$compose_path" "$target" || {
+    failure "Failed to deploy stack on target: $target"
+    return 1
+  }
+
+  # Step 6: Execute finalize actions
+  step_info 6 $total_steps "Executing finalize actions"
+  local finalize_actions
+  finalize_actions=$(echo "$config_json" | jq -r '.actions.finalize // []')
+  execute_finalize_actions "$finalize_actions" "$stack_variables" || {
+    failure "Failed to execute finalize actions"
+    return 1
+  }
+
+  # Step 7: Save configuration and finalize
+  step_info 7 $total_steps "Saving configuration and finalizing"
+  save_stack_configuration "$stack_name" "$config_json" || {
+    failure "Failed to save stack configuration"
+    return 1
+  }
+
+  # Success message
   deploy_success_message "$stack_name"
-
   wait_for_input
 }
 
