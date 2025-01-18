@@ -2325,23 +2325,48 @@ generate_config_schema() {
     if [ "$first" = true ]; then
       first=false
     else
-      schema+=","
+      schema+="," # Add a comma between fields
     fi
-    schema+="\"$field\": {\"type\": \"string\"}"
+    schema+="\"$field\": {\"type\": \"string\", \"minLength\": 1}"
   done
 
-  # Add dependencies and setUp as always-present fields
+  # Add dependencies and actions as always-present fields
   schema+='},
-    "dependencies": {},
-    "setUp": []}'
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "actions": {
+      "type": "object",
+      "properties": {
+        "refresh": {
+          "type": "array",
+          "items": {"type": "object"}
+        },
+        "prepare": {
+          "type": "array",
+          "items": {"type": "object"}
+        },
+        "finalize": {
+          "type": "array",
+          "items": {"type": "object"}
+        }
+      }
+    }
+  }'
 
   echo "$schema"
 }
 
 # Function to extract required fields and generate schema
 validate_stack_config() {
-  local stack_name="$1"
-  local config_json="$2"
+  local stack_config="$1"
+
+  # Get the stack name
+  stack_name="(echo $stack_config | jq -r '.name')"
 
   # Get required fields from the stack template
   required_fields=$(list_stack_compose_required_fields "$stack_name")
