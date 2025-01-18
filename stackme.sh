@@ -5245,15 +5245,15 @@ deploy_stack() {
   local stack_name="$1"
 
   # Generate the stack JSON configuration
-  local config_json
-  config_json=$(eval "generate_config_$stack_name")
+  local stack_config
+  stack_config=$(eval "generate_config_$stack_name")
 
-  if [ -z "$config_json" ]; then
+  if [ -z "$stack_config" ]; then
     return 1
   fi
 
   # Check required fields
-  validate_stack_config "$stack_name" "$config_json"
+  validate_stack_config "$stack_config"
 
   if [ $? -ne 0 ]; then
     failure "Stack $stack_name configuration validation failed."
