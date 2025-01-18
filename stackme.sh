@@ -4005,6 +4005,26 @@ map_stacks_to_services() {
   echo "$json_object"
 }
 
+# Function to list the services of a stack
+list_stack_services() {
+  local stack_name=$1
+  declare -a services_array
+
+  # Check if stack exists
+  if ! docker stack ls --format '{{.Name}}' | grep -q "^$stack_name\$"; then
+    error "Stack '$stack_name' does not exist."
+    return 1
+  fi
+
+  info "Fetching services for stack: $stack_name"
+
+  # Get the services associated with the specified stack and store them in an array
+  services_array=($(docker stack services "$stack_name" --format '{{.Name}}'))
+
+  # Optionally return the array as a result (useful if called from another script)
+  echo "${services_array[@]}"
+}
+
 # Function to get the latest stable version
 get_latest_stable_version() {
   local image_name=$1
