@@ -8223,8 +8223,7 @@ generate_config_metabase() {
           "name": $stack_name,
           "target": "portainer",
           "variables": {
-              "url_airflow": $url_airflow,
-              "url_flower": $url_flower,
+              "url_metabase": $url_metabase,
               "network_name": $network_name,
           },
           "dependencies": ["traefik", "portainer", "postgres", "redis"],
