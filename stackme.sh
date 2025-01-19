@@ -5171,6 +5171,8 @@ deploy_stack_pipeline() {
   local stack_variables
   stack_variables=$(echo "$config_json" | jq -r '.variables // []')
 
+  info "$stack_variables"
+
   highlight "Starting deployment pipeline for stack '$stack_name'"
 
   # Step 1: Deploy dependencies
@@ -5185,7 +5187,7 @@ deploy_stack_pipeline() {
   # Step 2: Execute refresh actions
   step_info 2 $total_steps "Executing refresh actions"
   local refresh_actions
-  refresh_actions=$(echo "$config_json" | jq -r '.actions.refresh // []')
+  refresh_actions=$(jq -r '.actions.refresh // []' <<< "$config_json")
   stack_variables=$(\
     execute_refresh_actions "$refresh_actions" "$stack_variables"
   ) || {
@@ -8411,7 +8413,7 @@ define_menu_stacks(){
   )"
   item_4="$(
     build_menu_item "Miscelaneous" \
-      "Whoami & Airflow & " \
+      "Whoami & Airflow & Metabase" \
       "navigate_menu 'Miscelaneous'"
   )"
 
