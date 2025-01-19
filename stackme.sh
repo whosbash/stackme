@@ -4785,8 +4785,11 @@ execute_refresh_actions() {
     local command
     command=$(echo "$action" | jq -r '.command')
 
+    info "Processing refresh action: $action_name"
+    info "Command: $command"
+
     # Execute the command and capture its output (must be a valid JSON)
-    step_info "Executing refresh action: $action_name"
+    info "Executing refresh action: $action_name"
     command_output=$(eval "$command") || {
       error "Failed to execute refresh action: $action_name"
       return 1
@@ -5188,6 +5191,9 @@ deploy_stack_pipeline() {
   step_info 2 $total_steps "Executing refresh actions"
   local refresh_actions
   refresh_actions=$(jq -r '.actions.refresh // []' <<< "$config_json")
+  
+  info "$refresh_actions"
+  
   stack_variables=$(\
     execute_refresh_actions "$refresh_actions" "$stack_variables"
   ) || {
@@ -8643,17 +8649,6 @@ main() {
 
 # Call the main function
 main "$@"
-
-# Function to check if a stack exists by name
-stack_exists() {
-  local stack_name="$1"
-  # Check if the stack exists by listing stacks and filtering by name
-  if docker stack ls --format '{{.Name}}' | grep -q "^$stack_name$"; then
-    return 0
-  else
-    return 1 # Stack does not exist
-  fi
-}
 
 # stack_name="postgres"
 # stack_exists "$stack_name"0
