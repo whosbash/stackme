@@ -4773,7 +4773,11 @@ execute_refresh_actions() {
   local stack_variables="$2"
   local updated_variables="$stack_variables" # Initialize with input variables
 
-  echo "$refresh_actions" | jq -c '.[]' | while IFS= read -r action; do
+  local actions
+  mapfile -t actions < <(echo "$refresh_actions" | jq -r '.[]')
+
+  # Iterate over the refresh actions
+  for action in "${actions[@]}"; do
     local action_name
     action_name=$(echo "$action" | jq -r '.name')
 
