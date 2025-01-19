@@ -4745,12 +4745,11 @@ deploy_dependencies() {
 
   info "Deploying dependencies for stack '$stack_name'"
 
-  # Parse dependencies JSON and iterate through each dependency
-  echo "$dependencies_json" | jq -c '.[]' | while IFS= read -r dependency; do
-    dependency=$(echo "$dependency" | sed -e 's/^"//' -e 's/"$//')
+  # Use a subshell to ensure IFS is scoped properly
+  echo "$dependencies_json" | jq -r '.[]' | while IFS= read -r dependency; do
     info "Processing dependency: $dependency"
 
-    if ! docker stack ls --format '{{.Name}}' | grep -q "$dependency"; then
+    if ! docker stack ls --format '{{.Name}}' | grep -q "^$dependency$"; then
       info "Deploying dependency: $dependency"
       deploy_stack "$dependency"
       if [ $? -ne 0 ]; then
@@ -4762,6 +4761,7 @@ deploy_dependencies() {
     fi
   done
 }
+
 
 # Function to execute a refresh action (command must output JSON)
 execute_refresh_actions() {
