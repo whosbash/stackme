@@ -4779,14 +4779,13 @@ execute_refresh_actions() {
   local stack_variables="$2"
 
   for action in $(echo "$refresh_actions" | jq -c '.[]'); do
+    debug "Processing refresh action: $action"
+    
     local action_name
     action_name=$(echo "$action" | jq -r '.name')
 
     local command
     command=$(echo "$action" | jq -r '.command')
-
-    info "Processing refresh action: $action_name"
-    info "Command: $command"
 
     # Execute the command and capture its output (must be a valid JSON)
     info "Executing refresh action: $action_name"
