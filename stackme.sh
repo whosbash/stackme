@@ -4961,7 +4961,7 @@ save_stack_configuration() {
     echo "$stack_config_json" | jq -r '.config_path'\
   )
 
-  save_json "$config_path" "$stack_variables"
+  write_json "$config_path" "$stack_variables"
 }
 
 
