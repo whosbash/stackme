@@ -545,6 +545,27 @@ step_progress() {
   step $current $total "$message" "progress" $has_timestamp
 }
 
+stack_step(){
+  stack_name="$1"
+  type="$2" 
+  step="$3"
+  message="$4"
+  stack_message="[$stack_name] $message"
+  step $step $total_steps "$stack_message" "$type"
+}
+
+stack_step_progress(){
+  stack_step "$1" "progress" "$2" "$3"
+}
+
+stack_step_warning(){
+  stack_step "$1" "warning" "$2" "$3"
+}
+  
+stack_step_error(){
+  stack_step "$1" "error" "$2" "$3"
+}
+
 # Function to display a boxed text
 boxed_text() {
   local word=${1:-"Hello"}                        # Default word to render
@@ -2304,23 +2325,48 @@ generate_config_schema() {
     if [ "$first" = true ]; then
       first=false
     else
-      schema+=","
+      schema+="," # Add a comma between fields
     fi
-    schema+="\"$field\": {\"type\": \"string\"}"
+    schema+="\"$field\": {\"type\": \"string\", \"minLength\": 1}"
   done
 
-  # Add dependencies and setUp as always-present fields
+  # Add dependencies and actions as always-present fields
   schema+='},
-    "dependencies": {},
-    "setUp": []}'
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "actions": {
+      "type": "object",
+      "properties": {
+        "refresh": {
+          "type": "array",
+          "items": {"type": "object"}
+        },
+        "prepare": {
+          "type": "array",
+          "items": {"type": "object"}
+        },
+        "finalize": {
+          "type": "array",
+          "items": {"type": "object"}
+        }
+      }
+    }
+  }'
 
   echo "$schema"
 }
 
 # Function to extract required fields and generate schema
 validate_stack_config() {
-  local stack_name="$1"
-  local config_json="$2"
+  local stack_config="$1"
+
+  # Get the stack name
+  stack_name="(echo $stack_config | jq -r '.name')"
 
   # Get required fields from the stack template
   required_fields=$(list_stack_compose_required_fields "$stack_name")
@@ -3959,6 +4005,26 @@ map_stacks_to_services() {
   echo "$json_object"
 }
 
+# Function to list the services of a stack
+list_stack_services() {
+  local stack_name=$1
+  declare -a services_array
+
+  # Check if stack exists
+  if ! docker stack ls --format '{{.Name}}' | grep -q "^$stack_name\$"; then
+    error "Stack '$stack_name' does not exist."
+    return 1
+  fi
+
+  info "Fetching services for stack: $stack_name"
+
+  # Get the services associated with the specified stack and store them in an array
+  services_array=($(docker stack services "$stack_name" --format '{{.Name}}'))
+
+  # Optionally return the array as a result (useful if called from another script)
+  echo "${services_array[@]}"
+}
+
 # Function to get the latest stable version
 get_latest_stable_version() {
   local image_name=$1
@@ -3979,7 +4045,7 @@ get_latest_stable_version() {
   # Fetch the first page to determine total pages
   response=$(curl -fsSL "$base_url" || echo "")
   if [ -z "$response" ] || [ "$(echo "$response" | jq -r '.count')" == "null" ]; then
-    echo "Image '$image_name' not found or registry unavailable."
+    warning "Image '$image_name' not found or registry unavailable."
     return 1
   fi
 
@@ -4020,7 +4086,7 @@ get_latest_stable_version() {
     echo "$latest_version"
     return 0
   else
-    echo "No stable version found for $image_name."
+    warning "No stable version found for $image_name."
     return 1
   fi
 }
@@ -4034,26 +4100,6 @@ stack_exists() {
   else
     return 1 # Stack does not exist
   fi
-}
-
-# Function to list the services of a stack
-list_stack_services() {
-  local stack_name=$1
-  declare -a services_array
-
-  # Check if stack exists
-  if ! docker stack ls --format '{{.Name}}' | grep -q "^$stack_name\$"; then
-    error "Stack '$stack_name' does not exist."
-    return 1
-  fi
-
-  info "Fetching services for stack: $stack_name"
-
-  # Get the services associated with the specified stack and store them in an array
-  services_array=($(docker stack services "$stack_name" --format '{{.Name}}'))
-
-  # Optionally return the array as a result (useful if called from another script)
-  echo "${services_array[@]}"
 }
 
 # Function to list the required fields on a stack docker-compose
@@ -4072,6 +4118,20 @@ list_stack_compose_required_fields() {
   fi
 }
 
+# Function to rollback a stack
+rollback_stack(){
+  local stack_name="$1"
+
+  docker stack rm "$stack_name"
+
+  if [[ $? -ne 0 ]]; then
+    failure "Rollback of stack $stack_name failed"
+    return 1
+  fi
+
+  success "Rollback of stack $stack_name successful"
+}
+
 # Function to check if Docker Swarm is active
 is_swarm_active() {
   local state=$(\
@@ -4079,7 +4139,7 @@ is_swarm_active() {
     tr -d '\n' | tr -d ' '\
   )
   if [[ -z "$state" ]]; then
-    echo "Swarm state is empty or undefined." >&2
+    warning "Swarm state is empty or undefined." >&2
     return 1
   fi
   if [[ "$state" == "active" ]]; then
@@ -4688,234 +4748,495 @@ execute_action() {
   fi
 }
 
-# Function to deploy a service
-deploy_stack_pipeline() {
-  # Arguments
-  local stack_name="$1" # stack name (e.g., redis, postgres)
-  local config_json="$2" # JSON data with stack setup cofiguration
+# Function to deploy dependencies
+deploy_dependencies() {
+  local stack_name="$1"
+  local dependencies_json="$2"
 
-  total_steps=10
+  info "Deploying dependencies for stack '$stack_name'"
 
-  stack_step(){
-    type="$1" 
-    step="$2"
-    message="$3"
-    stack_message="[$stack_name] $message"
-    step_progress $step $total_steps "$stack_message"
-  }
+  # Parse dependencies JSON and iterate through each dependency
+  echo "$dependencies_json" | jq -c '.[]' | while IFS= read -r dependency; do
+    dependency=$(echo "$dependency" | sed -e 's/^"//' -e 's/"$//')
+    info "Processing dependency: $dependency"
 
-  stack_step_progress(){
-    stack_step "progress" "$1" "$2"
-  }
-
-  stack_step_warning(){
-    stack_step "warning" "$1" "$2"
-  }
-  
-  stack_step_error(){
-    stack_step "error" "$1" "$2"
-  }
-
-  stack_handle_exit(){
-    exit_code="$1" 
-    step="$2"
-    message="$3"
-    stack_message="[$stack_name] $message"
-    handle_exit "$exit_code" "$step" $total_steps "$stack_message"
-  }
-
-  # Declare an associative array to hold service variables
-  declare -A stack_variables
-
-  # Parse JSON data and populate associative array
-  while IFS="=" read -r key value; do
-    stack_variables["$key"]="$value"
-  done < <(\
-    echo "$config_json" | \
-    jq -r '.variables | to_entries | .[] | "\(.key)=\(.value | tostring)"'\
-  )
-
-  highlight "Deploying stack '$stack_name'"
-
-  # Step 1: Deploy Dependencies
-  stack_step_progress 1 "Checking and deploying dependencies"
-  local dependencies=$(echo "$config_json" | jq -c '.dependencies // []')
-
-  # Validate JSON
-  if ! echo "$dependencies" | jq empty; then
-      stack_step_error 9 "Invalid JSON in dependencies: $dependencies"
-      return 1
-  fi
-
-  if [[ "$dependencies" != "[]" ]]; then
-      info "Required dependencies: $dependencies"
-  fi
-
-  # Check if there are dependencies, and if none, display a message
-  if [ "$(echo "$dependencies" | jq length)" -eq 0 ]; then
-    stack_step_warning 1 "No dependencies to deploy"
-  else
-    echo "$dependencies" | jq -c '.[]' | while IFS= read -r dependency; do
-      dependency=$(echo "$dependency" | sed -e 's/^"//' -e 's/"$//')
-      info "Processing dependency: $dependency"
-
-      # Check if stack dependency exists on docker
-      if ! docker stack ls --format '{{.Name}}' | grep -q "$dependency"; then
-        dependency_message="Deploying dependency: $dependency"
-        stack_step_progress 1 "$dependency_message"
-
-        # Fetch JSON for the dependency
-        deploy_stack "$dependency"
-        stack_handle_exit "$?" 1 "$dependency_message"
-      else
-        dependency_message="Dependency \"$dependency\" already exists. Skipping..."
-        stack_step_warning 1 "$dependency_message"
+    if ! docker stack ls --format '{{.Name}}' | grep -q "$dependency"; then
+      info "Deploying dependency: $dependency"
+      deploy_stack "$dependency"
+      if [ $? -ne 0 ]; then
+        error "Failed to deploy dependency: $dependency"
+        return 1
       fi
-    done
-  fi
+    else
+      warning "Dependency \"$dependency\" already exists. Skipping..."
+    fi
+  done
+}
 
-  # Step 2: Gather setUp actions
-  stack_step_progress 2 "Gathering prepare actions"
-  local setUp_actions
-  prepare_actions=$(echo "$config_json" | jq -r '.prepare?')
-  finalize_actions=$(echo "$config_json" | jq -r '.finalize?')
+# Function to execute a refresh action (command must output JSON)
+execute_refresh_actions() {
+  local refresh_actions="$1"
+  local stack_variables="$2"
 
-  # Validate JSON
-  if ! echo "$prepare_actions" | jq empty; then
-      stack_step_error 9 "Invalid JSON in prepare_actions: $prepare_actions"
+  for action in $(echo "$refresh_actions" | jq -c '.[]'); do
+    local action_name
+    action_name=$(echo "$action" | jq -r '.name')
+
+    local command
+    command=$(echo "$action" | jq -r '.command')
+
+    # Execute the command and capture its output (must be a valid JSON)
+    step_info "Executing refresh action: $action_name"
+    command_output=$(eval "$command") || {
+      error "Failed to execute refresh action: $action_name"
       return 1
+    }
+
+    # Validate if the output is a valid JSON object
+    echo "$command_output" | jq empty > /dev/null 2>&1 || {
+      error "Refresh action '$action_name' did not return a valid JSON."
+      return 1
+    }
+
+    # Merge the command output with the existing stack variables using add_json_objects
+    stack_variables=$(add_json_objects "$stack_variables" "$command_output") || {
+      error "Failed to update stack variables after executing '$action_name'"
+      return 1
+    }
+  done
+
+  echo "$stack_variables"
+}
+
+# Function to execute prepare actions
+execute_prepare_actions() {
+  local prepare_actions_json="$1"
+  local stack_variables="$2"
+
+  if [ "$(echo "$prepare_actions_json" | jq length)" -eq 0 ]; then
+    warning "No prepare actions to execute."
+    return 0
   fi
 
-  # Step 3: Run setUp actions individually
-  if [ "$(echo "$prepare_actions" | jq length)" -eq 0 ]; then
-    echo "$prepare_actions" | jq -c '.[]' | while IFS= read -r action; do
-      # Perform the action (you can define custom functions to execute these steps)
-      action_name=$(echo "$action" | jq -r '.name')
-      
-      message="Executing prepare action: $action_name"
-      stack_step_error 3 "$message"
+  echo "$prepare_actions_json" | jq -c '.[]' | while IFS= read -r action; do
+    local action_name
+    action_name=$(echo "$action" | jq -r '.name')
+    info "Executing prepare action: $action_name"
 
-      # Call an appropriate function to handle this setUp action
-      execute_action "$action" "$variables"
-      stack_handle_exit $? 3 "$message"
-    done
-  else
-    stack_step_warning 3 "No prepare actions defined"
-  fi
+    execute_action "$action" "$stack_variables"
+    if [ $? -ne 0 ]; then
+      error "Failed to execute prepare action: $action_name"
+      return 1
+    fi
+  done
+}
 
-  # Step 4: Build service-related file paths and Docker Compose template
-  message="Building stack filepaths"
-  stack_step_progress 4 "$message"
-  stack_info="$(build_stack_info "$stack_name")"
+# Function to build the Docker Compose template
+build_compose_template() {
+  local stack_name="$1"
+  local stack_variables="$2"
 
-  # Extract values from the JSON output
-  local config_path=$(echo "$stack_info" | jq -r '.config_path')
-  local compose_path=$(echo "$stack_info" | jq -r '.compose_path')
-  local compose_template_func=$(echo "$stack_info" | jq -r '.compose_func')
+  info "Building Docker Compose template for stack '$stack_name'"
 
-  stack_handle_exit $? 4 "$message"
+  # Get stack info
+  local stack_info
+  stack_info=$(build_stack_info "$stack_name")
 
-  # Step 5: Retrieve and substitute variables in Docker Compose template
-  message="Creating Docker Compose template"
-  stack_step_progress 5 "$message"
+  # Extract paths and function for template generation
+  local config_path
+  config_path=$(echo "$stack_info" | jq -r '.config_path')
+  local compose_path
+  compose_path=$(echo "$stack_info" | jq -r '.compose_path')
+  local compose_template_func
+  compose_template_func=$(echo "$stack_info" | jq -r '.compose_func')
+
+  # Generate the substituted template
   local substituted_template
-  substituted_template="$(\
-    replace_mustache_variables "$($compose_template_func)" stack_variables \
-  )"
-  stack_handle_exit "$?" 5 "$message"
+  substituted_template=$(replace_mustache_variables "$($compose_template_func)" "$stack_variables")
 
-  # Step 6: Write the substituted template to the compose file
-
-  # Create folder stacks on home path
-  mkdir -p "$STACKS_FOLDER"
-
-  message="Writing Docker Compose template"
-  stack_step_progress 6 "$message" 
+  # Write the template to the compose file
   echo "$substituted_template" >"$compose_path"
-  stack_handle_exit $? 6 "$message"
-
-  # Step 7: Validate the Docker Compose file
-  message="Validating Docker Compose file" 
-  stack_step_progress 7 "$message" 
-  validate_compose_file "$compose_path"
-
-  exit_code="$?"
-  stack_handle_exit "$exit_code" 7 "$message"
-
-  remove_compose_if_failed_deployment "$compose_path" "$exit_code"
-
-  # FIX: Early return when there is an issue
-  #if [ $exit_code -ne 1 ]; then
-  #  return 1
-  #fi
-
-  # Step 8: Deploy the service on Docker Swarm
-  if [ "$stack_name" == "traefik" ] || [ "$stack_name" == "portainer" ]; then
-    message="Deploying stack on Docker Swarm"
-    stack_step_progress 8 "$message"
-
-    deploy_stack_on_swarm "$stack_name" "$compose_path"
-
-  else
-    message="Deploying stack on Portainer"
-    stack_step_progress 8 "$message"
-
-    # Get Portainer credentials
-    portainer_config_json="$(load_json "$STACKS_FOLDER/portainer_config.json")" 
-    portainer_url="$(\
-      echo "$portainer_config_json" | jq -r '.variables.portainer_url')"
-    portainer_credentials="$(\
-      echo "$portainer_config_json" | jq -r '.variables.portainer_credentials')"
-
-    upload_stack_on_portainer "$portainer_url" "$portainer_credentials" "$stack_name" "$compose_path"
+  if [ $? -ne 0 ]; then
+    error "Failed to write Docker Compose template to $compose_path"
+    return 1
   fi
 
-  exit_code="$?"
-  stack_handle_exit "$exit_code" 8 "$message"
+  echo "$compose_path"
+}
 
-  remove_compose_if_failed_deployment "$compose_path" "$exit_code"
+# Function to deploy the stack on the target
+deploy_stack_on_target() {
+  local stack_name="$1"
+  local compose_path="$2"
+  local target="$3"
 
-  # FIX: Early return when there is an issue
-  #if [ $exit_code -ne 1 ]; then
-  #  return 1
-  #fi
+  case "$target" in
+    swarm)
+      info "Deploying stack '$stack_name' on Docker Swarm"
+      docker stack deploy -c "$compose_path" "$stack_name"
+      ;;
+    portainer)
+      info "Deploying stack '$stack_name' on Portainer"
+      local portainer_config_json
+      portainer_config_json=$(\
+        load_json "$STACKS_FOLDER/portainer_config.json"\
+      )
+      local portainer_url
+      portainer_url=$(\
+        echo "$portainer_config_json" | jq -r '.variables.portainer_url'\
+      )
+      local portainer_credentials
+      portainer_credentials=$(\
+        echo "$portainer_config_json" | jq -r '.variables.portainer_credentials'\
+      )
 
-  # Validate JSON
-  if ! echo "$finalize_actions" | jq empty; then
-      stack_step_error 9 "Invalid JSON in finalize_actions: $finalize_actions"
+      upload_stack_on_portainer "$portainer_url" "$portainer_credentials" \
+        "$stack_name" "$compose_path"
+      ;;
+    *)
+      error "Unknown deployment target: $target"
       return 1
+      ;;
+  esac
+
+  if [ $? -ne 0 ]; then
+    error "Failed to deploy stack '$stack_name' on $target"
+    return 1
+  fi
+}
+
+# Function to execute finalize actions
+execute_finalize_actions() {
+  local finalize_actions_json="$1"
+  local stack_variables="$2"
+
+  if [ "$(echo "$finalize_actions_json" | jq length)" -eq 0 ]; then
+    warning "No finalize actions to execute."
+    return 0
   fi
 
-  # Step 9: Run finalize actions individually
-  if echo "$finalize_actions" | jq -e '. | type == "array" and length > 0' > /dev/null 2>&1; then
-    message="Executing finalize actions"
-    stack_step_progress 9 "$message"
+  echo "$finalize_actions_json" | jq -c '.[]' | while IFS= read -r action; do
+    local action_name
+    action_name=$(echo "$action" | jq -r '.name')
+    info "Executing finalize action: $action_name"
 
-    echo "$finalize_actions" | jq -c '.[]' | while IFS= read -r action; do
-      action_name=$(echo "$action" | jq -r '.name')
+    execute_action "$action" "$stack_variables"
+    if [ $? -ne 0 ]; then
+      error "Failed to execute finalize action: $action_name"
+      return 1
+    fi
+  done
+}
 
-      message="Executing finalize action: $action_name"
-      stack_step_error 9 "$message"
 
-      # Perform the action
-      execute_action "$action" "$variables"
-      stack_handle_exit $? 9 "$message"
-    done
-  else
-    stack_step_warning 9 "No finalize actions defined"
-  fi
+# # Function to deploy a service
+# deploy_stack_pipeline() {
+#   # Arguments
+#   local stack_name="$1" # stack name (e.g., redis, postgres)
+#   local config_json="$2" # JSON data with stack setup cofiguration
+# 
+#   total_steps=10
+# 
+#   stack_step(){
+#     type="$1" 
+#     step="$2"
+#     message="$3"
+#     stack_message="[$stack_name] $message"
+#     step_progress $step $total_steps "$stack_message"
+#   }
+# 
+#   stack_step_progress(){
+#     stack_step "progress" "$1" "$2"
+#   }
+# 
+#   stack_step_warning(){
+#     stack_step "warning" "$1" "$2"
+#   }
+#   
+#   stack_step_error(){
+#     stack_step "error" "$1" "$2"
+#   }
+# 
+#   stack_handle_exit(){
+#     exit_code="$1" 
+#     step="$2"
+#     message="$3"
+#     stack_message="[$stack_name] $message"
+#     handle_exit "$exit_code" "$step" $total_steps "$stack_message"
+#   }
+# 
+#   # Declare an associative array to hold service variables
+#   declare -A stack_variables
+# 
+#   # Parse JSON data and populate associative array
+#   while IFS="=" read -r key value; do
+#     stack_variables["$key"]="$value"
+#   done < <(\
+#     echo "$config_json" | \
+#     jq -r '.variables | to_entries | .[] | "\(.key)=\(.value | tostring)"'\
+#   )
+# 
+#   highlight "Deploying stack '$stack_name'"
+# 
+#   # Step 1: Deploy Dependencies
+#   stack_step_progress 1 "Checking and deploying dependencies"
+#   local dependencies=$(echo "$config_json" | jq -c '.dependencies // []')
+# 
+#   # Validate JSON
+#   if ! echo "$dependencies" | jq empty; then
+#       stack_step_error 9 "Invalid JSON in dependencies: $dependencies"
+#       return 1
+#   fi
+# 
+#   if [[ "$dependencies" != "[]" ]]; then
+#       info "Required dependencies: $dependencies"
+#   fi
+# 
+#   # Check if there are dependencies, and if none, display a message
+#   if [ "$(echo "$dependencies" | jq length)" -eq 0 ]; then
+#     stack_step_warning 1 "No dependencies to deploy"
+#   else
+#     echo "$dependencies" | jq -c '.[]' | while IFS= read -r dependency; do
+#       dependency=$(echo "$dependency" | sed -e 's/^"//' -e 's/"$//')
+#       info "Processing dependency: $dependency"
+# 
+#       # Check if stack dependency exists on docker
+#       if ! docker stack ls --format '{{.Name}}' | grep -q "$dependency"; then
+#         dependency_message="Deploying dependency: $dependency"
+#         stack_step_progress 1 "$dependency_message"
+# 
+#         # Fetch JSON for the dependency
+#         deploy_stack "$dependency"
+#         stack_handle_exit "$?" 1 "$dependency_message"
+#       else
+#         dependency_message="Dependency \"$dependency\" already exists. Skipping..."
+#         stack_step_warning 1 "$dependency_message"
+#       fi
+#     done
+#   fi
+# 
+#   # Step 2: Gather setUp actions
+#   stack_step_progress 2 "Gathering prepare actions"
+#   local setUp_actions
+#   prepare_actions=$(echo "$config_json" | jq -r '.prepare?')
+#   finalize_actions=$(echo "$config_json" | jq -r '.finalize?')
+# 
+#   # Validate JSON
+#   if ! echo "$prepare_actions" | jq empty; then
+#       stack_step_error 9 "Invalid JSON in prepare_actions: $prepare_actions"
+#       return 1
+#   fi
+# 
+#   # Step 3: Run setUp actions individually
+#   if [ "$(echo "$prepare_actions" | jq length)" -eq 0 ]; then
+#     echo "$prepare_actions" | jq -c '.[]' | while IFS= read -r action; do
+#       # Perform the action (you can define custom functions to execute these steps)
+#       action_name=$(echo "$action" | jq -r '.name')
+#       
+#       message="Executing prepare action: $action_name"
+#       stack_step_error 3 "$message"
+# 
+#       # Call an appropriate function to handle this setUp action
+#       execute_action "$action" "$variables"
+#       stack_handle_exit $? 3 "$message"
+#     done
+#   else
+#     stack_step_warning 3 "No prepare actions defined"
+#   fi
+# 
+#   # Step 4: Build service-related file paths and Docker Compose template
+#   message="Building stack filepaths"
+#   stack_step_progress 4 "$message"
+#   stack_info="$(build_stack_info "$stack_name")"
+# 
+#   # Extract values from the JSON output
+#   local config_path=$(echo "$stack_info" | jq -r '.config_path')
+#   local compose_path=$(echo "$stack_info" | jq -r '.compose_path')
+#   local compose_template_func=$(echo "$stack_info" | jq -r '.compose_func')
+# 
+#   stack_handle_exit $? 4 "$message"
+# 
+#   # Step 5: Retrieve and substitute variables in Docker Compose template
+#   message="Creating Docker Compose template"
+#   stack_step_progress 5 "$message"
+#   local substituted_template
+#   substituted_template="$(\
+#     replace_mustache_variables "$($compose_template_func)" stack_variables \
+#   )"
+#   stack_handle_exit "$?" 5 "$message"
+# 
+#   # Step 6: Write the substituted template to the compose file
+# 
+#   # Create folder stacks on home path
+#   mkdir -p "$STACKS_FOLDER"
+# 
+#   message="Writing Docker Compose template"
+#   stack_step_progress 6 "$message" 
+#   echo "$substituted_template" >"$compose_path"
+#   stack_handle_exit $? 6 "$message"
+# 
+#   # Step 7: Validate the Docker Compose file
+#   message="Validating Docker Compose file" 
+#   stack_step_progress 7 "$message" 
+#   validate_compose_file "$compose_path"
+# 
+#   exit_code="$?"
+#   stack_handle_exit "$exit_code" 7 "$message"
+# 
+#   remove_compose_if_failed_deployment "$compose_path" "$exit_code"
+# 
+#   # FIX: Early return when there is an issue
+#   #if [ $exit_code -ne 1 ]; then
+#   #  return 1
+#   #fi
+# 
+#   # Step 8: Deploy the service on Docker Swarm
+#   if [ "$stack_name" == "traefik" ] || [ "$stack_name" == "portainer" ]; then
+#     message="Deploying stack on Docker Swarm"
+#     stack_step_progress 8 "$message"
+# 
+#     deploy_stack_on_swarm "$stack_name" "$compose_path"
+# 
+#   else
+#     message="Deploying stack on Portainer"
+#     stack_step_progress 8 "$message"
+# 
+#     # Get Portainer credentials
+#     portainer_config_json="$(load_json "$STACKS_FOLDER/portainer_config.json")" 
+#     portainer_url="$(\
+#       echo "$portainer_config_json" | jq -r '.variables.portainer_url')"
+#     portainer_credentials="$(\
+#       echo "$portainer_config_json" | jq -r '.variables.portainer_credentials')"
+# 
+#     upload_stack_on_portainer "$portainer_url" "$portainer_credentials" "$stack_name" "$compose_path"
+#   fi
+# 
+#   exit_code="$?"
+#   stack_handle_exit "$exit_code" 8 "$message"
+# 
+#   remove_compose_if_failed_deployment "$compose_path" "$exit_code"
+# 
+#   # FIX: Early return when there is an issue
+#   #if [ $exit_code -ne 1 ]; then
+#   #  return 1
+#   #fi
+# 
+#   # Validate JSON
+#   if ! echo "$finalize_actions" | jq empty; then
+#       stack_step_error 9 "Invalid JSON in finalize_actions: $finalize_actions"
+#       return 1
+#   fi
+# 
+#   # Step 9: Run finalize actions individually
+#   if echo "$finalize_actions" | jq -e '. | type == "array" and length > 0' > /dev/null 2>&1; then
+#     message="Executing finalize actions"
+#     stack_step_progress 9 "$message"
+# 
+#     echo "$finalize_actions" | jq -c '.[]' | while IFS= read -r action; do
+#       action_name=$(echo "$action" | jq -r '.name')
+# 
+#       message="Executing finalize action: $action_name"
+#       stack_step_error 9 "$message"
+# 
+#       # Perform the action
+#       execute_action "$action" "$variables"
+#       stack_handle_exit $? 9 "$message"
+#     done
+#   else
+#     stack_step_warning 9 "No finalize actions defined"
+#   fi
+# 
+#   # Step 9: Save service-specific information to a configuration file
+#   message="Saving stack configuration"
+#   stack_step_progress 10 "$message"
+#   write_json "$config_path" "$config_json"
+#   
+#   exit_code="$?"
+#   stack_handle_exit "$exit_code" 10 "$message"
+# 
+#   # Final Success Message
+#   deploy_success_message "$stack_name"
+# 
+#   wait_for_input
+# }
 
-  # Step 9: Save service-specific information to a configuration file
-  message="Saving stack configuration"
-  stack_step_progress 10 "$message"
-  write_json "$config_path" "$config_json"
-  
-  exit_code="$?"
-  stack_handle_exit "$exit_code" 10 "$message"
+deploy_stack_pipeline() {
+  local config_json="$1"
 
-  # Final Success Message
+  local stack_name="$(echo "$config_json" | jq -r '.name')"
+
+  total_steps=7
+
+  # Parse stack variables
+  local stack_variables
+  stack_variables=$(parse_stack_variables "$config_json")
+
+  highlight "Starting deployment pipeline for stack '$stack_name'"
+
+  # Step 1: Deploy dependencies
+  step_info 1 $total_steps "Deploying dependencies"
+  local dependencies
+  dependencies=$(echo "$config_json" | jq -r '.dependencies // []')
+  deploy_dependencies "$stack_name" "$dependencies" || {
+    failure "Failed to deploy dependencies"
+    return 1
+  }
+
+  # Step 2: Execute refresh actions
+  step_info 2 $total_steps "Executing refresh actions"
+  local refresh_actions
+  refresh_actions=$(echo "$config_json" | jq -r '.actions.refresh // []')
+  stack_variables=$(\
+    execute_refresh_actions "$refresh_actions" "$stack_variables"
+  ) || {
+    failure "Failed to execute refresh actions"
+    return 1
+  }
+
+  # Step 3: Execute prepare actions
+  step_info 3 $total_steps "Executing prepare actions"
+  local prepare_actions
+  prepare_actions=$(echo "$config_json" | jq -r '.actions.prepare // []')
+  execute_prepare_actions "$prepare_actions" "$stack_variables" || {
+    failure "Failed to execute prepare actions"
+    return 1
+  }
+
+  # Step 4: Build and substitute Docker Compose template
+  step_info 4 $total_steps "Building Docker Compose template"
+  local compose_path
+  compose_path=$(build_compose_template "$stack_name" "$stack_variables") || {
+    failure "Failed to build Docker Compose template"
+    return 1
+  }
+
+  # Step 5: Deploy the stack on the target
+  step_info 5 $total_steps "Deploying stack on target"
+  local target
+  target=$(echo "$config_json" | jq -r '.target // "swarm"')
+  deploy_stack_on_target "$stack_name" "$compose_path" "$target" || {
+    failure "Failed to deploy stack on target: $target"
+    return 1
+  }
+
+  # Step 6: Execute finalize actions
+  step_info 6 $total_steps "Executing finalize actions"
+  local finalize_actions
+  finalize_actions=$(echo "$config_json" | jq -r '.actions.finalize // []')
+  execute_finalize_actions "$finalize_actions" "$stack_variables" || {
+    failure "Failed to execute finalize actions"
+    return 1
+  }
+
+  # Step 7: Save configuration and finalize
+  step_info 7 $total_steps "Saving configuration and finalizing"
+  save_stack_configuration "$stack_name" "$config_json" || {
+    failure "Failed to save stack configuration"
+    return 1
+  }
+
+  # Success message
   deploy_success_message "$stack_name"
-
   wait_for_input
 }
 
@@ -4924,15 +5245,15 @@ deploy_stack() {
   local stack_name="$1"
 
   # Generate the stack JSON configuration
-  local config_json
-  config_json=$(eval "generate_config_$stack_name")
+  local stack_config
+  stack_config=$(eval "generate_config_$stack_name")
 
-  if [ -z "$config_json" ]; then
+  if [ -z "$stack_config" ]; then
     return 1
   fi
 
   # Check required fields
-  validate_stack_config "$stack_name" "$config_json"
+  validate_stack_config "$stack_config"
 
   if [ $? -ne 0 ]; then
     failure "Stack $stack_name configuration validation failed."
@@ -4942,7 +5263,7 @@ deploy_stack() {
   clean_screen
 
   # Deploy the n8n service using the JSON
-  deploy_stack_pipeline "$stack_name" "$config_json"
+  deploy_stack_pipeline "$stack_config"
 }
 
 ################################ END OF GENERAL DEPLOYMENT FUNCTIONS ##############################
@@ -5234,7 +5555,7 @@ request_smtp_information(){
 # Function to save SMTP information
 save_smtp_information(){
   collected_items="$(request_smtp_information)"
-  filename="${HOME}/smtp_info.json"
+  filename="$STACKME_FOLDER/smtp_info.json"
 
   if [[ "$collected_items" == "[]" ]]; then
     error "Unable to retrieve SMTP configuration."
@@ -5277,7 +5598,7 @@ read_json(){
 
 # Function to load SMTP configuration from file
 load_smtp_information(){
-  filename="${HOME}/smtp_info.json"
+  filename="$STACKME_FOLDER/smtp_info.json"
   smtp_json=$(read_json "$filename")
 
   if [[ -z "$smtp_json" ]]; then
@@ -5406,13 +5727,6 @@ install_all_packages() {
 update_and_install_packages() {
   # Function constants
   local total_steps=4
-
-  # Check if the script is running as root
-  if [ "$EUID" -ne 0 ]; then
-    failure "Please run this script as root or use sudo."
-    sleep 2
-    exit 1
-  fi
 
   highlight "Preparing environment"
 
@@ -5586,7 +5900,7 @@ get_server_info() {
 # Function to initialize the server information
 initialize_server_info() {
   total_steps=7
-  server_filename="${HOME}/server_info.json"
+  server_filename="$STACKME_FOLDER/server_info.json"
 
   # Step 1: Check if server_info.json exists and is valid
   message="Initialization of server information"
@@ -6020,17 +6334,17 @@ services:
         "--appendonly",
         "yes",
         "--port",
-        "{{container_port}}"
+        "6379"
     ]
     volumes:
-      - {{volume_name}}:/data
+      - redis_data:/data
     networks:
       - {{network_name}}
 
 volumes:
-  {{volume_name}}:
+  redis_data:
     external: true
-    name: {{volume_name}}
+    name: redis_data
 
 networks:
   {{network_name}}:
@@ -6055,14 +6369,804 @@ services:
       - 5432:5432
     
     volumes:
-      - {{volume_name}}:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     
     networks:
       - {{network_name}}
 
 volumes:
-  {{volume_name}}:
+  postgres_data:
     external: true
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}
+EOL
+}
+
+compose_pgvector(){
+  cat <<EOL
+version: "3.7"
+services:
+
+  pgvector:
+    image: pgvector/pgvector:{{image_version}}
+
+    volumes:
+      - pgvector:/var/lib/postgresql/data
+
+    networks:
+      - {{network_name}}
+
+    ports:
+      - 5433:5432
+
+    environment:
+      ## Senha do postgres 
+      - POSTGRES_PASSWORD={{db_password}}
+
+      ## Max connections
+      #- PG_MAX_CONNECTIONS=500
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+
+volumes:
+  pgvector:
+    external: true
+    name: pgvector
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}
+EOL
+}
+
+compose_mysql(){
+  cat <<EOL
+version: "3.7"
+services:
+
+  mysql:
+    image: percona/percona-server:{{image_version}}
+    command:
+      [
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_general_ci",
+        "--sql-mode=",
+        "--default-authentication-plugin=caching_sha2_password",
+        "--max-allowed-packet=512MB",
+      ]
+
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+    networks:
+      - {{network_name}}
+
+    ports:
+      - 3306:3306
+
+    environment:
+      ## MYSQL Password
+      - MYSQL_ROOT_PASSWORD={{db_password}}
+
+      ## TimeZone
+      - TZ=America/Sao_Paulo
+
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+
+volumes:
+  mysql_data:
+    external: true
+    name: mysql_data
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}
+EOL
+}
+
+compose_mongodb(){
+  cat <<EOL
+version: "3.7"
+services:
+  mongodb:
+    image: mongo:{{image_version}}
+    command: mongod --port 27017
+
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_dump:/dump
+      - mongodb_configdb_data:/data/configdb
+
+    networks:
+      - {{network_name}}
+    
+    ports:
+      - 27017:27017
+
+    environment:
+      ## Dados de acesso
+      - MONGO_INITDB_ROOT_USERNAME={{db_username}}
+      - MONGO_INITDB_ROOT_PASSWORD={{db_password}}
+      - PUID=1000
+      - PGID=1000
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2048M
+
+volumes:
+  mongodb_data:
+    external: true
+    name: mongodb_data
+  mongodb_dump:
+    external: true
+    name: mongodb_dump
+  mongodb_configdb_data:
+    external: true
+    name: mongodb_configdb_data
+
+networks:
+  {{network_name}}:
+    name: {{network_name}}
+    external: true
+EOL
+}
+
+compose_nocodb(){
+  cat <<EOL
+version: "3.7"
+services:
+
+  nocodb: 
+    image: nocodb/nocodb:latest
+
+    volumes: 
+      - nocodb_data:/usr/app/data
+
+    networks:
+      - {{network_name}}
+
+    environment: 
+      ## Nocobase URL
+      - NC_PUBLIC_URL=https://{{url_nocodb}}
+
+      ## Database parameters
+      - NC_DB=pg://postgres:5432?u=postgres&p={{db_password}}&d=nocodb
+
+      ## Disable telemetry
+      - NC_DISABLE_TELE=true  
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.nocodb.rule=Host(\`{{url_nocodb}}\`)
+        - traefik.http.routers.nocodb.entrypoints=websecure
+        - traefik.http.services.nocodb.loadbalancer.server.port=8080
+        - traefik.http.routers.nocodb.service=nocodb
+        - traefik.http.routers.nocodb.tls.certresolver=letsencryptresolver
+        - com.centurylinklabs.watchtower.enable=true
+
+volumes:
+  nocodb_data:
+    external: true
+    name: nocodb_data
+
+networks:
+  {{network_name}}:
+    name: {{network_name}}
+    external: true
+EOL
+}
+
+compose_odoo(){
+  cat <<EOL
+version: "3.7"
+services:
+  odoo_app:
+    image: odoo:18.0
+
+    volumes:
+      - odoo_app_data:/var/lib/odoo
+      - odoo_app_config:/etc/odoo
+      - odoo_app_addons:/mnt/extra-addons
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Dedicated Database
+      - HOST=odoo_db
+      - USER=odoo
+      - PASSWORD={{db_password}}
+
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.odoo_app.rule=Host(\`{{url_odoo}}\`)
+        - traefik.http.routers.odoo_app.entrypoints=websecure
+        - traefik.http.routers.odoo_app.tls=true
+        - traefik.http.routers.odoo_app.service=odoo_app
+        - traefik.http.routers.odoo_app.tls.certresolver=letsencryptresolver
+        - traefik.http.services.odoo_app.loadbalancer.server.port=8069
+
+  odoo_db:
+    image: postgres:15
+
+    volumes:
+      - odoo_db_data:/var/lib/postgresql/data/pgdata
+
+    networks:
+      - {{network_name}}
+    
+    ports:
+      - 543:45432
+
+    environment:
+      ## Dados Postgres
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD={{db_password}}
+      - POSTGRES_USER=odoo
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+
+volumes:
+  odoo_app_data:
+    external: true
+    name: odoo_app_data
+  odoo_app_config:
+    external: true
+    name: odoo_app_config
+  odoo_app_addons:
+    external: true
+    name: odoo_app_addons
+  odoo_db_data:
+    external: true
+    name: odoo_db_data
+
+networks:
+  {{network_name}}:
+    external: true
+    attachable: true
+    name: {{network_name}}
+EOL
+}
+
+compose_rabbitmq(){
+  cat <<EOL
+version: "3.7"
+services:
+  rabbitmq:
+    image: rabbitmq:management
+    command: rabbitmq-server
+
+    hostname: rabbitmq
+
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+    networks:
+      - {{network_name}}
+    ports:
+      - 5672:5672
+      - 15672:15672
+
+    environment:
+      RABBITMQ_DEFAULT_USER: {{rabbitmq_username}}
+      RABBITMQ_DEFAULT_PASS: {{rabbitmq_password}}
+      RABBITMQ_ERLANG_COOKIE: {{cookie_key}}
+      RABBITMQ_DEFAULT_VHOST: "/"
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.rabbitmq.rule=Host(\`{{url_rabbitmq}}\`)
+        - traefik.http.routers.rabbitmq.entrypoints=websecure
+        - traefik.http.routers.rabbitmq.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.rabbitmq.service=rabbitmq
+        - traefik.http.services.rabbitmq.loadbalancer.server.port=15672
+
+volumes:
+  rabbitmq_data:
+    external: true
+
+networks:
+  {{network_name}}:
+    external: true
+EOL
+}
+
+compose_kafka(){
+  cat <<EOL
+version: '3.9'
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://{{url_kafka_broker}}:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == worker
+        labels:
+          - traefik.enable=true
+          - traefik.http.routers.kafka-broker.entrypoints=websecure
+          - traefik.http.routers.kafka-broker.rule=Host(`{{url_kafka_broker}}`)
+          - traefik.http.routers.kafka-broker.tls.certresolver=letsencryptresolver
+          - traefik.http.services.kafka-broker.loadbalancer.server.port=9094
+
+    networks:
+      - {{network_name}}
+
+  kafka-rest-proxy:
+    image: confluentinc/cp-kafka-rest:7.5.0
+    ports:
+      - "8082:8082"
+    environment:
+      KAFKA_REST_HOST_NAME: kafka-rest-proxy
+      KAFKA_REST_LISTENERS: http://0.0.0.0:8082
+      KAFKA_REST_BOOTSTRAP_SERVERS: kafka:9092
+    deploy:
+      replicas: 1
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.kafka-rest.entrypoints=websecure
+        - traefik.http.routers.kafka-rest.rule=Host(\`{{url_kafka_rest}}\`)
+        - traefik.http.routers.kafka-rest.tls.certresolver=letsencryptresolver
+        - traefik.http.services.kafka-rest.loadbalancer.server.port=8082
+    networks:
+      - {{network_name}}
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    deploy:
+      replicas: 1
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.kafka-ui.entrypoints=websecure
+        - traefik.http.routers.kafka-ui.rule=Host(\`{{url_kafka_ui}}\`)
+        - traefik.http.routers.kafka-ui.tls.certresolver=letsencryptresolver
+        - traefik.http.services.kafka-ui.loadbalancer.server.port=8080
+    networks:
+      - {{network_name}}
+
+networks:
+  {{network_name}}:
+    name: {{network_name}}
+    external: true
+EOL
+}
+
+compose_minio(){
+  cat <<EOL
+version: "3.7"
+services:
+  minio:
+    image: quay.io/minio/minio:latest
+    command: server /data --console-address ":9001"
+
+    volumes:
+      - minio_data:/data
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Minio Config
+      - MINIO_ROOT_USER={{minio_username}}
+      - MINIO_ROOT_PASSWORD={{minio_password}}
+
+      ## Minio Url 
+      - MINIO_BROWSER_REDIRECT_URL=https://{{url_minio}}
+      
+      # TAKE NOTE: Comment this line if there is an error when logging in 
+      - MINIO_SERVER_URL=https://{{url_s3}}
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.minio_public.rule=Host(\`{{url_s3}}\`)
+        - traefik.http.routers.minio_public.entrypoints=websecure
+        - traefik.http.routers.minio_public.tls.certresolver=letsencryptresolver
+        - traefik.http.services.minio_public.loadbalancer.server.port=9000
+        - traefik.http.services.minio_public.loadbalancer.passHostHeader=true
+        - traefik.http.routers.minio_public.service=minio_public
+        - traefik.http.routers.minio_console.rule=Host(\`{{url_minio}}\`)
+        - traefik.http.routers.minio_console.entrypoints=websecure
+        - traefik.http.routers.minio_console.tls.certresolver=letsencryptresolver
+        - traefik.http.services.minio_console.loadbalancer.server.port=9001
+        - traefik.http.services.minio_console.loadbalancer.passHostHeader=true
+        - traefik.http.routers.minio_console.service=minio_console
+
+volumes:
+  minio_data:
+    external: true
+    name: minio_data
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}
+EOL
+}
+
+compose_uptime_kuma(){
+  cat <<EOL
+version: "3.7"
+services:
+  uptimekuma:
+    image: louislam/uptime-kuma:latest
+
+    volumes:
+      - uptimekuma:/app/data
+
+    networks:
+      - {{network_name}}
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.uptimekuma.rule=Host(\`{{url_uptimekuma}}\`)
+        - traefik.http.routers.uptimekuma.entrypoints=websecure
+        - traefik.http.routers.uptimekuma.tls.certresolver=letsencryptresolver
+        - traefik.http.services.uptimekuma.loadBalancer.server.port=3001
+        - traefik.http.routers.uptimekuma.service=uptimekuma
+
+volumes:
+  uptimekuma:
+    external: true
+    name: uptimekuma
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}
+EOL
+}
+
+compose_quepasa(){
+  cat <<EOL
+version: "3.7"
+services:
+  quepasa:
+    image: deividms/quepasa:latest
+      
+    volumes:
+      - quepasa_volume:/opt/quepasa
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Dados de acesso
+      - DOMAIN={{url_quepasa}}
+
+      ## Email Quepasa
+      - EMAIL={{email_quepasa}}
+      - QUEPASA_BASIC_AUTH_USER={{email_quepasa}}
+      - QUEPASA_BASIC_AUTH_PASSWORD={{email_quepasa}}
+
+      ## Mobile Quepasa
+      - APP_TITLE={{quepasa_title}}
+
+      ## TimeZone
+      - TZ=America/Sao_Paulo
+
+      ## WhatsApp Settings
+      - GROUPS=true
+      - BROADCASTS=false
+      - READRECEIPTS=forcedfals
+      - CALLS=true
+      - READUPDATE=false
+      - LOGLEVEL=DEBUG
+
+      ## Configurações quepasa
+      - QUEPASA_HOST_NAME=Quepasa
+      - QUEPASA_MEMORY_LIMIT=4096M
+      - WEBSOCKETSSL=true
+      - REMOVEDIGIT9=true
+      - SIGNING_SECRET={{quepasa_key}}
+
+      ## Webhook
+      #- WEBHOOK_QUEPASA={{url_webhook}}/webhook/quepasa
+      #- WEBHOOK_TESTE_QUEPASA={{n8n_url}}/webhook-test/quepasa
+            
+      ## Portas
+      - QUEPASA_EXTERNAL_PORT=31000
+      - QUEPASA_INTERNAL_PORT=31000
+      - WEBAPIPORT=31000
+
+      ## Outras configurações
+      - DEBUGREQUESTS=false
+      - SYNOPSISLENGTH=500
+      - METRICS_HOST=
+      - METRICS_PORT=9392
+      - MIGRATIONS=/builder/migrations
+      - DEBUGJSONMESSAGES=false
+      - HTTPLOGS=false
+
+      ## WHATSMEOW SERVICE
+      - WHATSMEOW_LOGLEVEL=WARN
+      - WHATSMEOW_DBLOGLEVEL=WARN
+
+      ## Env Mode
+      - APP_ENV=production
+      - NODE_ENV=production
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+          constraints:
+          - node.role == manager
+      resources:
+          limits:
+              cpus: "2"
+              memory: 2096M
+                      
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.quepasa.rule=Host(\`{{url_quepasa}}\`)
+        - traefik.http.routers.quepasa.tls=true
+        - traefik.http.routers.quepasa.entrypoints=web,websecure
+        - traefik.http.routers.quepasa.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.quepasa.service=quepasa
+        - traefik.http.routers.quepasa.priority=1      
+        - traefik.http.middlewares.quepasa.headers.SSLRedirect=true
+        - traefik.http.middlewares.quepasa.headers.STSSeconds=315360000
+        - traefik.http.middlewares.quepasa.headers.browserXSSFilter=true
+        - traefik.http.middlewares.quepasa.headers.contentTypeNosniff=true
+        - traefik.http.middlewares.quepasa.headers.forceSTSHeader=true
+        - traefik.http.middlewares.quepasa.headers.SSLHost=\${QUEPASA_HOST}
+        - traefik.http.middlewares.quepasa.headers.STSIncludeSubdomains=true
+        - traefik.http.middlewares.quepasa.headers.STSPreload=true
+        - traefik.http.services.quepasa.loadbalancer.server.port=31000
+        - traefik.http.services.quepasa.loadbalancer.passHostHeader=true              
+
+volumes:
+  quepasa_volume:
+    external: true
+    name: quepasa_volume
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}
+EOL
+}
+
+compose_typebot(){
+  cat <<EOL
+version: "3.7"
+services:
+  typebot_builder:
+    image: baptistearno/typebot-builder:{{typebot_version}}
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Dados do Postgres
+      - DATABASE_URL=postgresql://postgres:{{db_password}}@postgres:5432/typebot
+
+      ## Encryption key
+      - ENCRYPTION_SECRET={{typebot_key}}
+
+      ## Plano Padrão (das novas contas)
+      - DEFAULT_WORKSPACE_PLAN=UNLIMITED
+
+      ## Urls do typebot
+      - NEXTAUTH_URL=https://{{url_typebot}} ## URL Builder
+      - NEXT_PUBLIC_VIEWER_URL=https://{{url_viewer}} ## URL Viewer
+      - NEXTAUTH_URL_INTERNAL=http://localhost:3000
+
+      ## Desativer/ativar novos cadastros
+      - DISABLE_SIGNUP=false
+
+      ## Dados do SMTP
+      - ADMIN_EMAIL={{email_typebot}} ## Email SMTP
+      - NEXT_PUBLIC_SMTP_FROM='Suporte' <{{email_typebot}}>
+      - SMTP_AUTH_DISABLED=false
+      - SMTP_USERNAME={{email_typebot_username}}
+      - SMTP_PASSWORD={{email_typebot_password}}
+      - SMTP_HOST={{smtp_email_typebot_smtp}}
+      - SMTP_PORT={{smtp_typebot_port}}
+      - SMTP_SECURE={{smtp_secure_typebot}}
+      
+
+      ## Dados Google Cloud
+      #- GOOGLE_AUTH_CLIENT_ID=
+      #- GOOGLE_SHEETS_CLIENT_ID=
+      #- GOOGLE_AUTH_CLIENT_SECRET=
+      #- GOOGLE_SHEETS_CLIENT_SECRET=
+      #- NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY=
+
+      ## Dados do Minio/S3
+      - S3_ACCESS_KEY={{s3_access_key}}
+      - S3_SECRET_KEY={{s3_secret_key}}
+      - S3_BUCKET=typebot
+      - S3_ENDPOINT={{url_s3}}
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - io.portainer.accesscontrol.users=admin
+        - traefik.enable=true
+        - traefik.http.routers.typebot_builder.rule=Host(\`{{url_typebot}}\`)
+        - traefik.http.routers.typebot_builder.entrypoints=websecure
+        - traefik.http.routers.typebot_builder.tls.certresolver=letsencryptresolver
+        - traefik.http.services.typebot_builder.loadbalancer.server.port=3000
+        - traefik.http.services.typebot_builder.loadbalancer.passHostHeader=true
+        - traefik.http.routers.typebot_builder.service=typebot_builder
+
+  typebot_viewer:
+    image: baptistearno/typebot-viewer:{{image_version}}
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Dados do Postgres
+      - DATABASE_URL=postgresql://postgres:{{db_password}}@postgres:5432/typebot
+
+      ## Encryption key
+      - ENCRYPTION_SECRET={{typebot_key}}
+
+      ## Plano Padrão (das novas contas)
+      - DEFAULT_WORKSPACE_PLAN=UNLIMITED
+
+      ## Typebot URLs
+      - NEXTAUTH_URL=https://{{url_typebot}}
+      - NEXT_PUBLIC_VIEWER_URL=https://{{url_viewer}}
+      - NEXTAUTH_URL_INTERNAL=http://localhost:3000
+
+      ## Disable/enable new registrations
+      - DISABLE_SIGNUP=false
+
+      ## Typebot SMTP 
+      - ADMIN_EMAIL={{type_botemail}}
+      - NEXT_PUBLIC_SMTP_FROM='Helpdesk' <{{email_typebot}}>
+      - SMTP_AUTH_DISABLED=false
+      - SMTP_USERNAME={{email_typebot_username}}
+      - SMTP_PASSWORD={{email_typebot_password}}
+      - SMTP_HOST={{smtp_email_typebot_smtp}}
+      - SMTP_PORT={{smtp_typebot_port}}
+      - SMTP_SECURE={{smtp_secure_typebot}}
+
+      ## Google Cloud
+      #- GOOGLE_AUTH_CLIENT_ID=
+      #- GOOGLE_SHEETS_CLIENT_ID=
+      #- GOOGLE_AUTH_CLIENT_SECRET=
+      #- GOOGLE_SHEETS_CLIENT_SECRET=
+      #- NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY=
+
+      ## Dados do Minio/S3
+      - S3_ACCESS_KEY={{s3_access_key}}
+      - S3_SECRET_KEY={{s3_secret_key}}
+      - S3_BUCKET=typebot
+      - S3_ENDPOINT={{url_s3}}
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - io.portainer.accesscontrol.users=admin
+        - traefik.enable=true
+        - traefik.http.routers.typebot_viewer.rule=Host(\`{{url_viewer}}\`)
+        - traefik.http.routers.typebot_viewer.entrypoints=websecure
+        - traefik.http.routers.typebot_viewer.tls.certresolver=letsencryptresolver
+        - traefik.http.services.typebot_viewer.loadbalancer.server.port=3000
+        - traefik.http.services.typebot_viewer.loadbalancer.passHostHeader=true
+        - traefik.http.routers.typebot_viewer.service=typebot_viewer
 
 networks:
   {{network_name}}:
@@ -6085,7 +7189,7 @@ services:
       mode: global
       labels:
         - traefik.enable=true
-        - traefik.http.routers.whoami.rule=Host(\`{{domain_name}}\`)
+        - traefik.http.routers.whoami.rule=Host(\`{{url_whoami}}\`)
         - traefik.http.routers.whoami.entrypoints=websecure
         - traefik.http.routers.whoami.priority=1
         - traefik.http.routers.whoami.tls.certresolver=letsencryptresolver
@@ -6155,8 +7259,8 @@ x-airflow-common:
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:{{postgres_password}}@postgres/airflow
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:{{postgres_password}}@postgres/airflow
     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
@@ -6169,7 +7273,7 @@ x-airflow-common:
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
     # WARNING: Use _PIP_ADDITIONAL_REQUIREMENTS option ONLY for a quick checks
     # for other purpose (development, test and especially production usage) build/extend Airflow image.
-    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+    _PIP_ADDITIONAL_REQUIREMENTS: -
     # The following line can be used to set a custom config file, stored in the local config folder
     # If you want to use it, outcomment it and replace airflow.cfg with the name of your config file
     # AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
@@ -6439,15 +7543,17 @@ EOL
 
 ############################# BEGIN OF STACK DEPLOYMENT UTILITARY FUNCTIONS #######################
 
-# Function to get the password from a JSON file
-get_postgres_password() {
-  local config_file=$1
-  password_postgres=$(jq -r '.password' $config_file)
-  echo "$password_postgres"
+# Function to get the password from a configuration 
+fetch_postgres_password() {
+  local config_file="$STACKS_DIR/postgres_config.json"
+  
+  postgres_password=$(cat $config_file | jq -r '.variables.postgres_password')
+  jq -n --arg postgres_password "$password_postgres" \
+    '{"postgres_password": $password_postgres}'
 }
 
 # Function to create a PostgreSQL database
-create_postgres_database() {
+create_database_postgres() {
   local db_name="$1"
   local db_user="postgres"
 
@@ -6455,7 +7561,7 @@ create_postgres_database() {
   local db_exists
 
   # Display a message about the database creation attempt
-  info "Creating PostgreSQL database: $db_name in POstgres container"
+  info "Creating PostgreSQL database: $db_name in Postgres container"
 
   # Check if the container is running
   container_id=$(docker ps -q --filter "name=^postgres")
@@ -6485,7 +7591,7 @@ create_postgres_database() {
 }
 
 get_network_name(){
-  server_info_filename="${HOME}/server_info.json"
+  server_info_filename="$STACKME_FOLDER/server_info.json"
   
   if [[ ! -f "$server_info_filename" ]]; then
     error "File $server_info_filename not found."
@@ -6595,16 +7701,19 @@ generate_config_traefik() {
     --arg network_name "$network_name" \
     '{
         "name": $stack_name,
+        "target": "swarm",
         "variables": {
-          "stack_name": $stack_name,
           "email_ssl": $email_ssl,
           "url_traefik": $url_traefik,
           "dashboard_credentials": $dashboard_credentials,          
           "network_name": $network_name
         },
         "dependencies": [],
-        "prepare": [],
-        "finalize": []
+        "actions": {
+          "refresh": [],
+          "prepare": [],
+          "finalize": []
+        }
     }'
 }
 
@@ -6683,9 +7792,10 @@ generate_config_portainer() {
   --arg portainer_password "$portainer_password" \
   --argjson portainer_credentials "$portainer_credentials" \
   --arg network_name "$network_name" \
-  '{
+  '{  
+        "name": $stack_name,
+        "target": "swarm",
         "variables": {
-            "stack_name": $stack_name,
             "portainer_agent_version": $portainer_agent_version,
             "portainer_ce_version": $portainer_ce_version,
             "portainer_url": $portainer_url,
@@ -6693,14 +7803,17 @@ generate_config_portainer() {
             "network_name": $network_name
         },
         "dependencies": ["traefik"],
-        "prepare": [],
-        "finalize": [
-            {
-                "name": "signup_on_portainer",
-                "description": "Signup on portainer",
-                "command": ("signup_on_portainer \"" + $portainer_url + "\" \"" + $portainer_username + "\" \"" + $portainer_password + "\"")
-            }
-        ]
+        "actions": {
+            "refresh": [],
+            "prepare": [],
+            "finalize": [
+                {
+                    "name": "signup_on_portainer",
+                    "description": "Signup on portainer",
+                    "command": ("signup_on_portainer \"" + $portainer_url + "\" \"" + $portainer_username + "\" \"" + $portainer_password + "\"")
+                }
+            ]
+        }
     }' | jq . || {
         echo "Failed to generate JSON"
         return 1
@@ -6792,7 +7905,7 @@ generate_config_monitor(){
 
   handle_exit "$?" 3 "$total_steps" "$message"  
 
-  message="Creating datasource.yml"
+  message="Creating file datasource.yml"
   step_info 4 $total_steps "$message"
 
   mkdir -p "${STACKME_FOLDER}/prometheus"
@@ -6810,20 +7923,6 @@ EOL
 
   handle_exit "$?" 4 "$total_steps" "$message" 
 
-cat > "${STACKME_FOLDER}/prometheus/datasource.yml" <<EOL
-# To allow connections from remote users, set this parameter to a non-loopback address.
-server.host: "0.0.0.0"
-
-# The URLs of the Elasticsearch instances to use for all your queries.
-elasticsearch.hosts: ["http://elasticsearch:9200"]
-
-# the username and password that the Kibana server uses to perform maintenance on the Kibana
-# index at startup. Your Kibana users still need to authenticate with Elasticsearch, which
-# is proxied through the Kibana server.
-elasticsearch.username: "elastic"
-elasticsearch.password: "<your_password>"
-EOL
-
   # Ensure everything is quoted correctly
   jq -n \
     --arg stack_name "$stack_name" \
@@ -6836,8 +7935,8 @@ EOL
     --arg network_name "$network_name" \
     '{
         "name": $stack_name,
+        "target": "portainer",
         "variables": {
-          "stack_name": $stack_name,
           "url_jaeger": $url_jaeger,
           "url_prometheus": $url_prometheus,
           "url_node_exporter": $url_node_exporter,
@@ -6847,9 +7946,52 @@ EOL
           "network_name": $network_name
         },
         "dependencies": ["traefik", "portainer"],
-        "prepare": [],
-        "finalize": []
+        "actions": {
+          "refresh": [],
+          "prepare": [],
+          "finalize": []
+        }
     }'
+}
+
+# Function to generate Postgres service configuration JSON
+generate_config_database() {
+  local stack_name="$1"
+  local image_version="$2"
+  local db_username="$3"
+
+  info "Generating use postgres password"
+  local db_password="$(random_string)"
+  
+  info "Retrieving network name"
+  local network_name="$(get_network_name)"
+
+  # Ensure everything is quoted correctly
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg image_version "$image_version" \
+    --arg db_username "$db_username" \
+    --arg db_password "$db_password" \
+    --arg network_name "$network_name" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "variables": {
+              "image_version": $image_version,
+              "db_username": $db_username,
+              "db_password": $db_password,
+              "network_name": $network_name
+          },
+          "dependencies": ["traefik", "portainer"],
+          "actions": {
+            "refresh": [],
+            "prepare": [],
+            "finalize": []
+          }
+      }' | jq . || {
+        error "Failed to generate JSON"
+        return 1
+    }
 }
 
 # Function to generate configuration files for redis
@@ -6867,33 +8009,7 @@ generate_config_redis() {
   
   info "Redis version: $image_version"
 
-  step_message="Retrieving network name"
-  step_info 2 $total_steps "$step_message"
-  local network_name="$(get_network_name)"
-
-  jq -n \
-    --arg stack_name "$stack_name" \
-    --arg image_version "$image_version" \
-    --arg container_port "6379" \
-    --arg redis_url "redis://redis:6379" \
-    --arg volume_name "redis_data" \
-    --arg network_name "$network_name" \
-    '{
-            "name": $stack_name,
-            "variables": {
-                "image_version": $image_version,
-                "container_port": $container_port,
-                "redis_url": $redis_url,
-                "volume_name": $volume_name,
-                "network_name": $network_name
-            },
-            "dependencies": ["traefik", "portainer"],
-            "prepare": [],
-            "finalize": []
-        }' | jq . || {
-            error "Failed to generate JSON"
-            return 1
-        }
+  generate_config_database "$stack_name" "$image_version"
 }
 
 # Function to generate Postgres service configuration JSON
@@ -6901,42 +8017,33 @@ generate_config_postgres() {
   local stack_name='postgres'
   local image_version='15'
 
-  local postgres_user="postgres"
+  local db_username="postgres"
 
-  step_message="Generating use postgres password"
-  step_info 1 $total_steps "$step_message"
-  local network_name="$(get_network_name)"
+  generate_config_database "$stack_name" "$image_version" "$db_username"
+}
 
-  local postgres_password="$(random_string)"
+# Function to generate PgVector service configuration JSON
+generate_config_pgvector() {
+  local stack_name='pgvector'
+  local image_version='pg16'
 
-  step_message="Retrieving network name"
-  step_info 2 $total_steps "$step_message"
+  generate_config_database "$stack_name" "$image_version"
+}
 
-  # Ensure everything is quoted correctly
-  jq -n \
-    --arg stack_name "$stack_name" \
-    --arg image_version "$image_version" \
-    --arg db_user "$postgres_user" \
-    --arg db_password "$postgres_password" \
-    --arg volume_name "postgres_data" \
-    --arg network_name "$network_name" \
-    '{
-          "name": $stack_name,
-          "variables": {
-              "stack_name": $stack_name,
-              "image_version": $image_version,
-              "volume_name": $volume_name,
-              "network_name": $network_name,
-              "db_user": $db_user,
-              "db_password": $db_password
-          },
-          "dependencies": ["traefik", "portainer"],
-          "prepare": [],
-          "finalize": []
-      }' | jq . || {
-        error "Failed to generate JSON"
-        return 1
-    }
+# Function to generate MySQL service configuration JSON
+generate_config_mysql() {
+  local stack_name='mysql'
+  local image_version='8.0'
+
+  generate_config_database "$stack_name" "$image_version"
+}
+
+# Function to generate MongoDB service configuration JSON
+generate_config_mongodb() {
+  local stack_name='mongodb'
+  local image_version='4.4'
+
+  generate_config_database "$stack_name" "$image_version"
 }
 
 generate_config_whoami() {
@@ -6948,7 +8055,7 @@ generate_config_whoami() {
   # Prompting step 
   prompt_items='[
       {
-          "name": "domain_name",
+          "name": "url_whoami",
           "label": "Whoami domain name",
           "description": "URL to access Whoami remotely",
           "required": "yes",
@@ -6969,25 +8076,28 @@ generate_config_whoami() {
   network_name="$(get_network_name)"
 
   domain_name="$(\
-    get_variable_value_from_collection "$collected_items" "domain_name" \
+    get_variable_value_from_collection "$collected_items" "url_whoami" \
   )"
 
   jq -n \
     --arg stack_name "$stack_name" \
     --arg container_port "$container_port" \
-    --arg domain_name "$domain_name" \
+    --arg url_whoami "$url_whoami" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
+          "target": "portainer",
           "variables": {
-              "stack_name": $stack_name,
               "container_port": $container_port,
-              "domain_name": $domain_name,
+              "url_whoami": $url_whoami,
               "network_name": $network_name,
           },
           "dependencies": ["traefik", "portainer"],
-          "prepare": [],
-          "finalize": []
+          "actions": {
+            "refresh": [],
+            "prepare": [],
+            "finalize": []
+          }
       }' | jq . || {
         error "Failed to generate JSON"
         return 1
@@ -7048,15 +8158,24 @@ generate_config_airflow() {
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
+          "target": "portainer",
           "variables": {
-              "stack_name": $stack_name,
               "url_airflow": $url_airflow,
               "url_flower": $url_flower,
               "network_name": $network_name,
           },
           "dependencies": ["traefik", "portainer", "postgres", "redis"],
-          "prepare": [],
-          "finalize": []
+          "actions": {
+            "refresh": [
+              {
+                "name": "fetch_postgres_password",
+                "description": "Fetching postgres password",
+                "command": "fetch_postgres_password",
+              }
+            ],
+            "prepare": [],
+            "finalize": []
+          }
       }' | jq . || {
         error "Failed to generate JSON"
         return 1
@@ -7102,15 +8221,24 @@ generate_config_metabase() {
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
+          "target": "portainer",
           "variables": {
-              "stack_name": $stack_name,
               "url_airflow": $url_airflow,
               "url_flower": $url_flower,
               "network_name": $network_name,
           },
           "dependencies": ["traefik", "portainer", "postgres", "redis"],
-          "prepare": [],
-          "finalize": []
+          "actions": {
+            "refresh": [
+              {
+                "name": "fetch_postgres_password",
+                "description": "Fetching postgres password",
+                "command": "fetch_postgres_password",
+              }
+            ],
+            "prepare": [],
+            "finalize": []
+          }
       }' | jq . || {
         error "Failed to generate JSON"
         return 1
@@ -7135,25 +8263,6 @@ deploy_stack_portainer() {
   deploy_stack 'portainer'
 }
 
-deploy_stack_monitor() {
-  cleanup
-  clean_screen
-  deploy_stack 'monitor'
-}
-
-rollback_stack(){
-  local stack_name="$1"
-
-  docker stack rm "$stack_name"
-
-  if [[ $? -ne 0 ]]; then
-    failure "Rollback of stack $stack_name failed"
-    return 1
-  fi
-
-  success "Rollback of stack $stack_name successful"
-}
-
 deploy_stack_startup() {
   deploy_stack_traefik
 
@@ -7175,6 +8284,12 @@ deploy_stack_startup() {
   fi
 }
 
+deploy_stack_monitor() {
+  cleanup
+  clean_screen
+  deploy_stack 'monitor'
+}
+
 # Function to deploy a PostgreSQL stack
 deploy_stack_postgres() {
   cleanup
@@ -7187,6 +8302,20 @@ deploy_stack_redis() {
   cleanup
   clean_screen
   deploy_stack 'redis'
+}
+
+# Function to deploy a MySQL service
+deploy_stack_mysql() {
+  cleanup
+  clean_screen
+  deploy_stack 'mysql'
+}
+
+# Function to deploy a MongoDB service
+deploy_stack_mongodb() {
+  cleanup
+  clean_screen
+  deploy_stack 'mongodb'
 }
 
 # Function to deploy a whoami service
@@ -7217,9 +8346,37 @@ define_menu_stacks_databases(){
   item_2="$(
     build_menu_item "redis" "Deploy" "deploy_stack_redis" 
   )"
+  item_3="$(
+    build_menu_item "mysql" "Deploy" "deploy_stack_mysql" 
+  )"
+  item_4="$(
+    build_menu_item "mongodb" "Deploy" "deploy_stack_mongodb" 
+  )"
 
   items=(
-    "$item_1" "$item_2"
+    "$item_1" "$item_2" "$item_3" "$item_4"
+  )
+
+  menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
+
+  define_menu "$menu_name" "$menu_object"
+}
+
+define_menu_miscelaneous(){
+  menu_name="Miscelaneous"
+
+  item_1="$(
+    build_menu_item "whoami" "Deploy" "deploy_stack_whoami" 
+  )"
+  item_2="$(
+    build_menu_item "airflow" "Deploy" "deploy_stack_airflow" 
+  )"
+  item_3="$(
+    build_menu_item "metabase" "Deploy" "deploy_stack_metabase"
+  )"
+
+  items=(
+    "$item_1" "$item_2" "$item_3"
   )
 
   menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
@@ -7243,20 +8400,14 @@ define_menu_stacks(){
   )"
   item_3="$(
       build_menu_item "Databases" \
-      "Postgres & Redis" \
+      "Postgres & Redis & MySQL & MongoDB & " \
       "navigate_menu 'Databases'"
   )"
   item_4="$(
-    build_menu_item "whoami" \
-      "Deploy" \
-      "deploy_stack_whoami"
+    build_menu_item "Miscelaneous" \
+      "Whoami & Airflow & " \
+      "navigate_menu 'Miscelaneous'"
   )"
-  item_5="$(
-    build_menu_item "airflow" \
-      "Deploy" \
-      "deploy_stack_airflow"
-  )"
-
 
   items=(
     "$item_1" "$item_2" "$item_3" "$item_4" "$item_5"
@@ -7273,10 +8424,12 @@ define_menu_utilities(){
   menu_name="Utilities"
 
   item_1="$(\
-    build_menu_item "Test SMPT e-mail" "Send" "send_smtp_test_email" \
+    build_menu_item "Test SMPT e-mail" \
+      "Send" "send_smtp_test_email" \
   )"
   item_2="$(
-    build_menu_item "Send Machine Specifications" "Send" "send_machine_specs_email"\
+    build_menu_item "Send Machine Specifications" \
+      "Send" "send_machine_specs_email"\
   )"
 
   items=(
@@ -7362,8 +8515,12 @@ define_menu_main(){
 # Populate MENUS
 define_menus(){
     define_menu_main
+    
+    # Stacks and its submenus
     define_menu_stacks
     define_menu_stacks_databases
+    define_menu_miscelaneous
+    
     define_menu_utilities
     define_menu_health
 }
@@ -7396,6 +8553,29 @@ usage() {
   sleep 1
 
   exit 1
+}
+
+startup() {
+  set_arrow
+  clear
+
+  # Check if the script is running as root
+  if [ "$EUID" -ne 0 ]; then
+    failure "Please run this script as root or use sudo."
+    sleep 2
+    exit 1
+  fi
+
+  # Install required packages
+  update_and_install_packages
+  clear
+
+  # Perform initialization
+  initialize_server_info
+  clear
+
+  # Define menus on registry
+  define_menus
 }
 
 # Parse command-line arguments
@@ -7446,18 +8626,8 @@ parse_args() {
 main() {
   parse_args "$@"
 
-  set_arrow
-  clear
-
-  # Install required packages
-  update_and_install_packages
-  clear
-
-  # Perform initialization
-  initialize_server_info
-  clear
-
-  define_menus
+  # Perform startup tasks
+  startup
 
   start_main_menu
 }
@@ -7465,8 +8635,19 @@ main() {
 # Call the main function
 main "$@"
 
+# Function to check if a stack exists by name
+stack_exists() {
+  local stack_name="$1"
+  # Check if the stack exists by listing stacks and filtering by name
+  if docker stack ls --format '{{.Name}}' | grep -q "^$stack_name$"; then
+    return 0
+  else
+    return 1 # Stack does not exist
+  fi
+}
+
 # stack_name="postgres"
-# stack_exists "$stack_name"
+# stack_exists "$stack_name"0
 # 
 # if [[ $? -eq 0 ]]; then
 #   prompt_message="${yellow}Stack exists. Would you like to remove it? (Y/n)${normal}"
@@ -7484,5 +8665,4 @@ main "$@"
 #     echo "Stack $stack_name not removed!"
 #   fi
 # fi
-
-wait_for_input 5
+# wait_for_input 5
