@@ -8663,8 +8663,8 @@ main() {
   start_main_menu
 }
 
-# # Call the main function
-# main "$@"
+# Call the main function
+main "$@"
 
 # stack_name="postgres"
 # stack_exists "$stack_name"0
