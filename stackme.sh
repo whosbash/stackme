@@ -4799,6 +4799,8 @@ execute_refresh_actions() {
     }
   done
 
+  debug "Stack variables after refresh actions: $stack_variables"
+
   echo "$stack_variables"
 }
 
