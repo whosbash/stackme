@@ -1707,8 +1707,6 @@ replace_mustache_variables() {
   local template="$1"
   local -n vars_ref="$2" # Associative array passed by reference
 
-  debug "template: $template"
-
   # Iterate over the variables and replace each instance of {{KEY}} in the template
   for key in "${!vars_ref[@]}"; do
     value="${vars_ref[$key]}"
@@ -4865,6 +4863,9 @@ build_compose_template() {
   # Generate the substituted template
   local substituted_template
   substituted_template=$(replace_mustache_variables "$($compose_template_func)" variables)
+
+  debug "Generated Docker Compose template:"
+  debug "$substituted_template"
 
   # Write the template to the compose file
   echo "$substituted_template" >"$compose_path"
