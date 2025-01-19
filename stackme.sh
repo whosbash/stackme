@@ -4773,6 +4773,8 @@ execute_refresh_actions() {
   local stack_variables="$2"
   local updated_variables="$stack_variables" # Initialize with input variables
 
+  debug "$refresh_actions"
+
   local actions
   mapfile -t actions < <(echo "$refresh_actions" | jq -r '.[]')
 
