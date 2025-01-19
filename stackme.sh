@@ -2858,7 +2858,7 @@ request_confirmation() {
 
   # Validate the input
   while [[ ! "$user_input" =~ ^[yYnN]$ ]]; do
-    echo -e "\nInvalid input \"$user_input\". Please enter 'y' for yes or 'n' for no." >&2
+    error "\nInvalid input \"$user_input\". Please enter 'y' for yes or 'n' for no."
     user_input=''
     request_input "$message" user_input "$timeout"
     if [[ -z "$user_input" ]]; then
