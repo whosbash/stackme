@@ -4862,9 +4862,8 @@ build_compose_template() {
 
   # Generate the substituted template
   local substituted_template
-  substituted_template=$(replace_mustache_variables "$($compose_template_func)" variables)
+  substituted_template=$(replace_mustache_variables "$($compose_template_func)" stack_variables)
 
-  debug "Generated Docker Compose template:"
   debug "$substituted_template"
 
   # Write the template to the compose file
