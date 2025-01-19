@@ -5169,7 +5169,7 @@ deploy_stack_pipeline() {
 
   # Parse stack variables
   local stack_variables
-  stack_variables=$(parse_stack_variables "$config_json")
+  stack_variables=$(echo "$config_json" | jq -r '.variables // []')
 
   highlight "Starting deployment pipeline for stack '$stack_name'"
 
