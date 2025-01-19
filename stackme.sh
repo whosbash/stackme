@@ -7825,7 +7825,7 @@ generate_config_portainer() {
             "portainer_credentials": $portainer_credentials,
             "network_name": $network_name
         },
-        "dependencies": ['traefik'],
+        "dependencies": ["traefik"],
         "actions": {
             "refresh": [],
             "prepare": [],
@@ -7968,7 +7968,7 @@ EOL
           "url_kibana": $url_kibana,
           "network_name": $network_name
         },
-        "dependencies": ['traefik', 'portainer'],
+        "dependencies": ["traefik", "portainer"],
         "actions": {
           "refresh": [],
           "prepare": [],
@@ -8005,7 +8005,7 @@ generate_config_database() {
               "db_password": $db_password,
               "network_name": $network_name
           },
-          "dependencies": ['traefik', 'portainer'],
+          "dependencies": ["traefik", "portainer"],
           "actions": {
             "refresh": [],
             "prepare": [],
@@ -8114,7 +8114,7 @@ generate_config_whoami() {
               "url_whoami": $url_whoami,
               "network_name": $network_name,
           },
-          "dependencies": ['traefik', 'portainer'],
+          "dependencies": ["traefik", "portainer"],
           "actions": {
             "refresh": [],
             "prepare": [],
@@ -8186,7 +8186,7 @@ generate_config_airflow() {
               "url_flower": $url_flower,
               "network_name": $network_name,
           },
-          "dependencies": ['traefik', 'portainer', 'postgres', 'redis'],
+          "dependencies": ["traefik", "portainer", "postgres", "redis"],
           "actions": {
             "refresh": [
               {
@@ -8248,7 +8248,7 @@ generate_config_metabase() {
               "url_metabase": $url_metabase,
               "network_name": $network_name,
           },
-          "dependencies": ['traefik', 'portainer', 'postgres', 'redis'],
+          "dependencies": ["traefik", "portainer", "postgres", "redis"],
           "actions": {
             "refresh": [
               {
