@@ -8661,19 +8661,8 @@ main() {
   start_main_menu
 }
 
-# # Call the main function
-# main "$@"
-
-config_json=$(generate_config_whoami)
-stack_variables=$(echo "$config_json" | jq -r '.variables // []')
-
-debug "stack_variables: $stack_variables"
-
-compose_file="$(replace_mustache_variables "$(compose_whoami)" stack_variables)"
-
-debug "$compose_file"
-
-wait_for_input
+# Call the main function
+main "$@"
 
 # stack_name="postgres"
 # stack_exists "$stack_name"0
