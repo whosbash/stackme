@@ -1707,23 +1707,19 @@ replace_mustache_variables() {
   local template="$1"
   local -n vars_ref="$2" # Associative array passed by reference
 
-  template="$(sanitize_template "$template")"
-
   # Iterate over the variables and replace each instance of {{KEY}} in the template
   for key in "${!vars_ref[@]}"; do
     value="${vars_ref[$key]}"
 
-    # Escape special characters in the value to prevent issues with sed (if needed)
-    value_escaped="$value"
-
-    # Replace instances of {{KEY}} in the template
-    # Handle {{key}}, {{ key}}, or {{key }}
-    template="${template//\{\{$key\}\}/$value_escaped}"
+    # Use sed to replace instances of {{key}}, {{ key}}, and {{key }}
+    # The 'g' flag ensures all instances are replaced
+    template=$(echo "$template" | sed -E "s/\{\{\s*${key}\s*\}\}/$value/g")
   done
 
   # Output the substituted template
   echo "$template"
 }
+
 
 # Function to find the next available port
 find_next_available_port() {
@@ -4832,7 +4828,7 @@ execute_prepare_actions() {
 # Function to build the Docker Compose template
 build_compose_template() {
   local stack_name="$1"
-  local stack_variables="$2"
+  local stack_variables_json="$2"
 
   info "Building Docker Compose template for stack '$stack_name'"
 
@@ -4858,11 +4854,15 @@ build_compose_template() {
     }
   fi
 
+  # Convert stack_variables JSON into an array of key=value pairs
+  local stack_variables=()
+  while IFS="=" read -r key value; do
+    stack_variables+=("$key=$value")
+  done < <(echo "$stack_variables_json" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"')
+
   # Generate the substituted template
   local substituted_template
-  substituted_template=$(replace_mustache_variables "$($compose_template_func)" stack_variables)
-
-  debug "$substituted_template"
+  substituted_template=$(replace_mustache_variables "$($compose_template_func)" variables)
 
   # Write the template to the compose file
   echo "$substituted_template" >"$compose_path"
@@ -5194,8 +5194,6 @@ deploy_stack_pipeline() {
   # Parse stack variables
   local stack_variables
   stack_variables=$(echo "$config_json" | jq -r '.variables // []')
-
-  info "$stack_variables"
 
   highlight "Starting deployment pipeline for stack '$stack_name'"
 
@@ -8073,7 +8071,6 @@ generate_config_mongodb() {
 
 generate_config_whoami() {
   local stack_name='whoami'
-  local container_port='80'
 
   total_steps=2
 
@@ -8098,22 +8095,22 @@ generate_config_whoami() {
 
   # Step 2: Retrieve network name
   step_info 2 $total_steps "Retrieving network name"
-  network_name="$(get_network_name)"
+  network_name="my_network"
+  
+  #"$(get_network_name)"
 
-  domain_name="$(\
+  url_whoami="$(\
     get_variable_value_from_collection "$collected_items" "url_whoami" \
   )"
 
   jq -n \
     --arg stack_name "$stack_name" \
-    --arg container_port "$container_port" \
     --arg url_whoami "$url_whoami" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
           "target": "portainer",
           "variables": {
-              "container_port": $container_port,
               "url_whoami": $url_whoami,
               "network_name": $network_name,
           },
@@ -8664,8 +8661,19 @@ main() {
   start_main_menu
 }
 
-# Call the main function
-main "$@"
+# # Call the main function
+# main "$@"
+
+config_json=$(generate_config_whoami)
+stack_variables=$(echo "$config_json" | jq -r '.variables // []')
+
+debug "stack_variables: $stack_variables"
+
+compose_file="$(replace_mustache_variables "$(compose_whoami)" stack_variables)"
+
+debug "$compose_file"
+
+wait_for_input
 
 # stack_name="postgres"
 # stack_exists "$stack_name"0
