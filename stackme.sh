@@ -4768,9 +4768,7 @@ execute_refresh_actions() {
   local refresh_actions="$1"
   local stack_variables="$2"
 
-  echo "$refresh_actions" | jq -c '.[]' | while read -r action; do
-    echo "$action" | jq '.' >&2
-   
+  echo "$refresh_actions" | jq -c '.[]' | while read -r action; do   
     local action_name
     action_name=$(echo "$action" | jq -r '.name')
 
@@ -4783,6 +4781,7 @@ execute_refresh_actions() {
       error "Failed to execute refresh action: $action_name"
       return 1
     }
+    debug "$command_output"
 
     # Validate if the output is a valid JSON object
     echo "$command_output" | jq empty > /dev/null 2>&1 || {
@@ -4795,6 +4794,7 @@ execute_refresh_actions() {
       error "Failed to update stack variables after executing '$action_name'"
       return 1
     }
+    debug "$stack_variables"
   done
 
   echo "$stack_variables"
