@@ -8332,6 +8332,13 @@ deploy_stack_airflow() {
   deploy_stack 'airflow'
 }
 
+# Function to deploy a metabase service
+deploy_stack_metabase() {
+  cleanup
+  clean_screen
+  deploy_stack 'metabase'
+}
+
 ################################# END OF STACK DEPLOYMENT FUNCTIONS ################################
 
 ##################################### BEGIN OF MENU DEFINITIONS ####################################
