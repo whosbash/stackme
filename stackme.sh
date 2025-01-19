@@ -4864,8 +4864,6 @@ build_compose_template() {
   local substituted_template
   substituted_template=$(replace_mustache_variables "$($compose_template_func)" stack_variables)
 
-  debug "$substituted_template"
-
   # Write the template to the compose file
   echo "$substituted_template" >"$compose_path"
   if [ $? -ne 0 ]; then
