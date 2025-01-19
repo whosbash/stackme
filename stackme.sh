@@ -4781,7 +4781,6 @@ execute_refresh_actions() {
       error "Failed to execute refresh action: $action_name"
       return 1
     }
-    debug "$command_output"
 
     # Validate if the output is a valid JSON object
     echo "$command_output" | jq empty > /dev/null 2>&1 || {
@@ -4794,7 +4793,6 @@ execute_refresh_actions() {
       error "Failed to update stack variables after executing '$action_name'"
       return 1
     }
-    debug "$stack_variables"
   done
 
   echo "$stack_variables"
@@ -7569,13 +7567,35 @@ EOL
 
 ############################# BEGIN OF STACK DEPLOYMENT UTILITARY FUNCTIONS #######################
 
-# Function to get the password from a configuration 
+fetch_database_password() {
+  local stack_name="$1"
+  local config_file="$STACKS_DIR/$stack_name/stack_config.json"
+
+  # Read the database password from the config file
+  local database_password
+  database_password=$(jq -r '.variables.db_password' "$config_file")
+
+  # Generate the output JSON
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg postgres_password "$database_password" \
+    '{($stack_name + "_password"): $postgres_password}'
+}
+
+
+# Function to get the postgres password from a configuration 
 fetch_postgres_password() {
-  local config_file="$STACKS_DIR/postgres/stack_config.json"
-  
-  postgres_password=$(cat $config_file | jq -r '.variables.postgres_password')
-  jq -n --arg postgres_password "$postgres_password" \
-    '{"postgres_password": $postgres_password}'
+  fetch_database_password "postgres"
+}
+
+# Function to get the mysql password from a configuration 
+fetch_mysql_password() {
+  fetch_database_password "mysql"
+}
+
+# Function to get the mongodb password from a configuration 
+sfetch_mongodb_password() {
+  fetch_database_password "mongodb"
 }
 
 # Function to create a PostgreSQL database
