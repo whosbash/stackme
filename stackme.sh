@@ -8363,7 +8363,7 @@ define_menu_stacks_databases(){
 }
 
 define_menu_miscelaneous(){
-  menu_name="Stacks"
+  menu_name="Miscelaneous"
 
   item_1="$(
     build_menu_item "whoami" "Deploy" "deploy_stack_whoami" 
