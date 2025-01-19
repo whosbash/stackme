@@ -5201,6 +5201,7 @@ deploy_stack_pipeline() {
   step_info 1 $total_steps "Deploying dependencies"
   local dependencies
   dependencies=$(echo "$config_json" | jq -r '.dependencies // []')
+  debug "Dependencies: $dependencies"
   deploy_dependencies "$stack_name" "$dependencies" || {
     failure "Failed to deploy dependencies"
     return 1
