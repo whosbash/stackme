@@ -4857,6 +4857,10 @@ build_compose_template() {
   local compose_template_func
   compose_template_func=$(echo "$stack_info" | jq -r '.compose_func')
 
+  debug "Config path: $config_path"
+  debug "Compose path: $compose_path"
+  debug "Compose template function: $compose_template_func"
+
   # Generate the substituted template
   local substituted_template
   substituted_template=$(replace_mustache_variables "$($compose_template_func)" stack_variables)
