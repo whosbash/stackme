@@ -1707,19 +1707,19 @@ replace_mustache_variables() {
   local template="$1"
   local -n vars_ref="$2" # Associative array passed by reference
 
+  debug "template: $template"
+
   # Iterate over the variables and replace each instance of {{KEY}} in the template
   for key in "${!vars_ref[@]}"; do
     value="${vars_ref[$key]}"
 
     # Use sed to replace instances of {{key}}, {{ key}}, and {{key }}
-    # The 'g' flag ensures all instances are replaced
     template=$(echo "$template" | sed -E "s/\{\{\s*${key}\s*\}\}/$value/g")
   done
 
   # Output the substituted template
   echo "$template"
 }
-
 
 # Function to find the next available port
 find_next_available_port() {
@@ -4855,9 +4855,11 @@ build_compose_template() {
   fi
 
   # Convert stack_variables JSON into an array of key=value pairs
-  local stack_variables=()
+  declare -A stack_variables
+
+  # Parse JSON into an associative array
   while IFS="=" read -r key value; do
-    stack_variables+=("$key=$value")
+    stack_variables["$key"]="$value"
   done < <(echo "$stack_variables_json" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"')
 
   # Generate the substituted template
@@ -8661,8 +8663,8 @@ main() {
   start_main_menu
 }
 
-# Call the main function
-main "$@"
+# # Call the main function
+# main "$@"
 
 # stack_name="postgres"
 # stack_exists "$stack_name"0
