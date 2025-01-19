@@ -4857,9 +4857,16 @@ build_compose_template() {
   local compose_template_func
   compose_template_func=$(echo "$stack_info" | jq -r '.compose_func')
 
-  debug "Config path: $config_path"
-  debug "Compose path: $compose_path"
-  debug "Compose template function: $compose_template_func"
+  # Ensure the directory for the compose file exists
+  local compose_dir
+  compose_dir=$(dirname "$compose_path")
+  if [ ! -d "$compose_dir" ]; then
+    debug "Creating directory: $compose_dir"
+    mkdir -p "$compose_dir" || {
+      error "Failed to create directory: $compose_dir"
+      return 1
+    }
+  fi
 
   # Generate the substituted template
   local substituted_template
