@@ -134,8 +134,8 @@ HAS_TIMESTAMP=true
 HEADER_LENGTH=120
 
 # Default arrow
-STACKME_FOLDER="/opt/stackme"
-STACKS_FOLDER="$STACKME_FOLDER/stacks"
+STACKME_DIR="/opt/stackme"
+STACKS_DIR="$STACKME_DIR/stacks"
 
 # Default arrow
 DEFAULT_ARROW_OPTION='diamond'
@@ -4531,7 +4531,7 @@ deploy_stack_on_portainer() {
   fi
 
   upload_stack_on_portainer "$portainer_url" "$credentials" \
-    "$stack_name" "$STACKS_FOLDER/$stack_name.yaml" || \
+    "$stack_name" "$STACKS_DIR/$stack_name.yaml" || \
     error "Failed to upload stack '$stack_name'"
 }
 
@@ -4622,8 +4622,8 @@ build_stack_info() {
   # Build JSON object
   local json_output
   json_output=$(jq -n \
-    --arg config_path "${STACKS_FOLDER}/${stack_name}_config.json" \
-    --arg compose_path "${STACKS_FOLDER}/${stack_name}.yaml" \
+    --arg config_path "${STACKS_DIR}/${stack_name}/stack_config.json" \
+    --arg compose_path "${STACKS_DIR}/${stack_name}/docker-compose.yaml" \
     --arg compose_func "compose_${stack_name}" \
     '{
       config_path: $config_path,
@@ -4886,7 +4886,7 @@ deploy_stack_on_target() {
       info "Deploying stack '$stack_name' on Portainer"
       local portainer_config_json
       portainer_config_json=$(\
-        load_json "$STACKS_FOLDER/portainer_config.json"\
+        load_json "$STACKS_DIR/portainer_config.json"\
       )
       local portainer_url
       portainer_url=$(\
@@ -4933,6 +4933,24 @@ execute_finalize_actions() {
       return 1
     fi
   done
+}
+
+# Function to save stack configuration
+save_stack_configuration() {
+  local stack_name="$1"
+  local stack_variables="$2"
+
+  local stack_config_json
+  stack_config_json=$(\
+    load_json "$STACKS_DIR/$stack_name/stack_config.json"\
+  )
+
+  local config_path
+  config_path=$(\
+    echo "$stack_config_json" | jq -r '.config_path'\
+  )
+
+  save_json "$config_path" "$stack_variables"
 }
 
 
@@ -5075,7 +5093,7 @@ execute_finalize_actions() {
 #   # Step 6: Write the substituted template to the compose file
 # 
 #   # Create folder stacks on home path
-#   mkdir -p "$STACKS_FOLDER"
+#   mkdir -p "$STACKS_DIR"
 # 
 #   message="Writing Docker Compose template"
 #   stack_step_progress 6 "$message" 
@@ -5109,7 +5127,7 @@ execute_finalize_actions() {
 #     stack_step_progress 8 "$message"
 # 
 #     # Get Portainer credentials
-#     portainer_config_json="$(load_json "$STACKS_FOLDER/portainer_config.json")" 
+#     portainer_config_json="$(load_json "$STACKS_DIR/portainer_config.json")" 
 #     portainer_url="$(\
 #       echo "$portainer_config_json" | jq -r '.variables.portainer_url')"
 #     portainer_credentials="$(\
@@ -5567,7 +5585,7 @@ request_smtp_information(){
 # Function to save SMTP information
 save_smtp_information(){
   collected_items="$(request_smtp_information)"
-  filename="$STACKME_FOLDER/smtp_info.json"
+  filename="$STACKME_DIR/smtp_info.json"
 
   if [[ "$collected_items" == "[]" ]]; then
     error "Unable to retrieve SMTP configuration."
@@ -5610,7 +5628,7 @@ read_json(){
 
 # Function to load SMTP configuration from file
 load_smtp_information(){
-  filename="$STACKME_FOLDER/smtp_info.json"
+  filename="$STACKME_DIR/smtp_info.json"
   smtp_json=$(read_json "$filename")
 
   if [[ -z "$smtp_json" ]]; then
@@ -5912,7 +5930,7 @@ get_server_info() {
 # Function to initialize the server information
 initialize_server_info() {
   total_steps=7
-  server_filename="$STACKME_FOLDER/server_info.json"
+  server_filename="$STACKME_DIR/server_info.json"
 
   # Step 1: Check if server_info.json exists and is valid
   message="Initialization of server information"
@@ -5952,7 +5970,7 @@ initialize_server_info() {
 
   step_message="Create stackme folder"
   step_progress 2 $total_steps "$step_message" 
-  mkdir -p "$STACKME_FOLDER"
+  mkdir -p "$STACKME_DIR"
   
   handle_exit $? 2 $total_steps "$step_message"
 
@@ -7557,7 +7575,7 @@ EOL
 
 # Function to get the password from a configuration 
 fetch_postgres_password() {
-  local config_file="$STACKS_DIR/postgres_config.json"
+  local config_file="$STACKS_DIR/postgres/stack_config.json"
   
   postgres_password=$(cat $config_file | jq -r '.variables.postgres_password')
   jq -n --arg postgres_password "$password_postgres" \
@@ -7603,7 +7621,7 @@ create_database_postgres() {
 }
 
 get_network_name(){
-  server_info_filename="$STACKME_FOLDER/server_info.json"
+  server_info_filename="$STACKME_DIR/server_info.json"
   
   if [[ ! -f "$server_info_filename" ]]; then
     error "File $server_info_filename not found."
@@ -7911,7 +7929,7 @@ generate_config_monitor(){
   step_info 3 $total_steps "Add scrape_configs to prometheus.yml"
 
   # Ensure everything is quoted correctly
-  prometheus_config_path="${STACKME_FOLDER}/prometheus/prometheus.yml"
+  prometheus_config_path="${STACKME_DIR}/prometheus/prometheus.yml"
   manage_prometheus_config_file "$prometheus_config_path" \
     "$url_prometheus" "$url_jaeger" "$url_node_exporter" "$url_cadvisor"
 
@@ -7920,9 +7938,9 @@ generate_config_monitor(){
   message="Creating file datasource.yml"
   step_info 4 $total_steps "$message"
 
-  mkdir -p "${STACKME_FOLDER}/prometheus"
+  mkdir -p "${STACKME_DIR}/prometheus"
   
-  cat > "${STACKME_FOLDER}/prometheus/datasource.yml" <<EOL
+  cat > "${STACKME_DIR}/prometheus/datasource.yml" <<EOL
 apiVersion: 1
 datasources:
 - name: Prometheus
@@ -8157,7 +8175,7 @@ generate_config_airflow() {
 
   # Step 2: Create Airflow folders
   step_info 2 $total_steps "Creating Airflow folders"
-  mkdir -p "$STACKS_FOLDER/airflow/"{config,logs,dags,plugins}
+  mkdir -p "$STACKS_DIR/airflow/"{config,logs,dags,plugins}
 
   # Step 3: Retrieve network name
   step_info 3 $total_steps "Retrieving network name"
