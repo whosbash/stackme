@@ -7574,8 +7574,8 @@ fetch_postgres_password() {
   local config_file="$STACKS_DIR/postgres/stack_config.json"
   
   postgres_password=$(cat $config_file | jq -r '.variables.postgres_password')
-  jq -n --arg postgres_password "$password_postgres" \
-    '{"postgres_password": $password_postgres}'
+  jq -n --arg postgres_password "$postgres_password" \
+    '{"postgres_password": $postgres_password}'
 }
 
 # Function to create a PostgreSQL database
