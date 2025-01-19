@@ -4893,7 +4893,7 @@ deploy_stack_on_target() {
       info "Deploying stack '$stack_name' on Portainer"
       local portainer_config_json
       portainer_config_json=$(\
-        load_json "$STACKS_DIR/portainer_config.json"\
+        load_json "$STACKS_DIR/portainer/stack_config.json"\
       )
       local portainer_url
       portainer_url=$(\
