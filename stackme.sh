@@ -4771,8 +4771,9 @@ deploy_dependencies() {
 execute_refresh_actions() {
   local refresh_actions="$1"
   local stack_variables="$2"
+  local updated_variables="$stack_variables" # Initialize with input variables
 
-  echo "$refresh_actions" | jq -c '.[]' | while read -r action; do   
+  echo "$refresh_actions" | jq -c '.[]' | while IFS= read -r action; do
     local action_name
     action_name=$(echo "$action" | jq -r '.name')
 
@@ -4795,18 +4796,19 @@ execute_refresh_actions() {
     debug "Command output for '$action_name': $command_output"
 
     # Merge the command output with the existing stack variables using add_json_objects
-    stack_variables=$(add_json_objects "$stack_variables" "$command_output") || {
+    updated_variables=$(add_json_objects "$updated_variables" "$command_output") || {
       error "Failed to update stack variables after executing '$action_name'"
       return 1
     }
 
-    debug "Stack variables after '$action_name': $stack_variables"
+    debug "Stack variables after '$action_name': $updated_variables"
   done
 
-  debug "Stack variables after refresh actions: $stack_variables"
+  debug "Stack variables after refresh actions: $updated_variables"
 
-  echo "$stack_variables"
+  echo "$updated_variables"
 }
+
 
 # Function to execute prepare actions
 execute_prepare_actions() {
