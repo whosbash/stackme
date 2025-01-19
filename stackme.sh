@@ -4781,7 +4781,7 @@ execute_refresh_actions() {
   debug "Executing refresh actions: $refresh_actions"
   debug "Stack variables: $stack_variables"
 
-  for action in $(echo "$refresh_actions" | jq -c '.[]'); do
+  echo "$refresh_actions" | jq -c '.[]' | while read -r action; do
     debug "Processing refresh action: $action"
     
     local action_name
