@@ -4858,13 +4858,11 @@ build_compose_template() {
     }
   fi
 
-  echo "$stack_variables" | jq '.' >&2
-
   # Generate the substituted template
   local substituted_template
   substituted_template=$(replace_mustache_variables "$($compose_template_func)" stack_variables)
 
-  echo "$substituted_template"
+  debug "$substituted_template"
 
   # Write the template to the compose file
   echo "$substituted_template" >"$compose_path"
@@ -4943,19 +4941,15 @@ execute_finalize_actions() {
 # Function to save stack configuration
 save_stack_configuration() {
   local stack_name="$1"
-  local stack_variables="$2"
+  local stack_config_json="$2"
 
-  local stack_config_json
-  stack_config_json=$(\
-    load_json "$STACKS_DIR/$stack_name/stack_config.json"\
-  )
-
-  local config_path
-  config_path=$(\
-    echo "$stack_config_json" | jq -r '.config_path'\
-  )
-
-  write_json "$config_path" "$stack_variables"
+  local stack_config_path
+  stack_config_path="$STACKS_DIR/$stack_name/stack_config.json"
+  echo "$stack_config_json" | jq '.' >"$stack_config_path"
+  if [ $? -ne 0 ]; then
+    error "Failed to save stack configuration for stack '$stack_name'"
+    return 1
+  fi
 }
 
 
