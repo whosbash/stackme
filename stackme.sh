@@ -4773,13 +4773,14 @@ execute_refresh_actions() {
   local stack_variables="$2"
   local updated_variables="$stack_variables" # Initialize with input variables
 
-  debug "$refresh_actions"
-
   local actions
-  mapfile -t actions < <(echo "$refresh_actions" | jq -r '.[]')
+  actions=$(echo "$refresh_actions" | jq -c '.[]') || {
+    error "Invalid JSON in refresh actions"
+    return 1
+  }
 
   # Iterate over the refresh actions
-  for action in "${actions[@]}"; do
+  while IFS= read -r action; do
     local action_name
     action_name=$(echo "$action" | jq -r '.name')
 
@@ -4808,7 +4809,7 @@ execute_refresh_actions() {
     }
 
     debug "Stack variables after '$action_name': $updated_variables"
-  done
+  done <<< "$actions"
 
   debug "Stack variables after refresh actions: $updated_variables"
 
