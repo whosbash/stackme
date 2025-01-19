@@ -4745,8 +4745,12 @@ deploy_dependencies() {
 
   info "Deploying dependencies for stack '$stack_name'"
 
-  # Use a subshell to ensure IFS is scoped properly
-  echo "$dependencies_json" | jq -r '.[]' | while IFS= read -r dependency; do
+  # Read dependencies as an array using jq
+  local dependencies
+  mapfile -t dependencies < <(echo "$dependencies_json" | jq -r '.[]')
+
+  # Iterate over the array
+  for dependency in "${dependencies[@]}"; do
     info "Processing dependency: $dependency"
 
     if ! docker stack ls --format '{{.Name}}' | grep -q "^$dependency$"; then
