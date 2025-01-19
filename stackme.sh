@@ -8417,7 +8417,7 @@ define_menu_stacks(){
   )"
 
   items=(
-    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5"
+    "$item_1" "$item_2" "$item_3" "$item_4"
   )
 
   page_size=10
@@ -8581,8 +8581,6 @@ startup() {
   initialize_server_info
   clear
 
-  # Define menus on registry
-  define_menus
 }
 
 # Parse command-line arguments
@@ -8635,6 +8633,9 @@ main() {
 
   # Perform startup tasks
   startup
+
+  # Define menus on registry
+  define_menus
 
   start_main_menu
 }
