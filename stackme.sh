@@ -4792,11 +4792,15 @@ execute_refresh_actions() {
       return 1
     }
 
+    debug "Command output for '$action_name': $command_output"
+
     # Merge the command output with the existing stack variables using add_json_objects
     stack_variables=$(add_json_objects "$stack_variables" "$command_output") || {
       error "Failed to update stack variables after executing '$action_name'"
       return 1
     }
+
+    debug "Stack variables after '$action_name': $stack_variables"
   done
 
   debug "Stack variables after refresh actions: $stack_variables"
