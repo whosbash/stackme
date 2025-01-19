@@ -6704,6 +6704,54 @@ deploy_stack_whoami() {
 ##################################### BEGIN OF MENU DEFINITIONS ####################################
 
 # Stacks
+define_menu_stacks_databases(){
+  menu_name="Databases"
+
+  item_1="$(
+    build_menu_item "postgres" "Deploy" "deploy_stack_postgres" 
+  )"
+  item_2="$(
+    build_menu_item "redis" "Deploy" "deploy_stack_redis" 
+  )"
+  item_3="$(
+    build_menu_item "mysql" "Deploy" "deploy_stack_mysql" 
+  )"
+  item_4="$(
+    build_menu_item "mongodb" "Deploy" "deploy_stack_mongodb" 
+  )"
+
+  items=(
+    "$item_1" "$item_2" "$item_3" "$item_4"
+  )
+
+  menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
+
+  define_menu "$menu_name" "$menu_object"
+}
+
+define_menu_stacks_miscelaneous(){
+  menu_name="Miscelaneous"
+
+  item_1="$(
+    build_menu_item "whoami" "Deploy" "deploy_stack_whoami" 
+  )"
+  item_2="$(
+    build_menu_item "airflow" "Deploy" "deploy_stack_airflow" 
+  )"
+  item_3="$(
+    build_menu_item "metabase" "Deploy" "deploy_stack_metabase"
+  )"
+
+  items=(
+    "$item_1" "$item_2" "$item_3"
+  )
+
+  menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
+
+  define_menu "$menu_name" "$menu_object"
+}
+
+# Stacks
 define_menu_stacks(){
   menu_name="Stacks"
 
@@ -6718,17 +6766,20 @@ define_menu_stacks(){
       "deploy_stack_monitor"
   )"
   item_3="$(
-    build_menu_item "postgres" "Deploy" "deploy_stack_postgres" 
+    build_menu_item "postgres" \
+      "Deploy" "deploy_stack_postgres" 
   )"
   item_4="$(
-    build_menu_item "redis" "Deploy" "deploy_stack_redis" 
+    build_menu_item "redis" \
+      "Deploy" "deploy_stack_redis" 
   )"
   item_5="$(
-    build_menu_item "whoami" "Deploy" "deploy_stack_whoami"
+    build_menu_item "whoami" \
+      "Deploy" "deploy_stack_whoami"
   )"
 
   items=(
-    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5"
+    "$item_1" "$item_2" "$item_3" "$item_4"
   )
 
   menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
@@ -6741,10 +6792,12 @@ define_menu_utilities(){
   menu_name="Utilities"
 
   item_1="$(\
-    build_menu_item "Test SMPT e-mail" "Send" "send_smtp_test_email" \
+    build_menu_item "Test SMPT e-mail" \
+      "Send" "send_smtp_test_email" \
   )"
   item_2="$(
-    build_menu_item "Send Machine Specifications" "Send" "send_machine_specs_email"\
+    build_menu_item "Send Machine Specifications" \
+      "Send" "send_machine_specs_email"\
   )"
 
   items=(
@@ -6814,9 +6867,18 @@ define_menu_health(){
 define_menu_main(){
   menu_name="Main"
 
-  item_1="$(build_menu_item "Stacks" "explore" "navigate_menu 'Stacks'")"
-  item_2="$(build_menu_item "Utilities" "explore" "navigate_menu 'Utilities'")"
-  item_3="$(build_menu_item "Health" "diagnose" "navigate_menu 'Health'")"
+  item_1="$(
+    build_menu_item "Stacks" \
+    "explore" "navigate_menu 'Stacks'" \
+  )"
+  item_2="$(
+    build_menu_item "Utilities" \
+    "explore" "navigate_menu 'Utilities'" \
+  )"
+  item_3="$(
+    build_menu_item "Health" \
+    "diagnose" "navigate_menu 'Health'" \
+  )"
 
   items=(
     "$item_1" "$item_2" "$item_3"
@@ -6830,7 +6892,11 @@ define_menu_main(){
 # Populate MENUS
 define_menus(){
     define_menu_main
+
+    # Stacks and its submenus
     define_menu_stacks
+    define_menu_stacks_databases
+    define_menu_stacks_miscelaneous
     define_menu_utilities
     define_menu_health
 }
@@ -6848,7 +6914,6 @@ start_main_menu(){
 usage() {
   joined_arrows="$(join_array "," "${!ARROWS[@]}")"
 
-
   usage_messages=(
     "Usage: $0 [options]"
     "Options:"
@@ -6863,6 +6928,26 @@ usage() {
   sleep 1
 
   exit 1
+}
+
+startup() {
+  set_arrow
+  clear
+
+  # Check if the script is running as root
+  if [ "$EUID" -ne 0 ]; then
+    failure "Please run this script as root or use sudo."
+    sleep 2
+    exit 1
+  fi
+
+  # Install required packages
+  update_and_install_packages
+  clear
+
+  # Perform initialization
+  initialize_server_info
+  clear
 }
 
 # Parse command-line arguments
@@ -6913,17 +6998,10 @@ parse_args() {
 main() {
   parse_args "$@"
 
-  set_arrow
-  clear
-
-  # Install required packages
-  update_and_install_packages
-  clear
-
-  # Perform initialization
-  initialize_server_info
-  clear
-
+  # Perform startup tasks
+  startup
+  
+  # Define menus on registry
   define_menus
 
   start_main_menu
