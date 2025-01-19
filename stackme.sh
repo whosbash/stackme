@@ -4783,7 +4783,7 @@ execute_refresh_actions() {
 
   echo "$refresh_actions" | jq -c '.[]' | while read -r action; do
     echo "$action" | jq '.' >&2
-    
+
     debug "Processing refresh action: $action"
     
     local action_name
