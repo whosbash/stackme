@@ -1205,8 +1205,6 @@ add_scrape_config_object() {
   local filename="$1"
   local scrape_config="$2"
 
-  debug "Adding scrape_config to $filename"
-
   # Step 1: Check if the file exists
   if [[ ! -f "$filename" ]]; then
     # Step 1: Check if the file exists, and create the directory if necessary
@@ -1235,8 +1233,6 @@ alerting:
 scrape_configs: 
 EOF
   fi
-
-  debug "File $filename exists."
 
   # Step 2: Check if the job_name already exists
   local job_name
@@ -4778,14 +4774,9 @@ execute_refresh_actions() {
   local refresh_actions="$1"
   local stack_variables="$2"
 
-  debug "Executing refresh actions: $refresh_actions"
-  debug "Stack variables: $stack_variables"
-
   echo "$refresh_actions" | jq -c '.[]' | while read -r action; do
     echo "$action" | jq '.' >&2
-
-    debug "Processing refresh action: $action"
-    
+   
     local action_name
     action_name=$(echo "$action" | jq -r '.name')
 
@@ -4861,16 +4852,19 @@ build_compose_template() {
   local compose_dir
   compose_dir=$(dirname "$compose_path")
   if [ ! -d "$compose_dir" ]; then
-    debug "Creating directory: $compose_dir"
     mkdir -p "$compose_dir" || {
       error "Failed to create directory: $compose_dir"
       return 1
     }
   fi
 
+  echo "$stack_variables" | jq '.' >&2
+
   # Generate the substituted template
   local substituted_template
   substituted_template=$(replace_mustache_variables "$($compose_template_func)" stack_variables)
+
+  echo "$substituted_template"
 
   # Write the template to the compose file
   echo "$substituted_template" >"$compose_path"
@@ -5224,8 +5218,6 @@ deploy_stack_pipeline() {
   step_info 2 $total_steps "Executing refresh actions"
   local refresh_actions
   refresh_actions=$(jq -r '.actions.refresh // []' <<< "$config_json")
-  
-  info "$refresh_actions"
   
   stack_variables=$(\
     execute_refresh_actions "$refresh_actions" "$stack_variables"
@@ -7661,8 +7653,6 @@ manage_prometheus_config_file() {
     --honor_labels "true" \
     --scrape_interval "10s" \
     --targets "$(join_array ',' "${targets[@]}")")"
-
-    debug "$prometheus_scrape_config"
 
   add_scrape_config_object "$prometheus_config_path" "$prometheus_scrape_config"
 
