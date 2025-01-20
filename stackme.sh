@@ -7320,7 +7320,7 @@ services:
       labels:
         - traefik.enable=true
         - traefik.http.routers.metabase.rule=Host(\`{{url_metabase}}\`)
-        - traefik.http.services.metabas.loadbalancer.server.port=3000
+        - traefik.http.services.metabase.loadbalancer.server.port=3000
         - traefik.http.routers.metabase.service=metabase
         - traefik.http.routers.metabase.entrypoints=websecure
         - traefik.http.routers.metabase.tls=true
