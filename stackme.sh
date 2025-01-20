@@ -4641,6 +4641,27 @@ build_stack_info() {
   echo "$json_output"
 }
 
+# Function to request permission for stack removal
+should_remove_stack() {
+  local stack_name="$1"
+
+  if stack_exists "$stack_name"; then
+    local prompt_message="${yellow}Stack '$stack_name' exists. Would you like to remove it? (Y/n)${normal}"
+    if handle_confirmation_prompt "$prompt_message" "n" 5; then
+      warning "Proceeding to remove stack '$stack_name'."
+      docker stack rm "$stack_name"
+      info "Stack '$stack_name' has been removed."
+      return 0
+    else
+      warning "Stack '$stack_name' was not removed. Proceeding..."
+      return 1
+    fi
+  else
+    info "Stack '$stack_name' is inexistent."
+    return 2
+  fi
+}
+
 # Function to validate a Docker Compose file
 validate_compose_file() {
   local compose_file="$1"
@@ -5063,6 +5084,13 @@ deploy_stack_pipeline() {
 deploy_stack() {
   local stack_name="$1"
 
+  should_remove_stack "$stack_name"
+
+  # Check if the stack exists
+  if [ $? -eq 1 ] then
+    return 0
+  fi
+
   # Generate the stack JSON configuration
   local stack_config
   stack_config=$(eval "generate_config_$stack_name")
@@ -5075,13 +5103,9 @@ deploy_stack() {
   validate_stack_config "$stack_config"
 
   if [ $? -ne 0 ]; then
-    failure "Stack $stack_name configuration validation failed."
+    failure "Stack \'$stack_name\' configuration validation failed."
     return 1
   fi
-
-  wait_for_input
-
-  clean_screen
 
   # Deploy the n8n service using the JSON
   deploy_stack_pipeline "$stack_config"
@@ -7733,6 +7757,14 @@ create_database_postgres() {
   fi
 }
 
+create_postgres_database_metabase(){
+  create_database_postgres 'metabase'
+}
+
+create_postgres_database_n8n(){
+  create_database_postgres 'n8n'
+}
+
 get_network_name() {
   server_info_filename="$STACKME_DIR/server_info.json"
 
@@ -8375,9 +8407,9 @@ generate_config_metabase() {
             ],
             "prepare": [
               {
-                "name": "create_metabase_db",
+                "name": "create_postgres_database_metabase",
                 "description": "Creating Metabase database",
-                "command": "create_database_postgres metabase",
+                "command": "create_postgres_database_metabase",
               }
             ],
             "finalize": []
@@ -8491,8 +8523,19 @@ generate_config_n8n(){
           "dependencies": ["traefik", "portainer", "postgres", "redis"],
           "actions": {
             "refresh": [
+              {
+                "name": "fetch_postgres_password",
+                "description": "Fetching postgres password",
+                "command": "fetch_postgres_password",
+              }
             ],
-            "prepare": [],
+            "prepare": [
+              {
+                "name": "create_postgres_database_n8n",
+                "description": "Creating N8N database",
+                "command": "create_postgres_database_n8n",
+              }
+            ],
             "finalize": []
           }
       }' | jq . || {
@@ -8595,6 +8638,13 @@ deploy_stack_metabase() {
   deploy_stack 'metabase'
 }
 
+# Function to deploy a n8n service
+deploy_stack_n8n() {
+  cleanup
+  clean_screen
+  deploy_stack 'n8n'
+}
+
 ################################# END OF STACK DEPLOYMENT FUNCTIONS ################################
 
 ##################################### BEGIN OF MENU DEFINITIONS ####################################
@@ -8632,14 +8682,17 @@ define_menu_miscelaneous() {
     build_menu_item "whoami" "Deploy" "deploy_stack_whoami"
   )"
   item_2="$(
-    build_menu_item "airflow" "Deploy" "deploy_stack_airflow"
+    build_menu_item "metabase" "Deploy" "deploy_stack_metabase"
   )"
   item_3="$(
-    build_menu_item "metabase" "Deploy" "deploy_stack_metabase"
+    build_menu_item "n8n" "Deploy" "deploy_stack_n8n"
+  )"
+  item_4="$(
+    build_menu_item "airflow" "Deploy" "deploy_stack_airflow"
   )"
 
   items=(
-    "$item_1" "$item_2" "$item_3"
+    "$item_1" "$item_2" "$item_3" "$item_4"
   )
 
   menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
@@ -8663,12 +8716,12 @@ define_menu_stacks() {
   )"
   item_3="$(
     build_menu_item "Databases" \
-      "Postgres & Redis & MySQL & MongoDB & " \
+      "Postgres & Redis & MySQL & MongoDB" \
       "navigate_menu 'Databases'"
   )"
   item_4="$(
     build_menu_item "Miscelaneous" \
-      "Whoami & Airflow & Metabase" \
+      "Whoami & Airflow & Metabase & N8N" \
       "navigate_menu 'Miscelaneous'"
   )"
 
@@ -8900,23 +8953,6 @@ main() {
 # Call the main function
 main "$@"
 
-# stack_name="postgres"
-# stack_exists "$stack_name"0
-#
-# if [[ $? -eq 0 ]]; then
-#   prompt_message="${yellow}Stack exists. Would you like to remove it? (Y/n)${normal}"
-#   if handle_confirmation_prompt "$prompt_message" "y" 5; then
-#     echo "Stack $stack_name removed!"
-#   else
-#     echo "Stack $stack_name not removed!"
-#   fi
-#
-# else
-#   prompt_message="${yellow}Stack $stack_name does not exist. Would you like to install it? (Y/n)${normal}"
-#   if handle_confirmation_prompt "$prompt_message" "y" 5; then
-#     echo "Stack $stack_name removed!"
-#   else
-#     echo "Stack $stack_name not removed!"
-#   fi
-# fi
-# wait_for_input 5
+
+
+
