@@ -1,0 +1,87 @@
+## Criando a stack ollama.yaml
+cat > ollama${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  ollama${1:+_$1}:
+    image: ollama/ollama:latest
+
+    volumes:
+      - ollama${1:+_$1}_data:/root/.ollama
+
+    networks:
+      - $nome_rede_interna
+
+    #ports:
+    #  - 11434:11434
+
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=1
+        - traefik.http.routers.ollama${1:+_$1}.rule=Host(\`$url_apiollama\`)
+        - traefik.http.routers.ollama${1:+_$1}.entrypoints=websecure
+        - traefik.http.routers.ollama${1:+_$1}.priority=1
+        - traefik.http.routers.ollama${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.ollama${1:+_$1}.service=ollama${1:+_$1}
+        - traefik.http.services.ollama${1:+_$1}.loadbalancer.server.port=11434
+        - traefik.http.services.ollama${1:+_$1}.loadbalancer.passHostHeader=1
+
+## --------------------------- ORION --------------------------- ##
+
+  openwebui${1:+_$1}:
+    image: ghcr.io/open-webui/open-webui:main
+
+    volumes:
+      - open${1:+_$1}_webui:/app/backend/data
+
+    networks:
+      - $nome_rede_interna
+
+    #ports:
+    #  - 8085:8080
+
+    environment:
+      - OLLAMA_BASE_URL=https://$url_apiollama
+      - WEBUI_SECRET_KEY=$WEBUI_SECRET_KEY
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.openwebui${1:+_$1}.rule=Host(\`$url_ollama\`)
+        - traefik.http.routers.openwebui${1:+_$1}.entrypoints=websecure
+        - traefik.http.routers.openwebui${1:+_$1}.priority=1
+        - traefik.http.routers.openwebui${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.openwebui${1:+_$1}.service=openwebui${1:+_$1}
+        - traefik.http.services.openwebui${1:+_$1}.loadbalancer.server.port=8080
+        - traefik.http.services.openwebui${1:+_$1}.loadbalancer.passHostHeader=true
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  ollama${1:+_$1}_data:
+    external: true
+    name: ollama${1:+_$1}_data
+  open${1:+_$1}_webui:
+    external: true
+    name: open${1:+_$1}_webui
+  
+networks:
+  $nome_rede_interna:
+    external: true
+    name: $nome_rede_interna
+EOL

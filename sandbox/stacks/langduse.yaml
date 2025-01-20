@@ -1,0 +1,63 @@
+## Criando a stack langfuse.yaml
+cat > langfuse${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  langfuse${1:+_$1}:
+    image: langfuse/langfuse:latest
+
+    networks:
+     - $nome_rede_interna
+
+    environment:
+      ## Url do Langfuse
+      - NEXTAUTH_URL=https://$url_langfuse
+
+      ## Desativar novas incrições
+      - NEXT_PUBLIC_SIGN_UP_DISABLED=false
+
+      ## Dados Postgres
+      - DATABASE_URL=postgresql://postgres:$senha_postgres@postgres:5432/langfuse${1:+_$1}
+
+      ## Secrets Key
+      - ENCRYPTION_KEY=$key_encryption
+      - NEXTAUTH_SECRET=$key_secret
+      - SALT=$key_salt
+
+      ## Ativar Telemetria
+      - TELEMETRY_ENABLED=false
+
+      ## Features experimentais
+      - LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES=false
+
+      ## Node
+      - NODE_ENV=production
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+          constraints:
+            - node.role == manager
+      resources:
+          limits:
+            cpus: '0.5'
+            memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.langfuse${1:+_$1}.rule=Host(\`$url_langfuse\`)
+        - traefik.http.routers.langfuse${1:+_$1}.entrypoints=websecure
+        - traefik.http.routers.langfuse${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.langfuse${1:+_$1}.service=langfuse${1:+_$1}
+        - traefik.http.services.langfuse${1:+_$1}.loadbalancer.passHostHeader=true
+        - traefik.http.services.langfuse${1:+_$1}.loadbalancer.server.port=3000
+
+## --------------------------- ORION --------------------------- ##
+
+networks:
+  $nome_rede_interna:
+    external: true
+    name: $nome_rede_interna
+EOL

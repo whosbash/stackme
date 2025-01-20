@@ -1,0 +1,81 @@
+## Criando a stack zep.yaml
+cat > zep${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  zep${1:+_$1}_nlp:
+    image: ghcr.io/getzep/zep-nlp-server:latest
+
+    networks:
+      - $nome_rede_interna
+      
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+## --------------------------- ORION --------------------------- ##
+
+  zep${1:+_$1}_app:
+    image: ghcr.io/getzep/zep:latest
+    
+    volumes:
+      - /root/zep${1:+_$1}/config.yaml:/app/config.yaml
+
+    networks:
+      - $nome_rede_interna
+
+    environment:
+      ## Dados Postgres
+      - ZEP_STORE_TYPE=postgres
+      - ZEP_STORE_POSTGRES_DSN=postgres://postgres:$senha_pgvector@pgvector:5432/zep${1:+_$1}?sslmode=disable
+
+      ## Dados de acesso:
+      - ZEP_AUTH_SECRET=$apikey_zep
+      
+      ## Dados OpenAI
+      - ZEP_OPENAI_API_KEY=$apikey_openai_zep
+
+      ## Dados NLP
+      - ZEP_NLP_SERVER_URL=http://zep${1:+_$1}_nlp:5557
+
+      ## Configurações de extração
+      - ZEP_EXTRACTORS_DOCUMENTS_EMBEDDINGS_SERVICE=openai
+      - ZEP_EXTRACTORS_DOCUMENTS_EMBEDDINGS_DIMENSIONS=1536
+      - ZEP_EXTRACTORS_MESSAGES_EMBEDDINGS_SERVICE=openai
+      - ZEP_EXTRACTORS_MESSAGES_EMBEDDINGS_DIMENSIONS=1536
+      - ZEP_EXTRACTORS_MESSAGES_SUMMARIZER_EMBEDDINGS_SERVICE=openai
+      - ZEP_EXTRACTORS_MESSAGES_SUMMARIZER_EMBEDDINGS_DIMENSIONS=1536
+
+      ## Configuração Graphiti
+      - ZEP_GRAPHITI_URL=http://zep${1:+_$1}_graphiti:8003
+
+      ## Degub:
+      - ZEP_LOG_LEVEL=debug
+      
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.zep${1:+_$1}.rule=Host(\`$url_zep\`)
+        - traefik.http.routers.zep${1:+_$1}.entrypoints=websecure
+        - traefik.http.routers.zep${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.services.zep${1:+_$1}.loadbalancer.server.port=8000
+        - traefik.http.services.zep${1:+_$1}.loadbalancer.passHostHeader=true
+        - traefik.http.routers.zep${1:+_$1}.service=zep${1:+_$1}
+
+## --------------------------- ORION --------------------------- ##
+    
+networks:
+  $nome_rede_interna: ## Nome da rede interna
+    external: true
+    name: $nome_rede_interna ## Nome da rede interna
+EOL

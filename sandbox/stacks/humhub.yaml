@@ -1,0 +1,91 @@
+## Criando a stack
+cat > humhub${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  humhub${1:+_$1}:
+    image: mriedmann/humhub:latest
+
+    volumes:
+      - humhub${1:+_$1}_data:/var/www/localhost/htdocs/protected/modules
+      - humhub${1:+_$1}_uploads:/var/www/localhost/htdocs/uploads
+      - humhub${1:+_$1}_assets:/var/www/localhost/htdocs/assets
+      - humhub${1:+_$1}_themes:/var/www/localhost/htdocs/themes
+      
+    networks:
+      - $nome_rede_interna
+      
+    environment:
+      ## Dados de acesso
+      - HUMHUB_ADMIN_USERNAME=$user_humhub
+      - HUMHUB_ADMIN_PASSWORD=$pass_humhub
+      - HUMHUB_EMAIL=$email_humhub
+      - HUMHUB_EMAIL_NAME=$user_humhub
+      - HUMHUB_ADMIN_EMAIL=$email_humhub
+
+      ## Dados SMTP
+      - HUMHUB_MAILER_TRANSPORT_TYPE=smtp
+      - HUMHUB_MAILER_SYSTEM_EMAIL_ADDRESS=$email_smtp_humhub
+      - HUMHUB_MAILER_USERNAME=$user_smtp_humhub
+      - HUMHUB_MAILER_PASSWORD=$senha_smtp_humhub
+      - HUMHUB_MAILER_SYSTEM_EMAIL_NAME=Suporte
+      - HUMHUB_MAILER_HOSTNAME=$host_smtp_humhub
+      - HUMHUB_MAILER_PORT=$porta_smtp_humhub
+      - HUMHUB_MAILER_ALLOW_SELF_SIGNED_CERTS=$porta_smtp_humhub_conv ## 0 = TLS | 1 = SSL
+      
+      ## Dados do MySQL
+      - HUMHUB_DB_HOST=mysql
+      - HUMHUB_DB_USER=root
+      - HUMHUB_DB_PASSWORD=$senha_mysql
+      - HUMHUB_DB_NAME=humhub${1:+_$1}
+      $autoconfig_humhub
+
+      ## Dados Redis
+      - HUMHUB_REDIS_HOSTNAME=redis
+      - HUMHUB_REDIS_PORT=6379
+      - HUMHUB_CACHE_EXPIRE_TIME=3600
+      - HUMHUB_CACHE_CLASS=yii\redis\Cache
+      - HUMHUB_QUEUE_CLASS=humhub\modules\queue\driver\Redis
+  
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.humhub${1:+_$1}.rule=Host(\`$url_humhub\`)
+        - traefik.http.routers.humhub${1:+_$1}.entrypoints=websecure
+        - traefik.http.routers.humhub${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.humhub${1:+_$1}.service=humhub${1:+_$1}
+        - traefik.http.services.humhub${1:+_$1}.loadbalancer.server.port=80
+        - traefik.http.services.humhub${1:+_$1}.loadbalancer.passHostHeader=true
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  humhub${1:+_$1}_data:
+    external: true
+    name: humhub${1:+_$1}_data
+  humhub${1:+_$1}_uploads:
+    external: true
+    name: humhub${1:+_$1}_uploads
+  humhub${1:+_$1}_themes:
+    external: true
+    name: humhub${1:+_$1}_themes
+  humhub${1:+_$1}_assets:
+    external: true
+    name: humhub${1:+_$1}_assets
+
+networks:
+  $nome_rede_interna:
+    external: true
+    name: $nome_rede_interna
+EOL

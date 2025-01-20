@@ -1,0 +1,50 @@
+## Criando a stack focalboard.yaml
+cat > focalboard${1:+_$1}.yaml <<EOL
+version: "3.8"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  focalboard${1:+_$1}:
+    image: mattermost/focalboard:latest
+
+    volumes:
+      - focalboard${1:+_$1}_data:/opt/focalboard/data
+    
+    networks:
+      - $nome_rede_interna ## Nome da rede interna
+    
+    environment:
+      - VIRTUAL_HOST=$url_focalboard ## Url da Aplicação
+      - VIRTUAL_PORT=8000
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.focalboard${1:+_$1}.rule=Host(\`$url_focalboard\`) ## Url da Aplicação
+        - traefik.http.services.focalboard${1:+_$1}.loadBalancer.server.port=8000
+        - traefik.http.routers.focalboard${1:+_$1}.service=focalboard${1:+_$1}
+        - traefik.http.routers.focalboard${1:+_$1}.entrypoints=websecure
+        - traefik.http.routers.focalboard${1:+_$1}.tls.certresolver=letsencryptresolver
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  focalboard${1:+_$1}_data:
+    external: true
+    name: focalboard${1:+_$1}_data
+
+networks:
+  $nome_rede_interna: ## Nome da rede interna
+    external: true
+    name: $nome_rede_interna ## Nome da rede interna
+EOL

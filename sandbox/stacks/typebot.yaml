@@ -1,0 +1,150 @@
+## Criando a stack typebot.yaml
+cat > typebot${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  typebot${1:+_$1}_builder:
+    image: baptistearno/typebot-builder:$versao_typebot ## Versão do Builder do Typebot
+
+    networks:
+      - $nome_rede_interna ## Nome da rede interna
+
+    environment:
+      ## Dados do Postgres
+      - DATABASE_URL=postgresql://postgres:$senha_postgres@postgres:5432/typebot${1:+_$1}
+
+      ## Encryption key
+      - ENCRYPTION_SECRET=$key_typebot
+
+      ## Plano Padrão (das novas contas)
+      - DEFAULT_WORKSPACE_PLAN=UNLIMITED
+
+      ## Urls do typebot
+      - NEXTAUTH_URL=https://$url_typebot ## URL Builder
+      - NEXT_PUBLIC_VIEWER_URL=https://$url_viewer ## URL Viewer
+      - NEXTAUTH_URL_INTERNAL=http://localhost:3000
+
+      ## Desativer/ativar novos cadastros
+      - DISABLE_SIGNUP=false
+
+      ## Dados do SMTP
+      - ADMIN_EMAIL=$email_typebot ## Email SMTP
+      - NEXT_PUBLIC_SMTP_FROM='Suporte' <$email_typebot>
+      - SMTP_AUTH_DISABLED=false
+      - SMTP_USERNAME=$usuario_email_typebot
+      - SMTP_PASSWORD=$senha_email_typebot
+      - SMTP_HOST=$smtp_email_typebot
+      - SMTP_PORT=$porta_smtp_typebot
+      - SMTP_SECURE=$smtp_secure_typebot
+
+      ## Dados Google Cloud
+      #- GOOGLE_AUTH_CLIENT_ID=
+      #- GOOGLE_SHEETS_CLIENT_ID=
+      #- GOOGLE_AUTH_CLIENT_SECRET=
+      #- GOOGLE_SHEETS_CLIENT_SECRET=
+      #- NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY=
+
+      ## Dados do Minio/S3
+      - S3_ACCESS_KEY=$S3_ACCESS_KEY
+      - S3_SECRET_KEY=$S3_SECRET_KEY
+      - S3_BUCKET=typebot${1:+-$1}
+      - S3_ENDPOINT=$url_s3
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - io.portainer.accesscontrol.users=admin
+        - traefik.enable=true
+        - traefik.http.routers.typebot${1:+_$1}_builder.rule=Host(\`$url_typebot\`) ## Url do Builder do Typebot
+        - traefik.http.routers.typebot${1:+_$1}_builder.entrypoints=websecure
+        - traefik.http.routers.typebot${1:+_$1}_builder.tls.certresolver=letsencryptresolver
+        - traefik.http.services.typebot${1:+_$1}_builder.loadbalancer.server.port=3000
+        - traefik.http.services.typebot${1:+_$1}_builder.loadbalancer.passHostHeader=true
+        - traefik.http.routers.typebot${1:+_$1}_builder.service=typebot${1:+_$1}_builder
+
+## --------------------------- ORION --------------------------- ##
+
+  typebot${1:+_$1}_viewer:
+    image: baptistearno/typebot-viewer:$versao_typebot ## Versão do Viewer do Typebot
+
+    networks:
+      - $nome_rede_interna ## Nome da rede interna
+
+    environment:
+      ## Dados do Postgres
+      - DATABASE_URL=postgresql://postgres:$senha_postgres@postgres:5432/typebot${1:+_$1}
+
+      ## Encryption key
+      - ENCRYPTION_SECRET=$key_typebot
+
+      ## Plano Padrão (das novas contas)
+      - DEFAULT_WORKSPACE_PLAN=UNLIMITED
+
+      ## Urls do typebot
+      - NEXTAUTH_URL=https://$url_typebot ## URL Builder
+      - NEXT_PUBLIC_VIEWER_URL=https://$url_viewer ## URL Viewer
+      - NEXTAUTH_URL_INTERNAL=http://localhost:3000
+
+      ## Desativer/ativar novos cadastros
+      - DISABLE_SIGNUP=false
+
+      ## Dados do SMTP
+      - ADMIN_EMAIL=$email_typebot ## Email SMTP
+      - NEXT_PUBLIC_SMTP_FROM='Suporte' <$email_typebot>
+      - SMTP_AUTH_DISABLED=false
+      - SMTP_USERNAME=$usuario_email_typebot
+      - SMTP_PASSWORD=$senha_email_typebot
+      - SMTP_HOST=$smtp_email_typebot
+      - SMTP_PORT=$porta_smtp_typebot
+      - SMTP_SECURE=$smtp_secure_typebot
+
+      ## Dados Google Cloud
+      #- GOOGLE_AUTH_CLIENT_ID=
+      #- GOOGLE_SHEETS_CLIENT_ID=
+      #- GOOGLE_AUTH_CLIENT_SECRET=
+      #- GOOGLE_SHEETS_CLIENT_SECRET=
+      #- NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY=
+
+      ## Dados do Minio/S3
+      - S3_ACCESS_KEY=$S3_ACCESS_KEY
+      - S3_SECRET_KEY=$S3_SECRET_KEY
+      - S3_BUCKET=typebot${1:+-$1}
+      - S3_ENDPOINT=$url_s3
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - io.portainer.accesscontrol.users=admin
+        - traefik.enable=true
+        - traefik.http.routers.typebot${1:+_$1}_viewer.rule=Host(\`$url_viewer\`) ## Url do Viewer do Typebot
+        - traefik.http.routers.typebot${1:+_$1}_viewer.entrypoints=websecure
+        - traefik.http.routers.typebot${1:+_$1}_viewer.tls.certresolver=letsencryptresolver
+        - traefik.http.services.typebot${1:+_$1}_viewer.loadbalancer.server.port=3000
+        - traefik.http.services.typebot${1:+_$1}_viewer.loadbalancer.passHostHeader=true
+        - traefik.http.routers.typebot${1:+_$1}_viewer.service=typebot${1:+_$1}_viewer
+
+## --------------------------- ORION --------------------------- ##
+
+networks:
+  $nome_rede_interna: ## Nome da rede interna
+    external: true
+    name: $nome_rede_interna ## Nome da rede interna
+EOL

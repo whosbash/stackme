@@ -1,0 +1,57 @@
+## Criando a stack
+cat > nocodb${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  nocodb${1:+_$1}: 
+    image: nocodb/nocodb:latest
+
+    volumes: 
+      - nocodb${1:+_$1}_data:/usr/app/data
+
+    networks:
+      - $nome_rede_interna
+
+    environment: 
+      ## Url do Nocobase
+      - NC_PUBLIC_URL=https://$url_nocodb
+
+      ## Dados Postgres
+      - NC_DB=pg://postgres:5432?u=postgres&p=$senha_postgres&d=nocodb${1:+_$1}
+
+      ## Desativar Telemetria
+      - NC_DISABLE_TELE=true  
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.nocodb${1:+_$1}.rule=Host(\`$url_nocodb\`)
+        - traefik.http.routers.nocodb${1:+_$1}.entrypoints=websecure
+        - traefik.http.services.nocodb${1:+_$1}.loadbalancer.server.port=8080
+        - traefik.http.routers.nocodb${1:+_$1}.service=nocodb${1:+_$1}
+        - traefik.http.routers.nocodb${1:+_$1}.tls.certresolver=letsencryptresolver
+        - com.centurylinklabs.watchtower.enable=true
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  nocodb${1:+_$1}_data:
+    external: true
+    name: nocodb${1:+_$1}_data
+
+networks:
+  $nome_rede_interna:
+    name: $nome_rede_interna
+    external: true
+EOL

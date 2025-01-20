@@ -1,0 +1,47 @@
+## Criando a stack yourls.yaml
+cat > yourls${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  yourls${1:+_$1}:
+    image: yourls:latest
+
+    networks:
+      - $nome_rede_interna ## Nome da rede interna
+
+    environment:
+      ## Dados de acesso
+      - YOURLS_SITE=https://$url_yourls ## Url da Aplicação
+      - YOURLS_USER=$user_yourls
+      - YOURLS_PASS=$pass_yourls
+      
+      ## Dados do Mysql
+      - YOURLS_DB_HOST=mysql
+      - YOURLS_DB_NAME=yourls${1:+_$1}
+      - YOURLS_DB_USER=root
+      - YOURLS_DB_PASS=$senha_mysql
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.yourls${1:+_$1}.rule=Host(\`$url_yourls\`) ## Url da aplicação
+        - traefik.http.routers.yourls${1:+_$1}.entrypoints=websecure
+        - traefik.http.routers.yourls${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.yourls${1:+_$1}.service=yourls${1:+_$1}
+        - traefik.http.services.yourls${1:+_$1}.loadbalancer.server.port=80
+
+## --------------------------- ORION --------------------------- ##
+
+networks:
+  $nome_rede_interna: ## Nome da rede interna
+    name: $nome_rede_interna ## Nome da rede interna
+    external: true
+EOL

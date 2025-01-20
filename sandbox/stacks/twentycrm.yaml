@@ -1,0 +1,124 @@
+## Criando a stack
+cat > twentycrm${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  twentycrm${1:+_$1}_server:
+    image: twentycrm/twenty:latest
+
+    volumes:
+      - twentycrm_data:/app/packages/twenty-server/.local-storage
+      - twentycrm_docker:/app/docker-data
+
+    networks:
+      - $nome_rede_interna ## Nome da rede interna
+
+    environment:
+      - PORT=3000
+      - PG_DATABASE_URL=postgres://postgres:$senha_postgres_twentycrm@db:5432/default
+      - SERVER_URL=http://$url_twentycrm  # Substituído diretamente
+      - FRONT_BASE_URL=http://$url_twentycrm  # Mesma URL do SERVER_URL
+      - REDIS_URL=redis://redis:6379  # Já configurado
+      - ENABLE_DB_MIGRATIONS=true
+      - SIGN_IN_PREFILLED=true
+      - STORAGE_TYPE=local
+      - APP_SECRET=$Key_aleatoria_twentycrm_1
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 4192M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.twentycrm${1:+_$1}.rule=Host(\`$url_twentycrm\`) ## Url da aplicação
+        - traefik.http.services.twentycrm${1:+_$1}.loadbalancer.server.port=3000
+        - traefik.http.routers.twentycrm${1:+_$1}.service=twentycrm${1:+_$1}
+        - traefik.http.routers.twentycrm${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.twentycrm${1:+_$1}.entrypoints=websecure
+        - traefik.http.routers.twentycrm${1:+_$1}.tls=true
+
+## --------------------------- ORION --------------------------- ##
+
+  twentycrm${1:+_$1}_worker:
+    image: twentycrm/twenty:latest
+    command: ["yarn", "worker:prod"]
+
+    networks:
+      - $nome_rede_interna ## Nome da rede interna
+
+    environment:
+      - PORT=3000
+      - PG_DATABASE_URL=postgres://postgres:$senha_postgres_twentycrm@db:5432/default
+      - SERVER_URL=http://$url_twentycrm  # Substituído diretamente
+      - FRONT_BASE_URL=http://$url_twentycrm  # Mesma URL do SERVER_URL
+      - REDIS_URL=redis://redis:6379  # Já configurado
+      - ENABLE_DB_MIGRATIONS=true
+      - SIGN_IN_PREFILLED=true
+      - STORAGE_TYPE=local
+      - APP_SECRET=$Key_aleatoria_twentycrm_1
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1024M
+
+## --------------------------- ORION --------------------------- ##
+
+  twentycrm${1:+_$1}_db:
+    image: twentycrm/twenty-postgres:latest
+      
+    volumes:
+      - twentycrm_db_data:/home/postgres/pgdata
+
+    networks:
+      - $nome_rede_interna ## Nome da rede interna
+        
+    environment:
+      - PGUSER_SUPERUSER=postgres
+      - PGPASSWORD_SUPERUSER=$senha_postgres_twentycrm
+      - ALLOW_NOSSL=true
+      - SPILO_PROVIDER=local
+        
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1024M    
+    
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  twentycrm_data:
+    external: true
+    name: twentycrm_data
+  twentycrm_docker:
+    external: true
+    name: twentycrm_docker
+  twentycrm_db_data:
+    external: true
+    name: twentycrm_db_data
+
+networks:
+  $nome_rede_interna: ## Nome da sua rede interna
+    name: $nome_rede_interna ## Nome da sua rede interna
+    external: true
+EOL

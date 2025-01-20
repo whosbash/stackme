@@ -1,0 +1,52 @@
+## Criando a stack
+cat > excalidraw${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  excalidraw${1:+_$1}:
+    image: excalidraw/excalidraw:latest
+
+    volumes:
+      - excalidraw${1:+_$1}_data:/data
+
+    networks:
+      - $nome_rede_interna ## Nome da rede interna
+
+    environment:
+      - EXCALIDRAW_PORT=80
+      - NODE_ENV=development
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.excalidraw${1:+_$1}.rule=Host(\`$url_excalidraw\`)
+        - traefik.http.services.excalidraw.${1:+_$1}loadbalancer.server.port=80
+        - traefik.http.routers.excalidraw${1:+_$1}.service=excalidraw${1:+_$1}
+        - traefik.http.routers.excalidraw${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.excalidraw${1:+_$1}.entrypoints=websecure
+        - traefik.http.routers.excalidraw${1:+_$1}.tls=true
+
+## --------------------------- ORION --------------------------- ##
+
+
+volumes:
+  excalidraw${1:+_$1}_data:
+    external: true
+    name: excalidraw${1:+_$1}_data
+
+networks:
+  $nome_rede_interna: ## Nome da rede interna
+    name: $nome_rede_interna ## Nome da rede interna
+    external: true
+EOL

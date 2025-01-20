@@ -1,0 +1,68 @@
+## Criando a stack docuseal.yaml
+cat > docuseal${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  docuseal${1:+_$1}:
+    image: docuseal/docuseal:latest
+
+    volumes:
+      - docuseal${1:+_$1}_data:/data
+
+    networks:
+      - $nome_rede_interna
+
+    environment:
+      ## Dados de Acesso
+      - HOST=$url_docuseal
+      - FORCE_SSL=true
+
+      ## Secret Key
+      - SECRET_KEY_BASE=$key_docuseal
+
+      ## Dados do Postgres
+      - DATABASE_URL=postgresql://postgres:$senha_postgres@postgres:5432/docuseal${1:+_$1}
+
+      ## Dados SMTP
+      - SMTP_USERNAME=$user_smtp_docuseal
+      - SMTP_PASSWORD=$senha_smtp_docuseal
+      - SMTP_ADDRESS=$host_smtp_docuseal
+      - SMTP_PORT=$porta_smtp_docuseal
+      - SMTP_FROM=$email_smtp_docuseal
+      - SMTP_DOMAIN=$dominio_smtp_docuseal
+      - SMTP_AUTHENTICATION=login
+
+      ## Dados do S3
+      ##- AWS_ACCESS_KEY_ID=
+      ##- AWS_SECRET_ACCESS_KEY=
+      ##- S3_ATTACHMENTS_BUCKET=
+      
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.docuseal${1:+_$1}.rule=Host(\`$url_docuseal\`)
+        - traefik.http.services.docuseal${1:+_$1}.loadbalancer.server.port=3000
+        - traefik.http.routers.docuseal${1:+_$1}.service=docuseal${1:+_$1}
+        - traefik.http.routers.docuseal${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.docuseal${1:+_$1}.entrypoints=websecure
+        - traefik.http.routers.docuseal${1:+_$1}.tls=true
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  docuseal${1:+_$1}_data:
+    external: true
+    name: docuseal${1:+_$1}_data
+
+networks:
+  $nome_rede_interna:
+    external: true
+    name: $nome_rede_interna
+EOL

@@ -1,0 +1,58 @@
+## Criando a stack ntfy.yaml
+cat > ntfy${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  ntfy${1:+_$1}:
+    image: binwiederhier/ntfy:latest
+    command:
+      - serve
+
+    volumes:
+      - ntfy${1:+_$1}_cache:/var/cache/ntfy
+      - ntfy${1:+_$1}_etc:/etc/ntfy
+
+    networks:
+      - $nome_rede_interna
+
+    environment:
+      - TZ=UTC
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.ntfy${1:+_$1}.rule=Host(\`$url_ntfy\`)
+        - traefik.http.services.ntfy${1:+_$1}.loadbalancer.server.port=80
+        - traefik.http.routers.ntfy${1:+_$1}.service=ntfy${1:+_$1}
+        - traefik.http.routers.ntfy${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.ntfy${1:+_$1}.entrypoints=websecure
+        - traefik.http.middlewares.ntfy${1:+_$1}-auth.basicauth.users=$hashed_senha
+        - traefik.http.routers.ntfy${1:+_$1}.middlewares=ntfy-auth
+        - traefik.http.routers.ntfy${1:+_$1}.tls=true
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  ntfy${1:+_$1}_cache:
+    external: true
+    name: ntfy${1:+_$1}_cache
+  ntfy${1:+_$1}_etc:
+    external: true
+    name: ntfy${1:+_$1}_etc
+
+networks:
+  $nome_rede_interna:
+    external: true
+    name: $nome_rede_interna
+EOL

@@ -1,0 +1,110 @@
+## Criando a stack formbricks.yaml
+cat > formbricks${1:+_$1}.yaml <<-EOF
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  formbricks${1:+_$1}:
+    image: formbricks/formbricks:latest
+
+    volumes:
+      - formbricks${1:+_$1}_data:/home/nextjs/apps/web/uploads/
+
+    networks:
+      - $nome_rede_interna
+
+    environment:
+      ## Url da aplicação
+      - WEBAPP_URL=https://$url_formbricks
+      - NEXTAUTH_URL=https://$url_formbricks
+
+      ## Banco de dados Postgres
+      - DATABASE_URL=postgresql://postgres:$senha_pgvector@pgvector:5432/formbricks${1:+_$1}?schema=public
+
+      ## Licença Enterprise ou Self-hosting
+      ## Solicitar licenta Self-hosting --> https://oriondesign.art.br/formbricks_licence/ <-- ##
+      - ENTERPRISE_LICENSE_KEY=
+
+      ## Keys aleatórias 32 caracteres
+      - ENCRYPTION_KEY=$encryption_key_form
+      - NEXTAUTH_SECRET=$next_key_form
+      - CRON_SECRET=$cron_key_form
+
+      ## Dados do SMTP
+      - MAIL_FROM=$email_formbricks
+      - SMTP_HOST=$host_formbricks
+      - SMTP_PORT=$porta_formbricks
+      - SMTP_SECURE_ENABLED=$ssl_formbricks #(0= false | 1= true)
+      - SMTP_USER=$user_smtp_formbricks
+      - SMTP_PASSWORD=$senha_formbricks
+
+      ## Ativar/Desativar registros e convites (0= false | 1= true)
+      - SIGNUP_DISABLED=0
+      - INVITE_DISABLED=0
+      - EMAIL_VERIFICATION_DISABLED=0
+      - PASSWORD_RESET_DISABLED=0
+
+      ## Dados do Formbricks (para pesquisa)
+      - NEXT_PUBLIC_FORMBRICKS_API_HOST=
+      - NEXT_PUBLIC_FORMBRICKS_ENVIRONMENT_ID=
+      - NEXT_PUBLIC_FORMBRICKS_ONBOARDING_SURVEY_ID=
+
+      ## Login Google Cloud
+      - GOOGLE_AUTH_ENABLED=0
+      - GOOGLE_CLIENT_ID=
+      - GOOGLE_CLIENT_SECRET=
+
+      ## Google Sheets
+      - GOOGLE_SHEETS_CLIENT_ID=
+      - GOOGLE_SHEETS_CLIENT_SECRET=
+      - GOOGLE_SHEETS_REDIRECT_URL=
+
+      ## Login Github
+      - GITHUB_AUTH_ENABLED=0
+      - GITHUB_ID=
+      - GITHUB_SECRET=
+
+      ## Login Github
+      - NOTION_OAUTH_CLIENT_ID=
+      - NOTION_OAUTH_CLIENT_SECRET=   
+      
+      ## Login Airtable
+      - AIRTABLE_CLIENT_ID=
+
+      ## Termos e politica de privacidade
+      #- PRIVACY_URL=
+      #- TERMS_URL=
+      #- IMPRINT_URL=
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.formbricks${1:+_$1}.rule=Host(\`$url_formbricks\`)
+        - traefik.http.services.formbricks${1:+_$1}.loadbalancer.server.port=3000
+        - traefik.http.routers.formbricks${1:+_$1}.service=formbricks${1:+_$1}
+        - traefik.http.routers.formbricks${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.formbricks${1:+_$1}.entrypoints=websecure
+        - traefik.http.routers.formbricks${1:+_$1}.tls=true
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  formbricks${1:+_$1}_data:
+    external: true
+    name: formbricks${1:+_$1}_data
+
+networks:
+  $nome_rede_interna:
+    name: $nome_rede_interna
+    external: true
+EOF
