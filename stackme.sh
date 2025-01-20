@@ -7570,6 +7570,119 @@ generate_config_metabase() {
     } 
 }
 
+generate_config_n8n(){
+  local stack_name='n8n'
+
+  prompt_items='[
+      {
+          "name": "url_editor",
+          "label": "Editor domain name",
+          "description": "URL to access Editor remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      },
+      {
+          "name": "url_webhook",
+          "label": "Webhook domain name",
+          "description": "URL to access Webhook remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      },
+      {
+          "name": "smtp_email",
+          "label": "SMTP E-mail",
+          "description": "E-mail to send SMTP notifications",
+          "required": "yes",
+          "validate_fn": "validate_email_value" 
+      },
+      {
+          "name": "smtp_user",
+          "label": "SMTP User",
+          "description": "User to send SMTP notifications",
+          "required": "yes",
+          "validate_fn": "validate_username" 
+      },
+      {
+          "name": "smtp_password",
+          "label": "SMTP Password",
+          "description": "Password to send SMTP notifications",
+          "required": "yes",
+          "validate_fn": "validate_empty_value" 
+      },
+      {
+          "name": "smtp_host",
+          "label": "SMTP Host",
+          "description": "Host to send SMTP notifications",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      },
+      {
+          "name": "smtp_port",
+          "label": "SMTP Port",
+          "description": "Port to send SMTP notifications",
+          "required": "yes",
+          "validate_fn": "validate_port" 
+      },
+      {
+          "name": "smtp_secure",
+          "label": "SMTP Secure",
+          "description": "Secure to send SMTP notifications",
+          "required": "yes",
+          "validate_fn": "validate_yn_response" 
+      }
+  ]'
+
+  collected_items="$(run_collection_process "$prompt_items")"
+
+  if [[ "$collected_items" == "[]" ]]; then
+    error "Unable to retrieve N8N configuration."
+    return 1
+  fi
+
+  collected_object="$(process_prompt_items "$collected_items")"
+
+  url_editor="$(echo "$collected_object" | jq -r '.url_editor')"
+  url_webhook="$(echo "$collected_object" | jq -r '.url_webhook')"
+  smtp_email="$(echo "$collected_object" | jq -r '.smtp_email')"
+  smtp_user="$(echo "$collected_object" | jq -r '.smtp_user')"
+  smtp_password="$(echo "$collected_object" | jq -r '.smtp_password')" 
+  smtp_host="$(echo "$collected_object" | jq -r '.smtp_host')" 
+  smtp_port="$(echo "$collected_object" | jq -r '.smtp_port')" 
+  smtp_secure="$(echo "$collected_object" | jq -r '.smtp_secure')"
+
+  step_message="Generating use N8N password"
+  step_info 1 $total_steps "$step_message"
+  local network_name="$(get_network_name)"
+
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg network_name "$network_name" \
+    '{
+          "name": $stack_name,
+          "variables": {
+              "url_editor": $url_editor,
+              "url_webhook": $url_webhook,
+              "smtp_email": $smtp_email,
+              "smtp_user": $smtp_user, 
+              "smtp_password": $smtp_password,
+              "smtp_host": $smtp_host,
+              "smtp_port": $smtp_port,
+              "smtp_secure": $smtp_secure, 
+              "network_name": $network_name
+          },
+          "dependencies": ["traefik", "portainer", "postgres", "redis"],
+          "actions": {
+            "refresh": [
+            ],
+            "prepare": [],
+            "finalize": []
+          }
+      }' | jq . || {
+        error "Failed to generate JSON"
+        return 1
+    }
+}
+
 #################################### END OF STACK CONFIGURATION ###################################
 
 ################################ BEGIN OF STACK DEPLOYMENT FUNCTIONS ##############################
