@@ -2131,7 +2131,6 @@ validate_username() {
 }
 
 # Function to validate password
-# Function to validate password
 validate_password() {
   local value="$1"
 
@@ -2189,6 +2188,33 @@ validate_password() {
 
   # If all checks pass
   return 0
+}
+
+# Function to validate boolean
+validate_boolean(){
+  local value="$1"
+
+  # Check if the value is a valid boolean
+  if [[ "$value" != "true" && "$value" != "false" ]]; then
+    echo "The value '$value' is not a valid boolean."
+    return 1
+  fi
+
+  return 0
+}
+
+# Function to validate yes-no reponse
+validate_yn_response(){
+  local value="$1"
+
+  # Check if the value is a valid yes/no response
+  if [[ 
+    "$value" != "y" && "$value" != "n" && \
+    "$value" != "Y" && "$value" != "N"
+  ]]; then
+    echo "The value '$value' is not a valid yes/no response."
+    return 1
+  fi
 }
 
 ################################# END OF VALIDATION-RELATED FUNCTION ##############################
@@ -5694,6 +5720,72 @@ initialize_server_info() {
   wait_for_input
 }
 
+############################# BEGIN OF STACK DEPLOYMENT UTILITARY FUNCTIONS #######################
+
+# Function to get the password from a JSON file
+get_postgres_password() {
+  local config_file=$1
+  password_postgres=$(jq -r '.password' $config_file)
+  echo "$password_postgres"
+}
+
+# Function to create a PostgreSQL database
+create_postgres_database() {
+  local db_name="$1"
+  local db_user="postgres"
+
+  local container_id
+  local db_exists
+
+  # Display a message about the database creation attempt
+  info "Creating PostgreSQL database: $db_name in POstgres container"
+
+  # Check if the container is running
+  container_id=$(docker ps -q --filter "name=^postgres")
+  if [ -z "$container_id" ]; then
+    error "Container '${container_name}' is not running. Cannot create database."
+    return 1
+  fi
+
+  # Check if the database already exists
+  db_exists=$(docker exec \
+    "$container_id" psql -U "$db_user" -lqt | cut -d \| -f 1 | grep -qw "$db_name")
+  if [ "$db_exists" ]; then
+    info "Database '$db_name' already exists. Skipping creation."
+    return 0
+  fi
+
+  # Create the database if it doesn't exist
+  info "Creating database '$db_name'..."
+  if docker exec "$container_id" \
+    psql -U "$db_user" -c "CREATE DATABASE \"$db_name\";" >/dev/null 2>&1; then
+    success "Database '$db_name' created successfully."
+    return 0
+  else
+    error "Failed to create database '$db_name'. Please check the logs for details."
+    return 1
+  fi
+}
+
+get_network_name(){
+  server_info_filename="${HOME}/server_info.json"
+  
+  if [[ ! -f "$server_info_filename" ]]; then
+    error "File $server_info_filename not found."
+    return 1
+  fi
+
+  server_info_json="$(cat "$server_info_filename")"
+  echo "$(
+    search_on_json_array "$server_info_json" "name" "network_name" | \
+    jq -r ".value"
+  )"
+
+  return 0
+}
+
+############################## END OF STACK DEPLOYMENT UTILITARY FUNCTIONS #########################
+
 ####################################### BEGIN OF COMPOSE FILES #####################################
 
 # Function to generate compose file for Traefik
@@ -6534,71 +6626,238 @@ networks:
 EOL
 }
 
+# Function to generate compose file for N8N
+compose_n8n(){
+  cat <<EOL
+version: "3.7"
+
+services:
+  n8n_editor:
+    image: n8nio/n8n:latest
+    command: start
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Dados do postgres
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_DATABASE=n8n_queue
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_USER=postgres
+      - DB_POSTGRESDB_PASSWORD={{postgres_password}}
+
+      ## Encryption Key
+      - N8N_ENCRYPTION_KEY={{encryption_key}}
+
+      ## Url do N8N
+      - N8N_HOST={{url_editor}}
+      - N8N_EDITOR_BASE_URL=https://{{url_editor}}/ 
+      - WEBHOOK_URL=https://{{url_webhook}}/
+      - N8N_PROTOCOL=https
+
+      ## Node mode
+      - NODE_ENV=production
+
+      ## Execution node
+      - EXECUTIONS_MODE=queue
+
+      ## Community Nodes
+      - N8N_REINSTALL_MISSING_PACKAGES=true
+      - N8N_COMMUNITY_PACKAGES_ENABLED=true
+      - N8N_NODE_PATH=/home/node/.n8n/nodes
+
+      ## SMTP
+      - N8N_SMTP_SENDER={{smtp_email}}
+      - N8N_SMTP_USER={{smtp_user}}
+      - N8N_SMTP_PASS={{smtp_password}}
+      - N8N_SMTP_HOST={{smtp_host}}
+      - N8N_SMTP_PORT={{smtp_port}}
+      - N8N_SMTP_SSL={{smtp_secure}}
+
+      ## Redis
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PORT=6379
+      - QUEUE_BULL_REDIS_DB=2
+      - NODE_FUNCTION_ALLOW_EXTERNAL=moment,lodash,moment-with-locales
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=336
+
+      ## Timezone
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - TZ=America/Sao_Paulo
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.n8n_editor.rule=Host(\`{{url_editor}}\`) ## Url do Editor do N8N
+        - traefik.http.routers.n8n_editor.entrypoints=websecure
+        - traefik.http.routers.n8n_editor.priority=1
+        - traefik.http.routers.n8n_editor.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.n8n_editor.service=n8n_editor
+        - traefik.http.services.n8n_editor.loadbalancer.server.port=5678
+        - traefik.http.services.n8n_editor.loadbalancer.passHostHeader=1
+
+  n8n_webhook:
+    image: n8nio/n8n:latest ## Versão do N8N
+    command: webhook
+
+    networks:
+      - {{network_name}} ## Nome da rede interna
+
+    environment:
+      ## Dados do postgres
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_DATABASE=n8n_queue
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_USER=postgres
+      - DB_POSTGRESDB_PASSWORD={{postgres_password}}
+
+      ## Encryption Key
+      - N8N_ENCRYPTION_KEY={{encryption_key}}
+
+      ## Url do N8N
+      - N8N_HOST={{url_editor}}
+      - N8N_EDITOR_BASE_URL=https://{{url_editor}}/
+      - WEBHOOK_URL=https://{{url_webhook}}/
+      - N8N_PROTOCOL=https
+
+      ## Node Mode
+      - NODE_ENV=production
+
+      ## Execution mode
+      - EXECUTIONS_MODE=queue
+
+      ## Community Nodes
+      - N8N_REINSTALL_MISSING_PACKAGES=true
+      - N8N_COMMUNITY_PACKAGES_ENABLED=true
+      - N8N_NODE_PATH=/home/node/.n8n/nodes
+
+      ## SMTP
+      - N8N_SMTP_SENDER={{smtp_email}}
+      - N8N_SMTP_USER={{smtp_user}}
+      - N8N_SMTP_PASS={{smtp_password}}
+      - N8N_SMTP_HOST={{smtp_host}}
+      - N8N_SMTP_PORT={{smtp_port}}
+      - N8N_SMTP_SSL={{smtp_secure}}
+
+      ## Redis
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PORT=6379
+      - QUEUE_BULL_REDIS_DB=2
+      - NODE_FUNCTION_ALLOW_EXTERNAL=moment,lodash,moment-with-locales
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=336
+
+      ## Timezone
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - TZ=America/Sao_Paulo
+      
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.n8n_webhook.rule=(Host(\`{{url_webhook}}\`))
+        - traefik.http.routers.n8n_webhook.entrypoints=websecure
+        - traefik.http.routers.n8n_webhook.priority=1
+        - traefik.http.routers.n8n_webhook.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.n8n_webhook.service=n8n_webhook
+        - traefik.http.services.n8n_webhook.loadbalancer.server.port=5678
+        - traefik.http.services.n8n_webhook.loadbalancer.passHostHeader=1
+
+  n8n_worker:
+    image: n8nio/n8n:latest ## Versão do N8N
+    command: worker --concurrency=10
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Postgres
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_DATABASE=n8n_queue
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_USER=postgres
+      - DB_POSTGRESDB_PASSWORD={{postgres_password}}
+
+      ## Encryption Key
+      - N8N_ENCRYPTION_KEY={{encryption_key}}
+
+      ## N8N Url
+      - N8N_HOST={{url_editor}}
+      - N8N_EDITOR_BASE_URL=https://{{url_editor}}/
+      - WEBHOOK_URL=https://{{url_webhook}}/
+      - N8N_PROTOCOL=https
+
+      ## Node mode
+      - NODE_ENV=production
+
+      ## Execution mode
+      - EXECUTIONS_MODE=queue
+
+      ## Community Nodes
+      - N8N_REINSTALL_MISSING_PACKAGES=true
+      - N8N_COMMUNITY_PACKAGES_ENABLED=true
+      - N8N_NODE_PATH=/home/node/.n8n/nodes
+
+      ## SMTP
+      - N8N_SMTP_SENDER={{smtp_email}}
+      - N8N_SMTP_USER={{smtp_user}}
+      - N8N_SMTP_PASS={{smtp_password}}
+      - N8N_SMTP_HOST={{smtp_host}}
+      - N8N_SMTP_PORT={{smtp_port}}
+      - N8N_SMTP_SSL={{smtp_secure}}
+
+      ## Redis
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PORT=6379
+      - QUEUE_BULL_REDIS_DB=2
+      - NODE_FUNCTION_ALLOW_EXTERNAL=moment,lodash,moment-with-locales
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=336
+
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - TZ=America/Sao_Paulo
+      
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}
+EOL
+}
+
 ######################################## END OF COMPOSE FILES #####################################
-
-############################# BEGIN OF STACK DEPLOYMENT UTILITARY FUNCTIONS #######################
-
-# Function to get the password from a JSON file
-get_postgres_password() {
-  local config_file=$1
-  password_postgres=$(jq -r '.password' $config_file)
-  echo "$password_postgres"
-}
-
-# Function to create a PostgreSQL database
-create_postgres_database() {
-  local db_name="$1"
-  local db_user="postgres"
-
-  local container_id
-  local db_exists
-
-  # Display a message about the database creation attempt
-  info "Creating PostgreSQL database: $db_name in POstgres container"
-
-  # Check if the container is running
-  container_id=$(docker ps -q --filter "name=^postgres")
-  if [ -z "$container_id" ]; then
-    error "Container '${container_name}' is not running. Cannot create database."
-    return 1
-  fi
-
-  # Check if the database already exists
-  db_exists=$(docker exec \
-    "$container_id" psql -U "$db_user" -lqt | cut -d \| -f 1 | grep -qw "$db_name")
-  if [ "$db_exists" ]; then
-    info "Database '$db_name' already exists. Skipping creation."
-    return 0
-  fi
-
-  # Create the database if it doesn't exist
-  info "Creating database '$db_name'..."
-  if docker exec "$container_id" \
-    psql -U "$db_user" -c "CREATE DATABASE \"$db_name\";" >/dev/null 2>&1; then
-    success "Database '$db_name' created successfully."
-    return 0
-  else
-    error "Failed to create database '$db_name'. Please check the logs for details."
-    return 1
-  fi
-}
-
-get_network_name(){
-  server_info_filename="${HOME}/server_info.json"
-  
-  if [[ ! -f "$server_info_filename" ]]; then
-    error "File $server_info_filename not found."
-    return 1
-  fi
-
-  server_info_json="$(cat "$server_info_filename")"
-  echo "$(
-    search_on_json_array "$server_info_json" "name" "network_name" | \
-    jq -r ".value"
-  )"
-
-  return 0
-}
 
 #################################### BEGIN OF STACK CONFIGURATION #################################
 
@@ -6951,14 +7210,12 @@ EOL
     }'
 }
 
-# Function to generate Postgres service configuration JSON
+# Function to generate Database service configuration JSON
 generate_config_database() {
   local stack_name="$1"
   local image_version="$2"
 
-  local postgres_user="postgres"
-
-  step_message="Generating use postgres password"
+  step_message="Generating use $stack_name password"
   step_info 1 $total_steps "$step_message"
   local network_name="$(get_network_name)"
 
