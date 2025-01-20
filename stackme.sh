@@ -57,32 +57,32 @@ declare -A STYLES=(
 
 # Dictionary of arrows
 declare -A ARROWS=(
-    ["simple"]="→"
-    ["sharp"]="➜"
-    ["double"]="⇒"
-    ["curved"]="↪"
-    ["dash"]="➳"
-    ["star"]="⋆"
-    ["angle"]="▸"
-    ["triangle_filled"]="▲"
-    ["triangle"]="△"
-    ["small_square_filled"]="▪"
-    ["medium_empty_square"]="□"
-    ["big_empty_square"]="▢"
-    ["filled_square"]="■"
-    ["square_filled_empty"]="▣"
-    ["horiz_crossed_square"]="▤"
-    ["vert_crossed_square"]="▥"
-    ["crossed_square"]="▦"
-    ["diag_square"]="▧"
-    ["diag_crossed_square"]="▨"
-    ["diamond"]="◆"
-    ["cross"]="✗"
-    ["dot"]="•"
-    ["circle_filled"]="●"
-    ["circle_empty"]="○"
-    ["circle_filled_empty"]="⊙"
-    ["circle_empty_filled"]="⊚"
+  ["simple"]="→"
+  ["sharp"]="➜"
+  ["double"]="⇒"
+  ["curved"]="↪"
+  ["dash"]="➳"
+  ["star"]="⋆"
+  ["angle"]="▸"
+  ["triangle_filled"]="▲"
+  ["triangle"]="△"
+  ["small_square_filled"]="▪"
+  ["medium_empty_square"]="□"
+  ["big_empty_square"]="▢"
+  ["filled_square"]="■"
+  ["square_filled_empty"]="▣"
+  ["horiz_crossed_square"]="▤"
+  ["vert_crossed_square"]="▥"
+  ["crossed_square"]="▦"
+  ["diag_square"]="▧"
+  ["diag_crossed_square"]="▨"
+  ["diamond"]="◆"
+  ["cross"]="✗"
+  ["dot"]="•"
+  ["circle_filled"]="●"
+  ["circle_empty"]="○"
+  ["circle_filled_empty"]="⊙"
+  ["circle_empty_filled"]="⊚"
 )
 
 # Define a global associative array for storing menu items
@@ -134,8 +134,8 @@ HAS_TIMESTAMP=true
 HEADER_LENGTH=120
 
 # Default arrow
-STACKME_FOLDER="/opt/stackme"
-STACKS_FOLDER="$STACKME_FOLDER/stacks"
+STACKME_DIR="/opt/stackme"
+STACKS_DIR="$STACKME_DIR/stacks"
 
 # Default arrow
 DEFAULT_ARROW_OPTION='diamond'
@@ -183,7 +183,7 @@ get_status_icon() {
   case "$type" in
   "success") echo "🌟" ;;   # Bright star for success
   "error") echo "🔥" ;;     # Fire icon for error
-  "warning") echo "⚠️" ;;   # Lightning for warning
+  "warning") echo "⚠️" ;;  # Lightning for warning
   "info") echo "💡" ;;      # Light bulb for info
   "highlight") echo "🌈" ;; # Rainbow for highlight
   "debug") echo "🔍" ;;     # Magnifying glass for debug
@@ -283,7 +283,7 @@ format() {
 # Function to format an array of messages
 format_array() {
   local type="$1"
-  local -n arr="$2"  # Use reference to the array
+  local -n arr="$2" # Use reference to the array
 
   for i in "${!arr[@]}"; do
     # Apply format to each message in the array
@@ -545,34 +545,34 @@ step_progress() {
   step $current $total "$message" "progress" $has_timestamp
 }
 
-stack_step(){
+stack_step() {
   stack_name="$1"
-  type="$2" 
+  type="$2"
   step="$3"
   message="$4"
   stack_message="[$stack_name] $message"
   step $step $total_steps "$stack_message" "$type"
 }
 
-stack_step_progress(){
+stack_step_progress() {
   stack_step "$1" "progress" "$2" "$3"
 }
 
-stack_step_warning(){
+stack_step_warning() {
   stack_step "$1" "warning" "$2" "$3"
 }
-  
-stack_step_error(){
+
+stack_step_error() {
   stack_step "$1" "error" "$2" "$3"
 }
 
 # Function to display a boxed text
 boxed_text() {
-  local word=${1:-"Hello"}                        # Default word to render
-  local text_style=${2:-"highlight"}              # Default text style
-  local border_style=${3:-"simple"}               # Default border style
-  local font=${4:-"slant"}                        # Default font
-  local min_width=${5:-$(($(tput cols) - 28))}    # Default minimum width
+  local word=${1:-"Hello"}                     # Default word to render
+  local text_style=${2:-"highlight"}           # Default text style
+  local border_style=${3:-"simple"}            # Default border style
+  local font=${4:-"slant"}                     # Default font
+  local min_width=${5:-$(($(tput cols) - 28))} # Default minimum width
 
   # Ensure `figlet` exists
   if ! command -v figlet &>/dev/null; then
@@ -582,32 +582,32 @@ boxed_text() {
 
   # Define the border styles
   declare -A border_styles=(
-  ["simple"]="- - | | + + + +"
-  ["asterisk"]="* * * * * * * *"
-  ["equal"]="= = | | + + + +"
-  ["hash"]="# # # # # # # #"
-  ["dotted"]=". . . . . . . ."
-  ["starred"]="* * * * * * * *"
-  ["boxed-dashes"]="- - - - - - - -"
-  ["wave"]="~ ~ ~ ~ ~ ~ ~ ~"
-  ["angled"]="/ / \\ \\ / \\ \\ /"
-  ["arrowed"]="< > ^ v < > ^ v"
-  ["zigzag"]="z z Z Z z Z Z z"
-  ["spiky"]="x x x x X X X X"
-  ["none"]="         "
+    ["simple"]="- - | | + + + +"
+    ["asterisk"]="* * * * * * * *"
+    ["equal"]="= = | | + + + +"
+    ["hash"]="# # # # # # # #"
+    ["dotted"]=". . . . . . . ."
+    ["starred"]="* * * * * * * *"
+    ["boxed-dashes"]="- - - - - - - -"
+    ["wave"]="~ ~ ~ ~ ~ ~ ~ ~"
+    ["angled"]="/ / \\ \\ / \\ \\ /"
+    ["arrowed"]="< > ^ v < > ^ v"
+    ["zigzag"]="z z Z Z z Z Z z"
+    ["spiky"]="x x x x X X X X"
+    ["none"]="         "
   )
 
   # Extract the border characters
   IFS=' ' read -r \
     top_fence bottom_fence left_fence right_fence \
     top_left_corner top_right_corner \
-    bottom_left_corner bottom_right_corner <<<\
+    bottom_left_corner bottom_right_corner <<< \
     "${border_styles[$border_style]:-${border_styles["simple"]}}"
 
   # Generate ASCII art
   local ascii_art=$(figlet -f "$font" "$word")
   local art_width=$(echo "$ascii_art" | head -n 1 | wc -c)
-  art_width=$((art_width - 1))  # Subtract newline
+  art_width=$((art_width - 1)) # Subtract newline
 
   # Get terminal width and calculate box width
   local terminal_width=$(tput cols)
@@ -615,13 +615,13 @@ boxed_text() {
   total_width=$((total_width > (terminal_width - 2) ? (terminal_width - 2) : total_width))
 
   # Generate borders
-  local top_border="${top_left_corner}$(\
-    printf "%-${total_width}s" | tr ' ' "$top_fence"\
+  local top_border="${top_left_corner}$(
+    printf "%-${total_width}s" | tr ' ' "$top_fence"
   )${top_right_corner}"
   fmt_top_border="$(format "$text_style" "$top_border")"
-  
-  local bottom_border="${bottom_left_corner}$(\
-    printf "%-${total_width}s" | tr ' ' "$bottom_fence"\
+
+  local bottom_border="${bottom_left_corner}$(
+    printf "%-${total_width}s" | tr ' ' "$bottom_fence"
   )${bottom_right_corner}"
   fmt_bottom_border="$(format "$text_style" "$bottom_border")"
 
@@ -633,18 +633,18 @@ boxed_text() {
 
   # Add the ASCII art with borders
   while IFS= read -r line; do
-    local padding=$(( (total_width - ${#line}) / 2 ))
-    line="$(\
+    local padding=$(((total_width - ${#line}) / 2))
+    line="$(
       printf "%s%*s%s%*s%s" \
-      "$left_fence" "$padding" "" "$line" "$padding" "" "$right_fence"\
+        "$left_fence" "$padding" "" "$line" "$padding" "" "$right_fence"
     )"
     fmt_line="$(format "$text_style" "$line")"
     lines+=("$fmt_line")
-  done <<< "$ascii_art"
+  done <<<"$ascii_art"
 
   # Add the bottom border
-  fmt_bottom_border=$(\
-    format "$text_style" "$bottom_border"\
+  fmt_bottom_border=$(
+    format "$text_style" "$bottom_border"
   )
   lines+=("$fmt_bottom_border")
 
@@ -653,16 +653,16 @@ boxed_text() {
 }
 
 header() {
-  local word=${1:-"Hello"}                      # Default word to render
-  local text_style=${2:-"highlight"}            # Default text style
-  local border_style=${3:-"simple"}             # Default border style
-  local font=${4:-"slant"}                      # Default font
-  local min_width=${5:-$(($(tput cols) - 28))}  # Default minimum width
+  local word=${1:-"Hello"}                     # Default word to render
+  local text_style=${2:-"highlight"}           # Default text style
+  local border_style=${3:-"simple"}            # Default border style
+  local font=${4:-"slant"}                     # Default font
+  local min_width=${5:-$(($(tput cols) - 28))} # Default minimum width
 
   boxed_text "$word" "$text_style" "$border_style" "$font" "$min_width"
 }
 
-diplay_header(){
+diplay_header() {
   local title="$1"
   display_text "$title" 40 --center --style "${bold_color}${green}"
 }
@@ -704,9 +704,9 @@ validate_json_recursive() {
   # Extract required keys and properties from the schema
   local required_keys=$(echo "$schema" | jq -r '.required[]? // empty')
   local properties=$(echo "$schema" | jq -c '.properties // empty')
-  local additional_properties=$(\
-    echo "$schema" | \
-    jq -r 'if has("additionalProperties") then .additionalProperties else "true" end'
+  local additional_properties=$(
+    echo "$schema" |
+      jq -r 'if has("additionalProperties") then .additionalProperties else "true" end'
   )
 
   # Check if required keys are present
@@ -751,8 +751,8 @@ validate_json_recursive() {
   if [ "$additional_properties" = "false" ]; then
     for key in $(echo "$json" | jq -r 'keys[]'); do
       if ! echo "$properties" | jq -e "has(\"$key\")" >/dev/null; then
-        errors+=(\
-          "Extra property '${parent_path}${key}' found, but additionalProperties is false."\
+        errors+=(
+          "Extra property '${parent_path}${key}' found, but additionalProperties is false."
         )
         valid=false
       fi
@@ -784,8 +784,8 @@ validate_array() {
     local expected_type=$(echo "$items_schema" | jq -r '.type // empty')
 
     if [ "$element_type" != "$expected_type" ] && [ "$expected_type" != "null" ]; then
-      errors_ref+=(\
-        "Array element ${path}[$i] expected type '$expected_type', but got '$element_type'"\
+      errors_ref+=(
+        "Array element ${path}[$i] expected type '$expected_type', but got '$element_type'"
       )
       valid_ref=false
     fi
@@ -805,7 +805,7 @@ validate_primitive() {
   local -n errors_ref=$6
   local -n valid_ref=$7
 
-  if [ "$expected_type" != "$actual_type" ] && \
+  if [ "$expected_type" != "$actual_type" ] &&
     [ "$actual_type" != "null" ]; then
     errors_ref+=("Key '${path}' expected type '$expected_type', but got '$actual_type'")
     valid_ref=false
@@ -828,22 +828,22 @@ handle_constraints() {
   local multiple_of=$(echo "$schema" | jq -r '.multipleOf // empty')
 
   # Pattern matching
-  if [ -n "$pattern" ] && \
+  if [ -n "$pattern" ] &&
     ! [[ "$value" =~ $pattern ]]; then
     errors_ref+=("Key '${path}' does not match pattern '$pattern'")
     valid_ref=false
   fi
 
   # Enum validation
-  if [ "$enum_values" != "null" ] && \
+  if [ "$enum_values" != "null" ] &&
     ! echo "$enum_values" | jq -e ". | index($value)" >/dev/null; then
     errors_ref+=("Key '${path}' value '$value' is not in the allowed values: $enum_values")
     valid_ref=false
   fi
 
   # MultipleOf constraint
-  if [ -n "$multiple_of" ] && \
-    (( $(echo "$value % $multiple_of" | bc) != 0 )); then
+  if [ -n "$multiple_of" ] &&
+    (($(echo "$value % $multiple_of" | bc) != 0)); then
     errors_ref+=("Key '${path}' value '$value' is not a multiple of $multiple_of")
     valid_ref=false
   fi
@@ -889,10 +889,10 @@ search_on_json_array() {
   # Search for an object in the array with the specified key-value pair
   if [[ -n "$search_key" && -n "$search_value" ]]; then
     local matched_item
-    matched_item=$(\
-      echo "$json_array_string" | \
-      jq -c --arg key "$search_key" --arg value "$search_value" \
-      '.[] | select(.[$key] == $value)'\
+    matched_item=$(
+      echo "$json_array_string" |
+        jq -c --arg key "$search_key" --arg value "$search_value" \
+          '.[] | select(.[$key] == $value)'
     )
 
     if [[ -n "$matched_item" ]]; then
@@ -994,11 +994,11 @@ extract_field() {
   echo "$json" | jq -r ".[].$field"
 }
 
-get_variable_value_from_collection(){
+get_variable_value_from_collection() {
   local collected_items="$1"
   local variable_name="$2"
 
-  echo "$(\
+  echo "$(
     search_on_json_array "$collected_items" 'name' "$variable_name" | jq -r ".value"
   )"
 }
@@ -1013,9 +1013,9 @@ append_to_json_array() {
 # Function to extract variables from a string without curly braces
 extract_variables() {
   local compose_string="$1"
-  echo "$compose_string" | \
-    grep -oE '\{\{[a-zA-Z0-9_]+\}\}' | \
-    sed 's/[{}]//g' | \
+  echo "$compose_string" |
+    grep -oE '\{\{[a-zA-Z0-9_]+\}\}' |
+    sed 's/[{}]//g' |
     sort -u
 }
 
@@ -1122,48 +1122,48 @@ load_json() {
 create_scrape_config_object() {
   # Input parameters
   local job_name=""
-  local metrics_path="/metrics"       # Default
-  local honor_timestamps="true"      # Default
-  local honor_labels="false"         # Default
-  local scrape_interval="15s"        # Default
+  local metrics_path="/metrics" # Default
+  local honor_timestamps="true" # Default
+  local honor_labels="false"    # Default
+  local scrape_interval="15s"   # Default
   local targets=()
 
   # Parse named parameters
   while [[ "$#" -gt 0 ]]; do
     case "$1" in
-      --job_name)
-        job_name="$2"
-        shift 2
-        ;;
-      --metrics_path)
-        metrics_path="$2"
-        shift 2
-        ;;
-      --honor_timestamps)
-        honor_timestamps="$2"
-        shift 2
-        ;;
-      --honor_labels)
-        honor_labels="$2"
-        shift 2
-        ;;
-      --scrape_interval)
-        scrape_interval="$2"
-        shift 2
-        ;;
-      --scheme)
-        scheme="$2"
-        shift 2
-        ;;
-      --targets)
-        # Split targets into an array
-        IFS=',' read -r -a targets <<< "$2"
-        shift 2
-        ;;
-      *)
-        echo "Error: Unknown parameter '$1'" >&2
-        return 1
-        ;;
+    --job_name)
+      job_name="$2"
+      shift 2
+      ;;
+    --metrics_path)
+      metrics_path="$2"
+      shift 2
+      ;;
+    --honor_timestamps)
+      honor_timestamps="$2"
+      shift 2
+      ;;
+    --honor_labels)
+      honor_labels="$2"
+      shift 2
+      ;;
+    --scrape_interval)
+      scrape_interval="$2"
+      shift 2
+      ;;
+    --scheme)
+      scheme="$2"
+      shift 2
+      ;;
+    --targets)
+      # Split targets into an array
+      IFS=',' read -r -a targets <<<"$2"
+      shift 2
+      ;;
+    *)
+      echo "Error: Unknown parameter '$1'" >&2
+      return 1
+      ;;
     esac
   done
 
@@ -1205,8 +1205,6 @@ add_scrape_config_object() {
   local filename="$1"
   local scrape_config="$2"
 
-  debug "Adding scrape_config to $filename"
-
   # Step 1: Check if the file exists
   if [[ ! -f "$filename" ]]; then
     # Step 1: Check if the file exists, and create the directory if necessary
@@ -1223,7 +1221,7 @@ add_scrape_config_object() {
     fi
 
     info "File $filename does not exist. Initializing with default content."
-    cat <<EOF > "$filename"
+    cat <<EOF >"$filename"
 global:
   scrape_interval: 15s
   scrape_timeout: 10s
@@ -1236,13 +1234,11 @@ scrape_configs:
 EOF
   fi
 
-  debug "File $filename exists."
-
   # Step 2: Check if the job_name already exists
   local job_name
   job_name=$(echo "$scrape_config" | jq -r '.job_name')
   check_existing_job_name "$filename" "$job_name"
-  
+
   if [[ $? -eq 0 ]]; then
     warning "job_name '$job_name' already exists in $filename." >&2
     return 1
@@ -1278,7 +1274,6 @@ check_existing_job_name() {
 }
 
 #################################################################################################
-
 
 ############################### BEGIN OF GENERAL UTILITARY FUNCTIONS ############################
 
@@ -1333,7 +1328,7 @@ is_command_available() {
   command -v "$command" >/dev/null 2>&1
 }
 
-assert_domain_and_ip(){
+assert_domain_and_ip() {
   items='[
       {
           "name": "domain_url",
@@ -1358,11 +1353,11 @@ assert_domain_and_ip(){
     return 1
   fi
 
-  domain_url="$(\
+  domain_url="$(
     search_on_json_array "$collected_items" 'name' 'domain_url' | jq -r ".value"
   )"
 
-  ip="$(\
+  ip="$(
     search_on_json_array "$collected_items" 'name' 'ip' | jq -r ".value"
   )"
 
@@ -1375,41 +1370,41 @@ assert_domain_and_ip(){
 
 # Function to send an email
 send_email() {
-    local from_email=$1
-    local to_email=$2
-    local server=$3
-    local port=$4
-    local user=$5
-    local pass=$6
-    local subject=$7
-    local body=$8
+  local from_email=$1
+  local to_email=$2
+  local server=$3
+  local port=$4
+  local user=$5
+  local pass=$6
+  local subject=$7
+  local body=$8
 
-    info "Sending test email..."
+  info "Sending test email..."
 
-    # Attempt to send the email using swaks and capture output and error details
-    local output
-    output=$(swaks \
-        --to "$to_email" \
-        --from "$from_email" \
-        --server "$server" \
-        --port "$port" \
-        --auth LOGIN --auth-user "$user" \
-        --auth-password "$pass" \
-        --tls \
-        --header "Subject: $subject" \
-        --header "Content-Type: text/html; charset=UTF-8" \
-        --data "Content-Type: text/html; charset=UTF-8\n\n$body" 2>&1)
+  # Attempt to send the email using swaks and capture output and error details
+  local output
+  output=$(swaks \
+    --to "$to_email" \
+    --from "$from_email" \
+    --server "$server" \
+    --port "$port" \
+    --auth LOGIN --auth-user "$user" \
+    --auth-password "$pass" \
+    --tls \
+    --header "Subject: $subject" \
+    --header "Content-Type: text/html; charset=UTF-8" \
+    --data "Content-Type: text/html; charset=UTF-8\n\n$body" 2>&1)
 
-    # Capture the exit status of the swaks command
-    local status=$?
+  # Capture the exit status of the swaks command
+  local status=$?
 
-    # Check if the email was sent successfully
-    if [ $status -eq 0 ]; then
-        success "Test email sent successfully to $to_email."
-    else
-        error "Failed to send test email. Details: $output"
-        exit $status
-    fi
+  # Check if the email was sent successfully
+  if [ $status -eq 0 ]; then
+    success "Test email sent successfully to $to_email."
+  else
+    error "Failed to send test email. Details: $output"
+    exit $status
+  fi
 }
 
 ################################## END OF EMAIL-RELATED FUNCTIONS #################################
@@ -1436,7 +1431,7 @@ generate_machine_specs_content() {
   generate_table_row() {
     local key="$1"
     local value="$2"
-    
+
     # If the value is empty or contains 'N/A', use a default fallback value
     if [[ -z "$value" || "$value" == "N/A" ]]; then
       value="No data available"
@@ -1448,10 +1443,10 @@ generate_machine_specs_content() {
   # Helper function to safely execute a command and return the result
   safe_exec() {
     local cmd="$1"
-    
+
     # Try to execute the command
     result=$(eval "$cmd" 2>/dev/null)
-    
+
     # If no result, return a fallback message
     if [[ -z "$result" || "$result" == "N/A" ]]; then
       result="No data available"
@@ -1464,60 +1459,60 @@ generate_machine_specs_content() {
   local machine_specs_rows=""
   machine_specs_rows+=$(
     generate_table_row "Hostname" \
-    "$(hostname)"
+      "$(hostname)"
   )
   machine_specs_rows+=$(
     generate_table_row "Operating System" \
-    "$(safe_exec "lsb_release -d | cut -f2")"
+      "$(safe_exec "lsb_release -d | cut -f2")"
   )
   machine_specs_rows+=$(
     generate_table_row "Kernel Version" \
-    "$(safe_exec "uname -r")"
+      "$(safe_exec "uname -r")"
   )
   machine_specs_rows+=$(
     generate_table_row "Processor Model" \
-    "$(safe_exec "lscpu | awk -F ':' '/Model name/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
+      "$(safe_exec "lscpu | awk -F ':' '/Model name/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
   )
   machine_specs_rows+=$(
     generate_table_row "Processor Cores" \
-    "$(safe_exec "lscpu | awk -F ':' '/^CPU\(s\):/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
+      "$(safe_exec "lscpu | awk -F ':' '/^CPU\(s\):/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
   )
   machine_specs_rows+=$(
     generate_table_row "Processor Threads" \
-    "$(safe_exec "lscpu | awk -F ':' '/^Thread\(s\) per core:/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
+      "$(safe_exec "lscpu | awk -F ':' '/^Thread\(s\) per core:/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
   )
   machine_specs_rows+=$(
     generate_table_row "Clock Speed" \
-    "$(safe_exec "lscpu | grep 'Model name' | grep -o '@ [0-9.]\+GHz' || echo 'N/A'")"
+      "$(safe_exec "lscpu | grep 'Model name' | grep -o '@ [0-9.]\+GHz' || echo 'N/A'")"
   )
   machine_specs_rows+=$(
     generate_table_row "Total Memory" \
-    "$(safe_exec "free -h | awk '/^Mem:/ {print \$2}'")"
+      "$(safe_exec "free -h | awk '/^Mem:/ {print \$2}'")"
   )
   machine_specs_rows+=$(
     generate_table_row "GPU Details" \
-    "$(safe_exec "lspci | grep -i 'vga\|3d\|2d' || echo 'GPU information unavailable.'")"
+      "$(safe_exec "lspci | grep -i 'vga\|3d\|2d' || echo 'GPU information unavailable.'")"
   )
   machine_specs_rows+=$(
     generate_table_row "Docker Version" \
-    "$(safe_exec "docker --version || echo 'Not installed'")"
+      "$(safe_exec "docker --version || echo 'Not installed'")"
   )
 
   html_content+=$(create_table "Machine Specifications" "<th>Attribute</th><th>Details</th>" "$machine_specs_rows")
 
   # Disk Usage Table
   local disk_usage_rows=$(
-    df -h --output=source,fstype,size,used,avail,pcent | \
-    grep -E '^/dev' | \
-    awk '{printf "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", $1, $2, $3, $4, $5, $6}'
+    df -h --output=source,fstype,size,used,avail,pcent |
+      grep -E '^/dev' |
+      awk '{printf "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", $1, $2, $3, $4, $5, $6}'
   )
   html_content+=$(create_table "Disk Usage" "<th>Source</th><th>Filesystem Type</th><th>Total Size</th><th>Used</th><th>Available</th><th>Use%</th>" "$disk_usage_rows")
 
   # Battery Status Table (only if upower is available)
   if command -v upower &>/dev/null; then
     local battery_rows=$(
-      upower -i $(upower -e | grep BAT) | grep -E 'state|to full|percentage' | \
-      awk -F ':' '{gsub(/^[ \t]+|[ \t]+$/, "", $1); gsub(/^[ \t]+|[ \t]+$/, "", $2); print "<tr><td>" $1 "</td><td>" $2 "</td></tr>"}'
+      upower -i $(upower -e | grep BAT) | grep -E 'state|to full|percentage' |
+        awk -F ':' '{gsub(/^[ \t]+|[ \t]+$/, "", $1); gsub(/^[ \t]+|[ \t]+$/, "", $2); print "<tr><td>" $1 "</td><td>" $2 "</td></tr>"}'
     )
     if [[ -n "$battery_rows" ]]; then
       html_content+=$(create_table "Battery Status" "<th>Status</th><th>Details</th>" "$battery_rows")
@@ -1541,138 +1536,138 @@ generate_machine_specs_content() {
 # Functions for diagnostics
 # Show uptime with start and current time
 uptime_usage() {
-    # Example usage of display_text to show a centered header
-    echo ""
-    format_="%Y-%m-%d %H:%M:%S"
-    echo "$(uptime -p) since $(date -d "$(uptime -s)" +"$format_") to $(date +"$format_")" >&2
-    echo ""
+  # Example usage of display_text to show a centered header
+  echo ""
+  format_="%Y-%m-%d %H:%M:%S"
+  echo "$(uptime -p) since $(date -d "$(uptime -s)" +"$format_") to $(date +"$format_")" >&2
+  echo ""
 }
 
 memory_usage() {
-    echo ""
-    free -h
-    echo ""
+  echo ""
+  free -h
+  echo ""
 }
 
 # Function to display disk usage
 disk_usage() {
-    # Get the used, available, and total space in bytes
-    read -r used avail total <<< "$(df --output=used,avail,size --block-size=1 / | tail -n1)"
+  # Get the used, available, and total space in bytes
+  read -r used avail total <<<"$(df --output=used,avail,size --block-size=1 / | tail -n1)"
 
-    # Calculate the percentage of space used with decimal precision
-    if [[ $total -gt 0 ]]; then
-        percentage=$(awk "BEGIN {printf \"%.2f\", ($used / $total) * 100}")
-    else
-        percentage="0.00"
-    fi
+  # Calculate the percentage of space used with decimal precision
+  if [[ $total -gt 0 ]]; then
+    percentage=$(awk "BEGIN {printf \"%.2f\", ($used / $total) * 100}")
+  else
+    percentage="0.00"
+  fi
 
-    # Convert bytes to gigabytes (with two decimal places)
-    used_gb=$(awk "BEGIN {printf \"%.2f\", $used / (1024^3)}")
-    avail_gb=$(awk "BEGIN {printf \"%.2f\", $avail / (1024^3)}")
-    total_gb=$(awk "BEGIN {printf \"%.2f\", $total / (1024^3)}")
+  # Convert bytes to gigabytes (with two decimal places)
+  used_gb=$(awk "BEGIN {printf \"%.2f\", $used / (1024^3)}")
+  avail_gb=$(awk "BEGIN {printf \"%.2f\", $avail / (1024^3)}")
+  total_gb=$(awk "BEGIN {printf \"%.2f\", $total / (1024^3)}")
 
-    # Print the results in a structured format
-    echo "Used: ${used_gb}G, Available: ${avail_gb}G, Total: ${total_gb}G, Usage: ${percentage}%"
+  # Print the results in a structured format
+  echo "Used: ${used_gb}G, Available: ${avail_gb}G, Total: ${total_gb}G, Usage: ${percentage}%"
 }
 
 # Function to display network usage
 network_usage() {
-    echo ""
-    ip -s link
-    echo ""
+  echo ""
+  ip -s link
+  echo ""
 }
 
 # Function to display top processes
 top_processes() {
-    echo ""
-    
-    # Display only the relevant columns: PID, USER, %CPU, %MEM, and COMMAND
-    ps aux --sort=-%cpu,-%mem | awk 'NR<=6 {print $1, $2, $3, $4, $11}' | column -t
+  echo ""
 
-    echo ""
+  # Display only the relevant columns: PID, USER, %CPU, %MEM, and COMMAND
+  ps aux --sort=-%cpu,-%mem | awk 'NR<=6 {print $1, $2, $3, $4, $11}' | column -t
+
+  echo ""
 }
 
 # Function to display security diagnostics
 security_diagnostics() {
-    echo -e "${blue}Open Ports:${normal}"
-    ss -tuln
-    echo -e "\n${blue}Failed Login Attempts:${normal}"
-    grep "Failed password" /var/log/auth.log | tail -n 5
-    echo ""
+  echo -e "${blue}Open Ports:${normal}"
+  ss -tuln
+  echo -e "\n${blue}Failed Login Attempts:${normal}"
+  grep "Failed password" /var/log/auth.log | tail -n 5
+  echo ""
 }
 
 # Function to display storage insights
 storage_insights() {
-    echo ""
-    echo -e "${blue}Largest Files:${normal}"
-    du -ah /  | sort -rh | head -n 10
-    echo -e "\n${blue}Inode Usage:${normal}"
-    df -i
-    echo ""
+  echo ""
+  echo -e "${blue}Largest Files:${normal}"
+  du -ah / | sort -rh | head -n 10
+  echo -e "\n${blue}Inode Usage:${normal}"
+  df -i
+  echo ""
 }
 
 # Function to display formatted load average and uptime
 load_average() {
-    echo ""
-    # Extract and format uptime information
-    uptime | awk -F'( |,|:)+' '{
+  echo ""
+  # Extract and format uptime information
+  uptime | awk -F'( |,|:)+' '{
         printf "System Uptime: %s days, %s hours, %s minutes\n", $6, $8, $9;
         printf "Logged-in Users: %s\n", $10;
         printf "Load Averages: 1 min: %s, 5 min: %s, 15 min: %s\n", $(NF-2), $(NF-1), $NF;
     }'
-    echo ""
+  echo ""
 }
 
 # Function to display bandwidth usage
 bandwidth_usage() {
-    if command -v vnstat &> /dev/null; then
-        vnstat
-    else
-        echo -e "${red}vnstat is not installed. Please install it to monitor bandwidth.${normal}"
-    fi
-    echo ""
+  if command -v vnstat &>/dev/null; then
+    vnstat
+  else
+    echo -e "${red}vnstat is not installed. Please install it to monitor bandwidth.${normal}"
+  fi
+  echo ""
 }
 
 # Function to update and check VPS packages
 update_and_check_packages() {
-    # Check for the package manager (apt)
-    if command -v apt &> /dev/null; then
-        # Check for upgradable packages
-        upgradable_packages=$(apt list --upgradable 2>/dev/null)
-        if [[ -z "$upgradable_packages" ]]; then
-            echo -e "${green}No upgradable packages.${normal}" >&2
-        else
-            echo -e "${yellow}Upgradable packages detected.${normal}" >&2
-
-            # Ask for confirmation
-            message="${yellow}Would you like to update and upgrade the packages? (Y/n)${normal}"
-            if handle_confirmation_prompt "$message" "y" 5; then
-                echo ""
-
-                # Update and upgrade without logging output
-                echo -e "${yellow}Updating packages...${normal}"
-                apt-get update -y > /dev/null 2>&1
-
-                echo -e "${yellow}Upgrading packages...${normal}"
-                apt-get upgrade -y > /dev/null 2>&1
-
-                echo -e "${yellow}Removing unused packages...${normal}"
-                apt-get autoremove -y > /dev/null 2>&1
-
-                echo -e "${yellow}Cleaning up package cache...${normal}"
-                apt-get clean > /dev/null 2>&1
-
-                # Notify update completion
-                echo -e "${green}Update complete!${normal}" >&2
-            else
-                echo -e "${red}Update aborted.${normal}" >&2
-            fi
-        fi
+  # Check for the package manager (apt)
+  if command -v apt &>/dev/null; then
+    # Check for upgradable packages
+    upgradable_packages=$(apt list --upgradable 2>/dev/null)
+    if [[ -z "$upgradable_packages" ]]; then
+      echo -e "${green}No upgradable packages.${normal}" >&2
     else
-        echo -e "${red}Package manager not supported.${normal}" >&2
-    fi
+      echo -e "${yellow}Upgradable packages detected.${normal}" >&2
 
-    echo ""
+      # Ask for confirmation
+      message="${yellow}Would you like to update and upgrade the packages? (Y/n)${normal}"
+      if handle_confirmation_prompt "$message" "y" 5; then
+        echo ""
+
+        # Update and upgrade without logging output
+        echo -e "${yellow}Updating packages...${normal}"
+        apt-get update -y >/dev/null 2>&1
+
+        echo -e "${yellow}Upgrading packages...${normal}"
+        apt-get upgrade -y >/dev/null 2>&1
+
+        echo -e "${yellow}Removing unused packages...${normal}"
+        apt-get autoremove -y >/dev/null 2>&1
+
+        echo -e "${yellow}Cleaning up package cache...${normal}"
+        apt-get clean >/dev/null 2>&1
+
+        # Notify update completion
+        echo -e "${green}Update complete!${normal}" >&2
+      else
+        echo -e "${red}Update aborted.${normal}" >&2
+      fi
+    fi
+  else
+    echo -e "${red}Package manager not supported.${normal}" >&2
+  fi
+
+  echo ""
 }
 
 #######################################################################################
@@ -1685,7 +1680,7 @@ show_help() {
   echo -e "${highlight_color}↗↘${reset_color}  - Navigate down- and upwards"
 
   # Check if there are more items than the page size
-  if (( $menu_options_count > page_size )); then
+  if (($menu_options_count > page_size)); then
     echo -e "${highlight_color}◁▷${reset_color}  - Navigate sideways"
   fi
 
@@ -1711,18 +1706,12 @@ replace_mustache_variables() {
   local template="$1"
   local -n vars_ref="$2" # Associative array passed by reference
 
-  template="$(sanitize_template "$template")"
-
   # Iterate over the variables and replace each instance of {{KEY}} in the template
   for key in "${!vars_ref[@]}"; do
     value="${vars_ref[$key]}"
 
-    # Escape special characters in the value to prevent issues with sed (if needed)
-    value_escaped="$value"
-
-    # Replace instances of {{KEY}} in the template
-    # Handle {{key}}, {{ key}}, or {{key }}
-    template="${template//\{\{$key\}\}/$value_escaped}"
+    # Use sed to replace instances of {{key}}, {{ key}}, and {{key }}
+    template=$(echo "$template" | sed -E "s/\{\{\s*${key}\s*\}\}/$value/g")
   done
 
   # Output the substituted template
@@ -1841,7 +1830,7 @@ request() {
     echo "API request failed with status code $http_code"
     echo "Response: $response_body"
     return 1
-  else  
+  else
     # Return the response body if successful
     echo "$response_body"
     return 0
@@ -1856,13 +1845,13 @@ filtered_request() {
   local content_type="${4:-'application/json'}" # Content-Type (default: application/json)
   local data="${5:-'{}'}"                       # JSON data for POST/PUT requests (optional)
   local filter=${6:-''}                         # Optional jq filter to extract specific output
-    
+
   # Make the API request
   response=$(request "$method" "$url" "$token" "$content_type" "$data")
 
   # Apply the jq filter if provided, otherwise return the raw response
   if [[ -n "$filter" ]]; then
-    
+
     echo "$response" | jq -r "$filter"
   else
     echo "$response"
@@ -1961,7 +1950,7 @@ sanitize() {
     # Call the function and capture its output
     message="Removing dangling images"
     step_info 2 $total_steps "$message"
-    
+
     status_message=$(remove_dangling_images)
     status=$(echo "$status_message" | head -n 1)
     message=$(echo "$status_message" | tail -n 1)
@@ -2115,25 +2104,25 @@ validate_port_availability() {
 
 # Function to validate SMTP server connectivity
 validate_smtp_server() {
-    local server=$1
-    if ping -c 1 "$server" >/dev/null 2>&1; then
-        echo "SMTP server $server is reachable."
-    else
-        echo "Unable to reach SMTP server $server. Please check the server address."
-        exit 1
-    fi
+  local server=$1
+  if ping -c 1 "$server" >/dev/null 2>&1; then
+    echo "SMTP server $server is reachable."
+  else
+    echo "Unable to reach SMTP server $server. Please check the server address."
+    exit 1
+  fi
 }
 
 # Function to validate SMTP port
 validate_smtp_port() {
-    local server=$1
-    local port=$2
-    if nc -z "$server" "$port" >/dev/null 2>&1; then
-        echo "SMTP port $port is open on $server."
-    else
-        echo "SMTP port $port is not reachable on $server. Please check the port."
-        exit 1
-    fi
+  local server=$1
+  local port=$2
+  if nc -z "$server" "$port" >/dev/null 2>&1; then
+    echo "SMTP port $port is open on $server."
+  else
+    echo "SMTP port $port is not reachable on $server. Please check the port."
+    exit 1
+  fi
 }
 
 # Function to validate username
@@ -2645,9 +2634,9 @@ process_prompt_items() {
     validate_fn=$(_jq '.validate_fn')
 
     # Create the prompt item using the create_prompt_item function
-    item_json=$(\
+    item_json=$(
       create_prompt_item "$name" "$label" "$description" \
-      "$value" "$required" "$validate_fn"\
+        "$value" "$required" "$validate_fn"
     )
 
     # Check if the item creation was successful
@@ -2744,23 +2733,26 @@ display_error_items() {
 }
 
 wait_for_input() {
-  local timeout="$1"                # Timeout is the first argument
-  local prompt_message="${2:-Press any key to continue...}"  # Default prompt message if not provided
+  local timeout="$1"                                        # Timeout is the first argument
+  local prompt_message="${2:-Press any key to continue...}" # Default prompt message if not provided
 
   # Format the message
   prompt_message="$(format "question" "$prompt_message")"
 
   # Display the prompt message
-  echo -n "$prompt_message" >&2  # Display the message without a newline
+  echo -n "$prompt_message" >&2 # Display the message without a newline
 
   if [[ -n "$timeout" ]]; then
     # Countdown loop for the timeout
     for ((i = timeout; i > 0; i--)); do
       echo -ne "\r${prompt_message} (${i}s remaining)" >&2
-      read -n 1 -s -t 1 user_input && { echo >&2; return 0; }  # Exit on key press
+      read -n 1 -s -t 1 user_input && {
+        echo >&2
+        return 0
+      } # Exit on key press
     done
-    echo -e "\r${prompt_message} (Timed out)" >&2  # Timeout message
-    return 1  # Timeout
+    echo -e "\r${prompt_message} (Timed out)" >&2 # Timeout message
+    return 1                                      # Timeout
   else
     # Wait for key press without a timeout
     read -n 1 -s user_input
@@ -2771,14 +2763,14 @@ wait_for_input() {
 
 # Function to prompt user and wait for any key press
 press_any_key() {
-    # Prompt user and wait for any key press
-    echo -e "${highlight_color}Press any key to continue...${normal}"
-    
-    # Wait for a single key press without the need to press Enter
-    read -n 1 -s  # -n 1 means read one character, -s means silent mode (no echo)
-    
-    # Newline for better readability after key press
-    echo ""
+  # Prompt user and wait for any key press
+  echo -e "${highlight_color}Press any key to continue...${normal}"
+
+  # Wait for a single key press without the need to press Enter
+  read -n 1 -s # -n 1 means read one character, -s means silent mode (no echo)
+
+  # Newline for better readability after key press
+  echo ""
 }
 
 # Function to handle exit codes and display success or failure messages
@@ -2831,13 +2823,13 @@ get_menu_item_action() {
 request_input() {
   local message="$1"
   local variable_name="$2"
-  local timeout="$3"  # Optional timeout value in seconds
+  local timeout="$3" # Optional timeout value in seconds
 
   echo -ne "$message" >&2
 
   # Use read with or without timeout
   if [[ -n "$timeout" ]]; then
-    read -rsn1 -t "$timeout" "$variable_name" || eval "$variable_name=''"  # Timeout or empty input
+    read -rsn1 -t "$timeout" "$variable_name" || eval "$variable_name=''" # Timeout or empty input
   else
     read -rsn1 "$variable_name" # No timeout
   fi
@@ -2862,7 +2854,7 @@ request_confirmation() {
 
   # Validate the input
   while [[ ! "$user_input" =~ ^[yYnN]$ ]]; do
-    echo -e "\nInvalid input \"$user_input\". Please enter 'y' for yes or 'n' for no." >&2
+    error "\nInvalid input \"$user_input\". Please enter 'y' for yes or 'n' for no."
     user_input=''
     request_input "$message" user_input "$timeout"
     if [[ -z "$user_input" ]]; then
@@ -2876,37 +2868,37 @@ request_confirmation() {
 
 # Function to display invalid input message
 display_invalid_input_message() {
-    local input=$1
-    local prompt_message=$2
+  local input=$1
+  local prompt_message=$2
 
-    reason="Invalid input \"$input\""
-    select_options="Please enter 'y' for yes or 'n' for no."
-    invalid_message="${faded_color}$reason\n$select_options\n${reset_color}"
+  reason="Invalid input \"$input\""
+  select_options="Please enter 'y' for yes or 'n' for no."
+  invalid_message="${faded_color}$reason\n$select_options\n${reset_color}"
 
-    # Print the invalid message
-    echo -e "$invalid_message" >&2
-    echo -ne "${faded_color}$prompt_message${reset_color}" >&2
+  # Print the invalid message
+  echo -e "$invalid_message" >&2
+  echo -ne "${faded_color}$prompt_message${reset_color}" >&2
 }
 
 # Function to handle confirmation prompt
 handle_confirmation_prompt() {
-    local prompt_message=$1
-    local default_value=${2:-false}
-    local timeout=$3
+  local prompt_message=$1
+  local default_value=${2:-false}
+  local timeout=$3
 
-    while true; do
-        # Request confirmation from the user
-        confirm_var=$(\
-          request_confirmation "$prompt_message" "$default_value" "$timeout"
-        )
+  while true; do
+    # Request confirmation from the user
+    confirm_var=$(
+      request_confirmation "$prompt_message" "$default_value" "$timeout"
+    )
 
-        # Validate input
-        case "$confirm_var" in
-            [yY]) return 0 ;; # Confirmed
-            [nN]) return 1 ;; # Declined
-            *) display_invalid_input_message "$confirm_var" "$prompt_message" ;;
-        esac
-    done
+    # Validate input
+    case "$confirm_var" in
+    [yY]) return 0 ;; # Confirmed
+    [nN]) return 1 ;; # Declined
+    *) display_invalid_input_message "$confirm_var" "$prompt_message" ;;
+    esac
+  done
 }
 
 # Function to truncate option text to a max length
@@ -2989,10 +2981,9 @@ is_new_page_handler() {
   local move_down_last_page=$((is_last_page_item_bool && move_down_bool))
 
   # Determine if it's a new page
-  local is_new_page=$((
-    more_than_one_page && \
-    (move_sideways || move_down_last_page || move_up_first_page)
-))
+  local is_new_page=$((\
+    more_than_one_page && (\
+    move_sideways || move_down_last_page || move_up_first_page)))
 
   # Output result
   echo "$is_new_page"
@@ -3018,32 +3009,33 @@ join_array() {
 
 # Improved and fancy header display using '=' and '|', with colorized minus signs
 show_header() {
-    local header="$1"
-    local width=${2:-$HEADER_WIDTH}     # Default width to 50 if not provided
-    local border_color="\033[1;34m"     # Blue border color
-    local header_color="\033[1;37m"     # White text for header
-    local reset_color="\033[0m"         # Reset color
+  local header="$1"
+  local width=${2:-$HEADER_WIDTH} # Default width to 50 if not provided
+  local border_color="\033[1;34m" # Blue border color
+  local header_color="\033[1;37m" # White text for header
+  local reset_color="\033[0m"     # Reset color
 
-    # Create the top and bottom border with colorized minus signs
-    local border=$(printf '%*s' $((width-2)) '' | tr ' ' '-')
-    local colorized_lu_border="${border//-/${border_color}-}"
-    
-    # Print top border
-    echo -e "${border_color}+${reset_color}${colorized_lu_border}${border_color}+${reset_color}"
+  # Create the top and bottom border with colorized minus signs
+  local border=$(printf '%*s' $((width - 2)) '' | tr ' ' '-')
+  local colorized_lu_border="${border//-/${border_color}-}"
 
-    # Print header with padding
-    local colorized_side_border="${border_color}|${reset_color}"
-    local colorized_header="${header_color}${header}${reset_color}"
-    local left_padding=$(( (width - ${#header}) / 2 ))
-    local right_padding=$((width - ${#header} - left_padding - 2))
-    local spaced_header="$(\
-      printf '%*s' $left_padding '')$colorized_header$(printf '%*s' $right_padding '')"
+  # Print top border
+  echo -e "${border_color}+${reset_color}${colorized_lu_border}${border_color}+${reset_color}"
 
-    # Print the header inside borders
-    printf "${colorized_side_border}${spaced_header}${colorized_side_border}\n"
+  # Print header with padding
+  local colorized_side_border="${border_color}|${reset_color}"
+  local colorized_header="${header_color}${header}${reset_color}"
+  local left_padding=$(((width - ${#header}) / 2))
+  local right_padding=$((width - ${#header} - left_padding - 2))
+  local spaced_header="$(
+    printf '%*s' $left_padding ''
+  )$colorized_header$(printf '%*s' $right_padding '')"
 
-    # Print bottom border
-    echo -e "${border_color}+${reset_color}${colorized_lu_border}${border_color}+${reset_color}"
+  # Print the header inside borders
+  printf "${colorized_side_border}${spaced_header}${colorized_side_border}\n"
+
+  # Print bottom border
+  echo -e "${border_color}+${reset_color}${colorized_lu_border}${border_color}+${reset_color}"
 }
 
 # Define individual menu item
@@ -3053,7 +3045,7 @@ build_menu_item() {
   local action="$3"
 
   # Validate inputs
-  if [ -z "$label" ] ||  [ -z "$action" ]; then
+  if [ -z "$label" ] || [ -z "$action" ]; then
     echo "Error: Missing argument(s). Arguments (label, action) are required." >&2
     return 1
   fi
@@ -3100,61 +3092,60 @@ build_menu() {
 
 # Append a menu object to the MENUS array
 define_menu() {
-    local key="$1"
-    local menu_object="$2"
+  local key="$1"
+  local menu_object="$2"
 
-    
-    MENUS["$key"]+="$menu_object"
+  MENUS["$key"]+="$menu_object"
 }
 
 # Function to get the current menu
-get_current_menu() { 
+get_current_menu() {
   if [ ${#menu_navigation_history[@]} -gt 0 ]; then
     echo "${menu_navigation_history[-1]}"
   fi
 }
 
 # Function to get a specific menu
-get_menu() { 
+get_menu() {
   echo "${MENUS[$1]}"
 }
 
 # Modify push_menu to accept multiple levels of nesting
-push_menu_in_history() { 
-    if [[ -n "$1" ]]; then
-        menu_navigation_history+=("$1")
-    else
-        echo "Invalid menu name. Cannot push an empty menu."
-    fi
+push_menu_in_history() {
+  if [[ -n "$1" ]]; then
+    menu_navigation_history+=("$1")
+  else
+    echo "Invalid menu name. Cannot push an empty menu."
+  fi
 }
 
 # Pop menu from stack
 pop_menu_from_history() {
-    if [ ${#menu_navigation_history[@]} -gt 0 ]; then
-        unset menu_navigation_history[-1]
-    fi
+  if [ ${#menu_navigation_history[@]} -gt 0 ]; then
+    unset menu_navigation_history[-1]
+  fi
 }
 
 # Helper function to check if a menu is already in the stack
 is_menu_in_history() {
-    local menu_name=$1
-    for menu in "${menu_navigation_history[@]}"; do
-        if [[ "$menu" == "$menu_name" ]]; then
-            return 0  # menu found
-        fi
-    done
-    return 1  # menu not found
+  local menu_name=$1
+  for menu in "${menu_navigation_history[@]}"; do
+    if [[ "$menu" == "$menu_name" ]]; then
+      return 0 # menu found
+    fi
+  done
+  return 1 # menu not found
 }
 
 # Return to the parent menu (previous menu)
 return_to_parent_menu() {
-    if [ ${#menu_navigation_history[@]} -gt 1 ]; then
-        pop_menu
-        local parent_menu=$(get_current_menu)
-        navigate_menu "$parent_menu"
-    else
-        navigate_menu "Main"
-    fi
+  if [ ${#menu_navigation_history[@]} -gt 1 ]; then
+    pop_menu
+    local parent_menu=$(get_current_menu)
+    navigate_menu "$parent_menu"
+  else
+    navigate_menu "Main"
+  fi
 }
 
 # Build a JSON array of menu items
@@ -3264,19 +3255,19 @@ display_parallel() {
   done
 }
 
-kill_current_pid(){
+kill_current_pid() {
   # Start the scrolling message for the selected option
   if [[ "$current_pid" -ne 0 ]]; then
-      kill "$current_pid" 2>/dev/null  # Kill the previous background process
+    kill "$current_pid" 2>/dev/null # Kill the previous background process
   fi
 }
 
 # Cleanup function to restore terminal state and stop background processes
 cleanup() {
-    tput cnorm  # Restore cursor visibility
-    kill_current_pid
-    tput reset  # Reset terminal to a clean state
-    echo -e '\e[5 q' # Restore cursor shape
+  tput cnorm # Restore cursor visibility
+  kill_current_pid
+  tput reset       # Reset terminal to a clean state
+  echo -e '\e[5 q' # Restore cursor shape
 }
 
 # Function to display a great farewell message
@@ -3300,10 +3291,10 @@ farewell_message() {
 }
 
 finish_session() {
-    cleanup
-    clean_screen
-    farewell_message
-    exit 0;
+  cleanup
+  clean_screen
+  farewell_message
+  exit 0
 }
 
 # Trap SIGINT (Ctrl+C) and EXIT (script termination) to invoke the cleanup function
@@ -3314,35 +3305,35 @@ trap finish_session TERM EXIT
 
 # Function to shift a message in the background
 shift_message() {
-    local message="$1"
-    local max_width="$2"
-    local x_position="$3"
-    local y_position="$4"
-    local shifted_message="$message"
-    local shift_offset=0
+  local message="$1"
+  local max_width="$2"
+  local x_position="$3"
+  local y_position="$4"
+  local shifted_message="$message"
+  local shift_offset=0
 
-    tput civis  # Hide the cursor
-    while true; do
-        # Prepare the shifted message
-        local rotated_message="${shifted_message:shift_offset}${shifted_message:0:shift_offset}"
-        rotated_message="${rotated_message:0:$max_width}"
+  tput civis # Hide the cursor
+  while true; do
+    # Prepare the shifted message
+    local rotated_message="${shifted_message:shift_offset}${shifted_message:0:shift_offset}"
+    rotated_message="${rotated_message:0:$max_width}"
 
-        # Move cursor to the specified position and print the message
-        tput cup "$y_position" "$x_position"
-        printf "%-*s" "$max_width" "$rotated_message"
+    # Move cursor to the specified position and print the message
+    tput cup "$y_position" "$x_position"
+    printf "%-*s" "$max_width" "$rotated_message"
 
-        # Increment the shift offset
-        ((shift_offset++))
-        if [[ "$shift_offset" -ge ${#shifted_message} ]]; then
-            shift_offset=0
-        fi
+    # Increment the shift offset
+    ((shift_offset++))
+    if [[ "$shift_offset" -ge ${#shifted_message} ]]; then
+      shift_offset=0
+    fi
 
-        sleep 0.15
-    done
+    sleep 0.15
+  done
 }
 
 # Function to start the scrolling message for the selected option
-run_shift_message(){
+run_shift_message() {
   local current_idx="$1"
   local page_size="$2"
   local header_row_count="$3"
@@ -3356,18 +3347,18 @@ run_shift_message(){
   item_label="$(get_menu_item_label "$current_option")"
   item_description="$(get_menu_item_description "$current_option")"
   item_label_length="${#item_label}"
-  
+
   # Calculate the arrow row position based on header lines and current item
   # FIXME: Hard-coded, Try a dynamic approach
   header_row_count="2"
   arrow_position="$(get_arrow_position "$current_idx" "$page_size" "2")"
-  horizontal_shift=$((header_row_count+item_label_length+2))
+  horizontal_shift=$((header_row_count + item_label_length + 2))
 
   shift_length="$TRUNCATED_DEFAULT_LENGTH"
 
   shift_message \
     "$item_description " "$shift_length" "$horizontal_shift" "$arrow_position" &
-  current_pid=$!  # Store the background process ID
+  current_pid=$! # Store the background process ID
 }
 
 # Helper: Calculate the range of options to display
@@ -3397,13 +3388,13 @@ render_options() {
     option_label=$(get_menu_item_label "${menu_options[i]}")
     option_desc=$(get_menu_item_description "${menu_options[i]}")
     truncated_option_desc="$(truncate_option "$option_desc")"
-    
+
     if [[ -z "$option_desc" ]]; then
       option="${option_label}"
     else
       option="${option_label}: ${truncated_option_desc}"
-    fi    
-    
+    fi
+
     menu_lines+=("$option")
   done
 
@@ -3429,7 +3420,7 @@ render_options() {
 render_header() {
   local title="$1"
   local page_width="$2"
-  
+
   tput cup 0 0
   echo "$(display_text "$title" "$page_width" --center)" >&2
   echo >&2
@@ -3437,17 +3428,17 @@ render_header() {
 
 # Function to print a centered header with customizable width
 print_centered_header() {
-    local text="$1"
-    local width="$2"
-    local padding
+  local text="$1"
+  local width="$2"
+  local padding
 
-    # Calculate padding for centering
-    padding=$(( (width - ${#text}) / 2 ))
+  # Calculate padding for centering
+  padding=$(((width - ${#text}) / 2))
 
-    # Print the header with padding
-    printf "%-${padding}s" " "  # Left padding
-    echo -e "${bold}${green}${text}${normal}"
-    printf "%-${padding}s" " "  # Right padding
+  # Print the header with padding
+  printf "%-${padding}s" " " # Left padding
+  echo -e "${bold}${green}${text}${normal}"
+  printf "%-${padding}s" " " # Right padding
 }
 
 # Render breadcrumb trail
@@ -3495,7 +3486,7 @@ render_menu() {
 
   # Disable keyboard input temporarily
   stty -echo -icanon
-  trap "stty echo icanon; tput cnorm; exit" SIGINT SIGTERM EXIT  # Ensure cleanup
+  trap "stty echo icanon; tput cnorm; exit" SIGINT SIGTERM EXIT # Ensure cleanup
 
   local num_options=${#menu_options[@]}
 
@@ -3511,12 +3502,12 @@ render_menu() {
   local help_option="${help_color}h${reset_color}: Help"
   local quit_option=""
   local exit_option="${help_color}x${reset_color}: Exit"
-  
-  if (( num_options > page_size )); then
+
+  if ((num_options > page_size)); then
     lr_nav_option="${highlight_color}◁▷${reset_color}: Pages"
   fi
 
-  if (( num_options / page_size > 1 )); then
+  if ((num_options / page_size > 1)); then
     goto_nav_option="${goto_color}g${reset_color}: Go to Page"
   fi
 
@@ -3543,7 +3534,7 @@ render_menu() {
   keyboard_options+=("$exit_option")
 
   local keyboard_options_string=$(join_array ", " "${keyboard_options[@]}")
-  
+
   local tmp="$(strip_ansi "$keyboard_options_string")"
   local page_width="${#tmp}"
 
@@ -3555,12 +3546,12 @@ render_menu() {
   # Render header
   render_header "$title" "$page_width"
   echo >&2
-  
+
   # Determine the range of options to display
   local range
   range=$(calculate_display_range "$current_idx" "$page_size" "$num_options")
   local start end
-  read -r start end <<< "$range"
+  read -r start end <<<"$range"
 
   # Render menu options
   local header_row_count=2
@@ -3580,8 +3571,8 @@ render_menu() {
 
   # Re-enable keyboard input
   stty echo icanon
-  
-  trap - SIGINT SIGTERM EXIT  # Clear trap
+
+  trap - SIGINT SIGTERM EXIT # Clear trap
 }
 
 # Helper: Handle arrow key input
@@ -3593,44 +3584,44 @@ handle_arrow_key() {
   local total_pages="$5"
 
   case "$key" in
-    "$up_key")
-      if ((current_idx > 0)); then
-        ((current_idx--))
+  "$up_key")
+    if ((current_idx > 0)); then
+      ((current_idx--))
+    else
+      current_idx=$((num_options - 1)) # Wrap to the last option
+    fi
+    ;;
+
+  "$down_key")
+    if ((current_idx < num_options - 1)); then
+      ((current_idx++))
+    else
+      current_idx=0 # Wrap to the first option
+    fi
+    ;;
+
+  "$left_key")
+    if ((total_pages > 1)); then
+      if ((current_idx - page_size >= 0)); then
+        # Navigate to the previous page
+        current_idx=$(((current_idx / page_size - 1) * page_size))
       else
-        current_idx=$((num_options - 1))  # Wrap to the last option
+        # Wrap to the last page
+        current_idx=$((((num_options - 1) / page_size) * page_size))
       fi
-      ;;
+    fi
+    ;;
 
-    "$down_key")
-      if ((current_idx < num_options - 1)); then
-        ((current_idx++))
+  "$right_key")
+    if ((total_pages > 1)); then
+      next_page_start=$(((current_idx / page_size + 1) * page_size))
+      if ((next_page_start < num_options)); then
+        current_idx=$next_page_start # Move to the next page
       else
-        current_idx=0  # Wrap to the first option
+        current_idx=0 # Wrap to the first page
       fi
-      ;;
-
-    "$left_key")
-      if ((total_pages > 1)); then
-        if ((current_idx - page_size >= 0)); then
-          # Navigate to the previous page
-          current_idx=$(((current_idx / page_size - 1) * page_size))
-        else
-          # Wrap to the last page
-          current_idx=$((((num_options - 1) / page_size) * page_size))
-        fi
-      fi
-      ;;
-
-    "$right_key")
-      if ((total_pages > 1)); then
-        next_page_start=$(((current_idx / page_size + 1) * page_size))
-        if ((next_page_start < num_options)); then
-          current_idx=$next_page_start  # Move to the next page
-        else
-          current_idx=0  # Wrap to the first page
-        fi
-      fi
-      ;;
+    fi
+    ;;
   esac
 
   echo "$current_idx"
@@ -3638,17 +3629,17 @@ handle_arrow_key() {
 
 # Function to validate page number
 validate_page_number() {
-    local page_number="$1"
-    local max_page="$2"
+  local page_number="$1"
+  local max_page="$2"
 
-    if ! [[ "$page_number" =~ ^[1-9][0-9]*$ ]]; then
-        echo "Invalid input! Must be a number."
-        return 1
-    elif ((page_number > max_page)); then
-        echo "Page number out of range!"
-        return 1
-    fi
-    return 0
+  if ! [[ "$page_number" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Invalid input! Must be a number."
+    return 1
+  elif ((page_number > max_page)); then
+    echo "Page number out of range!"
+    return 1
+  fi
+  return 0
 }
 
 # Function to navigate to a specific page
@@ -3661,9 +3652,9 @@ go_to_specific_page() {
   local menu_options=("$@")
 
   num_options=${#menu_options[@]}
-  
+
   echo -ne "${faded_color}Enter the page number: ${reset_color}" >&2
-  read -e -r page_number  # Input with no echo
+  read -e -r page_number # Input with no echo
 
   # Validate page number
   validate_page_number "$page_number" "$(((num_options - 1) / page_size + 1))"
@@ -3684,48 +3675,48 @@ go_to_specific_page() {
     echo -ne "${faded_color}$message${reset_color}" >&2
     read -r go_back_choice
     case "$go_back_choice" in
-      [yY])
-        current_idx=$previous_idx
-        break
-        ;;
-      [nN])
-        break
-        ;;
-      *)
-        echo -e "${error_color}Invalid choice! Please enter 'y' or 'n'.${reset_color}" >&2
-        ;;
+    [yY])
+      current_idx=$previous_idx
+      break
+      ;;
+    [nN])
+      break
+      ;;
+    *)
+      echo -e "${error_color}Invalid choice! Please enter 'y' or 'n'.${reset_color}" >&2
+      ;;
     esac
   done
 
   echo "$current_idx"
 }
 
-handle_enter_key(){
+handle_enter_key() {
   local menu_item="${menu_options[current_idx]}"
 
   option_label="$(get_menu_item_label "$menu_item")"
   question="Are you sure you want to select \"$option_label\"? (Y/n)"
   message="${faded_color}$question${reset_color}"
   if handle_confirmation_prompt "$message" 'n'; then
-      option_action=$(get_menu_item_action "$menu_item")
+    option_action=$(get_menu_item_action "$menu_item")
 
-      clean_screen
-      kill_current_pid
+    clean_screen
+    kill_current_pid
 
-      message="\n${faded_color}Operation interrupted. Exiting script...${reset_color}"
-      command="clean_screen; error \"$message\"; wait_for_input; cleanup; clean_screen; return"
-      trap "$command" SIGINT
+    message="\n${faded_color}Operation interrupted. Exiting script...${reset_color}"
+    command="clean_screen; error \"$message\"; wait_for_input; cleanup; clean_screen; return"
+    trap "$command" SIGINT
 
-      (eval "$option_action") || echo -e "$message"
-      sleep 1
+    (eval "$option_action") || echo -e "$message"
+    sleep 1
 
-      trap - SIGINT
+    trap - SIGINT
 
-      clean_screen
+    clean_screen
   fi
 }
 
-handle_quit_key(){
+handle_quit_key() {
   local confirm_exit
 
   message="${faded_color}Are you sure you want to exit this menu? (y/n)${reset_color}"
@@ -3759,17 +3750,17 @@ transition_to_menu() {
   local progress_length=30
   local colors=("\033[1;34m" "\033[1;32m" "\033[1;36m" "\033[1;35m" "\033[1;31m")
   local spin_chars=('/' '-' '\\' '|')
-  
+
   # Clear the line and show the initial transition message
   echo -ne "\r${colors[0]}Transitioning to ${new_menu}... ${reset_color}" >&2
 
-  for ((i=0; i<progress_length; i++)); do
+  for ((i = 0; i < progress_length; i++)); do
     # Update the progress bar
     progress_bar+="="
-    
+
     # Cycle through colors for a smooth transition effect
     color_index=$((i % ${#colors[@]}))
-    
+
     # Add spinning loader
     spin_index=$((i % ${#spin_chars[@]}))
     spin_char="${spin_chars[$spin_index]}"
@@ -3794,7 +3785,7 @@ navigate_menu() {
   clean_screen
   transition_to_menu "$menu_name"
   clean_screen
-  
+
   menu_json=$(get_menu "$menu_name") || {
     error "Failed to load menu ${menu_name}" >&2
     return 1
@@ -3802,13 +3793,13 @@ navigate_menu() {
 
   # If the menu_navigation_history is empty, set the first menu as the current menu
   if ! is_menu_in_history "$menu_name"; then
-      push_menu_in_history "$menu_name"
+    push_menu_in_history "$menu_name"
   fi
 
   local title page_size menu_items_json
   local menu_options=()
   local debounce_time=0.25
-  
+
   title=$(jq -r '.title' <<<"$menu_json")
   page_size=$(jq -r '.page_size' <<<"$menu_json")
   menu_items_json=$(jq -r '.items' <<<"$menu_json")
@@ -3831,14 +3822,14 @@ navigate_menu() {
 
   while true; do
     render_menu \
-        "$title" "$current_idx" \
-        "$page_size" "$is_new_page" "${menu_options[@]}"
+      "$title" "$current_idx" \
+      "$page_size" "$is_new_page" "${menu_options[@]}"
 
     # Locking the keyboard input to avoid unnecessary display of captured characters
     read -rsn1 user_key
 
     # FIXME: Header, keyboard shortcuts and page counting may be dynamic
-    menu_line_count=$((page_size+7))
+    menu_line_count=$((page_size + 7))
     kill_current_pid
     move_cursor $menu_line_count 0
 
@@ -3850,94 +3841,94 @@ navigate_menu() {
     previous_idx=$current_idx
 
     case "$user_key" in
-    $'\x1B')  # Detect escape sequences (e.g., arrow keys)
+    $'\x1B') # Detect escape sequences (e.g., arrow keys)
       read -rsn2 -t "$debounce_time" user_key
       is_new_page=$(is_new_page_handler "$user_key" "$current_idx" "$num_options" "$page_size")
 
       # Call the function to handle arrow key input
-      current_idx=$(\
+      current_idx=$(
         handle_arrow_key "$user_key" \
           "$current_idx" "$num_options" "$page_size" "$total_pages"
       )
       ;;
 
-    # Go to specific page
+      # Go to specific page
     "g")
-        previous_idx="$current_idx"
+      previous_idx="$current_idx"
 
-        current_idx="$(
-          go_to_specific_page "$current_idx" \
-            "$page_size" "$title" "$is_new_page" "$menu_options"
-        )"
-        
-        is_new_page="$current_idx"!="$previous_idx"  
-        ;;
+      current_idx="$(
+        go_to_specific_page "$current_idx" \
+          "$page_size" "$title" "$is_new_page" "$menu_options"
+      )"
 
-    # Reset menu options
+      is_new_page="$current_idx"!="$previous_idx"
+      ;;
+
+      # Reset menu options
     "r")
       menu_options=("${original_menu_options[@]}")
       current_idx=0
       continue
       ;;
 
-    # Start search
+      # Start search
     "/")
-        echo -ne "${faded_color}Search: ${reset_color}" >&2
-        read -e -r search_key
+      echo -ne "${faded_color}Search: ${reset_color}" >&2
+      read -e -r search_key
 
-        # Clear the line if the prompt disappears after backspace
-        echo -ne "\033[2K\r"
+      # Clear the line if the prompt disappears after backspace
+      echo -ne "\033[2K\r"
 
-        # Reset to original options if 'r' is pressed
-        if [[ "$search_key" == "r" ]]; then
-          menu_options=("${original_menu_options[@]}")
-          current_idx=0  # Reset the index to 0 if 'r' is pressed
-          return
+      # Reset to original options if 'r' is pressed
+      if [[ "$search_key" == "r" ]]; then
+        menu_options=("${original_menu_options[@]}")
+        current_idx=0 # Reset the index to 0 if 'r' is pressed
+        return
+      fi
+
+      local filtered_options=()
+      shopt -s nocasematch
+      for option in "${original_menu_options[@]}"; do
+        # Extract label and description using jq
+        label=$(echo "$option" | jq -r '.label // empty')
+        description=$(echo "$option" | jq -r '.description // empty')
+
+        # Match search_key against label or description
+        if [[ "$label" == *"$search_key"* || "$description" == *"$search_key"* ]]; then
+          filtered_options+=("$option")
         fi
+      done
 
-        local filtered_options=()
-        shopt -s nocasematch
-        for option in "${original_menu_options[@]}"; do
-          # Extract label and description using jq
-          label=$(echo "$option" | jq -r '.label // empty')
-          description=$(echo "$option" | jq -r '.description // empty')
+      # Turn it off after the loop
+      shopt -u nocasematch
 
-          # Match search_key against label or description
-          if [[ "$label" == *"$search_key"* || "$description" == *"$search_key"* ]]; then
-            filtered_options+=("$option")
-          fi
-        done
+      # If no matches, reset to original options
+      if [[ ${#filtered_options[@]} -eq 0 ]]; then
+        menu_options_ref=("${original_menu_options[@]}")
+        warning "No matches found, resetting to original options."
+        sleep 0.5
+      else
+        # Update filtered options and reset index
+        menu_options=("${filtered_options[@]}")
+        current_idx=0 # Reset the index after filtering
+      fi
 
-        # Turn it off after the loop
-        shopt -u nocasematch  
+      is_new_page=1
+      ;;
 
-        # If no matches, reset to original options
-        if [[ ${#filtered_options[@]} -eq 0 ]]; then
-          menu_options_ref=("${original_menu_options[@]}")
-          warning "No matches found, resetting to original options."
-          sleep 0.5
-        else
-          # Update filtered options and reset index
-          menu_options=("${filtered_options[@]}")
-          current_idx=0  # Reset the index after filtering
-        fi
-
-        is_new_page=1
-        ;;
-
-    # Show help
+      # Show help
     "h")
       show_help "$num_options" "$page_size"
       sleep 2
       ;;
 
-    # Enter key (select option)
+      # Enter key (select option)
     "")
       echo >&2
       handle_enter_key "${menu_options[current_idx]}"
       ;;
 
-    # Exit menu
+      # Exit menu
     "q")
       handle_quit_key
 
@@ -4119,7 +4110,7 @@ list_stack_compose_required_fields() {
 }
 
 # Function to rollback a stack
-rollback_stack(){
+rollback_stack() {
   local stack_name="$1"
 
   docker stack rm "$stack_name"
@@ -4134,9 +4125,9 @@ rollback_stack(){
 
 # Function to check if Docker Swarm is active
 is_swarm_active() {
-  local state=$(\
-    docker info --format '{{.Swarm.LocalNodeState}}' 2>/dev/null | \
-    tr -d '\n' | tr -d ' '\
+  local state=$(
+    docker info --format '{{.Swarm.LocalNodeState}}' 2>/dev/null |
+      tr -d '\n' | tr -d ' '
   )
   if [[ -z "$state" ]]; then
     warning "Swarm state is empty or undefined." >&2
@@ -4196,12 +4187,12 @@ is_portainer_credentials_correct() {
   content_type="application/json"
   resource='auth'
 
-  url="$(\
-    get_api_url "$protocol" "$portainer_url" "$resource"\
+  url="$(
+    get_api_url "$protocol" "$portainer_url" "$resource"
   )"
 
-  response=$(\
-    curl -k -s -X POST -H "Content-Type: $content_type" -d "$credentials" "$url" \
+  response=$(
+    curl -k -s -X POST -H "Content-Type: $content_type" -d "$credentials" "$url"
   )
 
   # Check if the response contains a valid token
@@ -4221,12 +4212,7 @@ signup_on_portainer() {
   local portainer_url="$1"
   local username="$2"
   local password="$3"
-  
-  echo "Username: $username" >&2
-  echo "Password: $password" >&2
- 
-  # Prepare credentials in JSON format
-  echo "Credentials: $credentials" >&2
+
   # Validate and reformat JSON
   credentials=$(echo "$credentials" | jq -c . 2>/dev/null)
   if [ $? -ne 0 ]; then
@@ -4257,9 +4243,9 @@ signup_on_portainer() {
   fi
 
   # Parse the response and check if it contains the expected fields
-  user_info=$(\
-    echo "$response" | \
-    jq -c 'select(.Id and .Username and .Password and .Role)'
+  user_info=$(
+    echo "$response" |
+      jq -c 'select(.Id and .Username and .Password and .Role)'
   )
   if [ $? -ne 0 ]; then
     echo "Error: The response does not contain the expected fields." >&2
@@ -4302,7 +4288,7 @@ get_portainer_auth_token() {
   protocol="https"
   method="POST"
   content_type="application/json"
-  
+
   resource='auth'
 
   url="$(get_api_url $protocol $portainer_url $resource)"
@@ -4331,8 +4317,8 @@ get_portainer_endpoint_id() {
   data="{}"
   jq_filter='.[] | select(.Name == "primary") | .Id'
 
-  url="$(\
-    get_api_url "$protocol" "$portainer_url" "$resource" \
+  url="$(
+    get_api_url "$protocol" "$portainer_url" "$resource"
   )"
 
   endpoint_id="$(
@@ -4359,8 +4345,8 @@ get_portainer_swarm_id() {
   content_type='application/json'
   jq_filter='.ID'
 
-  url="$(\
-    get_api_url "$protocol" "$portainer_url" "$resource" \
+  url="$(
+    get_api_url "$protocol" "$portainer_url" "$resource"
   )"
 
   local swarm_id
@@ -4391,7 +4377,7 @@ get_portainer_swarm_stacks() {
   content_type='application/json'
   jq_filter='.ID'
 
-  url="$(\
+  url="$(
     get_api_url "$protocol" "$portainer_url" "$resource"
   )"
 
@@ -4504,7 +4490,7 @@ deploy_stack_on_portainer() {
   local portainer_credentials="$2"
   local stack_name="$3"
 
-  portainer_auth_token="$(\
+  portainer_auth_token="$(
     get_portainer_auth_token "$portainer_url" "$portainer_credentials"
   )"
 
@@ -4518,20 +4504,12 @@ deploy_stack_on_portainer() {
   if [[ $? -eq 0 ]]; then
     warning "Stack $stack_name exists"
     return 1
-    # delete_stack_on_portainer "$portainer_url" "$portainer_auth_token" "$stack_name"
-    # check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"
-    # 
-    # if [[ $? -eq 1 ]]; then
-    #   success "Stack $stack_name deleted"
-    # else
-    #   error "Stack $stack_name not deleted"
-    # fi
   else
     warning "Stack $stack_name does not exist"
   fi
 
   upload_stack_on_portainer "$portainer_url" "$credentials" \
-    "$stack_name" "$STACKS_FOLDER/$stack_name.yaml" || \
+    "$stack_name" "$STACKS_DIR/$stack_name/docker-compose.yaml" ||
     error "Failed to upload stack '$stack_name'"
 }
 
@@ -4621,11 +4599,12 @@ build_stack_info() {
 
   # Build JSON object
   local json_output
-  json_output=$(jq -n \
-    --arg config_path "${STACKS_FOLDER}/${stack_name}_config.json" \
-    --arg compose_path "${STACKS_FOLDER}/${stack_name}.yaml" \
-    --arg compose_func "compose_${stack_name}" \
-    '{
+  json_output=$(
+    jq -n \
+      --arg config_path "${STACKS_DIR}/${stack_name}/stack_config.json" \
+      --arg compose_path "${STACKS_DIR}/${stack_name}/docker-compose.yaml" \
+      --arg compose_func "compose_${stack_name}" \
+      '{
       config_path: $config_path,
       compose_path: $compose_path,
       compose_func: $compose_func
@@ -4697,8 +4676,8 @@ create_network_if_not_exists() {
     info "Creating network: $network_name"
 
     # Get the IP address
-    read -r ip _ <<<$(\
-      hostname -I | tr ' ' '\n' | grep -v '^127\.0\.0\.1' | tr '\n' ' '\
+    read -r ip _ <<<$(
+      hostname -I | tr ' ' '\n' | grep -v '^127\.0\.0\.1' | tr '\n' ' '
     )
 
     # Create the overlay network
@@ -4755,12 +4734,15 @@ deploy_dependencies() {
 
   info "Deploying dependencies for stack '$stack_name'"
 
-  # Parse dependencies JSON and iterate through each dependency
-  echo "$dependencies_json" | jq -c '.[]' | while IFS= read -r dependency; do
-    dependency=$(echo "$dependency" | sed -e 's/^"//' -e 's/"$//')
+  # Read dependencies as an array using jq
+  local dependencies
+  mapfile -t dependencies < <(echo "$dependencies_json" | jq -r '.[]')
+
+  # Iterate over the array
+  for dependency in "${dependencies[@]}"; do
     info "Processing dependency: $dependency"
 
-    if ! docker stack ls --format '{{.Name}}' | grep -q "$dependency"; then
+    if ! docker stack ls --format '{{.Name}}' | grep -q "^$dependency$"; then
       info "Deploying dependency: $dependency"
       deploy_stack "$dependency"
       if [ $? -ne 0 ]; then
@@ -4777,8 +4759,16 @@ deploy_dependencies() {
 execute_refresh_actions() {
   local refresh_actions="$1"
   local stack_variables="$2"
+  local updated_variables="$stack_variables" # Initialize with input variables
 
-  for action in $(echo "$refresh_actions" | jq -c '.[]'); do
+  local actions
+  actions=$(echo "$refresh_actions" | jq -c '.[]') || {
+    error "Invalid JSON in refresh actions"
+    return 1
+  }
+
+  # Iterate over the refresh actions
+  while IFS= read -r action; do
     local action_name
     action_name=$(echo "$action" | jq -r '.name')
 
@@ -4786,26 +4776,26 @@ execute_refresh_actions() {
     command=$(echo "$action" | jq -r '.command')
 
     # Execute the command and capture its output (must be a valid JSON)
-    step_info "Executing refresh action: $action_name"
+    info "Executing refresh action: $action_name"
     command_output=$(eval "$command") || {
       error "Failed to execute refresh action: $action_name"
       return 1
     }
 
     # Validate if the output is a valid JSON object
-    echo "$command_output" | jq empty > /dev/null 2>&1 || {
+    echo "$command_output" | jq empty >/dev/null 2>&1 || {
       error "Refresh action '$action_name' did not return a valid JSON."
       return 1
     }
 
     # Merge the command output with the existing stack variables using add_json_objects
-    stack_variables=$(add_json_objects "$stack_variables" "$command_output") || {
+    updated_variables=$(add_json_objects "$updated_variables" "$command_output") || {
       error "Failed to update stack variables after executing '$action_name'"
       return 1
     }
-  done
+  done <<<"$actions"
 
-  echo "$stack_variables"
+  echo "$updated_variables"
 }
 
 # Function to execute prepare actions
@@ -4834,7 +4824,7 @@ execute_prepare_actions() {
 # Function to build the Docker Compose template
 build_compose_template() {
   local stack_name="$1"
-  local stack_variables="$2"
+  local stack_variables_json="$2"
 
   info "Building Docker Compose template for stack '$stack_name'"
 
@@ -4850,9 +4840,27 @@ build_compose_template() {
   local compose_template_func
   compose_template_func=$(echo "$stack_info" | jq -r '.compose_func')
 
+  # Ensure the directory for the compose file exists
+  local compose_dir
+  compose_dir=$(dirname "$compose_path")
+  if [ ! -d "$compose_dir" ]; then
+    mkdir -p "$compose_dir" || {
+      error "Failed to create directory: $compose_dir"
+      return 1
+    }
+  fi
+
+  # Convert stack_variables JSON into an array of key=value pairs
+  declare -A stack_variables
+
+  # Parse JSON into an associative array
+  while IFS="=" read -r key value; do
+    stack_variables["$key"]="$value"
+  done < <(echo "$stack_variables_json" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"')
+
   # Generate the substituted template
   local substituted_template
-  substituted_template=$(replace_mustache_variables "$($compose_template_func)" "$stack_variables")
+  substituted_template=$(replace_mustache_variables "$($compose_template_func)" stack_variables)
 
   # Write the template to the compose file
   echo "$substituted_template" >"$compose_path"
@@ -4871,32 +4879,32 @@ deploy_stack_on_target() {
   local target="$3"
 
   case "$target" in
-    swarm)
-      info "Deploying stack '$stack_name' on Docker Swarm"
-      docker stack deploy -c "$compose_path" "$stack_name"
-      ;;
-    portainer)
-      info "Deploying stack '$stack_name' on Portainer"
-      local portainer_config_json
-      portainer_config_json=$(\
-        load_json "$STACKS_FOLDER/portainer_config.json"\
-      )
-      local portainer_url
-      portainer_url=$(\
-        echo "$portainer_config_json" | jq -r '.variables.portainer_url'\
-      )
-      local portainer_credentials
-      portainer_credentials=$(\
-        echo "$portainer_config_json" | jq -r '.variables.portainer_credentials'\
-      )
+  swarm)
+    info "Deploying stack '$stack_name' on Docker Swarm"
+    docker stack deploy -c "$compose_path" "$stack_name"
+    ;;
+  portainer)
+    info "Deploying stack '$stack_name' on Portainer"
+    local portainer_config_json
+    portainer_config_json=$(
+      load_json "$STACKS_DIR/portainer/stack_config.json"
+    )
+    local portainer_url
+    portainer_url=$(
+      echo "$portainer_config_json" | jq -r '.variables.portainer_url'
+    )
+    local portainer_credentials
+    portainer_credentials=$(
+      echo "$portainer_config_json" | jq -r '.variables.portainer_credentials'
+    )
 
-      upload_stack_on_portainer "$portainer_url" "$portainer_credentials" \
-        "$stack_name" "$compose_path"
-      ;;
-    *)
-      error "Unknown deployment target: $target"
-      return 1
-      ;;
+    upload_stack_on_portainer "$portainer_url" "$portainer_credentials" \
+      "$stack_name" "$compose_path"
+    ;;
+  *)
+    error "Unknown deployment target: $target"
+    return 1
+    ;;
   esac
 
   if [ $? -ne 0 ]; then
@@ -4928,238 +4936,21 @@ execute_finalize_actions() {
   done
 }
 
+# Function to save stack configuration
+save_stack_configuration() {
+  local stack_name="$1"
+  local stack_config_json="$2"
 
-# # Function to deploy a service
-# deploy_stack_pipeline() {
-#   # Arguments
-#   local stack_name="$1" # stack name (e.g., redis, postgres)
-#   local config_json="$2" # JSON data with stack setup cofiguration
-# 
-#   total_steps=10
-# 
-#   stack_step(){
-#     type="$1" 
-#     step="$2"
-#     message="$3"
-#     stack_message="[$stack_name] $message"
-#     step_progress $step $total_steps "$stack_message"
-#   }
-# 
-#   stack_step_progress(){
-#     stack_step "progress" "$1" "$2"
-#   }
-# 
-#   stack_step_warning(){
-#     stack_step "warning" "$1" "$2"
-#   }
-#   
-#   stack_step_error(){
-#     stack_step "error" "$1" "$2"
-#   }
-# 
-#   stack_handle_exit(){
-#     exit_code="$1" 
-#     step="$2"
-#     message="$3"
-#     stack_message="[$stack_name] $message"
-#     handle_exit "$exit_code" "$step" $total_steps "$stack_message"
-#   }
-# 
-#   # Declare an associative array to hold service variables
-#   declare -A stack_variables
-# 
-#   # Parse JSON data and populate associative array
-#   while IFS="=" read -r key value; do
-#     stack_variables["$key"]="$value"
-#   done < <(\
-#     echo "$config_json" | \
-#     jq -r '.variables | to_entries | .[] | "\(.key)=\(.value | tostring)"'\
-#   )
-# 
-#   highlight "Deploying stack '$stack_name'"
-# 
-#   # Step 1: Deploy Dependencies
-#   stack_step_progress 1 "Checking and deploying dependencies"
-#   local dependencies=$(echo "$config_json" | jq -c '.dependencies // []')
-# 
-#   # Validate JSON
-#   if ! echo "$dependencies" | jq empty; then
-#       stack_step_error 9 "Invalid JSON in dependencies: $dependencies"
-#       return 1
-#   fi
-# 
-#   if [[ "$dependencies" != "[]" ]]; then
-#       info "Required dependencies: $dependencies"
-#   fi
-# 
-#   # Check if there are dependencies, and if none, display a message
-#   if [ "$(echo "$dependencies" | jq length)" -eq 0 ]; then
-#     stack_step_warning 1 "No dependencies to deploy"
-#   else
-#     echo "$dependencies" | jq -c '.[]' | while IFS= read -r dependency; do
-#       dependency=$(echo "$dependency" | sed -e 's/^"//' -e 's/"$//')
-#       info "Processing dependency: $dependency"
-# 
-#       # Check if stack dependency exists on docker
-#       if ! docker stack ls --format '{{.Name}}' | grep -q "$dependency"; then
-#         dependency_message="Deploying dependency: $dependency"
-#         stack_step_progress 1 "$dependency_message"
-# 
-#         # Fetch JSON for the dependency
-#         deploy_stack "$dependency"
-#         stack_handle_exit "$?" 1 "$dependency_message"
-#       else
-#         dependency_message="Dependency \"$dependency\" already exists. Skipping..."
-#         stack_step_warning 1 "$dependency_message"
-#       fi
-#     done
-#   fi
-# 
-#   # Step 2: Gather setUp actions
-#   stack_step_progress 2 "Gathering prepare actions"
-#   local setUp_actions
-#   prepare_actions=$(echo "$config_json" | jq -r '.prepare?')
-#   finalize_actions=$(echo "$config_json" | jq -r '.finalize?')
-# 
-#   # Validate JSON
-#   if ! echo "$prepare_actions" | jq empty; then
-#       stack_step_error 9 "Invalid JSON in prepare_actions: $prepare_actions"
-#       return 1
-#   fi
-# 
-#   # Step 3: Run setUp actions individually
-#   if [ "$(echo "$prepare_actions" | jq length)" -eq 0 ]; then
-#     echo "$prepare_actions" | jq -c '.[]' | while IFS= read -r action; do
-#       # Perform the action (you can define custom functions to execute these steps)
-#       action_name=$(echo "$action" | jq -r '.name')
-#       
-#       message="Executing prepare action: $action_name"
-#       stack_step_error 3 "$message"
-# 
-#       # Call an appropriate function to handle this setUp action
-#       execute_action "$action" "$variables"
-#       stack_handle_exit $? 3 "$message"
-#     done
-#   else
-#     stack_step_warning 3 "No prepare actions defined"
-#   fi
-# 
-#   # Step 4: Build service-related file paths and Docker Compose template
-#   message="Building stack filepaths"
-#   stack_step_progress 4 "$message"
-#   stack_info="$(build_stack_info "$stack_name")"
-# 
-#   # Extract values from the JSON output
-#   local config_path=$(echo "$stack_info" | jq -r '.config_path')
-#   local compose_path=$(echo "$stack_info" | jq -r '.compose_path')
-#   local compose_template_func=$(echo "$stack_info" | jq -r '.compose_func')
-# 
-#   stack_handle_exit $? 4 "$message"
-# 
-#   # Step 5: Retrieve and substitute variables in Docker Compose template
-#   message="Creating Docker Compose template"
-#   stack_step_progress 5 "$message"
-#   local substituted_template
-#   substituted_template="$(\
-#     replace_mustache_variables "$($compose_template_func)" stack_variables \
-#   )"
-#   stack_handle_exit "$?" 5 "$message"
-# 
-#   # Step 6: Write the substituted template to the compose file
-# 
-#   # Create folder stacks on home path
-#   mkdir -p "$STACKS_FOLDER"
-# 
-#   message="Writing Docker Compose template"
-#   stack_step_progress 6 "$message" 
-#   echo "$substituted_template" >"$compose_path"
-#   stack_handle_exit $? 6 "$message"
-# 
-#   # Step 7: Validate the Docker Compose file
-#   message="Validating Docker Compose file" 
-#   stack_step_progress 7 "$message" 
-#   validate_compose_file "$compose_path"
-# 
-#   exit_code="$?"
-#   stack_handle_exit "$exit_code" 7 "$message"
-# 
-#   remove_compose_if_failed_deployment "$compose_path" "$exit_code"
-# 
-#   # FIX: Early return when there is an issue
-#   #if [ $exit_code -ne 1 ]; then
-#   #  return 1
-#   #fi
-# 
-#   # Step 8: Deploy the service on Docker Swarm
-#   if [ "$stack_name" == "traefik" ] || [ "$stack_name" == "portainer" ]; then
-#     message="Deploying stack on Docker Swarm"
-#     stack_step_progress 8 "$message"
-# 
-#     deploy_stack_on_swarm "$stack_name" "$compose_path"
-# 
-#   else
-#     message="Deploying stack on Portainer"
-#     stack_step_progress 8 "$message"
-# 
-#     # Get Portainer credentials
-#     portainer_config_json="$(load_json "$STACKS_FOLDER/portainer_config.json")" 
-#     portainer_url="$(\
-#       echo "$portainer_config_json" | jq -r '.variables.portainer_url')"
-#     portainer_credentials="$(\
-#       echo "$portainer_config_json" | jq -r '.variables.portainer_credentials')"
-# 
-#     upload_stack_on_portainer "$portainer_url" "$portainer_credentials" "$stack_name" "$compose_path"
-#   fi
-# 
-#   exit_code="$?"
-#   stack_handle_exit "$exit_code" 8 "$message"
-# 
-#   remove_compose_if_failed_deployment "$compose_path" "$exit_code"
-# 
-#   # FIX: Early return when there is an issue
-#   #if [ $exit_code -ne 1 ]; then
-#   #  return 1
-#   #fi
-# 
-#   # Validate JSON
-#   if ! echo "$finalize_actions" | jq empty; then
-#       stack_step_error 9 "Invalid JSON in finalize_actions: $finalize_actions"
-#       return 1
-#   fi
-# 
-#   # Step 9: Run finalize actions individually
-#   if echo "$finalize_actions" | jq -e '. | type == "array" and length > 0' > /dev/null 2>&1; then
-#     message="Executing finalize actions"
-#     stack_step_progress 9 "$message"
-# 
-#     echo "$finalize_actions" | jq -c '.[]' | while IFS= read -r action; do
-#       action_name=$(echo "$action" | jq -r '.name')
-# 
-#       message="Executing finalize action: $action_name"
-#       stack_step_error 9 "$message"
-# 
-#       # Perform the action
-#       execute_action "$action" "$variables"
-#       stack_handle_exit $? 9 "$message"
-#     done
-#   else
-#     stack_step_warning 9 "No finalize actions defined"
-#   fi
-# 
-#   # Step 9: Save service-specific information to a configuration file
-#   message="Saving stack configuration"
-#   stack_step_progress 10 "$message"
-#   write_json "$config_path" "$config_json"
-#   
-#   exit_code="$?"
-#   stack_handle_exit "$exit_code" 10 "$message"
-# 
-#   # Final Success Message
-#   deploy_success_message "$stack_name"
-# 
-#   wait_for_input
-# }
+  local stack_config_path
+  stack_config_path="$STACKS_DIR/$stack_name/stack_config.json"
+  echo "$stack_config_json" | jq '.' >"$stack_config_path"
+  if [ $? -ne 0 ]; then
+    error "Failed to save stack configuration for stack '$stack_name'"
+    return 1
+  fi
+}
 
+# Function to deploy a stack
 deploy_stack_pipeline() {
   local config_json="$1"
 
@@ -5169,7 +4960,7 @@ deploy_stack_pipeline() {
 
   # Parse stack variables
   local stack_variables
-  stack_variables=$(parse_stack_variables "$config_json")
+  stack_variables=$(echo "$config_json" | jq -r '.variables // []')
 
   highlight "Starting deployment pipeline for stack '$stack_name'"
 
@@ -5177,6 +4968,7 @@ deploy_stack_pipeline() {
   step_info 1 $total_steps "Deploying dependencies"
   local dependencies
   dependencies=$(echo "$config_json" | jq -r '.dependencies // []')
+  debug "Dependencies: $dependencies"
   deploy_dependencies "$stack_name" "$dependencies" || {
     failure "Failed to deploy dependencies"
     return 1
@@ -5185,8 +4977,9 @@ deploy_stack_pipeline() {
   # Step 2: Execute refresh actions
   step_info 2 $total_steps "Executing refresh actions"
   local refresh_actions
-  refresh_actions=$(echo "$config_json" | jq -r '.actions.refresh // []')
-  stack_variables=$(\
+  refresh_actions=$(jq -r '.actions.refresh // []' <<<"$config_json")
+
+  stack_variables=$(
     execute_refresh_actions "$refresh_actions" "$stack_variables"
   ) || {
     failure "Failed to execute refresh actions"
@@ -5259,6 +5052,8 @@ deploy_stack() {
     failure "Stack $stack_name configuration validation failed."
     return 1
   fi
+
+  wait_for_input
 
   clean_screen
 
@@ -5426,41 +5221,41 @@ test_smtp_html() {
 
 # Function to send a test email using swaks
 send_email() {
-    local from_email=$1
-    local to_email=$2
-    local server=$3
-    local port=$4
-    local user=$5
-    local pass=$6
-    local subject=$7
-    local body=$8
+  local from_email=$1
+  local to_email=$2
+  local server=$3
+  local port=$4
+  local user=$5
+  local pass=$6
+  local subject=$7
+  local body=$8
 
-    info "Sending test email..."
+  info "Sending test email..."
 
-    # Attempt to send the email using swaks and capture output and error details
-    local output
-    output=$(swaks \
-        --to "$to_email" \
-        --from "$from_email" \
-        --server "$server" \
-        --port "$port" \
-        --auth LOGIN --auth-user "$user" \
-        --auth-password "$pass" \
-        --tls \
-        --header "Subject: $subject" \
-        --header "Content-Type: text/html; charset=UTF-8" \
-        --data "Content-Type: text/html; charset=UTF-8\n\n$body" 2>&1)
+  # Attempt to send the email using swaks and capture output and error details
+  local output
+  output=$(swaks \
+    --to "$to_email" \
+    --from "$from_email" \
+    --server "$server" \
+    --port "$port" \
+    --auth LOGIN --auth-user "$user" \
+    --auth-password "$pass" \
+    --tls \
+    --header "Subject: $subject" \
+    --header "Content-Type: text/html; charset=UTF-8" \
+    --data "Content-Type: text/html; charset=UTF-8\n\n$body" 2>&1)
 
-    # Capture the exit status of the swaks command
-    local status=$?
+  # Capture the exit status of the swaks command
+  local status=$?
 
-    # Check if the email was sent successfully
-    if [ $status -eq 0 ]; then
-        success "Test email sent successfully to $to_email."
-    else
-        error "Failed to send test email. Details: $output"
-        exit $status
-    fi
+  # Check if the email was sent successfully
+  if [ $status -eq 0 ]; then
+    success "Test email sent successfully to $to_email."
+  else
+    error "Failed to send test email. Details: $output"
+    exit $status
+  fi
 }
 
 # Function to generate HTML for an email
@@ -5498,7 +5293,7 @@ format_disk_usage() {
   <th>Available</th>
   <th>Use%</th>
 </tr>"
-  local rows=$(df -h --output=source,fstype,size,used,avail,pcent | grep -E '^/dev' | \
+  local rows=$(df -h --output=source,fstype,size,used,avail,pcent | grep -E '^/dev' |
     awk '{printf "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n", $1, $2, $3, $4, $5, $6}')
   local footer="</table>"
 
@@ -5506,14 +5301,14 @@ format_disk_usage() {
 }
 
 # Function to generate the machine specs email
-generate_machine_specs_html(){
+generate_machine_specs_html() {
   # Example usage
   email_content=$(generate_machine_specs_content)
   generate_html "$BASE_TEMPLATE" "VPS Status" "Machine Specifications" "$email_content"
 }
 
 # Function to request SMTP information
-request_smtp_information(){
+request_smtp_information() {
   items='[
       {
           "name": "smtp_server",
@@ -5553,9 +5348,9 @@ request_smtp_information(){
 }
 
 # Function to save SMTP information
-save_smtp_information(){
+save_smtp_information() {
   collected_items="$(request_smtp_information)"
-  filename="$STACKME_FOLDER/smtp_info.json"
+  filename="$STACKME_DIR/smtp_info.json"
 
   if [[ "$collected_items" == "[]" ]]; then
     error "Unable to retrieve SMTP configuration."
@@ -5564,14 +5359,14 @@ save_smtp_information(){
 
   smtp_json=$(process_prompt_items "$collected_items")
 
-  info "Saving SMTP configuration to file: $filename"  
+  info "Saving SMTP configuration to file: $filename"
   write_json "$filename" "$smtp_json"
 
   echo "$smtp_json"
 }
 
 # Centralized function to retrieve and process SMTP configuration
-get_smtp_configuration(){
+get_smtp_configuration() {
   # First, try to load SMTP configuration from file
   smtp_json=$(load_smtp_information)
 
@@ -5588,7 +5383,7 @@ get_smtp_configuration(){
   echo "$smtp_json"
 }
 
-read_json(){
+read_json() {
   local filename="$1"
 
   if [[ -f "$filename" ]]; then
@@ -5597,8 +5392,8 @@ read_json(){
 }
 
 # Function to load SMTP configuration from file
-load_smtp_information(){
-  filename="$STACKME_FOLDER/smtp_info.json"
+load_smtp_information() {
+  filename="$STACKME_DIR/smtp_info.json"
   smtp_json=$(read_json "$filename")
 
   if [[ -z "$smtp_json" ]]; then
@@ -5607,12 +5402,12 @@ load_smtp_information(){
   fi
 
   info "Loaded SMTP configuration from file: $filename"
-  
+
   echo "$smtp_json"
 }
 
 # Function to send a test SMTP email
-send_smtp_test_email(){
+send_smtp_test_email() {
   # Retrieve SMTP configuration (load from file or request and save)
   smtp_json=$(get_smtp_configuration)
 
@@ -5636,7 +5431,7 @@ send_smtp_test_email(){
 }
 
 # Function to send machine specs email
-send_machine_specs_email(){
+send_machine_specs_email() {
   # Retrieve SMTP configuration (load from file or request and save)
   smtp_json=$(get_smtp_configuration)
 
@@ -5678,14 +5473,13 @@ is_package_installed() {
   fi
 
   # Check if the command exists in PATH (binary check)
-  if command -v "$package" > /dev/null 2>&1; then
+  if command -v "$package" >/dev/null 2>&1; then
     return 0
   fi
 
   # If none of the checks match, return not installed
   return 1
 }
-
 
 # Function to install a package
 install_package() {
@@ -5745,7 +5539,7 @@ update_and_install_packages() {
 
   # Install required apt packages quietly
   apt_packages=(
-    "sudo" "apt-utils" "apparmor-utils" "apache2-utils" "jq" "python3" 
+    "sudo" "apt-utils" "apparmor-utils" "apache2-utils" "jq" "python3"
     "docker" "figlet" "swaks" "netcat" "vnstat" "network-manager" "upower"
   )
   step_message="Installing required apt-get packages"
@@ -5808,9 +5602,9 @@ install_docker() {
     url="https://download.docker.com/linux/ubuntu/"
     arch="$(dpkg --print-architecture)"
     source="deb [arch=$arch signed-by=$keyring_path] $url $(lsb_release -cs) stable"
-    if curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
-        gpg --dearmor --yes -o "$keyring_path" && \
-        echo "$source" | tee /etc/apt/sources.list.d/docker.list > /dev/null; then
+    if curl -fsSL https://download.docker.com/linux/ubuntu/gpg |
+      gpg --dearmor --yes -o "$keyring_path" &&
+      echo "$source" | tee /etc/apt/sources.list.d/docker.list >/dev/null; then
       success "Docker repository added."
     else
       failure "Failed to add Docker GPG key or repository." >&2
@@ -5820,11 +5614,11 @@ install_docker() {
 
   # Step 3: Install Docker (if not already installed)
   info "Checking Docker installation..."
-  if command -v docker > /dev/null 2>&1; then
+  if command -v docker >/dev/null 2>&1; then
     success "Docker is already installed: $(docker --version)"
   else
     info "Installing Docker..."
-    if apt-get update -qq && \
+    if apt-get update -qq &&
       apt-get install -y -qq docker-ce docker-ce-cli containerd.io; then
       success "Docker installed successfully."
     else
@@ -5835,11 +5629,11 @@ install_docker() {
 
   # Step 4: Enable Docker service
   info "Checking Docker service status..."
-  if systemctl is-enabled docker > /dev/null 2>&1; then
+  if systemctl is-enabled docker >/dev/null 2>&1; then
     success "Docker service is already enabled."
   else
     info "Enabling Docker service..."
-    if systemctl enable docker > /dev/null 2>&1; then
+    if systemctl enable docker >/dev/null 2>&1; then
       success "Docker service enabled to start on boot."
     else
       failure "Failed to enable Docker service." >&2
@@ -5849,11 +5643,11 @@ install_docker() {
 
   # Step 5: Start Docker service
   info "Checking if Docker service is running..."
-  if systemctl is-active docker > /dev/null 2>&1; then
+  if systemctl is-active docker >/dev/null 2>&1; then
     success "Docker service is already running."
   else
     info "Starting Docker service..."
-    if systemctl start docker > /dev/null 2>&1; then
+    if systemctl start docker >/dev/null 2>&1; then
       success "Docker service started successfully."
     else
       failure "Failed to start Docker service." >&2
@@ -5900,20 +5694,20 @@ get_server_info() {
 # Function to initialize the server information
 initialize_server_info() {
   total_steps=7
-  server_filename="$STACKME_FOLDER/server_info.json"
+  server_filename="$STACKME_DIR/server_info.json"
 
   # Step 1: Check if server_info.json exists and is valid
   message="Initialization of server information"
   step_progress 1 $total_steps "$message"
   if [[ -f "$server_filename" ]]; then
     server_info_json=$(cat "$server_filename" 2>/dev/null)
-    if jq -e . >/dev/null 2>&1 <<< "$server_info_json"; then
+    if jq -e . >/dev/null 2>&1 <<<"$server_info_json"; then
       step_info 1 $total_steps "Valid $server_filename found. Using existing information."
     else
       step_error "Content on file $server_filename is invalid. Reinitializing..."
       server_info_json=$(get_server_info)
     fi
-  else  
+  else
     server_info_json=$(get_server_info)
   fi
 
@@ -5935,13 +5729,13 @@ initialize_server_info() {
   fi
 
   # Save the server information to a JSON file
-  echo "$server_info_json" > "$server_filename"
+  echo "$server_info_json" >"$server_filename"
   step_success 1 $total_steps "Server information saved to file $server_filename"
 
   step_message="Create stackme folder"
-  step_progress 2 $total_steps "$step_message" 
-  mkdir -p "$STACKME_FOLDER"
-  
+  step_progress 2 $total_steps "$step_message"
+  mkdir -p "$STACKME_DIR"
+
   handle_exit $? 2 $total_steps "$step_message"
 
   # Update /etc/hosts
@@ -5949,15 +5743,15 @@ initialize_server_info() {
   step_progress 3 $total_steps "$step_message"
   # Ensure /etc/hosts has the correct entry
   if ! grep -q "^127.0.0.1[[:space:]]$server_name" /etc/hosts; then
-    sed -i "/^127.0.0.1[[:space:]]/d" /etc/hosts  # Remove old entries
-    echo "127.0.0.1 $server_name" >> /etc/hosts
+    sed -i "/^127.0.0.1[[:space:]]/d" /etc/hosts # Remove old entries
+    echo "127.0.0.1 $server_name" >>/etc/hosts
   else
     step_info 3 $total_steps "$server_name is already present in /etc/hosts"
   fi
 
   handle_exit $? 3 $total_steps "$step_message"
 
-    # Set Hostname
+  # Set Hostname
   step_message="Set Hostname"
   step_progress 4 $total_steps "$step_message"
 
@@ -5972,7 +5766,7 @@ initialize_server_info() {
     # Allow a brief delay for changes to propagate
     sleep 1
   else
-      step_info 4 $total_steps "Hostname is already set to $server_name"
+    step_info 4 $total_steps "Hostname is already set to $server_name"
   fi
 
   # Install docker
@@ -5993,7 +5787,7 @@ initialize_server_info() {
   else
     # server_ip=$(curl ipinfo.io/ip)
     docker swarm init --advertise-addr $ip 2>&1
-    
+
     handle_exit $? 6 $total_steps "$step_message"
   fi
 
@@ -6013,7 +5807,7 @@ initialize_server_info() {
 # Function to generate compose file for Traefik
 compose_traefik() {
   CERT_PATH="/etc/traefik/letsencrypt/acme.json"
-  
+
   cat <<EOL
 version: '3'
 
@@ -6157,7 +5951,7 @@ EOL
 }
 
 # Function to generate compose file for Monitor
-compose_monitor(){
+compose_monitor() {
   cat <<EOL
 version: '3'
 
@@ -6385,7 +6179,7 @@ networks:
 EOL
 }
 
-compose_pgvector(){
+compose_pgvector() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6432,7 +6226,7 @@ networks:
 EOL
 }
 
-compose_mysql(){
+compose_mysql() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6485,7 +6279,7 @@ networks:
 EOL
 }
 
-compose_mongodb(){
+compose_mongodb() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6540,7 +6334,7 @@ networks:
 EOL
 }
 
-compose_nocodb(){
+compose_nocodb() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6595,7 +6389,7 @@ networks:
 EOL
 }
 
-compose_odoo(){
+compose_odoo() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6674,7 +6468,7 @@ networks:
 EOL
 }
 
-compose_rabbitmq(){
+compose_rabbitmq() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6727,97 +6521,97 @@ networks:
 EOL
 }
 
-compose_kafka(){
-  cat <<EOL
-version: '3.9'
+#compose_kafka(){
+#  cat <<EOL
+#version: '3.9'
+#
+#services:
+#  zookeeper:
+#    image: confluentinc/cp-zookeeper:7.5.0
+#    ports:
+#      - "2181:2181"
+#    environment:
+#      ZOOKEEPER_CLIENT_PORT: 2181
+#      ZOOKEEPER_TICK_TIME: 2000
+#    deploy:
+#      replicas: 1
+#      placement:
+#        constraints:
+#          - node.role == manager
+#
+#  kafka:
+#    image: confluentinc/cp-kafka:7.5.0
+#    ports:
+#      - "9092:9092"
+#    environment:
+#      KAFKA_BROKER_ID: 1
+#      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+#      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://{{url_kafka_broker}}:9094
+#      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+#      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+#      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094
+#      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+#    deploy:
+#      replicas: 1
+#      placement:
+#        constraints:
+#          - node.role == worker
+#        labels:
+#          - traefik.enable=true
+#          - traefik.http.routers.kafka-broker.entrypoints=websecure
+#          - traefik.http.routers.kafka-broker.rule=Host(`{{url_kafka_broker}}`)
+#          - traefik.http.routers.kafka-broker.tls.certresolver=letsencryptresolver
+#          - traefik.http.services.kafka-broker.loadbalancer.server.port=9094
+#
+#    networks:
+#      - {{network_name}}
+#
+#  kafka-rest-proxy:
+#    image: confluentinc/cp-kafka-rest:7.5.0
+#    ports:
+#      - "8082:8082"
+#    environment:
+#      KAFKA_REST_HOST_NAME: kafka-rest-proxy
+#      KAFKA_REST_LISTENERS: http://0.0.0.0:8082
+#      KAFKA_REST_BOOTSTRAP_SERVERS: kafka:9092
+#    deploy:
+#      replicas: 1
+#      labels:
+#        - traefik.enable=true
+#        - traefik.http.routers.kafka-rest.entrypoints=websecure
+#        - traefik.http.routers.kafka-rest.rule=Host(\`{{url_kafka_rest}}\`)
+#        - traefik.http.routers.kafka-rest.tls.certresolver=letsencryptresolver
+#        - traefik.http.services.kafka-rest.loadbalancer.server.port=8082
+#    networks:
+#      - {{network_name}}
+#
+#  kafka-ui:
+#    image: provectuslabs/kafka-ui:latest
+#    ports:
+#      - "8080:8080"
+#    environment:
+#      KAFKA_CLUSTERS_0_NAME: local
+#      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+#      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+#    deploy:
+#      replicas: 1
+#      labels:
+#        - traefik.enable=true
+#        - traefik.http.routers.kafka-ui.entrypoints=websecure
+#        - traefik.http.routers.kafka-ui.rule=Host(\`{{url_kafka_ui}}\`)
+#        - traefik.http.routers.kafka-ui.tls.certresolver=letsencryptresolver
+#        - traefik.http.services.kafka-ui.loadbalancer.server.port=8080
+#    networks:
+#      - {{network_name}}
+#
+#networks:
+#  {{network_name}}:
+#    name: {{network_name}}
+#    external: true
+#EOL
+#}
 
-services:
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    ports:
-      - "2181:2181"
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    deploy:
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-
-  kafka:
-    image: confluentinc/cp-kafka:7.5.0
-    ports:
-      - "9092:9092"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://{{url_kafka_broker}}:9094
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
-      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    deploy:
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == worker
-        labels:
-          - traefik.enable=true
-          - traefik.http.routers.kafka-broker.entrypoints=websecure
-          - traefik.http.routers.kafka-broker.rule=Host(`{{url_kafka_broker}}`)
-          - traefik.http.routers.kafka-broker.tls.certresolver=letsencryptresolver
-          - traefik.http.services.kafka-broker.loadbalancer.server.port=9094
-
-    networks:
-      - {{network_name}}
-
-  kafka-rest-proxy:
-    image: confluentinc/cp-kafka-rest:7.5.0
-    ports:
-      - "8082:8082"
-    environment:
-      KAFKA_REST_HOST_NAME: kafka-rest-proxy
-      KAFKA_REST_LISTENERS: http://0.0.0.0:8082
-      KAFKA_REST_BOOTSTRAP_SERVERS: kafka:9092
-    deploy:
-      replicas: 1
-      labels:
-        - traefik.enable=true
-        - traefik.http.routers.kafka-rest.entrypoints=websecure
-        - traefik.http.routers.kafka-rest.rule=Host(\`{{url_kafka_rest}}\`)
-        - traefik.http.routers.kafka-rest.tls.certresolver=letsencryptresolver
-        - traefik.http.services.kafka-rest.loadbalancer.server.port=8082
-    networks:
-      - {{network_name}}
-
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    ports:
-      - "8080:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
-      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
-    deploy:
-      replicas: 1
-      labels:
-        - traefik.enable=true
-        - traefik.http.routers.kafka-ui.entrypoints=websecure
-        - traefik.http.routers.kafka-ui.rule=Host(\`{{url_kafka_ui}}\`)
-        - traefik.http.routers.kafka-ui.tls.certresolver=letsencryptresolver
-        - traefik.http.services.kafka-ui.loadbalancer.server.port=8080
-    networks:
-      - {{network_name}}
-
-networks:
-  {{network_name}}:
-    name: {{network_name}}
-    external: true
-EOL
-}
-
-compose_minio(){
+compose_minio() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6875,7 +6669,7 @@ networks:
 EOL
 }
 
-compose_uptime_kuma(){
+compose_uptime_kuma() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6918,7 +6712,7 @@ networks:
 EOL
 }
 
-compose_quepasa(){
+compose_quepasa() {
   cat <<EOL
 version: "3.7"
 services:
@@ -7029,7 +6823,7 @@ networks:
 EOL
 }
 
-compose_typebot(){
+compose_typebot() {
   cat <<EOL
 version: "3.7"
 services:
@@ -7175,7 +6969,7 @@ networks:
 EOL
 }
 
-compose_whoami(){
+compose_whoami() {
   cat <<EOL
 version: '3'
 
@@ -7201,7 +6995,7 @@ networks:
 EOL
 }
 
-compose_airflow(){
+compose_airflow() {
   cat <<EOL
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -7481,13 +7275,14 @@ networks:
 EOL
 }
 
-compose_metabase(){
+compose_metabase() {
   cat <<EOL
 version: "3.7"
 services:
 
   metabase:
     image: metabase/metabase:latest
+    hostname: metabase
 
     volumes:
       - metabase_data:/metabase3-data
@@ -7496,13 +7291,11 @@ services:
       - {{network_name}}
 
     environment:
-      ## Url MetaBase
       - MB_SITE_URL=https://{{url_metabase}}
       - MB_REDIRECT_ALL_REQUESTS_TO_HTTPS=true
       - MB_JETTY_PORT=3000
       - MB_JETTY_HOST=0.0.0.0
 
-      ## Dados postgres
       - MB_DB_MIGRATION_LOCATION=none
       - MB_DB_TYPE=postgres
       - MB_DB_DBNAME=metabase
@@ -7511,6 +7304,12 @@ services:
       - MB_DB_PASS={{postgres_password}}
       - MB_DB_HOST=postgres
       - MB_AUTOMIGRATE=false
+    
+    healthcheck:
+      test: curl --fail -I http://127.0.0.1:3000/api/health || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
     deploy:
       mode: replicated
@@ -7521,7 +7320,7 @@ services:
       labels:
         - traefik.enable=true
         - traefik.http.routers.metabase.rule=Host(\`{{url_metabase}}\`)
-        - traefik.http.services.metabas.loadbalancer.server.port=3000
+        - traefik.http.services.metabase.loadbalancer.server.port=3000
         - traefik.http.routers.metabase.service=metabase
         - traefik.http.routers.metabase.entrypoints=websecure
         - traefik.http.routers.metabase.tls=true
@@ -7543,13 +7342,34 @@ EOL
 
 ############################# BEGIN OF STACK DEPLOYMENT UTILITARY FUNCTIONS #######################
 
-# Function to get the password from a configuration 
+fetch_database_password() {
+  local stack_name="$1"
+  local config_file="$STACKS_DIR/$stack_name/stack_config.json"
+
+  # Read the database password from the config file
+  local database_password
+  database_password=$(jq -r '.variables.db_password' "$config_file")
+
+  # Generate the output JSON
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg postgres_password "$database_password" \
+    '{($stack_name + "_password"): $postgres_password}'
+}
+
+# Function to get the postgres password from a configuration
 fetch_postgres_password() {
-  local config_file="$STACKS_DIR/postgres_config.json"
-  
-  postgres_password=$(cat $config_file | jq -r '.variables.postgres_password')
-  jq -n --arg postgres_password "$password_postgres" \
-    '{"postgres_password": $password_postgres}'
+  fetch_database_password "postgres"
+}
+
+# Function to get the mysql password from a configuration
+fetch_mysql_password() {
+  fetch_database_password "mysql"
+}
+
+# Function to get the mongodb password from a configuration
+sfetch_mongodb_password() {
+  fetch_database_password "mongodb"
 }
 
 # Function to create a PostgreSQL database
@@ -7590,9 +7410,9 @@ create_database_postgres() {
   fi
 }
 
-get_network_name(){
-  server_info_filename="$STACKME_FOLDER/server_info.json"
-  
+get_network_name() {
+  server_info_filename="$STACKME_DIR/server_info.json"
+
   if [[ ! -f "$server_info_filename" ]]; then
     error "File $server_info_filename not found."
     return 1
@@ -7600,8 +7420,8 @@ get_network_name(){
 
   server_info_json="$(cat "$server_info_filename")"
   echo "$(
-    search_on_json_array "$server_info_json" "name" "network_name" | \
-    jq -r ".value"
+    search_on_json_array "$server_info_json" "name" "network_name" |
+      jq -r ".value"
   )"
 
   return 0
@@ -7613,15 +7433,13 @@ manage_prometheus_config_file() {
   local prometheus_config_path="$1"
   shift
   local targets=("$@") # New targets passed as arguments
-  
+
   prometheus_scrape_config="$(create_scrape_config_object --job_name "prometheus" \
     --metrics_path "/metrics" \
     --honor_timestamps "false" \
     --honor_labels "true" \
     --scrape_interval "10s" \
     --targets "$(join_array ',' "${targets[@]}")")"
-
-    debug "$prometheus_scrape_config"
 
   add_scrape_config_object "$prometheus_config_path" "$prometheus_scrape_config"
 
@@ -7680,8 +7498,8 @@ generate_config_traefik() {
   dashboard_password="$(echo "$collected_object" | jq -r '.dashboard_password')"
 
   dashboard_credentials="$(
-        htpasswd -nbB "$dashboard_username" "$dashboard_password" | \
-        sed -e 's/\$/\$\$/g' -e 's/\\\//\//g'
+    htpasswd -nbB "$dashboard_username" "$dashboard_password" |
+      sed -e 's/\$/\$\$/g' -e 's/\\\//\//g'
   )"
 
   local network_name="$(get_network_name)"
@@ -7720,22 +7538,22 @@ generate_config_traefik() {
 # Function to generate configuration files for portainer
 generate_config_portainer() {
   local stack_name="portainer"
-  
+
   total_steps=3
-  
+
   highlight "Gathering $stack_name configuration"
 
   step_info 1 $total_steps "Retrieving Portainer agent version"
   local portainer_agent_version="$(get_latest_stable_version "portainer/agent")"
   info "Portainer agent version: $portainer_agent_version"
   step_success 1 $total_steps "Retrieving Portainer agent version succeeded"
-  
+
   step_info 2 $total_steps "Retrieving Portainer ce version"
   local portainer_ce_version="$(get_latest_stable_version "portainer/portainer-ce")"
   info "Portainer ce version: $portainer_ce_version"
   step_success 2 $total_steps "Retrieving Portainer ce version succeeded"
 
-  # Prompting step 
+  # Prompting step
   prompt_items='[
       {
           "name": "portainer_url",
@@ -7778,21 +7596,21 @@ generate_config_portainer() {
     jq -n \
       --arg username "$portainer_username" \
       --arg password "$portainer_password" \
-      '{"username": $username, "password": $password}'  
+      '{"username": $username, "password": $password}'
   )"
 
-  local network_name="$(get_network_name)"  
+  local network_name="$(get_network_name)"
 
   jq -n \
-  --arg stack_name "$stack_name" \
-  --arg portainer_agent_version "$portainer_agent_version" \
-  --arg portainer_ce_version "$portainer_ce_version" \
-  --arg portainer_url "$portainer_url" \
-  --arg portainer_username "$portainer_username" \
-  --arg portainer_password "$portainer_password" \
-  --argjson portainer_credentials "$portainer_credentials" \
-  --arg network_name "$network_name" \
-  '{  
+    --arg stack_name "$stack_name" \
+    --arg portainer_agent_version "$portainer_agent_version" \
+    --arg portainer_ce_version "$portainer_ce_version" \
+    --arg portainer_url "$portainer_url" \
+    --arg portainer_username "$portainer_username" \
+    --arg portainer_password "$portainer_password" \
+    --argjson portainer_credentials "$portainer_credentials" \
+    --arg network_name "$network_name" \
+    '{  
         "name": $stack_name,
         "target": "swarm",
         "variables": {
@@ -7815,14 +7633,14 @@ generate_config_portainer() {
             ]
         }
     }' | jq . || {
-        echo "Failed to generate JSON"
-        return 1
-    }
+    echo "Failed to generate JSON"
+    return 1
+  }
 }
 
-generate_config_monitor(){
+generate_config_monitor() {
   local stack_name="monitor"
-  
+
   total_steps=4
 
   prompt_items='[
@@ -7899,18 +7717,18 @@ generate_config_monitor(){
   step_info 3 $total_steps "Add scrape_configs to prometheus.yml"
 
   # Ensure everything is quoted correctly
-  prometheus_config_path="${STACKME_FOLDER}/prometheus/prometheus.yml"
+  prometheus_config_path="${STACKME_DIR}/prometheus/prometheus.yml"
   manage_prometheus_config_file "$prometheus_config_path" \
     "$url_prometheus" "$url_jaeger" "$url_node_exporter" "$url_cadvisor"
 
-  handle_exit "$?" 3 "$total_steps" "$message"  
+  handle_exit "$?" 3 "$total_steps" "$message"
 
   message="Creating file datasource.yml"
   step_info 4 $total_steps "$message"
 
-  mkdir -p "${STACKME_FOLDER}/prometheus"
-  
-  cat > "${STACKME_FOLDER}/prometheus/datasource.yml" <<EOL
+  mkdir -p "${STACKME_DIR}/prometheus"
+
+  cat >"${STACKME_DIR}/prometheus/datasource.yml" <<EOL
 apiVersion: 1
 datasources:
 - name: Prometheus
@@ -7921,7 +7739,7 @@ datasources:
   editable: true
 EOL
 
-  handle_exit "$?" 4 "$total_steps" "$message" 
+  handle_exit "$?" 4 "$total_steps" "$message"
 
   # Ensure everything is quoted correctly
   jq -n \
@@ -7962,7 +7780,7 @@ generate_config_database() {
 
   info "Generating use postgres password"
   local db_password="$(random_string)"
-  
+
   info "Retrieving network name"
   local network_name="$(get_network_name)"
 
@@ -7989,9 +7807,9 @@ generate_config_database() {
             "finalize": []
           }
       }' | jq . || {
-        error "Failed to generate JSON"
-        return 1
-    }
+    error "Failed to generate JSON"
+    return 1
+  }
 }
 
 # Function to generate configuration files for redis
@@ -8006,7 +7824,7 @@ generate_config_redis() {
   step_info 1 $total_steps "$step_message"
   local image_version="$(get_latest_stable_version "redis")"
   handle_exit "$?" 1 $total_steps "$step_message"
-  
+
   info "Redis version: $image_version"
 
   generate_config_database "$stack_name" "$image_version"
@@ -8048,11 +7866,10 @@ generate_config_mongodb() {
 
 generate_config_whoami() {
   local stack_name='whoami'
-  local container_port='80'
 
   total_steps=2
 
-  # Prompting step 
+  # Prompting step
   prompt_items='[
       {
           "name": "url_whoami",
@@ -8075,20 +7892,18 @@ generate_config_whoami() {
   step_info 2 $total_steps "Retrieving network name"
   network_name="$(get_network_name)"
 
-  domain_name="$(\
-    get_variable_value_from_collection "$collected_items" "url_whoami" \
+  url_whoami="$(
+    get_variable_value_from_collection "$collected_items" "url_whoami"
   )"
 
   jq -n \
     --arg stack_name "$stack_name" \
-    --arg container_port "$container_port" \
     --arg url_whoami "$url_whoami" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
           "target": "portainer",
           "variables": {
-              "container_port": $container_port,
               "url_whoami": $url_whoami,
               "network_name": $network_name,
           },
@@ -8099,9 +7914,9 @@ generate_config_whoami() {
             "finalize": []
           }
       }' | jq . || {
-        error "Failed to generate JSON"
-        return 1
-    } 
+    error "Failed to generate JSON"
+    return 1
+  }
 }
 
 # Function to generate Airflow service configuration JSON
@@ -8110,7 +7925,7 @@ generate_config_airflow() {
 
   total_steps=2
 
-  # Prompting step 
+  # Prompting step
   prompt_items='[
       {
           "name": "url_airflow",
@@ -8136,16 +7951,16 @@ generate_config_airflow() {
     return 1
   fi
 
-  url_airflow="$(\
-    get_variable_value_from_collection "$collected_items" "url_airflow" \
+  url_airflow="$(
+    get_variable_value_from_collection "$collected_items" "url_airflow"
   )"
-  url_flower="$(\
-    get_variable_value_from_collection "$collected_items" "url_flower" \
+  url_flower="$(
+    get_variable_value_from_collection "$collected_items" "url_flower"
   )"
 
   # Step 2: Create Airflow folders
   step_info 2 $total_steps "Creating Airflow folders"
-  mkdir -p "$STACKS_FOLDER/airflow/"{config,logs,dags,plugins}
+  mkdir -p "$STACKS_DIR/airflow/"{config,logs,dags,plugins}
 
   # Step 3: Retrieve network name
   step_info 3 $total_steps "Retrieving network name"
@@ -8177,9 +7992,9 @@ generate_config_airflow() {
             "finalize": []
           }
       }' | jq . || {
-        error "Failed to generate JSON"
-        return 1
-    } 
+    error "Failed to generate JSON"
+    return 1
+  }
 }
 
 # Function to generate Metabase service configuration JSON
@@ -8188,7 +8003,7 @@ generate_config_metabase() {
 
   total_steps=2
 
-  # Prompting step 
+  # Prompting step
   prompt_items='[
       {
           "name": "url_metabase",
@@ -8211,8 +8026,8 @@ generate_config_metabase() {
   step_info 2 $total_steps "Retrieving network name"
   network_name="$(get_network_name)"
 
-  url_metabase="$(\
-    get_variable_value_from_collection "$collected_items" "url_metabase" \
+  url_metabase="$(
+    get_variable_value_from_collection "$collected_items" "url_metabase"
   )"
 
   jq -n \
@@ -8223,8 +8038,7 @@ generate_config_metabase() {
           "name": $stack_name,
           "target": "portainer",
           "variables": {
-              "url_airflow": $url_airflow,
-              "url_flower": $url_flower,
+              "url_metabase": $url_metabase,
               "network_name": $network_name,
           },
           "dependencies": ["traefik", "portainer", "postgres", "redis"],
@@ -8236,13 +8050,19 @@ generate_config_metabase() {
                 "command": "fetch_postgres_password",
               }
             ],
-            "prepare": [],
+            "prepare": [
+              {
+                "name": "create_metabase_db",
+                "description": "Creating Metabase database",
+                "command": "create_database_postgres metabase",
+              }
+            ],
             "finalize": []
           }
       }' | jq . || {
-        error "Failed to generate JSON"
-        return 1
-    } 
+    error "Failed to generate JSON"
+    return 1
+  }
 }
 
 #################################### END OF STACK CONFIGURATION ###################################
@@ -8332,25 +8152,32 @@ deploy_stack_airflow() {
   deploy_stack 'airflow'
 }
 
+# Function to deploy a metabase service
+deploy_stack_metabase() {
+  cleanup
+  clean_screen
+  deploy_stack 'metabase'
+}
+
 ################################# END OF STACK DEPLOYMENT FUNCTIONS ################################
 
 ##################################### BEGIN OF MENU DEFINITIONS ####################################
 
 # Stacks
-define_menu_stacks_databases(){
+define_menu_stacks_databases() {
   menu_name="Databases"
 
   item_1="$(
-    build_menu_item "postgres" "Deploy" "deploy_stack_postgres" 
+    build_menu_item "postgres" "Deploy" "deploy_stack_postgres"
   )"
   item_2="$(
-    build_menu_item "redis" "Deploy" "deploy_stack_redis" 
+    build_menu_item "redis" "Deploy" "deploy_stack_redis"
   )"
   item_3="$(
-    build_menu_item "mysql" "Deploy" "deploy_stack_mysql" 
+    build_menu_item "mysql" "Deploy" "deploy_stack_mysql"
   )"
   item_4="$(
-    build_menu_item "mongodb" "Deploy" "deploy_stack_mongodb" 
+    build_menu_item "mongodb" "Deploy" "deploy_stack_mongodb"
   )"
 
   items=(
@@ -8362,14 +8189,14 @@ define_menu_stacks_databases(){
   define_menu "$menu_name" "$menu_object"
 }
 
-define_menu_miscelaneous(){
+define_menu_miscelaneous() {
   menu_name="Miscelaneous"
 
   item_1="$(
-    build_menu_item "whoami" "Deploy" "deploy_stack_whoami" 
+    build_menu_item "whoami" "Deploy" "deploy_stack_whoami"
   )"
   item_2="$(
-    build_menu_item "airflow" "Deploy" "deploy_stack_airflow" 
+    build_menu_item "airflow" "Deploy" "deploy_stack_airflow"
   )"
   item_3="$(
     build_menu_item "metabase" "Deploy" "deploy_stack_metabase"
@@ -8385,32 +8212,32 @@ define_menu_miscelaneous(){
 }
 
 # Stacks
-define_menu_stacks(){
+define_menu_stacks() {
   menu_name="Stacks"
 
   item_1="$(
-      build_menu_item "Startup" \
+    build_menu_item "Startup" \
       "Traefik & Portainer" \
       "deploy_stack_startup"
   )"
   item_2="$(
-      build_menu_item "Monitor" \
+    build_menu_item "Monitor" \
       "Jaeger & Prometheus & Node Exporter & Grafana & Kibana & " \
       "deploy_stack_monitor"
   )"
   item_3="$(
-      build_menu_item "Databases" \
+    build_menu_item "Databases" \
       "Postgres & Redis & MySQL & MongoDB & " \
       "navigate_menu 'Databases'"
   )"
   item_4="$(
     build_menu_item "Miscelaneous" \
-      "Whoami & Airflow & " \
+      "Whoami & Airflow & Metabase" \
       "navigate_menu 'Miscelaneous'"
   )"
 
   items=(
-    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5"
+    "$item_1" "$item_2" "$item_3" "$item_4"
   )
 
   page_size=10
@@ -8420,16 +8247,16 @@ define_menu_stacks(){
 }
 
 # Utilities
-define_menu_utilities(){
+define_menu_utilities() {
   menu_name="Utilities"
 
-  item_1="$(\
+  item_1="$(
     build_menu_item "Test SMPT e-mail" \
-      "Send" "send_smtp_test_email" \
+      "Send" "send_smtp_test_email"
   )"
   item_2="$(
     build_menu_item "Send Machine Specifications" \
-      "Send" "send_machine_specs_email"\
+      "Send" "send_machine_specs_email"
   )"
 
   items=(
@@ -8442,10 +8269,10 @@ define_menu_utilities(){
 }
 
 # VPS Health
-define_menu_health(){
+define_menu_health() {
   menu_name="Health"
 
-  item_1="$(\
+  item_1="$(
     build_menu_item "Machine specifications" "describe" \
       "diplay_header 'Machine specifications' && generate_machine_specs && wait_for_input"
   )"
@@ -8465,26 +8292,28 @@ define_menu_health(){
     build_menu_item "Network" "describe" \
       "diplay_header 'Network' && network_usage && wait_for_input"
   )"
-  item_6="$(\
+  item_6="$(
     build_menu_item "Top Processes" "list" \
-      "diplay_header 'Processes' && top_processes && wait_for_input" \
+      "diplay_header 'Processes' && top_processes && wait_for_input"
   )"
-  item_7="$(\
+  item_7="$(
     build_menu_item "Security" "diagnose" \
-      "diplay_header 'Security' && security_diagnostics && wait_for_input")"
-  item_8="$(\
-    build_menu_item "Load Average" "describe" \
-      "diplay_header 'Load Average' && load_average && wait_for_input")"
-  item_9="$(\
-    build_menu_item "Bandwidth" "describe" \
-      "diplay_header 'Bandwidth' && bandwidth_usage && wait_for_input" \
+      "diplay_header 'Security' && security_diagnostics && wait_for_input"
   )"
-  item_10="$(\
+  item_8="$(
+    build_menu_item "Load Average" "describe" \
+      "diplay_header 'Load Average' && load_average && wait_for_input"
+  )"
+  item_9="$(
+    build_menu_item "Bandwidth" "describe" \
+      "diplay_header 'Bandwidth' && bandwidth_usage && wait_for_input"
+  )"
+  item_10="$(
     build_menu_item "Package Updates" "install" \
-      "diplay_header 'Package Updates' && update_and_check_packages && wait_for_input" \
+      "diplay_header 'Package Updates' && update_and_check_packages && wait_for_input"
   )"
   items=(
-    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" \
+    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5"
     "$item_6" "$item_7" "$item_8" "$item_9" "$item_10"
   )
 
@@ -8496,7 +8325,7 @@ define_menu_health(){
 }
 
 # Menu Main
-define_menu_main(){
+define_menu_main() {
   menu_name="Main"
 
   item_1="$(build_menu_item "Stacks" "explore" "navigate_menu 'Stacks'")"
@@ -8513,23 +8342,23 @@ define_menu_main(){
 }
 
 # Populate MENUS
-define_menus(){
-    define_menu_main
-    
-    # Stacks and its submenus
-    define_menu_stacks
-    define_menu_stacks_databases
-    define_menu_miscelaneous
-    
-    define_menu_utilities
-    define_menu_health
+define_menus() {
+  define_menu_main
+
+  # Stacks and its submenus
+  define_menu_stacks
+  define_menu_stacks_databases
+  define_menu_miscelaneous
+
+  define_menu_utilities
+  define_menu_health
 }
 
-start_main_menu(){
-    navigate_menu "Main";
-    cleanup
-    clean_screen
-    farewell_message
+start_main_menu() {
+  navigate_menu "Main"
+  cleanup
+  clean_screen
+  farewell_message
 }
 
 ###################################### END OF MENU DEFINITIONS ####################################
@@ -8537,7 +8366,6 @@ start_main_menu(){
 # Display help message
 usage() {
   joined_arrows="$(join_array "," "${!ARROWS[@]}")"
-
 
   usage_messages=(
     "Usage: $0 [options]"
@@ -8574,8 +8402,6 @@ startup() {
   initialize_server_info
   clear
 
-  # Define menus on registry
-  define_menus
 }
 
 # Parse command-line arguments
@@ -8629,26 +8455,18 @@ main() {
   # Perform startup tasks
   startup
 
+  # Define menus on registry
+  define_menus
+
   start_main_menu
 }
 
 # Call the main function
 main "$@"
 
-# Function to check if a stack exists by name
-stack_exists() {
-  local stack_name="$1"
-  # Check if the stack exists by listing stacks and filtering by name
-  if docker stack ls --format '{{.Name}}' | grep -q "^$stack_name$"; then
-    return 0
-  else
-    return 1 # Stack does not exist
-  fi
-}
-
 # stack_name="postgres"
 # stack_exists "$stack_name"0
-# 
+#
 # if [[ $? -eq 0 ]]; then
 #   prompt_message="${yellow}Stack exists. Would you like to remove it? (Y/n)${normal}"
 #   if handle_confirmation_prompt "$prompt_message" "y" 5; then
@@ -8656,7 +8474,7 @@ stack_exists() {
 #   else
 #     echo "Stack $stack_name not removed!"
 #   fi
-# 
+#
 # else
 #   prompt_message="${yellow}Stack $stack_name does not exist. Would you like to install it? (Y/n)${normal}"
 #   if handle_confirmation_prompt "$prompt_message" "y" 5; then
