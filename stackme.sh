@@ -1364,6 +1364,43 @@ assert_domain_and_ip() {
   check_domain_ip "$domain_url" "$ip"
 }
 
+install_ctop() {
+    total_steps=2
+
+    # Check if ctop is already installed
+    if command -v ctop &> /dev/null; then
+        success "CTOP is already installed. Type 'ctop' in the terminal to use it."
+        wait_for_input
+        return 0
+    fi
+
+    step_info 1 $total_steps "Installing CTOP"
+
+    # Download ctop binary
+    wget https://github.com/bcicen/ctop/releases/download/v0.7.7/ctop-0.7.7-linux-amd64 -O /usr/local/bin/ctop
+    exit_code=$?
+    message="Failed to download CTOP"
+    handle_exit $exit_code 1 $total_steps "$message"
+    if [[ $exit_code -ne 0 ]]; then
+        return 1
+    fi
+
+    step_info 2 $total_steps "Changing permissions"
+
+    # Set executable permissions for ctop
+    chmod +x /usr/local/bin/ctop
+    exit_code=$?
+    message="Failed to set permissions for CTOP"
+    handle_exit $exit_code 2 $total_steps "$message"
+    if [[ $exit_code -ne 0 ]]; then
+        return 1
+    fi
+
+    success "CTOP was installed successfully. Type 'ctop' in the terminal at any moment from now."
+    wait_for_input
+}
+
+
 ############################# END OF GENERAL UTILITARY FUNCTIONS #############################
 
 ############################## BEGIN OF EMAIL-RELATED FUNCTIONS ##############################
@@ -3090,9 +3127,11 @@ build_menu_item() {
 
 # Remove one of the redundant build_menu functions
 build_menu() {
-  local title="$1"
+  local key="$1"
   shift
-  local page_size="$1"
+  local title="$2"
+  shift
+  local page_size="$3"
   shift
   local json_array
 
@@ -3106,10 +3145,12 @@ build_menu() {
 
   # Create final menu object
   jq -n \
+    --arg key "$key" \
     --arg title "$title" \
     --arg page_size "$page_size" \
     --argjson items "$menu_items" \
     '{
+      key: $key,
       title: $title,
       page_size: $page_size,
       items: $items
@@ -3170,7 +3211,7 @@ return_to_parent_menu() {
     local parent_menu=$(get_current_menu)
     navigate_menu "$parent_menu"
   else
-    navigate_menu "Main"
+    navigate_menu "main"
   fi
 }
 
@@ -3322,12 +3363,6 @@ finish_session() {
   farewell_message
   exit 0
 }
-
-# Trap SIGINT (Ctrl+C) and EXIT (script termination) to invoke the cleanup function
-trap finish_session SIGINT EXIT
-
-# Trap SIGTERM (KILL) and EXIT (script termination) to invoke the cleanup function
-trap finish_session TERM EXIT
 
 # Function to shift a message in the background
 shift_message() {
@@ -5087,7 +5122,7 @@ deploy_stack() {
   should_remove_stack "$stack_name"
 
   # Check if the stack exists
-  if [ $? -eq 1 ] then
+  if [ $? -eq 1 ]; then
     return 0
   fi
 
@@ -8649,9 +8684,10 @@ deploy_stack_n8n() {
 
 ##################################### BEGIN OF MENU DEFINITIONS ####################################
 
-# Stacks
+# main:stacks:databases
 define_menu_stacks_databases() {
-  menu_name="Databases"
+  menu_key="main:stacks:databases"
+  menu_title="Database stacks"
 
   item_1="$(
     build_menu_item "postgres" "Deploy" "deploy_stack_postgres"
@@ -8670,13 +8706,15 @@ define_menu_stacks_databases() {
     "$item_1" "$item_2" "$item_3" "$item_4"
   )
 
-  menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
+  menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
 
-  define_menu "$menu_name" "$menu_object"
+  define_menu "$menu_key" "$menu_object"
 }
 
-define_menu_miscelaneous() {
-  menu_name="Miscelaneous"
+# main:stacks:miscelaneous
+define_menu_stacks_miscelaneous() {
+  menu_key="main:stacks:miscelaneous"
+  menu_title="Miscelaneous stacks"
 
   item_1="$(
     build_menu_item "whoami" "Deploy" "deploy_stack_whoami"
@@ -8695,14 +8733,15 @@ define_menu_miscelaneous() {
     "$item_1" "$item_2" "$item_3" "$item_4"
   )
 
-  menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
+  menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
 
-  define_menu "$menu_name" "$menu_object"
+  define_menu "$menu_key" "$menu_object"
 }
 
-# Stacks
+# main:stacks
 define_menu_stacks() {
-  menu_name="Stacks"
+  menu_key="main:stacks"
+  menu_title="stacks"
 
   item_1="$(
     build_menu_item "Startup" \
@@ -8717,12 +8756,12 @@ define_menu_stacks() {
   item_3="$(
     build_menu_item "Databases" \
       "Postgres & Redis & MySQL & MongoDB" \
-      "navigate_menu 'Databases'"
+      "navigate_menu 'main:stacks:databases'"
   )"
   item_4="$(
     build_menu_item "Miscelaneous" \
       "Whoami & Airflow & Metabase & N8N" \
-      "navigate_menu 'Miscelaneous'"
+      "navigate_menu 'main:stacks:miscelaneous'"
   )"
 
   items=(
@@ -8730,14 +8769,15 @@ define_menu_stacks() {
   )
 
   page_size=10
-  menu_object="$(build_menu "$menu_name" $page_size "${items[@]}")"
+  menu_object="$(build_menu "$menu_key" "$menu_title" $page_size "${items[@]}")"
 
-  define_menu "$menu_name" "$menu_object"
+  define_menu "$menu_key" "$menu_object"
 }
 
-# Utilities
-define_menu_utilities() {
-  menu_name="Utilities"
+# main:utilities:smtp
+define_menu_utilities_smtp() {
+  menu_key="main:utilities:smtp"
+  menu_title="SMTP utilities"
 
   item_1="$(
     build_menu_item "Test SMPT e-mail" \
@@ -8752,14 +8792,57 @@ define_menu_utilities() {
     "$item_1" "$item_2"
   )
 
-  menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
+  menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
 
-  define_menu "$menu_name" "$menu_object"
+  define_menu "$menu_key" "$menu_object"
 }
 
-# VPS Health
+# main:utilities:docker
+define_menu_utilities_docker() {
+  menu_key="main:utilities:docker"
+  menu_title="Docker utilities"
+
+  item_1="$(
+    build_menu_item "CTOP" \
+        "Install docker manager on terminal" "install_ctop"
+  )"
+
+  items=(
+    "$item_1"
+  )
+
+  menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
+
+  define_menu "$menu_key" "$menu_object"
+}
+
+# main:utilities
+define_menu_utilities() {
+  menu_key="main:utilities"
+  menu_title="Utilities"
+
+  item_1="$(
+    build_menu_item "SMTP" \
+      "Test and tools" "navigate_menu 'main:utilities:smtp'"
+  )"
+  item_2="$(
+    build_menu_item "Docker" \
+        "Tools" "navigate_menu 'main:utilities:docker'"
+  )"
+
+  items=(
+    "$item_1" "$item_2"
+  )
+
+  menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
+
+  define_menu "$menu_key" "$menu_object"
+}
+
+# main:health
 define_menu_health() {
-  menu_name="Health"
+  menu_key="main:health"
+  menu_title="Health"
 
   item_1="$(
     build_menu_item "Machine specifications" "describe" \
@@ -8807,25 +8890,26 @@ define_menu_health() {
   )
 
   menu_object="$(
-    build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}"
+    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}"
   )"
 
-  define_menu "$menu_name" "$menu_object"
+  define_menu "$menu_key" "$menu_object"
 }
 
-# Menu Main
+# main
 define_menu_main() {
-  menu_name="Main"
+  menu_key="main"
+  menu_title="main"
 
-  item_1="$(build_menu_item "Stacks" "explore" "navigate_menu 'Stacks'")"
-  item_2="$(build_menu_item "Utilities" "explore" "navigate_menu 'Utilities'")"
-  item_3="$(build_menu_item "Health" "diagnose" "navigate_menu 'Health'")"
+  item_1="$(build_menu_item "Stacks" "explore" "navigate_menu 'main:stacks'")"
+  item_2="$(build_menu_item "Utilities" "explore" "navigate_menu 'main:utilities'")"
+  item_3="$(build_menu_item "Health" "diagnose" "navigate_menu 'main:health'")"
 
   items=(
     "$item_1" "$item_2" "$item_3"
   )
 
-  menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
+  menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
 
   define_menu "$menu_name" "$menu_object"
 }
@@ -8837,14 +8921,18 @@ define_menus() {
   # Stacks and its submenus
   define_menu_stacks
   define_menu_stacks_databases
-  define_menu_miscelaneous
+  define_menu_stacks_miscelaneous
 
+  # Utilities and its submenus
   define_menu_utilities
+  define_menu_utilities_docker
+  define_menu_utilities_smtp
+
   define_menu_health
 }
 
 start_main_menu() {
-  navigate_menu "Main"
+  navigate_menu "main"
   cleanup
   clean_screen
   farewell_message
@@ -8948,11 +9036,8 @@ main() {
   define_menus
 
   start_main_menu
+  wait_for_input
 }
 
 # Call the main function
 main "$@"
-
-
-
-
