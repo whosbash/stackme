@@ -1543,7 +1543,10 @@ generate_machine_specs_content() {
       grep -E '^/dev' |
       awk '{printf "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", $1, $2, $3, $4, $5, $6}'
   )
-  html_content+=$(create_table "Disk Usage" "<th>Source</th><th>Filesystem Type</th><th>Total Size</th><th>Used</th><th>Available</th><th>Use%</th>" "$disk_usage_rows")
+  html_content+=$(\
+    create_table "Disk Usage" \
+      "<th>Source</th><th>Filesystem Type</th><th>Total Size</th><th>Used</th><th>Available</th><th>Use%</th>" \
+      "$disk_usage_rows")
 
   # Battery Status Table (only if upower is available)
   if command -v upower &>/dev/null; then
@@ -1552,15 +1555,25 @@ generate_machine_specs_content() {
         awk -F ':' '{gsub(/^[ \t]+|[ \t]+$/, "", $1); gsub(/^[ \t]+|[ \t]+$/, "", $2); print "<tr><td>" $1 "</td><td>" $2 "</td></tr>"}'
     )
     if [[ -n "$battery_rows" ]]; then
-      html_content+=$(create_table "Battery Status" "<th>Status</th><th>Details</th>" "$battery_rows")
+      html_content+=$(\
+        create_table "Battery Status" \
+        "<th>Status</th><th>Details</th>" "$battery_rows"
+      )
     else
-      html_content+=$(create_table "Battery Status" "<th>Status</th><th>Details</th>" "<tr><td colspan='2'>No battery information available.</td></tr>")
+      html_content+=$(\
+        create_table "Battery Status" \
+        "<th>Status</th><th>Details</th>" "<tr><td colspan='2'>No battery information available.</td></tr>"
+      )
     fi
   fi
 
   # Network Information Table (Ethernet and Wi-Fi)
-  local ethernet_info=$(safe_exec "ip -4 addr show | grep 'state UP' -A2 | grep inet | awk '{print \$2}' || echo 'No Ethernet connection.'")
-  local wifi_info=$(safe_exec "nmcli device status | grep wifi | awk '{print \$1, \$3, \$4}' || echo 'No Wi-Fi connection.'")
+  local ethernet_info=$(\
+    safe_exec "ip -4 addr show | grep 'state UP' -A2 | grep inet | awk '{print \$2}' || echo 'No Ethernet connection.'"
+  )
+  local wifi_info=$(\
+    safe_exec "nmcli device status | grep wifi | awk '{print \$1, \$3, \$4}' || echo 'No Wi-Fi connection.'"\
+  )
   local network_rows=""
   network_rows+=$(generate_table_row "Ethernet" "$ethernet_info")
   network_rows+=$(generate_table_row "Wi-Fi" "$wifi_info")
@@ -3129,11 +3142,12 @@ build_menu_item() {
 build_menu() {
   local key="$1"
   shift
-  local title="$2"
+  local title="$1"
   shift
-  local page_size="$3"
+  local page_size="$1"
   shift
   local json_array
+
 
   if [ $# -eq 0 ]; then
     echo "Error: At least one menu item is required."
@@ -3221,34 +3235,6 @@ build_array_from_items() {
   local items=("$@")
 
   echo "["$(join_array "," "${items[@]}")"]"
-}
-
-# Append a JSON menu array to the MENUS array under a specific key
-build_menu() {
-  local title=$1
-  shift
-  local page_size=$1
-  shift
-  local json_array
-
-  if [ $# -eq 0 ]; then
-    echo "Error: At least one menu item is required."
-    return 1
-  fi
-
-  # Build the menu as a JSON array
-  menu_items=$(build_array_from_items "$@")
-
-  # Create final menu object
-  jq -n \
-    --arg title "$title" \
-    --arg page_size "$page_size" \
-    --argjson items "$menu_items" \
-    '{
-            title: $title,
-            page_size: $page_size,
-            items: $items
-        }'
 }
 
 # Function to calculate the page number
@@ -3843,14 +3829,16 @@ transition_to_menu() {
 navigate_menu() {
   local menu_name="$1"
 
-  clean_screen
-  transition_to_menu "$menu_name"
-  clean_screen
-
   menu_json=$(get_menu "$menu_name") || {
     error "Failed to load menu ${menu_name}" >&2
     return 1
   }
+
+  menu_title=$(echo "$menu_json" | jq -r '.title')
+
+  clean_screen
+  transition_to_menu "$menu_title"
+  clean_screen
 
   # If the menu_navigation_history is empty, set the first menu as the current menu
   if ! is_menu_in_history "$menu_name"; then
@@ -3882,6 +3870,7 @@ navigate_menu() {
   fi
 
   while true; do
+
     render_menu \
       "$title" "$current_idx" \
       "$page_size" "$is_new_page" "${menu_options[@]}"
@@ -5050,7 +5039,6 @@ deploy_stack_pipeline() {
   step_info 1 $total_steps "Deploying dependencies"
   local dependencies
   dependencies=$(echo "$config_json" | jq -r '.dependencies // []')
-  debug "Dependencies: $dependencies"
   deploy_dependencies "$stack_name" "$dependencies" || {
     failure "Failed to deploy dependencies"
     return 1
@@ -8707,7 +8695,7 @@ define_menu_stacks_databases() {
   )
 
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
-
+  
   define_menu "$menu_key" "$menu_object"
 }
 
@@ -8911,7 +8899,7 @@ define_menu_main() {
 
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
 
-  define_menu "$menu_name" "$menu_object"
+  define_menu "$menu_key" "$menu_object"
 }
 
 # Populate MENUS
