@@ -4504,20 +4504,12 @@ deploy_stack_on_portainer() {
   if [[ $? -eq 0 ]]; then
     warning "Stack $stack_name exists"
     return 1
-    # delete_stack_on_portainer "$portainer_url" "$portainer_auth_token" "$stack_name"
-    # check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"
-    #
-    # if [[ $? -eq 1 ]]; then
-    #   success "Stack $stack_name deleted"
-    # else
-    #   error "Stack $stack_name not deleted"
-    # fi
   else
     warning "Stack $stack_name does not exist"
   fi
 
   upload_stack_on_portainer "$portainer_url" "$credentials" \
-    "$stack_name" "$STACKS_DIR/$stack_name.yaml" ||
+    "$stack_name" "$STACKS_DIR/$stack_name/docker-compose.yaml" ||
     error "Failed to upload stack '$stack_name'"
 }
 
@@ -5060,6 +5052,8 @@ deploy_stack() {
     failure "Stack $stack_name configuration validation failed."
     return 1
   fi
+
+  wait_for_input
 
   clean_screen
 
@@ -7288,6 +7282,7 @@ services:
 
   metabase:
     image: metabase/metabase:latest
+    hostname: metabase
 
     volumes:
       - metabase_data:/metabase3-data
@@ -7296,13 +7291,11 @@ services:
       - {{network_name}}
 
     environment:
-      ## Url MetaBase
       - MB_SITE_URL=https://{{url_metabase}}
       - MB_REDIRECT_ALL_REQUESTS_TO_HTTPS=true
       - MB_JETTY_PORT=3000
       - MB_JETTY_HOST=0.0.0.0
 
-      ## Dados postgres
       - MB_DB_MIGRATION_LOCATION=none
       - MB_DB_TYPE=postgres
       - MB_DB_DBNAME=metabase
@@ -7311,6 +7304,12 @@ services:
       - MB_DB_PASS={{postgres_password}}
       - MB_DB_HOST=postgres
       - MB_AUTOMIGRATE=false
+    
+    healthcheck:
+      test: curl --fail -I http://127.0.0.1:3000/api/health || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
     deploy:
       mode: replicated
@@ -7891,9 +7890,7 @@ generate_config_whoami() {
 
   # Step 2: Retrieve network name
   step_info 2 $total_steps "Retrieving network name"
-  network_name="my_network"
-
-  #"$(get_network_name)"
+  network_name="$(get_network_name)"
 
   url_whoami="$(
     get_variable_value_from_collection "$collected_items" "url_whoami"
@@ -8053,7 +8050,13 @@ generate_config_metabase() {
                 "command": "fetch_postgres_password",
               }
             ],
-            "prepare": [],
+            "prepare": [
+              {
+                "name": "create_metabase_db",
+                "description": "Creating Metabase database",
+                "command": "create_database_postgres metabase",
+              }
+            ],
             "finalize": []
           }
       }' | jq . || {
