@@ -1,0 +1,135 @@
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  lowcoder${1:+_$1}_api:
+    image: lowcoderorg/lowcoder-ce-api-service:latest
+
+    networks:
+      - $nome_rede_interna
+
+    environment:
+      - LOWCODER_PUID=9001
+      - LOWCODER_PGID=9001
+
+      ## Dados MongoDB
+      - LOWCODER_MONGODB_URL=mongodb://$user_mongodb_lowcoder:$pass_mongodb_lowcoder@$ip:27017/lowcoder${1:+_$1}?authSource=admin&readPreference=primary&ssl=false&directConnection=true
+
+      ## Dados Redis
+      - LOWCODER_REDIS_URL=redis://redis:6379
+
+      ## Dominio
+      - LOWCODER_NODE_SERVICE_URL=http://lowcoder${1:+_$1}_node:6060
+
+      ## Configurações
+      - LOWCODER_MAX_QUERY_TIMEOUT=120
+      - LOWCODER_EMAIL_AUTH_ENABLED=true
+      - LOWCODER_EMAIL_SIGNUP_ENABLED=true ## true = permitir criar novas contas
+      - LOWCODER_CREATE_WORKSPACE_ON_SIGNUP=true ## true = permitir criar novos workspaces
+      - LOWCODER_WORKSPACE_MODE=SAAS
+
+      ## Encryption
+      - LOWCODER_DB_ENCRYPTION_PASSWORD=$encryption_key_lowcoder1 ## hash Encryption
+      - LOWCODER_DB_ENCRYPTION_SALT=$encryption_key_lowcoder2 ## hash Encryption
+      - LOWCODER_API_KEY_SECRET=$encryption_key_lowcoder3 # hash Encryption
+
+      ## Outras configurações
+      - LOWCODER_CORS_DOMAINS=*
+      - LOWCODER_MAX_ORGS_PER_USER=100
+      - LOWCODER_MAX_MEMBERS_PER_ORG=1000
+      - LOWCODER_MAX_GROUPS_PER_ORG=100
+      - LOWCODER_MAX_APPS_PER_ORG=1000
+      - LOWCODER_MAX_DEVELOPERS=50
+
+      ## Dados SMTP
+      - LOWCODER_ADMIN_SMTP_HOST=$host_smtp_lowcoder
+      - LOWCODER_ADMIN_SMTP_PORT=$porta_smtp_lowcoder
+      - LOWCODER_ADMIN_SMTP_USERNAME=$user_smtp_lowcoder
+      - LOWCODER_ADMIN_SMTP_PASSWORD=$senha_smtp_lowcoder
+      - LOWCODER_ADMIN_SMTP_AUTH=true
+      - LOWCODER_ADMIN_SMTP_SSL_ENABLED=$smtp_secure_lowcoder_ssl
+      - LOWCODER_ADMIN_SMTP_STARTTLS_ENABLED=$smtp_secure_lowcoder_startls
+      - LOWCODER_ADMIN_SMTP_STARTTLS_REQUIRED=$smtp_secure_lowcoder_startls
+      - LOWCODER_EMAIL_NOTIFICATIONS_SENDER=$email_smtp_lowcoder
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1024M
+
+## --------------------------- ORION --------------------------- ##
+
+  lowcoder${1:+_$1}_node:
+    image: lowcoderorg/lowcoder-ce-node-service:latest
+
+    networks:
+      - $nome_rede_interna
+
+    environment:
+      - LOWCODER_PUID=9001
+      - LOWCODER_PGID=9001
+      - LOWCODER_API_SERVICE_URL=http://lowcoder${1:+_$1}_api:8080
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1024M
+
+## --------------------------- ORION --------------------------- ##
+
+  lowcoder${1:+_$1}_frontend:
+    image: lowcoderorg/lowcoder-ce-frontend:latest
+
+    volumes:
+     - lowcoder${1:+_$1}_assets:/lowcoder/assets
+
+    networks:
+      - $nome_rede_interna
+
+    environment:
+      - LOWCODER_PUID=9001
+      - LOWCODER_PGID=9001
+      - LOWCODER_MAX_REQUEST_SIZE=20m
+      - LOWCODER_MAX_QUERY_TIMEOUT=120
+      - LOWCODER_API_SERVICE_URL=http://lowcoder${1:+_$1}_api:8080
+      - LOWCODER_NODE_SERVICE_URL=http://lowcoder${1:+_$1}_node:6060
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager  
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.lowcoder${1:+_$1}.rule=Host(\`$url_lowcoder\`) && PathPrefix(\`/\`)
+        - traefik.http.services.lowcoder${1:+_$1}.loadbalancer.server.port=3000
+        - traefik.http.routers.lowcoder${1:+_$1}.service=lowcoder${1:+_$1}
+        - traefik.http.routers.lowcoder${1:+_$1}.entrypoints=websecure
+        - traefik.http.routers.lowcoder${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.lowcoder${1:+_$1}.tls=true
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  lowcoder${1:+_$1}_assets:
+    external: true
+    name: lowcoder${1:+_$1}_assets
+
+networks:
+  $nome_rede_interna: ## Nome da rede interna
+    external: true
+    name: $nome_rede_interna ## Nome da rede interna
