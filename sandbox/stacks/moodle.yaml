@@ -1,0 +1,114 @@
+## Criando a stack
+cat > moodle${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  moodle${1:+_$1}_app:
+    image: bitnami/moodle:latest
+
+    volumes:
+      - moodle${1:+_$1}_app_apache_conf:/opt/bitnami/apache/conf
+      - moodle${1:+_$1}_app_apache:/bitnami/apache/conf
+
+    networks:
+       - $nome_rede_interna ## Nome da rede interna
+
+    environment:
+      ## Dados do projeto
+      - MOODLE_SITE_NAME=$project_name_moodle
+
+      ## Dados de acesso
+      - MOODLE_HOST=$url_moodle
+      - MOODLE_USERNAME=$user_moodle
+      - MOODLE_PASSWORD=$pass_moodle
+      - MOODLE_EMAIL=$mail_moodle
+
+      ## Dados SMTP
+      - MOODLE_SMTP_USER=$usuario_smtp_moodle
+      - MOODLE_SMTP_PASSWORD=$senha_smtp_moodle
+      - MOODLE_SMTP_HOST=$host_smtp_moodle
+      - MOODLE_SMTP_PORT_NUMBER=$porta_smtp_moodle
+      - MOODLE_SMTP_PROTOCOL=$smtp_secure_smtp_moodle ## 587 = tls ou plain | 465 = ssl 
+
+      ## Idioma
+      - MOODLE_LANG=pt
+      
+      ## Dados MarinaDB
+      - MOODLE_DATABASE_HOST=moodle${1:+_$1}_mariadb
+      - MOODLE_DATABASE_PORT_NUMBER=3306
+      - MOODLE_DATABASE_USER=orion_moodle
+      - MOODLE_DATABASE_PASSWORD=$senha_marinadb
+      - MOODLE_DATABASE_NAME=orionbase_moodle
+      - ALLOW_EMPTY_PASSWORD=no
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.moodle${1:+_$1}.rule=Host(\`$url_moodle\`)
+        - traefik.http.services.moodle${1:+_$1}.loadbalancer.server.port=8080
+        - traefik.http.routers.moodle${1:+_$1}.service=moodle
+        - traefik.http.routers.moodle${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.moodle${1:+_$1}.entrypoints=websecure
+        - traefik.http.routers.moodle${1:+_$1}.tls=true
+
+## --------------------------- ORION --------------------------- ##
+
+  moodle${1:+_$1}_mariadb:
+    image: bitnami/mariadb:latest
+
+    volumes:
+      - moodle${1:+_$1}_mariadb_data:/bitnami/mariadb
+
+    networks:
+       - $nome_rede_interna ## Nome da rede interna
+
+    environment:  
+      ## Dados MarinaDB
+      - MARIADB_USER=orion_moodle
+      - MARIADB_ROOT_PASSWORD=$senha_marinadb
+      - MARIADB_DATABASE=orionbase_moodle
+      - MARIADB_PASSWORD=$senha_marinadb
+      - MARIADB_CHARACTER_SET=utf8mb4
+      - MARIADB_COLLATE=utf8mb4_unicode_ci
+      - ALLOW_EMPTY_PASSWORD=no
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  moodle${1:+_$1}_app_apache_conf:
+    external: true
+    name: moodle${1:+_$1}_app_apache_conf
+  moodle${1:+_$1}_app_apache:
+    external: true
+    name: moodle${1:+_$1}_app_apache
+  moodle${1:+_$1}_mariadb_data:
+    external: true
+    name: moodle${1:+_$1}_mariadb_data
+
+networks:
+  $nome_rede_interna: ## Nome da rede interna
+    name: $nome_rede_interna ## Nome da rede interna
+    external: true
+EOL

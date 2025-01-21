@@ -1,0 +1,84 @@
+## Criando a stack nextcloud.yaml
+cat > nextcloud${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  nextcloud${1:+_$1}:
+    image: nextcloud:latest
+
+    volumes:
+      - nextcloud${1:+_$1}_data:/var/www/html
+
+    networks:
+      - $nome_rede_interna
+
+    #ports:
+    #  - 8282:80
+
+    environment:
+      ## Dados de acesso:
+      - NEXTCLOUD_ADMIN_USER=$user_nextcloud
+      - NEXTCLOUD_ADMIN_PASSWORD=$pass_nextcloud
+
+      ## Dados do Postgres
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=nextcloud${1:+_$1}
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=$senha_postgres
+
+      ## Dados do Redis
+      - REDIS_HOST=redis
+
+      ## Configurações para HTTPS
+      - OVERWRITEPROTOCOL=https
+      - TRUSTED_PROXIES=127.0.0.1
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.nextcloud${1:+_$1}.rule=Host(\`$url_nextcloud\`)
+        - traefik.http.services.nextcloud${1:+_$1}.loadbalancer.server.port=80
+        - traefik.http.routers.nextcloud${1:+_$1}.service=nextcloud${1:+_$1}
+        - traefik.http.routers.nextcloud${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.nextcloud${1:+_$1}.entrypoints=web,websecure
+        - traefik.http.routers.nextcloud${1:+_$1}.tls=true
+        - traefik.http.routers.nextcloud${1:+_$1}.middlewares=nextcloud_redirectregex
+        - traefik.http.middlewares.nextcloud${1:+_$1}_redirectregex.redirectregex.permanent=true
+        - traefik.http.middlewares.nextcloud${1:+_$1}_redirectregex.redirectregex.regex=https://(.*)/.well-known/(?:card|cal)dav
+        - traefik.http.middlewares.nextcloud${1:+_$1}_redirectregex.redirectregex.replacement=https://$$1/remote.php/dav
+
+## --------------------------- ORION --------------------------- ##
+
+  nextcloud${1:+_$1}_cron:
+    image: nextcloud:latest
+    entrypoint: /cron.sh
+
+    volumes:
+      - nextcloud${1:+_$1}_data:/var/www/html
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  nextcloud${1:+_$1}_data:
+    external: true
+    name: nextcloud${1:+_$1}_data
+
+networks:
+  $nome_rede_interna:
+    external: true
+    name: $nome_rede_interna
+EOL

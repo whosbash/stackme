@@ -952,6 +952,37 @@ add_json_objects() {
   echo "$merged"
 }
 
+# Function to filter JSON based on keys
+filter_json_object_by_keys() {
+  local json="$1"         # Input JSON string
+  local keys=("$@")       # Array of keys (after the first argument)
+  local missing_keys=()   # Array to store missing keys
+  local filtered_json={}  # Resultant JSON object
+
+  # Loop through each key
+  for key in "${keys[@]:1}"; do
+    # Extract the value for the current key
+    local value
+    value=$(echo "$json" | jq -r --arg key "$key" 'try getpath($key | split(".")) // empty')
+
+    if [[ -z "$value" ]]; then
+      # Key is missing; add to missing_keys array
+      missing_keys+=("$key")
+    else
+      # Key exists; add it to the filtered JSON object
+      filtered_json=$(echo "$filtered_json" | jq --arg key "$key" --arg value "$value" '. + {($key): $value}')
+    fi
+  done
+
+  # If there are missing keys, print a warning
+  if [[ ${#missing_keys[@]} -gt 0 ]]; then
+    warning "The following keys are missing in the JSON: ${missing_keys[*]}"
+  fi
+
+  # Return the filtered JSON object
+  echo "$filtered_json"
+}
+
 # Function to sort array1 based on the order of names in array2 using a specified key
 sort_array_by_order() {
   local array1="$1"
@@ -1364,6 +1395,42 @@ assert_domain_and_ip() {
   check_domain_ip "$domain_url" "$ip"
 }
 
+install_ctop() {
+    total_steps=2
+
+    # Check if ctop is already installed
+    if command -v ctop &> /dev/null; then
+        success "CTOP is already installed. Type 'ctop' in the terminal to use it."
+        wait_for_input
+        return 0
+    fi
+
+    step_info 1 $total_steps "Installing CTOP"
+
+    # Download ctop binary
+    wget https://github.com/bcicen/ctop/releases/download/v0.7.7/ctop-0.7.7-linux-amd64 -O /usr/local/bin/ctop
+    exit_code=$?
+    message="Failed to download CTOP"
+    handle_exit $exit_code 1 $total_steps "$message"
+    if [[ $exit_code -ne 0 ]]; then
+        return 1
+    fi
+
+    step_info 2 $total_steps "Changing permissions"
+
+    # Set executable permissions for ctop
+    chmod +x /usr/local/bin/ctop
+    exit_code=$?
+    message="Failed to set permissions for CTOP"
+    handle_exit $exit_code 2 $total_steps "$message"
+    if [[ $exit_code -ne 0 ]]; then
+        return 1
+    fi
+
+    success "CTOP was installed successfully. Type 'ctop' in the terminal at any moment from now."
+    wait_for_input
+}
+
 ############################# END OF GENERAL UTILITARY FUNCTIONS #############################
 
 ############################## BEGIN OF EMAIL-RELATED FUNCTIONS ##############################
@@ -1506,7 +1573,10 @@ generate_machine_specs_content() {
       grep -E '^/dev' |
       awk '{printf "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", $1, $2, $3, $4, $5, $6}'
   )
-  html_content+=$(create_table "Disk Usage" "<th>Source</th><th>Filesystem Type</th><th>Total Size</th><th>Used</th><th>Available</th><th>Use%</th>" "$disk_usage_rows")
+  html_content+=$(\
+    create_table "Disk Usage" \
+      "<th>Source</th><th>Filesystem Type</th><th>Total Size</th><th>Used</th><th>Available</th><th>Use%</th>" \
+      "$disk_usage_rows")
 
   # Battery Status Table (only if upower is available)
   if command -v upower &>/dev/null; then
@@ -1515,15 +1585,25 @@ generate_machine_specs_content() {
         awk -F ':' '{gsub(/^[ \t]+|[ \t]+$/, "", $1); gsub(/^[ \t]+|[ \t]+$/, "", $2); print "<tr><td>" $1 "</td><td>" $2 "</td></tr>"}'
     )
     if [[ -n "$battery_rows" ]]; then
-      html_content+=$(create_table "Battery Status" "<th>Status</th><th>Details</th>" "$battery_rows")
+      html_content+=$(\
+        create_table "Battery Status" \
+        "<th>Status</th><th>Details</th>" "$battery_rows"
+      )
     else
-      html_content+=$(create_table "Battery Status" "<th>Status</th><th>Details</th>" "<tr><td colspan='2'>No battery information available.</td></tr>")
+      html_content+=$(\
+        create_table "Battery Status" \
+        "<th>Status</th><th>Details</th>" "<tr><td colspan='2'>No battery information available.</td></tr>"
+      )
     fi
   fi
 
   # Network Information Table (Ethernet and Wi-Fi)
-  local ethernet_info=$(safe_exec "ip -4 addr show | grep 'state UP' -A2 | grep inet | awk '{print \$2}' || echo 'No Ethernet connection.'")
-  local wifi_info=$(safe_exec "nmcli device status | grep wifi | awk '{print \$1, \$3, \$4}' || echo 'No Wi-Fi connection.'")
+  local ethernet_info=$(\
+    safe_exec "ip -4 addr show | grep 'state UP' -A2 | grep inet | awk '{print \$2}' || echo 'No Ethernet connection.'"
+  )
+  local wifi_info=$(\
+    safe_exec "nmcli device status | grep wifi | awk '{print \$1, \$3, \$4}' || echo 'No Wi-Fi connection.'"\
+  )
   local network_rows=""
   network_rows+=$(generate_table_row "Ethernet" "$ethernet_info")
   network_rows+=$(generate_table_row "Wi-Fi" "$wifi_info")
@@ -2141,7 +2221,6 @@ validate_username() {
 }
 
 # Function to validate password
-# Function to validate password
 validate_password() {
   local value="$1"
 
@@ -2199,6 +2278,33 @@ validate_password() {
 
   # If all checks pass
   return 0
+}
+
+# Function to validate boolean
+validate_boolean(){
+  local value="$1"
+
+  # Check if the value is a valid boolean
+  if [[ "$value" != "true" && "$value" != "false" ]]; then
+    echo "The value '$value' is not a valid boolean."
+    return 1
+  fi
+
+  return 0
+}
+
+# Function to validate yes-no reponse
+validate_yn_response(){
+  local value="$1"
+
+  # Check if the value is a valid yes/no response
+  if [[ 
+    "$value" != "y" && "$value" != "n" && \
+    "$value" != "Y" && "$value" != "N"
+  ]]; then
+    echo "The value '$value' is not a valid yes/no response."
+    return 1
+  fi
 }
 
 ################################# END OF VALIDATION-RELATED FUNCTION ##############################
@@ -2302,7 +2408,7 @@ create_prompt_item() {
 }
 
 # Function to generate a JSON configuration for a service
-generate_config_schema() {
+generate_schema_stack_config() {
   local required_fields="$1"
 
   # Start the JSON schema structure
@@ -2361,7 +2467,7 @@ validate_stack_config() {
   required_fields=$(list_stack_compose_required_fields "$stack_name")
 
   # Generate the JSON schema
-  schema=$(generate_config_schema "$required_fields")
+  schema=$(generate_schema_stack_config "$required_fields")
 
   # Step 5: Validate if the provided JSON has all required variables
   validate_json_from_schema "$config_json" "$schema"
@@ -3064,11 +3170,14 @@ build_menu_item() {
 
 # Remove one of the redundant build_menu functions
 build_menu() {
+  local key="$1"
+  shift
   local title="$1"
   shift
   local page_size="$1"
   shift
   local json_array
+
 
   if [ $# -eq 0 ]; then
     echo "Error: At least one menu item is required."
@@ -3080,10 +3189,12 @@ build_menu() {
 
   # Create final menu object
   jq -n \
+    --arg key "$key" \
     --arg title "$title" \
     --arg page_size "$page_size" \
     --argjson items "$menu_items" \
     '{
+      key: $key,
       title: $title,
       page_size: $page_size,
       items: $items
@@ -3144,7 +3255,7 @@ return_to_parent_menu() {
     local parent_menu=$(get_current_menu)
     navigate_menu "$parent_menu"
   else
-    navigate_menu "Main"
+    navigate_menu "main"
   fi
 }
 
@@ -3154,34 +3265,6 @@ build_array_from_items() {
   local items=("$@")
 
   echo "["$(join_array "," "${items[@]}")"]"
-}
-
-# Append a JSON menu array to the MENUS array under a specific key
-build_menu() {
-  local title=$1
-  shift
-  local page_size=$1
-  shift
-  local json_array
-
-  if [ $# -eq 0 ]; then
-    echo "Error: At least one menu item is required."
-    return 1
-  fi
-
-  # Build the menu as a JSON array
-  menu_items=$(build_array_from_items "$@")
-
-  # Create final menu object
-  jq -n \
-    --arg title "$title" \
-    --arg page_size "$page_size" \
-    --argjson items "$menu_items" \
-    '{
-            title: $title,
-            page_size: $page_size,
-            items: $items
-        }'
 }
 
 # Function to calculate the page number
@@ -3296,12 +3379,6 @@ finish_session() {
   farewell_message
   exit 0
 }
-
-# Trap SIGINT (Ctrl+C) and EXIT (script termination) to invoke the cleanup function
-trap finish_session SIGINT EXIT
-
-# Trap SIGTERM (KILL) and EXIT (script termination) to invoke the cleanup function
-trap finish_session TERM EXIT
 
 # Function to shift a message in the background
 shift_message() {
@@ -3782,14 +3859,16 @@ transition_to_menu() {
 navigate_menu() {
   local menu_name="$1"
 
-  clean_screen
-  transition_to_menu "$menu_name"
-  clean_screen
-
   menu_json=$(get_menu "$menu_name") || {
     error "Failed to load menu ${menu_name}" >&2
     return 1
   }
+
+  menu_title=$(echo "$menu_json" | jq -r '.title')
+
+  clean_screen
+  transition_to_menu "$menu_title"
+  clean_screen
 
   # If the menu_navigation_history is empty, set the first menu as the current menu
   if ! is_menu_in_history "$menu_name"; then
@@ -3821,6 +3900,7 @@ navigate_menu() {
   fi
 
   while true; do
+
     render_menu \
       "$title" "$current_idx" \
       "$page_size" "$is_new_page" "${menu_options[@]}"
@@ -4096,7 +4176,7 @@ stack_exists() {
 # Function to list the required fields on a stack docker-compose
 list_stack_compose_required_fields() {
   local stack_name="$1"
-  local function_name="compose_${stack_name}"
+  local function_name="compose_file_${stack_name}"
 
   # Check if the function exists
   if declare -f "$function_name" >/dev/null; then
@@ -4438,13 +4518,15 @@ check_portainer_stack_exists() {
 
 # Function to upload a stack
 upload_stack_on_portainer() {
-  local portainer_url="$1"
-  local credentials="$2"
-  local stack_name="$3"
-  local compose_file="$4"
+  local portainer_config="$1"
+  local stack_name="$2"
+  local compose_file="$3"
+
+  # Extract portainer_url and portainer_credentials
+  portainer_url="$(echo "$portainer_config" | jq -r '.portainer_url')"
+  portainer_credentalias="$(echo "$portainer_config" | jq -r '.portainer_credentials')"
 
   highlight "Uploading stack $stack_name on Portainer $portainer_url"
-
   token="$(get_portainer_auth_token "$portainer_url" "$credentials")"
 
   if [[ -z "$token" ]] || [[ "$token" == "" ]]; then
@@ -4486,10 +4568,14 @@ upload_stack_on_portainer() {
 
 # Function to deploy a stack
 deploy_stack_on_portainer() {
-  local portainer_url="$1"
-  local portainer_credentials="$2"
-  local stack_name="$3"
+  local portainer_config="$1"
+  local stack_name="$2"
+  local compose_path="$3"
 
+  portainer_url="$(echo "$portainer_config" | jq -r '.portainer_url')"
+  portainer_credentials="$(echo "$portainer_config" | jq -r '.portainer_credentials')"
+
+  # Get Portainer auth token
   portainer_auth_token="$(
     get_portainer_auth_token "$portainer_url" "$portainer_credentials"
   )"
@@ -4499,6 +4585,7 @@ deploy_stack_on_portainer() {
     return 1
   fi
 
+  # Check if the stack already exists
   check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"
 
   if [[ $? -eq 0 ]]; then
@@ -4508,8 +4595,8 @@ deploy_stack_on_portainer() {
     warning "Stack $stack_name does not exist"
   fi
 
-  upload_stack_on_portainer "$portainer_url" "$credentials" \
-    "$stack_name" "$STACKS_DIR/$stack_name/docker-compose.yaml" ||
+  # Upload the stack
+  upload_stack_on_portainer "$portainer_config" "$stack_name" "$compose_path" ||
     error "Failed to upload stack '$stack_name'"
 }
 
@@ -4558,6 +4645,26 @@ delete_stack_on_portainer() {
     error "Failed to delete stack '$stack_name'."
 }
 
+load_portainer_url_and_credentials(){
+  local portainer_config_json
+  portainer_config_json=$(
+    load_json "$STACKS_DIR/portainer/stack_config.json"
+  )
+
+  portainer_info="$(
+    filter_json_object_by_keys "$portainer_config_json" \
+      ".variables.portainer_url" ".variables.portainer_credentials"
+  )"
+
+  portainer_url="$(echo "$portainer_info" | jq -r '.variables.portainer_url')"
+  portainer_credentials="$(echo "$portainer_info" | jq -r '.variables.portainer_credentials')"
+
+  jq -n \
+    --arg portainer_url "$portainer_url" \
+    --argjson portainer_credentials "$portainer_credentials" \
+    '{"portainer_url": $portainer_url, "portainer_credentials": $portainer_credentials}'
+}
+
 ################################# END OF PORTAINER DEPLOYMENT UTILS ###############################
 
 ############################### BEGIN OF GENERAL DEPLOYMENT FUNCTIONS #############################
@@ -4603,7 +4710,7 @@ build_stack_info() {
     jq -n \
       --arg config_path "${STACKS_DIR}/${stack_name}/stack_config.json" \
       --arg compose_path "${STACKS_DIR}/${stack_name}/docker-compose.yaml" \
-      --arg compose_func "compose_${stack_name}" \
+      --arg compose_func "compose_file_${stack_name}" \
       '{
       config_path: $config_path,
       compose_path: $compose_path,
@@ -4613,6 +4720,27 @@ build_stack_info() {
 
   # Return JSON
   echo "$json_output"
+}
+
+# Function to request permission for stack removal
+should_remove_stack() {
+  local stack_name="$1"
+
+  if stack_exists "$stack_name"; then
+    local prompt_message="${yellow}Stack '$stack_name' exists. Would you like to remove it? (Y/n)${normal}"
+    if handle_confirmation_prompt "$prompt_message" "n" 5; then
+      warning "Proceeding to remove stack '$stack_name'."
+      docker stack rm "$stack_name"
+      info "Stack '$stack_name' has been removed."
+      return 0
+    else
+      warning "Stack '$stack_name' was not removed. Proceeding..."
+      return 1
+    fi
+  else
+    info "Stack '$stack_name' is inexistent."
+    return 2
+  fi
 }
 
 # Function to validate a Docker Compose file
@@ -4885,21 +5013,9 @@ deploy_stack_on_target() {
     ;;
   portainer)
     info "Deploying stack '$stack_name' on Portainer"
-    local portainer_config_json
-    portainer_config_json=$(
-      load_json "$STACKS_DIR/portainer/stack_config.json"
-    )
-    local portainer_url
-    portainer_url=$(
-      echo "$portainer_config_json" | jq -r '.variables.portainer_url'
-    )
-    local portainer_credentials
-    portainer_credentials=$(
-      echo "$portainer_config_json" | jq -r '.variables.portainer_credentials'
-    )
+    portainer_config="$(load_portainer_url_and_credentials)"
 
-    upload_stack_on_portainer "$portainer_url" "$portainer_credentials" \
-      "$stack_name" "$compose_path"
+    deploy_stack_on_portainer "$portainer_config" "$stack_name" "$compose_path"
     ;;
   *)
     error "Unknown deployment target: $target"
@@ -4951,7 +5067,7 @@ save_stack_configuration() {
 }
 
 # Function to deploy a stack
-deploy_stack_pipeline() {
+deployment_pipeline() {
   local config_json="$1"
 
   local stack_name="$(echo "$config_json" | jq -r '.name')"
@@ -4968,7 +5084,6 @@ deploy_stack_pipeline() {
   step_info 1 $total_steps "Deploying dependencies"
   local dependencies
   dependencies=$(echo "$config_json" | jq -r '.dependencies // []')
-  debug "Dependencies: $dependencies"
   deploy_dependencies "$stack_name" "$dependencies" || {
     failure "Failed to deploy dependencies"
     return 1
@@ -5037,9 +5152,16 @@ deploy_stack_pipeline() {
 deploy_stack() {
   local stack_name="$1"
 
+  should_remove_stack "$stack_name"
+
+  # Check if the stack exists
+  if [ $? -eq 1 ]; then
+    return 0
+  fi
+
   # Generate the stack JSON configuration
   local stack_config
-  stack_config=$(eval "generate_config_$stack_name")
+  stack_config=$(eval "generate_stack_config_$stack_name")
 
   if [ -z "$stack_config" ]; then
     return 1
@@ -5049,16 +5171,12 @@ deploy_stack() {
   validate_stack_config "$stack_config"
 
   if [ $? -ne 0 ]; then
-    failure "Stack $stack_name configuration validation failed."
+    failure "Stack \'$stack_name\' configuration validation failed."
     return 1
   fi
 
-  wait_for_input
-
-  clean_screen
-
   # Deploy the n8n service using the JSON
-  deploy_stack_pipeline "$stack_config"
+  deployment_pipeline "$stack_config"
 }
 
 ################################ END OF GENERAL DEPLOYMENT FUNCTIONS ##############################
@@ -5207,16 +5325,27 @@ generate_html() {
   echo "$email_html"
 }
 
-# Function to generate HTML for an email
-test_smtp_html() {
-  # Content for the email
-  local email_content="<p>Hi there,</p>
-<p>We are thrilled to have you onboard! Explore the amazing features of StackMe and elevate your workflow.</p>
-<p>If you have any questions, feel free to submit an issue to 
-<a href=\"https://github.com/whosbash/stackme/issues\" title=\"Visit our Issues page on GitHub\">our repository</a>. We're here to help!</p>"
+check_smtp_config() {
+  local smtp_server="$1"
+  local smtp_user="$2"
+  local smtp_password="$3"
+  local recipient="$4"
 
-  # Generate the email HTML
-  generate_html "$BASE_TEMPLATE" "Welcome to StackMe" "Welcome to StackMe" "$email_content"
+  # Run swaks to check authentication
+  swaks --to "$recipient" \
+    --from "$smtp_user" \
+    --server "$smtp_server" \
+    --auth LOGIN \
+    --auth-user "$smtp_user" \
+    --auth-password "$smtp_password" \
+    --tls --quit-after=DATA > /dev/null 2>&1
+
+  # Check if swaks command was successful (exit status 0) or failed (non-zero exit status)
+  if [[ $? -eq 0 ]]; then
+    return 0  # Success
+  else
+    return 1  # Failure
+  fi
 }
 
 # Function to send a test email using swaks
@@ -5264,6 +5393,19 @@ generate_test_smtp_hmtl() {
   local email_content='<p>Hi there,</p> <p>We are thrilled to have you onboard! Explore the amazing features of StackMe and elevate your workflow.</p> <a href="https://github.com/whosbash/stackme" class="button">Get Started</a> <p>If you have any questions, feel free to submit an issue to <a href="https://github.com/whosbash/stackme/issues" title="Visit our Issues page on GitHub">our repository</a>. We''re here to help!</p>'
 
   # Generate the email
+  generate_html "$BASE_TEMPLATE" "Welcome to StackMe" "Welcome to StackMe" "$email_content"
+}
+
+# Function to generate HTML for an email
+generate_test_smtp_hmtl() {
+  # Content for the email
+  local email_content="<p>Hi there,</p> <p>
+  We are thrilled to have you onboard! Explore the amazing features of StackMe and elevate your workflow.</p> 
+  <a href="https://github.com/whosbash/stackme" class="button">Get Started</a>
+  <p>If you have any questions, feel free to submit an issue to <a href="https://github.com/whosbash/stackme/issues" title="Visit our Issues page on GitHub">our repository
+  </a>. We''re here to help!</p>"
+
+  # Generate the email HTML
   generate_html "$BASE_TEMPLATE" "Welcome to StackMe" "Welcome to StackMe" "$email_content"
 }
 
@@ -5687,8 +5829,10 @@ get_server_info() {
     exit 1
   fi
 
+  collected_object="$(process_prompt_items "$collected_items")"
+
   # Print the merged result
-  echo "$server_array"
+  echo "$collected_object"
 }
 
 # Function to initialize the server information
@@ -5706,20 +5850,20 @@ initialize_server_info() {
     else
       step_error "Content on file $server_filename is invalid. Reinitializing..."
       server_info_json=$(get_server_info)
+      
+      # Save the server information to a JSON file
+      echo "$server_info_json" >"$server_filename"
     fi
   else
     server_info_json=$(get_server_info)
-  fi
 
-  if [[ -z "$server_info_json" ]]; then
-    error "Unable to retrieve server and network names."
-    wait_for_input
-    exit 1
+    # Save the server information to a JSON file
+    echo "$server_info_json" >"$server_filename"
   fi
 
   # Extract server_name and network_name
-  server_name="$(get_variable_value_from_collection "$server_info_json" "server_name")"
-  network_name="$(get_variable_value_from_collection "$server_info_json" "network_name")"
+  server_name="$(echo "$server_info_json" || jq  ".server_name")" 
+  network_name="$(echo "$server_info_json" || jq  ".network_name")"
 
   # Output results
   if [[ -z "$server_name" || -z "$network_name" ]]; then
@@ -5728,8 +5872,6 @@ initialize_server_info() {
     exit 1
   fi
 
-  # Save the server information to a JSON file
-  echo "$server_info_json" >"$server_filename"
   step_success 1 $total_steps "Server information saved to file $server_filename"
 
   step_message="Create stackme folder"
@@ -5802,10 +5944,76 @@ initialize_server_info() {
   wait_for_input
 }
 
+############################# BEGIN OF STACK DEPLOYMENT UTILITARY FUNCTIONS #######################
+
+# Function to get the password from a JSON file
+get_postgres_password() {
+  local config_file=$1
+  password_postgres=$(jq -r '.password' $config_file)
+  echo "$password_postgres"
+}
+
+# Function to create a PostgreSQL database
+create_postgres_database() {
+  local db_name="$1"
+  local db_user="postgres"
+
+  local container_id
+  local db_exists
+
+  # Display a message about the database creation attempt
+  info "Creating PostgreSQL database: $db_name in POstgres container"
+
+  # Check if the container is running
+  container_id=$(docker ps -q --filter "name=^postgres")
+  if [ -z "$container_id" ]; then
+    error "Container '${container_name}' is not running. Cannot create database."
+    return 1
+  fi
+
+  # Check if the database already exists
+  db_exists=$(docker exec \
+    "$container_id" psql -U "$db_user" -lqt | cut -d \| -f 1 | grep -qw "$db_name")
+  if [ "$db_exists" ]; then
+    info "Database '$db_name' already exists. Skipping creation."
+    return 0
+  fi
+
+  # Create the database if it doesn't exist
+  info "Creating database '$db_name'..."
+  if docker exec "$container_id" \
+    psql -U "$db_user" -c "CREATE DATABASE \"$db_name\";" >/dev/null 2>&1; then
+    success "Database '$db_name' created successfully."
+    return 0
+  else
+    error "Failed to create database '$db_name'. Please check the logs for details."
+    return 1
+  fi
+}
+
+get_network_name(){
+  server_info_filename="${HOME}/server_info.json"
+  
+  if [[ ! -f "$server_info_filename" ]]; then
+    error "File $server_info_filename not found."
+    return 1
+  fi
+
+  server_info_json="$(cat "$server_info_filename")"
+  echo "$(
+    search_on_json_array "$server_info_json" "name" "network_name" | \
+    jq -r ".value"
+  )"
+
+  return 0
+}
+
+############################## END OF STACK DEPLOYMENT UTILITARY FUNCTIONS #########################
+
 ####################################### BEGIN OF COMPOSE FILES #####################################
 
 # Function to generate compose file for Traefik
-compose_traefik() {
+compose_file_traefik() {
   CERT_PATH="/etc/traefik/letsencrypt/acme.json"
 
   cat <<EOL
@@ -5892,7 +6100,7 @@ EOL
 }
 
 # Function to generate compose file for Portainer
-compose_portainer() {
+compose_file_portainer() {
   cat <<EOL
 version: '3'
 
@@ -5951,7 +6159,7 @@ EOL
 }
 
 # Function to generate compose file for Monitor
-compose_monitor() {
+compose_file_monitor() {
   cat <<EOL
 version: '3'
 
@@ -6116,7 +6324,7 @@ EOL
 }
 
 # Function to generate compose file for Redis
-compose_redis() {
+compose_file_redis() {
   cat <<EOL
 version: '3'
 
@@ -6148,7 +6356,7 @@ EOL
 }
 
 # Function to generate compose file for Postgres
-compose_postgres() {
+compose_file_postgres() {
   cat <<EOL
 version: '3'
 
@@ -6179,7 +6387,7 @@ networks:
 EOL
 }
 
-compose_pgvector() {
+compose_file_pgvector() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6226,7 +6434,7 @@ networks:
 EOL
 }
 
-compose_mysql() {
+compose_file_mysql() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6279,7 +6487,7 @@ networks:
 EOL
 }
 
-compose_mongodb() {
+compose_file_mongodb() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6334,7 +6542,7 @@ networks:
 EOL
 }
 
-compose_nocodb() {
+compose_file_nocodb() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6389,7 +6597,7 @@ networks:
 EOL
 }
 
-compose_odoo() {
+compose_file_odoo() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6468,7 +6676,7 @@ networks:
 EOL
 }
 
-compose_rabbitmq() {
+compose_file_rabbitmq() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6521,7 +6729,7 @@ networks:
 EOL
 }
 
-#compose_kafka(){
+#compose_file_kafka(){
 #  cat <<EOL
 #version: '3.9'
 #
@@ -6611,7 +6819,7 @@ EOL
 #EOL
 #}
 
-compose_minio() {
+compose_file_minio() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6669,7 +6877,7 @@ networks:
 EOL
 }
 
-compose_uptime_kuma() {
+compose_file_uptime_kuma() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6712,7 +6920,7 @@ networks:
 EOL
 }
 
-compose_quepasa() {
+compose_file_quepasa() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6823,7 +7031,7 @@ networks:
 EOL
 }
 
-compose_typebot() {
+compose_file_typebot() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6969,7 +7177,7 @@ networks:
 EOL
 }
 
-compose_whoami() {
+compose_file_whoami() {
   cat <<EOL
 version: '3'
 
@@ -6995,7 +7203,7 @@ networks:
 EOL
 }
 
-compose_airflow() {
+compose_file_airflow() {
   cat <<EOL
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -7275,7 +7483,7 @@ networks:
 EOL
 }
 
-compose_metabase() {
+compose_file_metabase() {
   cat <<EOL
 version: "3.7"
 services:
@@ -7330,6 +7538,237 @@ volumes:
   metabase_data:
     external: true
     name: metabase_data
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}
+EOL
+}
+
+# Function to generate compose file for N8N
+compose_file_n8n(){
+  cat <<EOL
+version: "3.7"
+
+services:
+  n8n_editor:
+    image: n8nio/n8n:latest
+    command: start
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Dados do postgres
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_DATABASE=n8n_queue
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_USER=postgres
+      - DB_POSTGRESDB_PASSWORD={{postgres_password}}
+
+      ## Encryption Key
+      - N8N_ENCRYPTION_KEY={{encryption_key}}
+
+      ## Url do N8N
+      - N8N_HOST={{url_editor}}
+      - N8N_EDITOR_BASE_URL=https://{{url_editor}}/ 
+      - WEBHOOK_URL=https://{{url_webhook}}/
+      - N8N_PROTOCOL=https
+
+      ## Node mode
+      - NODE_ENV=production
+
+      ## Execution node
+      - EXECUTIONS_MODE=queue
+
+      ## Community Nodes
+      - N8N_REINSTALL_MISSING_PACKAGES=true
+      - N8N_COMMUNITY_PACKAGES_ENABLED=true
+      - N8N_NODE_PATH=/home/node/.n8n/nodes
+
+      ## SMTP
+      - N8N_SMTP_SENDER={{smtp_email}}
+      - N8N_SMTP_USER={{smtp_user}}
+      - N8N_SMTP_PASS={{smtp_password}}
+      - N8N_SMTP_HOST={{smtp_host}}
+      - N8N_SMTP_PORT={{smtp_port}}
+      - N8N_SMTP_SSL={{smtp_secure}}
+
+      ## Redis
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PORT=6379
+      - QUEUE_BULL_REDIS_DB=2
+      - NODE_FUNCTION_ALLOW_EXTERNAL=moment,lodash,moment-with-locales
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=336
+
+      ## Timezone
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - TZ=America/Sao_Paulo
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.n8n_editor.rule=Host(\`{{url_editor}}\`) ## Url do Editor do N8N
+        - traefik.http.routers.n8n_editor.entrypoints=websecure
+        - traefik.http.routers.n8n_editor.priority=1
+        - traefik.http.routers.n8n_editor.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.n8n_editor.service=n8n_editor
+        - traefik.http.services.n8n_editor.loadbalancer.server.port=5678
+        - traefik.http.services.n8n_editor.loadbalancer.passHostHeader=1
+
+  n8n_webhook:
+    image: n8nio/n8n:latest ## Versão do N8N
+    command: webhook
+
+    networks:
+      - {{network_name}} ## Nome da rede interna
+
+    environment:
+      ## Dados do postgres
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_DATABASE=n8n_queue
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_USER=postgres
+      - DB_POSTGRESDB_PASSWORD={{postgres_password}}
+
+      ## Encryption Key
+      - N8N_ENCRYPTION_KEY={{encryption_key}}
+
+      ## Url do N8N
+      - N8N_HOST={{url_editor}}
+      - N8N_EDITOR_BASE_URL=https://{{url_editor}}/
+      - WEBHOOK_URL=https://{{url_webhook}}/
+      - N8N_PROTOCOL=https
+
+      ## Node Mode
+      - NODE_ENV=production
+
+      ## Execution mode
+      - EXECUTIONS_MODE=queue
+
+      ## Community Nodes
+      - N8N_REINSTALL_MISSING_PACKAGES=true
+      - N8N_COMMUNITY_PACKAGES_ENABLED=true
+      - N8N_NODE_PATH=/home/node/.n8n/nodes
+
+      ## SMTP
+      - N8N_SMTP_SENDER={{smtp_email}}
+      - N8N_SMTP_USER={{smtp_user}}
+      - N8N_SMTP_PASS={{smtp_password}}
+      - N8N_SMTP_HOST={{smtp_host}}
+      - N8N_SMTP_PORT={{smtp_port}}
+      - N8N_SMTP_SSL={{smtp_secure}}
+
+      ## Redis
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PORT=6379
+      - QUEUE_BULL_REDIS_DB=2
+      - NODE_FUNCTION_ALLOW_EXTERNAL=moment,lodash,moment-with-locales
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=336
+
+      ## Timezone
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - TZ=America/Sao_Paulo
+      
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.n8n_webhook.rule=(Host(\`{{url_webhook}}\`))
+        - traefik.http.routers.n8n_webhook.entrypoints=websecure
+        - traefik.http.routers.n8n_webhook.priority=1
+        - traefik.http.routers.n8n_webhook.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.n8n_webhook.service=n8n_webhook
+        - traefik.http.services.n8n_webhook.loadbalancer.server.port=5678
+        - traefik.http.services.n8n_webhook.loadbalancer.passHostHeader=1
+
+  n8n_worker:
+    image: n8nio/n8n:latest ## Versão do N8N
+    command: worker --concurrency=10
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Postgres
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_DATABASE=n8n_queue
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_USER=postgres
+      - DB_POSTGRESDB_PASSWORD={{postgres_password}}
+
+      ## Encryption Key
+      - N8N_ENCRYPTION_KEY={{encryption_key}}
+
+      ## N8N Url
+      - N8N_HOST={{url_editor}}
+      - N8N_EDITOR_BASE_URL=https://{{url_editor}}/
+      - WEBHOOK_URL=https://{{url_webhook}}/
+      - N8N_PROTOCOL=https
+
+      ## Node mode
+      - NODE_ENV=production
+
+      ## Execution mode
+      - EXECUTIONS_MODE=queue
+
+      ## Community Nodes
+      - N8N_REINSTALL_MISSING_PACKAGES=true
+      - N8N_COMMUNITY_PACKAGES_ENABLED=true
+      - N8N_NODE_PATH=/home/node/.n8n/nodes
+
+      ## SMTP
+      - N8N_SMTP_SENDER={{smtp_email}}
+      - N8N_SMTP_USER={{smtp_user}}
+      - N8N_SMTP_PASS={{smtp_password}}
+      - N8N_SMTP_HOST={{smtp_host}}
+      - N8N_SMTP_PORT={{smtp_port}}
+      - N8N_SMTP_SSL={{smtp_secure}}
+
+      ## Redis
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PORT=6379
+      - QUEUE_BULL_REDIS_DB=2
+      - NODE_FUNCTION_ALLOW_EXTERNAL=moment,lodash,moment-with-locales
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=336
+
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - TZ=America/Sao_Paulo
+      
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
 
 networks:
   {{network_name}}:
@@ -7410,6 +7849,14 @@ create_database_postgres() {
   fi
 }
 
+create_postgres_database_metabase(){
+  create_database_postgres 'metabase'
+}
+
+create_postgres_database_n8n(){
+  create_database_postgres 'n8n'
+}
+
 get_network_name() {
   server_info_filename="$STACKME_DIR/server_info.json"
 
@@ -7447,7 +7894,7 @@ manage_prometheus_config_file() {
 }
 
 # Function to generate configuration files for startup
-generate_config_traefik() {
+generate_stack_config_traefik() {
   local stack_name="traefik"
 
   highlight "Gathering $stack_name configuration"
@@ -7536,7 +7983,7 @@ generate_config_traefik() {
 }
 
 # Function to generate configuration files for portainer
-generate_config_portainer() {
+generate_stack_config_portainer() {
   local stack_name="portainer"
 
   total_steps=3
@@ -7638,7 +8085,7 @@ generate_config_portainer() {
   }
 }
 
-generate_config_monitor() {
+generate_stack_config_monitor() {
   local stack_name="monitor"
 
   total_steps=4
@@ -7772,8 +8219,8 @@ EOL
     }'
 }
 
-# Function to generate Postgres service configuration JSON
-generate_config_database() {
+# Function to generate Database service configuration JSON
+generate_stack_config_generic_database() {
   local stack_name="$1"
   local image_version="$2"
   local db_username="$3"
@@ -7813,7 +8260,7 @@ generate_config_database() {
 }
 
 # Function to generate configuration files for redis
-generate_config_redis() {
+generate_stack_config_redis() {
   local stack_name='redis'
 
   highlight "Gathering $stack_name configuration"
@@ -7827,44 +8274,44 @@ generate_config_redis() {
 
   info "Redis version: $image_version"
 
-  generate_config_database "$stack_name" "$image_version"
+  generate_stack_config_generic_database "$stack_name" "$image_version"
 }
 
 # Function to generate Postgres service configuration JSON
-generate_config_postgres() {
+generate_stack_config_postgres() {
   local stack_name='postgres'
   local image_version='15'
 
   local db_username="postgres"
 
-  generate_config_database "$stack_name" "$image_version" "$db_username"
+  generate_stack_config_generic_database "$stack_name" "$image_version" "$db_username"
 }
 
 # Function to generate PgVector service configuration JSON
-generate_config_pgvector() {
+generate_stack_config_pgvector() {
   local stack_name='pgvector'
   local image_version='pg16'
 
-  generate_config_database "$stack_name" "$image_version"
+  generate_stack_config_generic_database "$stack_name" "$image_version"
 }
 
 # Function to generate MySQL service configuration JSON
-generate_config_mysql() {
+generate_stack_config_mysql() {
   local stack_name='mysql'
   local image_version='8.0'
 
-  generate_config_database "$stack_name" "$image_version"
+  generate_stack_config_generic_database "$stack_name" "$image_version"
 }
 
 # Function to generate MongoDB service configuration JSON
-generate_config_mongodb() {
+generate_stack_config_mongodb() {
   local stack_name='mongodb'
   local image_version='4.4'
 
-  generate_config_database "$stack_name" "$image_version"
+  generate_stack_config_generic_database "$stack_name" "$image_version"
 }
 
-generate_config_whoami() {
+generate_stack_config_whoami() {
   local stack_name='whoami'
 
   total_steps=2
@@ -7920,7 +8367,7 @@ generate_config_whoami() {
 }
 
 # Function to generate Airflow service configuration JSON
-generate_config_airflow() {
+generate_stack_config_airflow() {
   local stack_name='airflow'
 
   total_steps=2
@@ -7998,7 +8445,7 @@ generate_config_airflow() {
 }
 
 # Function to generate Metabase service configuration JSON
-generate_config_metabase() {
+generate_stack_config_metabase() {
   local stack_name='metabase'
 
   total_steps=2
@@ -8052,9 +8499,9 @@ generate_config_metabase() {
             ],
             "prepare": [
               {
-                "name": "create_metabase_db",
+                "name": "create_postgres_database_metabase",
                 "description": "Creating Metabase database",
-                "command": "create_database_postgres metabase",
+                "command": "create_postgres_database_metabase",
               }
             ],
             "finalize": []
@@ -8063,6 +8510,130 @@ generate_config_metabase() {
     error "Failed to generate JSON"
     return 1
   }
+}
+
+generate_stack_config_n8n(){
+  local stack_name='n8n'
+
+  prompt_items='[
+      {
+          "name": "url_editor",
+          "label": "Editor domain name",
+          "description": "URL to access Editor remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      },
+      {
+          "name": "url_webhook",
+          "label": "Webhook domain name",
+          "description": "URL to access Webhook remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      },
+      {
+          "name": "smtp_email",
+          "label": "SMTP E-mail",
+          "description": "E-mail to send SMTP notifications",
+          "required": "yes",
+          "validate_fn": "validate_email_value" 
+      },
+      {
+          "name": "smtp_user",
+          "label": "SMTP User",
+          "description": "User to send SMTP notifications",
+          "required": "yes",
+          "validate_fn": "validate_username" 
+      },
+      {
+          "name": "smtp_password",
+          "label": "SMTP Password",
+          "description": "Password to send SMTP notifications",
+          "required": "yes",
+          "validate_fn": "validate_empty_value" 
+      },
+      {
+          "name": "smtp_host",
+          "label": "SMTP Host",
+          "description": "Host to send SMTP notifications",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      },
+      {
+          "name": "smtp_port",
+          "label": "SMTP Port",
+          "description": "Port to send SMTP notifications",
+          "required": "yes",
+          "validate_fn": "validate_port" 
+      },
+      {
+          "name": "smtp_secure",
+          "label": "SMTP Secure",
+          "description": "Secure to send SMTP notifications",
+          "required": "yes",
+          "validate_fn": "validate_yn_response" 
+      }
+  ]'
+
+  collected_items="$(run_collection_process "$prompt_items")"
+
+  if [[ "$collected_items" == "[]" ]]; then
+    error "Unable to retrieve N8N configuration."
+    return 1
+  fi
+
+  collected_object="$(process_prompt_items "$collected_items")"
+
+  url_editor="$(echo "$collected_object" | jq -r '.url_editor')"
+  url_webhook="$(echo "$collected_object" | jq -r '.url_webhook')"
+  smtp_email="$(echo "$collected_object" | jq -r '.smtp_email')"
+  smtp_user="$(echo "$collected_object" | jq -r '.smtp_user')"
+  smtp_password="$(echo "$collected_object" | jq -r '.smtp_password')" 
+  smtp_host="$(echo "$collected_object" | jq -r '.smtp_host')" 
+  smtp_port="$(echo "$collected_object" | jq -r '.smtp_port')" 
+  smtp_secure="$(echo "$collected_object" | jq -r '.smtp_secure')"
+
+  step_message="Generating use N8N password"
+  step_info 1 $total_steps "$step_message"
+  local network_name="$(get_network_name)"
+
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg network_name "$network_name" \
+    '{
+          "name": $stack_name,
+          "variables": {
+              "url_editor": $url_editor,
+              "url_webhook": $url_webhook,
+              "smtp_email": $smtp_email,
+              "smtp_user": $smtp_user, 
+              "smtp_password": $smtp_password,
+              "smtp_host": $smtp_host,
+              "smtp_port": $smtp_port,
+              "smtp_secure": $smtp_secure, 
+              "network_name": $network_name
+          },
+          "dependencies": ["traefik", "portainer", "postgres", "redis"],
+          "actions": {
+            "refresh": [
+              {
+                "name": "fetch_postgres_password",
+                "description": "Fetching postgres password",
+                "command": "fetch_postgres_password",
+              }
+            ],
+            "prepare": [
+              {
+                "name": "create_postgres_database_n8n",
+                "description": "Creating N8N database",
+                "command": "create_postgres_database_n8n",
+              }
+            ],
+            "finalize": []
+          }
+      }' | jq . || {
+        error "Failed to generate JSON"
+        return 1
+    }
 }
 
 #################################### END OF STACK CONFIGURATION ###################################
@@ -8083,7 +8654,7 @@ deploy_stack_portainer() {
   deploy_stack 'portainer'
 }
 
-deploy_stack_startup() {
+deploy_stacks_startup() {
   deploy_stack_traefik
 
   if [[ $? -ne 0 ]]; then
@@ -8115,6 +8686,13 @@ deploy_stack_postgres() {
   cleanup
   clean_screen
   deploy_stack 'postgres'
+}
+
+# Function to deploy a PostgreSQL stack
+deploy_stack_pgvector() {
+  cleanup
+  clean_screen
+  deploy_stack 'pgvector'
 }
 
 # Function to deploy a Redis service
@@ -8159,61 +8737,78 @@ deploy_stack_metabase() {
   deploy_stack 'metabase'
 }
 
+# Function to deploy a n8n service
+deploy_stack_n8n() {
+  cleanup
+  clean_screen
+  deploy_stack 'n8n'
+}
+
 ################################# END OF STACK DEPLOYMENT FUNCTIONS ################################
 
 ##################################### BEGIN OF MENU DEFINITIONS ####################################
 
-# Stacks
+# main:stacks:databases
 define_menu_stacks_databases() {
-  menu_name="Databases"
+  menu_key="main:stacks:databases"
+  menu_title="Database stacks"
 
   item_1="$(
     build_menu_item "postgres" "Deploy" "deploy_stack_postgres"
   )"
   item_2="$(
-    build_menu_item "redis" "Deploy" "deploy_stack_redis"
+    build_menu_item "pgvector" "Deploy" "deploy_stack_pgvector"
   )"
   item_3="$(
-    build_menu_item "mysql" "Deploy" "deploy_stack_mysql"
+    build_menu_item "redis" "Deploy" "deploy_stack_redis"
   )"
   item_4="$(
+    build_menu_item "mysql" "Deploy" "deploy_stack_mysql"
+  )"
+  item_5="$(
     build_menu_item "mongodb" "Deploy" "deploy_stack_mongodb"
+  )"
+
+  items=(
+    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5"
+  )
+
+  menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
+  
+  define_menu "$menu_key" "$menu_object"
+}
+
+# main:stacks:miscelaneous
+define_menu_stacks_miscelaneous() {
+  menu_key="main:stacks:miscelaneous"
+  menu_title="Miscelaneous stacks"
+
+  item_1="$(
+    build_menu_item "whoami" "Deploy" "deploy_stack_whoami"
+  )"
+  item_2="$(
+    build_menu_item "metabase" "Deploy" "deploy_stack_metabase"
+  )"
+  item_3="$(
+    build_menu_item "n8n" "Deploy" "deploy_stack_n8n"
+  )"
+  item_4="$(
+    build_menu_item "airflow" "Deploy" "deploy_stack_airflow"
   )"
 
   items=(
     "$item_1" "$item_2" "$item_3" "$item_4"
   )
 
-  menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
+  menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
 
-  define_menu "$menu_name" "$menu_object"
+  define_menu "$menu_key" "$menu_object"
 }
 
-define_menu_miscelaneous() {
-  menu_name="Miscelaneous"
-
-  item_1="$(
-    build_menu_item "whoami" "Deploy" "deploy_stack_whoami"
-  )"
-  item_2="$(
-    build_menu_item "airflow" "Deploy" "deploy_stack_airflow"
-  )"
-  item_3="$(
-    build_menu_item "metabase" "Deploy" "deploy_stack_metabase"
-  )"
-
-  items=(
-    "$item_1" "$item_2" "$item_3"
-  )
-
-  menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
-
-  define_menu "$menu_name" "$menu_object"
-}
-
-# Stacks
+# main:stacks
 define_menu_stacks() {
-  menu_name="Stacks"
+  menu_key="main:stacks"
+  menu_title="stacks"
 
   item_1="$(
     build_menu_item "Startup" \
@@ -8227,13 +8822,13 @@ define_menu_stacks() {
   )"
   item_3="$(
     build_menu_item "Databases" \
-      "Postgres & Redis & MySQL & MongoDB & " \
-      "navigate_menu 'Databases'"
+      "Postgres & Redis & MySQL & MongoDB" \
+      "navigate_menu 'main:stacks:databases'"
   )"
   item_4="$(
     build_menu_item "Miscelaneous" \
-      "Whoami & Airflow & Metabase" \
-      "navigate_menu 'Miscelaneous'"
+      "Whoami & Airflow & Metabase & N8N" \
+      "navigate_menu 'main:stacks:miscelaneous'"
   )"
 
   items=(
@@ -8241,14 +8836,15 @@ define_menu_stacks() {
   )
 
   page_size=10
-  menu_object="$(build_menu "$menu_name" $page_size "${items[@]}")"
+  menu_object="$(build_menu "$menu_key" "$menu_title" $page_size "${items[@]}")"
 
-  define_menu "$menu_name" "$menu_object"
+  define_menu "$menu_key" "$menu_object"
 }
 
-# Utilities
-define_menu_utilities() {
-  menu_name="Utilities"
+# main:utilities:smtp
+define_menu_utilities_smtp() {
+  menu_key="main:utilities:smtp"
+  menu_title="SMTP utilities"
 
   item_1="$(
     build_menu_item "Test SMPT e-mail" \
@@ -8263,14 +8859,57 @@ define_menu_utilities() {
     "$item_1" "$item_2"
   )
 
-  menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
+  menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
 
-  define_menu "$menu_name" "$menu_object"
+  define_menu "$menu_key" "$menu_object"
 }
 
-# VPS Health
+# main:utilities:docker
+define_menu_utilities_docker() {
+  menu_key="main:utilities:docker"
+  menu_title="Docker utilities"
+
+  item_1="$(
+    build_menu_item "CTOP" \
+        "Install docker manager on terminal" "install_ctop"
+  )"
+
+  items=(
+    "$item_1"
+  )
+
+  menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
+
+  define_menu "$menu_key" "$menu_object"
+}
+
+# main:utilities
+define_menu_utilities() {
+  menu_key="main:utilities"
+  menu_title="Utilities"
+
+  item_1="$(
+    build_menu_item "SMTP" \
+      "Test and tools" "navigate_menu 'main:utilities:smtp'"
+  )"
+  item_2="$(
+    build_menu_item "Docker" \
+        "Tools" "navigate_menu 'main:utilities:docker'"
+  )"
+
+  items=(
+    "$item_1" "$item_2"
+  )
+
+  menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
+
+  define_menu "$menu_key" "$menu_object"
+}
+
+# main:health
 define_menu_health() {
-  menu_name="Health"
+  menu_key="main:health"
+  menu_title="Health"
 
   item_1="$(
     build_menu_item "Machine specifications" "describe" \
@@ -8318,27 +8957,28 @@ define_menu_health() {
   )
 
   menu_object="$(
-    build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}"
+    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}"
   )"
 
-  define_menu "$menu_name" "$menu_object"
+  define_menu "$menu_key" "$menu_object"
 }
 
-# Menu Main
+# main
 define_menu_main() {
-  menu_name="Main"
+  menu_key="main"
+  menu_title="main"
 
-  item_1="$(build_menu_item "Stacks" "explore" "navigate_menu 'Stacks'")"
-  item_2="$(build_menu_item "Utilities" "explore" "navigate_menu 'Utilities'")"
-  item_3="$(build_menu_item "Health" "diagnose" "navigate_menu 'Health'")"
+  item_1="$(build_menu_item "Stacks" "explore" "navigate_menu 'main:stacks'")"
+  item_2="$(build_menu_item "Utilities" "explore" "navigate_menu 'main:utilities'")"
+  item_3="$(build_menu_item "Health" "diagnose" "navigate_menu 'main:health'")"
 
   items=(
     "$item_1" "$item_2" "$item_3"
   )
 
-  menu_object="$(build_menu "$menu_name" $DEFAULT_PAGE_SIZE "${items[@]}")"
+  menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
 
-  define_menu "$menu_name" "$menu_object"
+  define_menu "$menu_key" "$menu_object"
 }
 
 # Populate MENUS
@@ -8348,14 +8988,18 @@ define_menus() {
   # Stacks and its submenus
   define_menu_stacks
   define_menu_stacks_databases
-  define_menu_miscelaneous
+  define_menu_stacks_miscelaneous
 
+  # Utilities and its submenus
   define_menu_utilities
+  define_menu_utilities_docker
+  define_menu_utilities_smtp
+
   define_menu_health
 }
 
 start_main_menu() {
-  navigate_menu "Main"
+  navigate_menu "main"
   cleanup
   clean_screen
   farewell_message
@@ -8459,28 +9103,8 @@ main() {
   define_menus
 
   start_main_menu
+  wait_for_input
 }
 
 # Call the main function
 main "$@"
-
-# stack_name="postgres"
-# stack_exists "$stack_name"0
-#
-# if [[ $? -eq 0 ]]; then
-#   prompt_message="${yellow}Stack exists. Would you like to remove it? (Y/n)${normal}"
-#   if handle_confirmation_prompt "$prompt_message" "y" 5; then
-#     echo "Stack $stack_name removed!"
-#   else
-#     echo "Stack $stack_name not removed!"
-#   fi
-#
-# else
-#   prompt_message="${yellow}Stack $stack_name does not exist. Would you like to install it? (Y/n)${normal}"
-#   if handle_confirmation_prompt "$prompt_message" "y" 5; then
-#     echo "Stack $stack_name removed!"
-#   else
-#     echo "Stack $stack_name not removed!"
-#   fi
-# fi
-# wait_for_input 5

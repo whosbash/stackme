@@ -1,0 +1,152 @@
+## Criando a stack firecrawl.yaml
+cat > firecrawl${1:+_$1}.yaml <<EOL
+version: "3.8"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  firecrawl${1:+_$1}_api:
+    image: oriondesign/firecrawl-api:latest
+    command: [ "pnpm", "run", "start:production" ]
+
+    networks:
+     - $nome_rede_interna ## Nome da rede interna
+
+    environment:
+      ## Credencial
+      - FIRECRAWL_API_KEY=$apikey_firecrawl
+
+      ## Dados do Redis
+      - REDIS_URL=redis://redis:6379
+      - REDIS_RATE_LIMIT_URL=redis://redis:6379
+      
+      ## Dados da OpenAI
+      - OPENAI_API_KEY=$api_firecrawl
+      - OPENAI_BASE_URL=https://api.openai.com/v1
+      - MODEL_NAME=gpt-4o
+      
+      # Dados do ScrapingBee
+      - SCRAPING_BEE_API_KEY=
+      - HOST=0.0.0.0
+      
+      # Dados do Webhook e Debug
+      - SELF_HOSTED_WEBHOOK_URL=
+      - LOGGING_LEVEL=DEBUG
+
+      ## Dados do Supabase
+      - USE_DB_AUTHENTICATION=false
+      #- SUPABASE_URL=
+      #- SUPABASE_ANON_TOKEN=
+      #- SUPABASE_SERVICE_TOKEN=
+
+      ## Outras configurações
+      - PORT=3002
+      - NUM_WORKERS_PER_QUEUE=8 
+      - FLY_PROCESS_GROUP=app
+      - PLAYWRIGHT_MICROSERVICE_URL=http://firecrawl${1:+_$1}_playwright:3000
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.firecrawl${1:+_$1}_api.rule=Host(\`$url_firecrawl\`)
+        - traefik.http.services.firecrawl${1:+_$1}_api.loadbalancer.server.port=3002
+        - traefik.http.routers.firecrawl${1:+_$1}_api.service=firecrawl${1:+_$1}_api
+        - traefik.http.routers.firecrawl${1:+_$1}_api.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.firecrawl${1:+_$1}_api.entrypoints=websecure
+        - traefik.http.routers.firecrawl${1:+_$1}_api.tls=true
+
+## --------------------------- ORION --------------------------- ##
+
+  firecrawl${1:+_$1}_worker:
+    image: oriondesign/firecrawl-api:latest
+    command: [ "pnpm", "run", "workers" ]
+
+    networks:
+     - $nome_rede_interna ## Nome da rede interna
+
+    environment:
+      ## Credencial
+      - FIRECRAWL_API_KEY=$apikey_firecrawl
+      
+      ## Dados do Redis
+      - REDIS_URL=redis://redis:6379
+      - REDIS_RATE_LIMIT_URL=redis://redis:6379
+      
+      ## Dados da OpenAI
+      - OPENAI_API_KEY=$api_firecrawl
+      - OPENAI_BASE_URL=https://api.openai.com/v1
+      - MODEL_NAME=gpt-4o
+      
+      # Dados do ScrapingBee
+      - SCRAPING_BEE_API_KEY=
+      - HOST=0.0.0.0
+      
+      # Dados do Webhook e Debug
+      - SELF_HOSTED_WEBHOOK_URL=
+      - LOGGING_LEVEL=DEBUG
+
+      ## Dados do Supabase
+      - USE_DB_AUTHENTICATION=false
+      #- SUPABASE_URL=
+      #- SUPABASE_ANON_TOKEN=
+      #- SUPABASE_SERVICE_TOKEN=
+
+      ## Outras configurações
+      - PORT=3002
+      - NUM_WORKERS_PER_QUEUE=8 
+      - FLY_PROCESS_GROUP=worker
+      - PLAYWRIGHT_MICROSERVICE_URL=http://firecrawl${1:+_$1}_playwright:3000
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+
+## --------------------------- ORION --------------------------- ##
+
+  firecrawl${1:+_$1}_playwright:
+    image: oriondesign/firecrawl-playwright-service:latest
+
+    networks:
+     - $nome_rede_interna ## Nome da rede interna
+
+    environment:
+      - PORT=3000
+      - PROXY_SERVER=http://proxy-server.com:3128
+      - PROXY_USERNAME=admin
+      - PROXY_PASSWORD=admin
+      - BLOCK_MEDIA=true
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+
+## --------------------------- ORION --------------------------- ##
+
+networks:
+  $nome_rede_interna: ## Nome da rede interna
+    name: $nome_rede_interna ## Nome da rede interna
+    external: true
+EOL

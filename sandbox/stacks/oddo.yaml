@@ -1,0 +1,83 @@
+## Criando a stack odoo.yaml
+cat > odoo${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  odoo${1:+_$1}_app:
+    image: odoo:18.0
+
+    volumes:
+      - odoo${1:+_$1}_app_data:/var/lib/odoo
+      - odoo${1:+_$1}_app_config:/etc/odoo
+      - odoo${1:+_$1}_app_addons:/mnt/extra-addons
+
+    networks:
+      - $nome_rede_interna
+
+    environment:
+      ## Dados postgres do Odoo
+      - HOST=odoo${1:+_$1}_db
+      - USER=odoo
+      - PASSWORD=$senha_postgres_odoo
+
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.odoo${1:+_$1}_app.rule=Host(\`$url_odoo\`)
+        - traefik.http.routers.odoo${1:+_$1}_app.entrypoints=websecure
+        - traefik.http.routers.odoo${1:+_$1}_app.tls=true
+        - traefik.http.routers.odoo${1:+_$1}_app.service=odoo${1:+_$1}_app
+        - traefik.http.routers.odoo${1:+_$1}_app.tls.certresolver=letsencryptresolver
+        - traefik.http.services.odoo${1:+_$1}_app.loadbalancer.server.port=8069
+
+## --------------------------- ORION --------------------------- ##
+
+  odoo${1:+_$1}_db:
+    image: postgres:15
+
+    volumes:
+      - odoo${1:+_$1}_db_data:/var/lib/postgresql/data/pgdata
+
+    networks:
+      - $nome_rede_interna
+    #ports:
+    #  - 543:45432
+
+    environment:
+      ## Dados Postgres
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=$senha_postgres_odoo
+      - POSTGRES_USER=odoo
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  odoo${1:+_$1}_app_data:
+    external: true
+    name: odoo${1:+_$1}_app_data
+  odoo${1:+_$1}_app_config:
+    external: true
+    name: odoo${1:+_$1}_app_config
+  odoo${1:+_$1}_app_addons:
+    external: true
+    name: odoo${1:+_$1}_app_addons
+  odoo${1:+_$1}_db_data:
+    external: true
+    name: odoo${1:+_$1}_db_data
+
+networks:
+  $nome_rede_interna:
+    external: true
+    attachable: true
+    name: $nome_rede_interna
+EOL

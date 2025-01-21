@@ -1,0 +1,64 @@
+## Criando a stack wuzapi.yaml
+cat > wuzapi${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+ wuzapi${1:+_$1}:
+  image: ruben18salazar/wuzapi:api
+
+  volumes:
+    - wuzapi${1:+_$1}_dbdata:/app/dbdata
+    - wuzapi${1:+_$1}_files:/app/files
+
+  networks:
+    - $nome_rede_interna ## Nome da rede interna
+
+  environment:
+    ## Credencial
+    - WUZAPI_ADMIN_TOKEN=$apikey_wuzapi
+    - SECRET_KEY=$encryption_key
+
+    ## Dados do postgres
+    - DB_HOST=postgres
+    - DB_USER=postgres
+    - DB_PASSWORD=$senha_postgres
+    - DB_NAME=wuzapi${1:+_$1}
+    - DB_PORT=5432
+    - DB_DRIVER=postgres
+
+  deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.wuzapi${1:+_$1}.rule=Host(\`$url_wuzapi\`)
+        - traefik.http.services.wuzapi${1:+_$1}.loadbalancer.server.port=8080
+        - traefik.http.routers.wuzapi${1:+_$1}.service=wuzapi${1:+_$1}
+        - traefik.http.routers.wuzapi${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.wuzapi${1:+_$1}.entrypoints=websecure
+        - traefik.http.routers.wuzapi${1:+_$1}.tls=true
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  wuzapi${1:+_$1}_dbdata:
+    external: true
+    name: wuzapi${1:+_$1}_dbdata
+  wuzapi${1:+_$1}_files:
+    external: true
+    name: wuzapi${1:+_$1}_files
+
+networks:
+  $nome_rede_interna: ## Nome da rede interna
+    name: $nome_rede_interna ## Nome da rede interna
+    external: true
+EOL

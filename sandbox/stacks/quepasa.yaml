@@ -1,0 +1,113 @@
+cat > quepasa${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  quepasa${1:+_$1}:
+    image: deividms/quepasa:latest ## Imagem/versão do Quepasa
+      
+    volumes:
+      - quepasa${1:+_$1}_volume:/opt/quepasa
+
+    networks:
+      - $nome_rede_interna
+
+    environment:
+      ## Dados de acesso
+      - DOMAIN=$url_quepasa
+
+      ## Email Quepasa
+      - EMAIL=$email_quepasa
+      - QUEPASA_BASIC_AUTH_USER=$email_quepasa
+      - QUEPASA_BASIC_AUTH_PASSWORD=$email_quepasa
+
+      ## Titulo no celular
+      - APP_TITLE=OrionDesign ## Mude aqui o nome que vai aparecer no celular.
+
+      ## TimeZone
+      - TZ=America/Sao_Paulo
+
+      ## Configurações para o WhatsApp
+      - GROUPS=true
+      - BROADCASTS=false
+      - READRECEIPTS=forcedfalse
+      - CALLS=true
+      - READUPDATE=false
+      - LOGLEVEL=DEBUG
+
+      ## Configurações quepasa
+      - QUEPASA_HOST_NAME=Quepasa
+      - QUEPASA_MEMORY_LIMIT=4096M
+      - WEBSOCKETSSL=true
+      - REMOVEDIGIT9=true
+      - SIGNING_SECRET=$key_quepasa
+
+      ## Webhook
+      #- WEBHOOK_QUEPASA=$url_webhook/webhook/quepasa
+      #- WEBHOOK_TESTE_QUEPASA=$url_n8n/webhook-test/quepasa
+            
+      ## Portas
+      - QUEPASA_EXTERNAL_PORT=31000
+      - QUEPASA_INTERNAL_PORT=31000
+      - WEBAPIPORT=31000
+
+      ## Outras configurações
+      - DEBUGREQUESTS=false
+      - SYNOPSISLENGTH=500
+      - METRICS_HOST=
+      - METRICS_PORT=9392
+      - MIGRATIONS=/builder/migrations
+      - DEBUGJSONMESSAGES=false
+      - HTTPLOGS=false
+
+      ## WHATSMEOW SERVICE
+      - WHATSMEOW_LOGLEVEL=WARN
+      - WHATSMEOW_DBLOGLEVEL=WARN
+
+      ## Env Mode
+      - APP_ENV=production
+      - NODE_ENV=production
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+          constraints:
+          - node.role == manager
+      resources:
+          limits:
+              cpus: "2"
+              memory: 2096M
+                      
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.quepasa${1:+_$1}.rule=Host(\`$url_quepasa\`)
+        - traefik.http.routers.quepasa${1:+_$1}.tls=true
+        - traefik.http.routers.quepasa${1:+_$1}.entrypoints=web,websecure
+        - traefik.http.routers.quepasa${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.quepasa${1:+_$1}.service=quepasa${1:+_$1}
+        - traefik.http.routers.quepasa${1:+_$1}.priority=1      
+        - traefik.http.middlewares.quepasa${1:+_$1}.headers.SSLRedirect=true
+        - traefik.http.middlewares.quepasa${1:+_$1}.headers.STSSeconds=315360000
+        - traefik.http.middlewares.quepasa${1:+_$1}.headers.browserXSSFilter=true
+        - traefik.http.middlewares.quepasa${1:+_$1}.headers.contentTypeNosniff=true
+        - traefik.http.middlewares.quepasa${1:+_$1}.headers.forceSTSHeader=true
+        - traefik.http.middlewares.quepasa${1:+_$1}.headers.SSLHost=\${QUEPASA_HOST}
+        - traefik.http.middlewares.quepasa${1:+_$1}.headers.STSIncludeSubdomains=true
+        - traefik.http.middlewares.quepasa${1:+_$1}.headers.STSPreload=true
+        - traefik.http.services.quepasa${1:+_$1}.loadbalancer.server.port=31000
+        - traefik.http.services.quepasa${1:+_$1}.loadbalancer.passHostHeader=true              
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  quepasa${1:+_$1}_volume:
+    external: true
+    name: quepasa${1:+_$1}_volume
+
+networks:
+  $nome_rede_interna:
+    external: true
+    name: $nome_rede_interna 
+EOL

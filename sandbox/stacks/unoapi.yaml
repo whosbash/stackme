@@ -1,0 +1,89 @@
+## Criando a stack unoapi.yaml
+cat > unoapi${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  unoapi${1:+_$1}:
+    image: clairton/unoapi-cloud:latest
+    entrypoint: yarn cloud
+
+    volumes:
+      - unoapi${1:+_$1}_data:/home/u/app
+
+    networks:
+      - $nome_rede_interna
+
+    environment:
+      ## Url Uno API
+      - BASE_URL=https://$url_unoapi
+
+      ## Token Uno Api
+      - UNOAPI_AUTH_TOKEN=any
+
+      ## Configurações da Uno API
+      - IGNORE_GROUP_MESSAGES=$op_1
+      - IGNORE_BROADCAST_STATUSES=$op_2
+      - IGNORE_BROADCAST_MESSAGES=$op_3
+      - IGNORE_STATUS_MESSAGE=$op_4
+      - IGNORE_OWN_MESSAGES=$op_5
+      - REJECT_CALLS=
+      - REJECT_CALLS_WEBHOOK=
+      - SEND_CONNECTION_STATUS=$op_6
+
+      ## Sobre Webhook
+      - WEBHOOK_URL=https://$url_chatwoot_uno/webhooks/whatsapp
+      - WEBHOOK_HEADER=api_access_token
+      - WEBHOOK_TOKEN=$token_chatwoot_uno
+
+      ## Dados do Minio/S3
+      - STORAGE_ENDPOINT=https://$url_s3
+      - STORAGE_ACCESS_KEY_ID=$S3_ACCESS_KEY
+      - STORAGE_SECRET_ACCESS_KEY=$S3_SECRET_KEY
+      - STORAGE_BUCKET_NAME=unoapi${1:+_$1}
+      - STORAGE_FORCE_PATH_STYLE=true
+
+      ## Dados do RabbitMQ
+      - AMQP_URL=amqp://$user_rabbit_mqs:$senha_rabbit_mqs@rabbitmq:5672/unoapi${1:+_$1}
+      
+      ## Dados do Redis
+      - REDIS_URL=redis://redis:6379
+
+      ## Outras configurações
+      - LOG_LEVEL=debug
+      - UNO_LOG_LEVEL=debug
+      - UNOAPI_RETRY_REQUEST_DELAY=1_000
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+      - traefik.enable=true
+      - traefik.http.routers.unoapi${1:+_$1}.rule=Host(\`$url_unoapi\`)
+      - traefik.http.routers.unoapi${1:+_$1}.entrypoints=websecure
+      - traefik.http.routers.unoapi${1:+_$1}.tls.certresolver=letsencryptresolver
+      - traefik.http.services.unoapi${1:+_$1}.loadbalancer.server.port=9876
+      - traefik.http.routers.unoapi${1:+_$1}.priority=1
+      - traefik.http.services.unoapi${1:+_$1}.loadbalancer.passHostHeader=true
+      - traefik.http.routers.unoapi${1:+_$1}.service=unoapi${1:+_$1}
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  unoapi${1:+_$1}_data:
+    external: true
+    name: unoapi${1:+_$1}_data
+
+networks:
+  $nome_rede_interna:
+    external: true
+    name: $nome_rede_interna
+EOL

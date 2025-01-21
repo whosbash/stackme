@@ -1,0 +1,54 @@
+## Criando a stack appsmith.yaml
+cat > appsmith${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  appsmith${1:+_$1}:
+    image: appsmith/appsmith-ee:latest
+
+    volumes:
+      - appsmith${1:+_$1}_data:/appsmith-stacks
+
+    networks:
+      - $nome_rede_interna
+
+    environment:
+      ## Url Appsmith
+      - APPSMITH_CUSTOM_DOMAIN=https://$url_appsmith
+
+      ## Ativar/Desativar Novas Inscrições
+      - APPSMITH_SIGNUP_DISABLED=false
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2048M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.appsmith${1:+_$1}.rule=Host(\`$url_appsmith\`)
+        - traefik.http.routers.appsmith${1:+_$1}.entrypoints=websecure
+        - traefik.http.routers.appsmith${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.appsmith${1:+_$1}.service=appsmith${1:+_$1}
+        - traefik.http.services.appsmith${1:+_$1}.loadbalancer.server.port=80
+        - traefik.http.services.appsmith${1:+_$1}.loadbalancer.passHostHeader=true
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  appsmith${1:+_$1}_data:
+    external: true
+    name: appsmith${1:+_$1}_data
+
+networks:
+  $nome_rede_interna:
+    name: $nome_rede_interna
+    external: true
+EOL

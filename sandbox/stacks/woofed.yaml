@@ -1,0 +1,217 @@
+## Criando a stack woofedcrm.yaml
+cat > woofedcrm${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  woofedcrm${1:+_$1}_web:
+    image: douglara/woofedcrm:latest
+    command: bundle exec rails s -p 3000 -b 0.0.0.0
+
+    volumes:
+      - woofedcrm${1:+_$1}_data:/app/public/assets
+
+    networks:
+      - $nome_rede_interna
+
+    environment:
+      ## Url WoofedCRM
+      - FRONTEND_URL=https://$url_woofed
+      - SECRET_KEY_BASE=$encryption_key_woofed
+
+      ## Idioma
+      - LANGUAGE=pt-BR
+
+      ## Permitir/Bloquear novas Inscrições
+      - ENABLE_USER_SIGNUP=true
+
+      ## Credenciais Motor
+      - MOTOR_AUTH_USERNAME=$email_admin_woofed
+      - MOTOR_AUTH_PASSWORD=$senha_email_woofed
+
+      ## Endpoints Evolution API
+      $EVOLUTION_API_ENDPOINT ## BaseUrl
+      $EVOLUTION_API_ENDPOINT_TOKEN ## Global Api Key
+
+      ## Timezone
+      - DEFAULT_TIMEZONE=Brasilia
+
+      ## Dados OpenAI
+      #- OPENAI_API_KEY=
+
+      ## Dados PgVector
+      - DATABASE_URL=postgres://postgres:$senha_pgvector@pgvector:5432/woofedcrm${1:+_$1}
+
+      ## Dados Redis
+      - REDIS_URL=redis://redis:6379/0
+
+      ## Dados Storage
+      - ACTIVE_STORAGE_SERVICE=local
+
+      ## Modo de Produção
+      - RAILS_ENV=production
+      - RACK_ENV=production
+      - NODE_ENV=production
+      - RAILS_LOG_LEVEL=debug
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.woofedcrm${1:+_$1}.rule=Host(\`$url_woofed\`)
+        - traefik.http.routers.woofedcrm${1:+_$1}.entrypoints=websecure
+        - traefik.http.routers.woofedcrm${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.woofedcrm${1:+_$1}.priority=1
+        - traefik.http.routers.woofedcrm${1:+_$1}.service=woofedcrm${1:+_$1}
+        - traefik.http.services.woofedcrm${1:+_$1}.loadbalancer.server.port=3000 
+        - traefik.http.services.woofedcrm${1:+_$1}.loadbalancer.passhostheader=true 
+        - traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https
+        - traefik.http.routers.woofedcrm${1:+_$1}.middlewares=sslheader@docker
+
+## --------------------------- ORION --------------------------- ##
+
+  woofedcrm${1:+_$1}_sidekiq:
+    image: douglara/woofedcrm:latest
+    command: bundle exec sidekiq -C config/sidekiq.yml
+
+    volumes:
+      - woofedcrm${1:+_$1}_data:/app/public/assets
+
+    networks:
+      - $nome_rede_interna
+
+    environment:
+      ## Url WoofedCRM
+      - FRONTEND_URL=https://$url_woofed
+      - SECRET_KEY_BASE=$encryption_key_woofed
+
+      ## Idioma
+      - LANGUAGE=pt-BR
+
+      ## Permitir/Bloquear novas Inscrições
+      - ENABLE_USER_SIGNUP=true
+
+      ## Credenciais Motor
+      - MOTOR_AUTH_USERNAME=$email_admin_woofed
+      - MOTOR_AUTH_PASSWORD=$senha_email_woofed
+
+      ## Endpoints Evolution API
+      $EVOLUTION_API_ENDPOINT ## BaseUrl
+      $EVOLUTION_API_ENDPOINT_TOKEN ## Global Api Key
+
+      ## Timezone
+      - DEFAULT_TIMEZONE=Brasilia
+
+      ## Dados OpenAI
+      #- OPENAI_API_KEY=
+
+      ## Dados PgVector
+      - DATABASE_URL=postgres://postgres:$senha_pgvector@pgvector:5432/woofedcrm${1:+_$1}
+
+      ## Dados Redis
+      - REDIS_URL=redis://redis:6379/0
+
+      ## Dados Storage
+      - ACTIVE_STORAGE_SERVICE=local
+
+      ## Modo de Produção
+      - RAILS_ENV=production
+      - RACK_ENV=production
+      - NODE_ENV=production
+      - RAILS_LOG_LEVEL=debug
+      
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+
+## --------------------------- ORION --------------------------- ##
+
+  woofedcrm${1:+_$1}_job:
+    image: douglara/woofedcrm:latest
+    command: bundle exec good_job
+
+    volumes:
+      - woofedcrm${1:+_$1}_data:/app/public/assets
+
+    networks:
+      - $nome_rede_interna
+
+    environment:
+      ## Url WoofedCRM
+      - FRONTEND_URL=https://$url_woofed
+      - SECRET_KEY_BASE=$encryption_key_woofed
+
+      ## Idioma
+      - LANGUAGE=pt-BR
+
+      ## Permitir/Bloquear novas Inscrições
+      - ENABLE_USER_SIGNUP=true
+
+      ## Credenciais Motor
+      - MOTOR_AUTH_USERNAME=$email_admin_woofed
+      - MOTOR_AUTH_PASSWORD=$senha_email_woofed
+
+      ## Endpoints Evolution API
+      $EVOLUTION_API_ENDPOINT ## BaseUrl
+      $EVOLUTION_API_ENDPOINT_TOKEN ## Global Api Key
+
+      ## Timezone
+      - DEFAULT_TIMEZONE=Brasilia
+
+      ## Dados OpenAI
+      #- OPENAI_API_KEY=
+
+      ## Dados PgVector
+      - DATABASE_URL=postgres://postgres:$senha_pgvector@pgvector:5432/woofedcrm${1:+_$1}
+
+      ## Dados Redis
+      - REDIS_URL=redis://redis:6379/0
+
+      ## Dados Storage
+      - ACTIVE_STORAGE_SERVICE=local
+
+      ## Modo de Produção
+      - RAILS_ENV=production
+      - RACK_ENV=production
+      - NODE_ENV=production
+      - RAILS_LOG_LEVEL=debug
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  woofedcrm${1:+_$1}_data:
+    external: true
+    name: woofedcrm${1:+_$1}_data
+
+networks:
+  $nome_rede_interna:
+    external: true
+    name: $nome_rede_interna
+EOL

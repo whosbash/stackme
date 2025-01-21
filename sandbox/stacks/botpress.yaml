@@ -1,0 +1,60 @@
+## Criando a stack botpress.yaml
+cat > botpress${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  botpress${1:+_$1}:
+    image: botpress/server:latest
+
+    volumes:
+      - botpress${1:+_$1}_data:/botpress/data
+
+    networks:
+      - $nome_rede_interna ## Nome da rede interna
+
+    environment:
+      ## Url Botpress
+      - EXTERNAL_URL=https://$url_botpress
+
+      ## Modo
+      - BP_PRODUCTION=true
+
+      ## Dados Postgres
+      - DATABASE_URL=postgresql://postgres:$senha_postgres@postgres:5432/botpress${1:+_$1}
+
+      ## Dados Redis
+      - REDIS_URL=redis://redis:6379
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.botpress${1:+_$1}.rule=Host(\`$url_botpress\`)
+        - traefik.http.services.botpress${1:+_$1}.loadbalancer.server.port=3000
+        - traefik.http.routers.botpress${1:+_$1}.service=botpress${1:+_$1}
+        - traefik.http.routers.botpress${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.botpress${1:+_$1}.entrypoints=websecure
+        - traefik.http.routers.botpress${1:+_$1}.tls=true
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  botpress${1:+_$1}_data:
+    external: true
+    name: botpress${1:+_$1}_data
+
+networks:
+  $nome_rede_interna: ## Nome da rede interna
+    name: $nome_rede_interna ## Nome da rede interna
+    external: true
+EOL

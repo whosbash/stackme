@@ -1,0 +1,79 @@
+## Criando a stack
+cat > openproject${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  openproject${1:+_$1}:
+    image: openproject/openproject:14.1.1
+
+    volumes:
+      - openproject${1:+_$1}_pgdata:/var/openproject/pgdata
+      - openproject${1:+_$1}_assets:/var/openproject/assets
+
+    networks:
+      - $nome_rede_interna
+
+    environment:
+      ## Secret Key
+      - OPENPROJECT_SECRET_KEY_BASE=$key_openproject
+
+      ## Dominio:
+      - OPENPROJECT_HOST__NAME=$url_openproject
+      - OPENPROJECT_HTTPS=true
+
+      ## Dados do Redis
+      - OPENPROJECT_RAILS__CACHE__STORE=redis
+      - OPENPROJECT_CACHE_REDIS_URL=redis://redis:6379
+
+      ## Dados do Postgres
+      - DATABASE_URL=postgresql://postgres:$senha_postgres@postgres:5432/openproject${1:+_$1}
+
+      ## Configurações
+      - OPENPROJECT_DEFAULT__LANGUAGE=pt-BR
+
+      ## Dados SMTP
+      ## Deixei comentado pois a environment da senha não esta funcionando como o esperado
+      #- OPENPROJECT_EMAIL__DELIVERY__METHOD=smtp
+      #- OPENPROJECT_MAIL__FROM=email@dominio.com
+      #- OPENPROJECT_SMTP__USER__NAME=Usuario_do_Email
+      #- OPENPROJECT_SMTP__DOMAIN=dominio.com
+      #- OPENPROJECT_SMTP__PASSWORD=Senha_do_Email
+      #- OPENPROJECT_SMTP__ADDRESS=smtp.dominio.com
+      #- OPENPROJECT_SMTP__PORT=587
+      #- OPENPROJECT_SMTP__ENABLE__STARTTLS__AUTO=true
+      #- OPENPROJECT_SMTP__AUTHENTICATION=plain
+      #- OPENPROJECT_SMTP__OPENSSL__VERIFY__MODE=peer 
+      
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=1
+        - traefik.http.routers.openproject${1:+_$1}.rule=Host(\`$url_openproject\`)
+        - traefik.http.routers.openproject${1:+_$1}.entrypoints=websecure
+        - traefik.http.routers.openproject${1:+_$1}.priority=1
+        - traefik.http.routers.openproject${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.openproject${1:+_$1}.service=openproject${1:+_$1}
+        - traefik.http.services.openproject${1:+_$1}.loadbalancer.server.port=8080
+        - traefik.http.services.openproject${1:+_$1}.loadbalancer.passHostHeader=true
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  openproject${1:+_$1}_pgdata:
+    external: true
+    name: openproject${1:+_$1}_pgdata
+  openproject${1:+_$1}_assets:
+    external: true
+    name: openproject${1:+_$1}_assets
+
+networks:
+  $nome_rede_interna:
+    external: true
+    name: $nome_rede_interna
+EOL

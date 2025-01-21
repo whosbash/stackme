@@ -1,0 +1,86 @@
+## Criando a stack directus.yaml
+cat > directus${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  directus${1:+_$1}:
+    image: directus/directus:latest
+
+    volumes:
+      - directus${1:+_$1}_uploads:/directus/uploads
+      - directus${1:+_$1}_data:/directus/database
+
+    networks:
+      - $nome_rede_interna
+
+    environment:
+      ## Dados de acesso
+      - ADMIN_EMAIL=$email_directus
+      - ADMIN_PASSWORD=$senha_directus
+      - PUBLIC_URL=https://$url_directus
+
+      ## Dados SMTP
+      - EMAIL_SMTP_USER=$email_smtp_directus
+      - EMAIL_SMTP_PASSWORD=$senha_smtp_directus
+      - EMAIL_SMTP_HOST=$host_smtp_directus
+      - EMAIL_SMTP_PORT=$porta_smtp_directus
+      - EMAIL_SMTP_SECURE=$ssl_smtp_directus
+
+      ## Dados MinIO
+      - STORAGE_s3_KEY=$S3_ACCESS_KEY
+      - STORAGE_s3_SECRET=$S3_SECRET_KEY
+      - STORAGE_s3_BUCKET=directus${1:+-$1}
+      - STORAGE_s3_REGION=eu-south
+      - STORAGE_s3_ENDPOINT=$url_s3
+
+      ## Redis
+      - REDIS=redis://redis:6379/4
+
+      ## Secret Keys & Env
+      - KEY=$key_directus
+      - SECRET=$key_directus2
+      - APP_ENV=production
+
+      ## Dados Postgres
+      - DB_CLIENT=postgres
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=directus${1:+_$1}
+      - DB_USER=postgres
+      - DB_PASSWORD=$senha_postgres
+      - DB_CONNECTION_STRING=postgresql://postgres:$senha_postgres@postgres:5432/directus${1:+_$1}
+      - DB_PREFIX=drcts_
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.directus${1:+_$1}.rule=Host(\`$url_directus\`)
+        - traefik.http.services.directus${1:+_$1}.loadbalancer.server.port=8055
+        - traefik.http.routers.directus${1:+_$1}.service=directus${1:+_$1}
+        - traefik.http.routers.directus${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.directus${1:+_$1}.entrypoints=websecure
+        - traefik.http.routers.directus${1:+_$1}.tls=true
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  directus${1:+_$1}_uploads:
+    external: true
+    name: directus${1:+_$1}_uploads
+  directus${1:+_$1}_data:
+    external: true
+    name: directus${1:+_$1}_data
+
+networks:
+  $nome_rede_interna:
+    external: true
+    attachable: true
+    name: $nome_rede_interna
+EOL

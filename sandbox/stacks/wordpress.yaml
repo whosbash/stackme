@@ -1,0 +1,66 @@
+## Criando a stack wordpress.yaml
+cat > wordpress_$nome_site_wordpress.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  wordpress_$nome_site_wordpress:
+    image: wordpress:latest ## Versão do Wordpress
+
+    volumes:
+      - wordpress_$nome_site_wordpress:/var/www/html
+      - wordpress_${nome_site_wordpress}_php:/usr/local/etc/php
+
+    networks:
+      - $nome_rede_interna ## Nome da rede interna
+
+    environment:
+      ## Dados do Mysql
+      - WORDPRESS_DB_NAME=$nome_site_wordpress
+      - WORDPRESS_DB_HOST=mysql
+      - WORDPRESS_DB_PORT=3306
+      - WORDPRESS_DB_USER=root
+      - WORDPRESS_DB_PASSWORD=$senha_mysql
+
+      ## Redis
+      - WP_REDIS_HOST=redis
+      - WP_REDIS_PORT=6379
+      - WP_REDIS_DATABASE=6
+
+      ## Url do Wordpress
+      - VIRTUAL_HOST=$url_wordpress
+
+      ## Localização
+      - WP_LOCALE=pt_BR
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.wordpress_$nome_site_wordpress.rule=Host(\`$url_wordpress\`)
+        - traefik.http.routers.wordpress_$nome_site_wordpress.entrypoints=websecure
+        - traefik.http.routers.wordpress_$nome_site_wordpress.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.wordpress_$nome_site_wordpress.service=wordpress_$nome_site_wordpress
+        - traefik.http.services.wordpress_$nome_site_wordpress.loadbalancer.server.port=80
+        - traefik.http.services.wordpress_$nome_site_wordpress.loadbalancer.passHostHeader=true
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  wordpress_$nome_site_wordpress:
+    external: true
+    name: wordpress_$nome_site_wordpress
+  wordpress_${nome_site_wordpress}_php:
+    external: true
+    name: wordpress_${nome_site_wordpress}_php
+
+networks:
+  $nome_rede_interna: ## Nome da rede interna
+    name: $nome_rede_interna ## Nome da rede interna
+    external: true
+EOL

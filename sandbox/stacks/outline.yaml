@@ -1,0 +1,100 @@
+## Criando a stack outline.yaml
+cat > outline${1:+_$1}.yaml <<EOL
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  outline${1:+_$1}:
+    image: outlinewiki/outline:0.75.0
+
+    volumes:
+      - outline${1:+_$1}_data:/var/lib/outline/data
+      
+    networks:
+      - $nome_rede_interna
+    
+    environment:
+      ## Dados de acesso
+      - URL=https://$url_outline
+      - FORCE_HTTPS=true
+
+      ## Desativar novos cadastros
+      - LIMITS_INVITATION_REQUIRED=false
+
+      # IDIOMA PADRÃO
+      - DEFAULT_LANGUAGE=pt_BR
+
+      ## Secrets Keys
+      - SECRET_KEY=$Key_aleatoria_outline_1
+      - UTILS_SECRET=$Key_aleatoria_outline_2
+      
+      ## Dados Postgres
+      - DATABASE_URL=postgres://postgres:$senha_postgres@postgres:5432/outline${1:+_$1}
+      - DATABASE_URL_TEST=postgres://postgres:$senha_postgres@postgres:5432/outline${1:+_$1}_test
+      - PGSSLMODE=disable
+      
+      ## Dados Redis
+      - REDIS_URL=redis://redis:6379/3
+      
+      ## Dados sobre Armazenamento
+      - FILE_STORAGE=local
+      - FILE_STORAGE_LOCAL_ROOT_DIR=/var/lib/outline/data
+      - FILE_STORAGE_UPLOAD_MAX_SIZE=26214400
+      - FILE_STORAGE_IMPORT_MAX_SIZE=18874368
+      - FILE_STORAGE_WORKSPACE_IMPORT_MAX_SIZE=18874368
+      
+      # LOGIN COM O GOOGLE
+      - GOOGLE_CLIENT_ID=$id_google_outline
+      - GOOGLE_CLIENT_SECRET=$key_google_outline
+      - NEXT_PUBLIC_GOOGLE_API_KEY=$api_google_outline
+      
+      ## Dados do SMTP
+      #- SMTP_FROM_EMAIL=email@dominio.com ## Email SMTP
+      #- SMTP_REPLY_EMAIL=email@dominio.com ## Email SMTP
+      #- SMTP_USERNAME=email@dominio.com ## Usuario SMTP
+      #- SMTP_PASSWORD=@Senha123_ ## Senha SMTP
+      #- SMTP_HOST=smtp.provedor.com ## Host SMTP
+      #- SMTP_PORT=587 ## Porta SMTP
+      #- SMTP_SECURE=false ## Se a porta for 465 ou 25 = true || Qualquer outra = false
+
+      ## Outras configurações
+      - RATE_LIMITER_ENABLED=true
+      - RATE_LIMITER_REQUESTS=1000
+      - RATE_LIMITER_DURATION_WINDOW=60
+      - ENABLE_UPDATES=false
+      - WEB_CONCURRENCY=6
+      - DEBUG=http
+      - LOG_LEVEL=info
+      
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.outline${1:+_$1}.rule=Host(\`$url_outline\`)
+        - traefik.http.routers.outline${1:+_$1}.entrypoints=websecure
+        - traefik.http.routers.outline${1:+_$1}.tls=true
+        - traefik.http.routers.outline${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.outline${1:+_$1}.service=outline${1:+_$1}
+        - traefik.http.services.outline${1:+_$1}.loadbalancer.server.port=3000
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  outline${1:+_$1}_data:
+    external: true
+    name: outline${1:+_$1}_data
+    
+networks:
+  $nome_rede_interna:
+    external: true
+    name: $nome_rede_interna
+EOL
