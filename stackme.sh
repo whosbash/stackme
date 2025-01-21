@@ -5859,14 +5859,14 @@ initialize_server_info() {
 
     # Save the server information to a JSON file
     echo "$server_info_json" >"$server_filename"
-  fi
-
-  debug "$server_name" 
-  debug "$network_name" 
+  fi 
 
   # Extract server_name and network_name
   server_name="$(echo "$server_info_json" || jq  ".server_name")" 
   network_name="$(echo "$server_info_json" || jq  ".network_name")"
+
+  debug "$server_name" 
+  debug "$network_name"
 
   # Output results
   if [[ -z "$server_name" || -z "$network_name" ]]; then
