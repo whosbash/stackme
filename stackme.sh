@@ -4793,14 +4793,8 @@ create_network_if_not_exists() {
   if ! docker network ls --format '{{.Name}}' | grep -wq "$network_name"; then
     info "Creating network: $network_name"
 
-    # Get the IP address
-    read -r ip _ <<<$(
-      hostname -I | tr ' ' '\n' | grep -v '^127\.0\.0\.1' | tr '\n' ' '
-    )
-
     # Create the overlay network
-    if docker network create \
-      --driver overlay "$network_name" -- 2>&1; then
+    if docker network create --driver overlay "$network_name" -- 2>&1; then
       success "Network $network_name created successfully."
     else
       error "Failed to create network $network_name."
