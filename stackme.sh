@@ -2733,17 +2733,7 @@ process_prompt_items() {
 
     # Extract values from the prompt item JSON
     name=$(_jq '.name')
-    label=$(_jq '.label')
-    description=$(_jq '.description')
     value=$(_jq '.value')
-    required=$(_jq '.required')
-    validate_fn=$(_jq '.validate_fn')
-
-    # Create the prompt item using the create_prompt_item function
-    item_json=$(
-      create_prompt_item "$name" "$label" "$description" \
-        "$value" "$required" "$validate_fn"
-    )
 
     # Check if the item creation was successful
     if [[ $? -eq 0 ]]; then
