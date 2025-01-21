@@ -2724,12 +2724,16 @@ process_prompt_items() {
   local input_json="$1"
   local result_json="{"
 
+  debug "Processing input JSON: $input_json"
+
   # Iterate over the array of prompt items in the input JSON
   for prompt_item in $(echo "$input_json" | jq -r '.[] | @base64'); do
     # Decode the base64 encoded JSON object for each item
     _jq() {
       echo "$prompt_item" | base64 --decode | jq -r "${1}"
     }
+
+    debug "Processing input JSON: $prompt_item"
 
     # Extract values from the prompt item JSON
     name=$(_jq '.name')
