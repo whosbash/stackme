@@ -5855,6 +5855,9 @@ initialize_server_info() {
     echo "$server_info_json" | jq  ".network_name" | \
     sed -n 's/.*"server_name": "\(.*\)",.*/\1/p' )"
 
+  debug "server_name: $server_name"
+  debug "network_name: $network_name"
+
   # Output results
   if [[ -z "$server_name" || -z "$network_name" ]]; then
     error "Missing server_name or network_name in file $server_filename"
