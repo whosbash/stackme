@@ -5588,6 +5588,8 @@ send_smtp_test_email() {
     return 1
   fi
 
+  debug "Loaded SMTP configuration: $smtp_json"
+
   smtp_server="$(echo "$smtp_json" | jq -r ".smtp_server")"
   smtp_port="$(echo "$smtp_json" | jq -r ".smtp_port")"
   username="$(echo "$smtp_json" | jq -r ".username")"
@@ -5595,6 +5597,8 @@ send_smtp_test_email() {
 
   subject="[StackMe] Test SMTP e-mail"
   body="$(generate_test_smtp_hmtl)"
+
+  debug "$body"
 
   # Send the test email
   send_email \
