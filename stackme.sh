@@ -5354,6 +5354,11 @@ generate_html() {
   local header_title="$3"
   local email_content="$4"
 
+  debug "$base_template"
+  debug "$email_title"
+  debug "$header_title"
+  debug "$email_content"
+
   # Prepare an associative array with the replacements
   declare -A email_variables=(
     [email_title]="$email_title"
@@ -5363,8 +5368,6 @@ generate_html() {
 
   # Use the replace_mustache_variables function to substitute variables in the template
   local email_html=$(replace_mustache_variables "$base_template" email_variables)
-
-  debug "$email_html"
 
   # Output the final HTML email
   echo "$email_html"
