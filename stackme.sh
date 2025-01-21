@@ -5854,8 +5854,8 @@ initialize_server_info() {
   fi 
 
   # Extract server_name and network_name
-  server_name="$(echo "$server_info_json" || jq  ".server_name")" 
-  network_name="$(echo "$server_info_json" || jq  ".network_name")"
+  server_name="$(echo "$server_info_json" | jq  ".server_name")" 
+  network_name="$(echo "$server_info_json" | jq  ".network_name")"
 
   debug "$server_name" 
   debug "$network_name"
