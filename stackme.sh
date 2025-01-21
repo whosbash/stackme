@@ -4519,13 +4519,15 @@ check_portainer_stack_exists() {
 
 # Function to upload a stack
 upload_stack_on_portainer() {
-  local portainer_url="$1"
-  local credentials="$2"
-  local stack_name="$3"
-  local compose_file="$4"
+  local portainer_config="$1"
+  local stack_name="$2"
+  local compose_file="$3"
+
+  # Extract portainer_url and portainer_credentials
+  portainer_url="$(echo "$portainer_config" | jq -r '.portainer_url')"
+  portainer_credentalias="$(echo "$portainer_config" | jq -r '.portainer_credentials')"
 
   highlight "Uploading stack $stack_name on Portainer $portainer_url"
-
   token="$(get_portainer_auth_token "$portainer_url" "$credentials")"
 
   if [[ -z "$token" ]] || [[ "$token" == "" ]]; then
@@ -4567,10 +4569,14 @@ upload_stack_on_portainer() {
 
 # Function to deploy a stack
 deploy_stack_on_portainer() {
-  local portainer_url="$1"
-  local portainer_credentials="$2"
-  local stack_name="$3"
+  local portainer_config="$1"
+  local stack_name="$2"
+  local compose_path="$3"
 
+  portainer_url="$(echo "$portainer_config" | jq -r '.portainer_url')"
+  portainer_credentials="$(echo "$portainer_config" | jq -r '.portainer_credentials')"
+
+  # Get Portainer auth token
   portainer_auth_token="$(
     get_portainer_auth_token "$portainer_url" "$portainer_credentials"
   )"
@@ -4580,6 +4586,7 @@ deploy_stack_on_portainer() {
     return 1
   fi
 
+  # Check if the stack already exists
   check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"
 
   if [[ $? -eq 0 ]]; then
@@ -4589,8 +4596,8 @@ deploy_stack_on_portainer() {
     warning "Stack $stack_name does not exist"
   fi
 
-  upload_stack_on_portainer "$portainer_url" "$credentials" \
-    "$stack_name" "$STACKS_DIR/$stack_name/docker-compose.yaml" ||
+  # Upload the stack
+  upload_stack_on_portainer "$portainer_config" "$stack_name" "$compose_path" ||
     error "Failed to upload stack '$stack_name'"
 }
 
@@ -4637,6 +4644,26 @@ delete_stack_on_portainer() {
   request "DELETE" "$url" "$token" "application/json" &&
     success "Stack '$stack_name' deleted successfully." ||
     error "Failed to delete stack '$stack_name'."
+}
+
+load_portainer_url_and_credentials(){
+  local portainer_config_json
+  portainer_config_json=$(
+    load_json "$STACKS_DIR/portainer/stack_config.json"
+  )
+
+  portainer_info="$(
+    filter_json_object_by_keys "$portainer_config_json" \
+      ".variables.portainer_url" ".variables.portainer_credentials"
+  )"
+
+  portainer_url="$(echo "$portainer_info" | jq -r '.variables.portainer_url')"
+  portainer_credentials="$(echo "$portainer_info" | jq -r '.variables.portainer_credentials')"
+
+  jq -n \
+    --arg portainer_url "$portainer_url" \
+    --argjson portainer_credentials "$portainer_credentials" \
+    '{"portainer_url": $portainer_url, "portainer_credentials": $portainer_credentials}'
 }
 
 ################################# END OF PORTAINER DEPLOYMENT UTILS ###############################
@@ -4987,21 +5014,9 @@ deploy_stack_on_target() {
     ;;
   portainer)
     info "Deploying stack '$stack_name' on Portainer"
-    local portainer_config_json
-    portainer_config_json=$(
-      load_json "$STACKS_DIR/portainer/stack_config.json"
-    )
-    local portainer_url
-    portainer_url=$(
-      echo "$portainer_config_json" | jq -r '.variables.portainer_url'
-    )
-    local portainer_credentials
-    portainer_credentials=$(
-      echo "$portainer_config_json" | jq -r '.variables.portainer_credentials'
-    )
+    portainer_config="$(load_portainer_url_and_credentials)"
 
-    upload_stack_on_portainer "$portainer_url" "$portainer_credentials" \
-      "$stack_name" "$compose_path"
+    deploy_stack_on_portainer "$portainer_config" "$stack_name" "$compose_path"
     ;;
   *)
     error "Unknown deployment target: $target"
