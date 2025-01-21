@@ -1849,13 +1849,17 @@ replace_mustache_variables() {
   for key in "${!vars_ref[@]}"; do
     value="${vars_ref[$key]}"
 
+    # Escape special characters in the value to make it safe for sed
+    safe_value=$(echo "$value" | sed -e 's/[\/&]/\\&/g')
+
     # Use sed to replace instances of {{key}}, {{ key}}, and {{key }}
-    template=$(echo "$template" | sed -E "s/\{\{\s*${key}\s*\}\}/$value/g")
+    template=$(echo "$template" | sed -E "s/\{\{\s*${key}\s*\}\}/$safe_value/g")
   done
 
   # Output the substituted template
   echo "$template"
 }
+
 
 # Function to find the next available port
 find_next_available_port() {
@@ -5353,11 +5357,6 @@ generate_html() {
   local email_title="$2"
   local header_title="$3"
   local email_content="$4"
-
-  debug "$base_template"
-  debug "$email_title"
-  debug "$header_title"
-  debug "$email_content"
 
   # Prepare an associative array with the replacements
   declare -A email_variables=(
