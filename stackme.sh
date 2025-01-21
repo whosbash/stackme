@@ -2409,7 +2409,7 @@ create_prompt_item() {
 }
 
 # Function to generate a JSON configuration for a service
-generate_config_schema() {
+generate_schema_stack_config() {
   local required_fields="$1"
 
   # Start the JSON schema structure
@@ -2468,7 +2468,7 @@ validate_stack_config() {
   required_fields=$(list_stack_compose_required_fields "$stack_name")
 
   # Generate the JSON schema
-  schema=$(generate_config_schema "$required_fields")
+  schema=$(generate_schema_stack_config "$required_fields")
 
   # Step 5: Validate if the provided JSON has all required variables
   validate_json_from_schema "$config_json" "$schema"
@@ -4177,7 +4177,7 @@ stack_exists() {
 # Function to list the required fields on a stack docker-compose
 list_stack_compose_required_fields() {
   local stack_name="$1"
-  local function_name="compose_${stack_name}"
+  local function_name="compose_file_${stack_name}"
 
   # Check if the function exists
   if declare -f "$function_name" >/dev/null; then
@@ -4684,7 +4684,7 @@ build_stack_info() {
     jq -n \
       --arg config_path "${STACKS_DIR}/${stack_name}/stack_config.json" \
       --arg compose_path "${STACKS_DIR}/${stack_name}/docker-compose.yaml" \
-      --arg compose_func "compose_${stack_name}" \
+      --arg compose_func "compose_file_${stack_name}" \
       '{
       config_path: $config_path,
       compose_path: $compose_path,
@@ -5053,7 +5053,7 @@ save_stack_configuration() {
 }
 
 # Function to deploy a stack
-deploy_stack_pipeline() {
+deployment_pipeline() {
   local config_json="$1"
 
   local stack_name="$(echo "$config_json" | jq -r '.name')"
@@ -5147,7 +5147,7 @@ deploy_stack() {
 
   # Generate the stack JSON configuration
   local stack_config
-  stack_config=$(eval "generate_config_$stack_name")
+  stack_config=$(eval "generate_stack_config_$stack_name")
 
   if [ -z "$stack_config" ]; then
     return 1
@@ -5162,7 +5162,7 @@ deploy_stack() {
   fi
 
   # Deploy the n8n service using the JSON
-  deploy_stack_pipeline "$stack_config"
+  deployment_pipeline "$stack_config"
 }
 
 ################################ END OF GENERAL DEPLOYMENT FUNCTIONS ##############################
@@ -5311,16 +5311,27 @@ generate_html() {
   echo "$email_html"
 }
 
-# Function to generate HTML for an email
-test_smtp_html() {
-  # Content for the email
-  local email_content="<p>Hi there,</p>
-<p>We are thrilled to have you onboard! Explore the amazing features of StackMe and elevate your workflow.</p>
-<p>If you have any questions, feel free to submit an issue to 
-<a href=\"https://github.com/whosbash/stackme/issues\" title=\"Visit our Issues page on GitHub\">our repository</a>. We're here to help!</p>"
+check_smtp_config() {
+  local smtp_server="$1"
+  local smtp_user="$2"
+  local smtp_password="$3"
+  local recipient="$4"
 
-  # Generate the email HTML
-  generate_html "$BASE_TEMPLATE" "Welcome to StackMe" "Welcome to StackMe" "$email_content"
+  # Run swaks to check authentication
+  swaks --to "$recipient" \
+    --from "$smtp_user" \
+    --server "$smtp_server" \
+    --auth LOGIN \
+    --auth-user "$smtp_user" \
+    --auth-password "$smtp_password" \
+    --tls --quit-after=DATA > /dev/null 2>&1
+
+  # Check if swaks command was successful (exit status 0) or failed (non-zero exit status)
+  if [[ $? -eq 0 ]]; then
+    return 0  # Success
+  else
+    return 1  # Failure
+  fi
 }
 
 # Function to send a test email using swaks
@@ -5975,7 +5986,7 @@ get_network_name(){
 ####################################### BEGIN OF COMPOSE FILES #####################################
 
 # Function to generate compose file for Traefik
-compose_traefik() {
+compose_file_traefik() {
   CERT_PATH="/etc/traefik/letsencrypt/acme.json"
 
   cat <<EOL
@@ -6062,7 +6073,7 @@ EOL
 }
 
 # Function to generate compose file for Portainer
-compose_portainer() {
+compose_file_portainer() {
   cat <<EOL
 version: '3'
 
@@ -6121,7 +6132,7 @@ EOL
 }
 
 # Function to generate compose file for Monitor
-compose_monitor() {
+compose_file_monitor() {
   cat <<EOL
 version: '3'
 
@@ -6286,7 +6297,7 @@ EOL
 }
 
 # Function to generate compose file for Redis
-compose_redis() {
+compose_file_redis() {
   cat <<EOL
 version: '3'
 
@@ -6318,7 +6329,7 @@ EOL
 }
 
 # Function to generate compose file for Postgres
-compose_postgres() {
+compose_file_postgres() {
   cat <<EOL
 version: '3'
 
@@ -6349,7 +6360,7 @@ networks:
 EOL
 }
 
-compose_pgvector() {
+compose_file_pgvector() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6396,7 +6407,7 @@ networks:
 EOL
 }
 
-compose_mysql() {
+compose_file_mysql() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6449,7 +6460,7 @@ networks:
 EOL
 }
 
-compose_mongodb() {
+compose_file_mongodb() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6504,7 +6515,7 @@ networks:
 EOL
 }
 
-compose_nocodb() {
+compose_file_nocodb() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6559,7 +6570,7 @@ networks:
 EOL
 }
 
-compose_odoo() {
+compose_file_odoo() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6638,7 +6649,7 @@ networks:
 EOL
 }
 
-compose_rabbitmq() {
+compose_file_rabbitmq() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6691,7 +6702,7 @@ networks:
 EOL
 }
 
-#compose_kafka(){
+#compose_file_kafka(){
 #  cat <<EOL
 #version: '3.9'
 #
@@ -6781,7 +6792,7 @@ EOL
 #EOL
 #}
 
-compose_minio() {
+compose_file_minio() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6839,7 +6850,7 @@ networks:
 EOL
 }
 
-compose_uptime_kuma() {
+compose_file_uptime_kuma() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6882,7 +6893,7 @@ networks:
 EOL
 }
 
-compose_quepasa() {
+compose_file_quepasa() {
   cat <<EOL
 version: "3.7"
 services:
@@ -6993,7 +7004,7 @@ networks:
 EOL
 }
 
-compose_typebot() {
+compose_file_typebot() {
   cat <<EOL
 version: "3.7"
 services:
@@ -7139,7 +7150,7 @@ networks:
 EOL
 }
 
-compose_whoami() {
+compose_file_whoami() {
   cat <<EOL
 version: '3'
 
@@ -7165,7 +7176,7 @@ networks:
 EOL
 }
 
-compose_airflow() {
+compose_file_airflow() {
   cat <<EOL
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -7445,7 +7456,7 @@ networks:
 EOL
 }
 
-compose_metabase() {
+compose_file_metabase() {
   cat <<EOL
 version: "3.7"
 services:
@@ -7509,7 +7520,7 @@ EOL
 }
 
 # Function to generate compose file for N8N
-compose_n8n(){
+compose_file_n8n(){
   cat <<EOL
 version: "3.7"
 
@@ -7856,7 +7867,7 @@ manage_prometheus_config_file() {
 }
 
 # Function to generate configuration files for startup
-generate_config_traefik() {
+generate_stack_config_traefik() {
   local stack_name="traefik"
 
   highlight "Gathering $stack_name configuration"
@@ -7945,7 +7956,7 @@ generate_config_traefik() {
 }
 
 # Function to generate configuration files for portainer
-generate_config_portainer() {
+generate_stack_config_portainer() {
   local stack_name="portainer"
 
   total_steps=3
@@ -8047,7 +8058,7 @@ generate_config_portainer() {
   }
 }
 
-generate_config_monitor() {
+generate_stack_config_monitor() {
   local stack_name="monitor"
 
   total_steps=4
@@ -8182,7 +8193,7 @@ EOL
 }
 
 # Function to generate Database service configuration JSON
-generate_config_database() {
+generate_stack_config_generic_database() {
   local stack_name="$1"
   local image_version="$2"
   local db_username="$3"
@@ -8222,7 +8233,7 @@ generate_config_database() {
 }
 
 # Function to generate configuration files for redis
-generate_config_redis() {
+generate_stack_config_redis() {
   local stack_name='redis'
 
   highlight "Gathering $stack_name configuration"
@@ -8236,44 +8247,44 @@ generate_config_redis() {
 
   info "Redis version: $image_version"
 
-  generate_config_database "$stack_name" "$image_version"
+  generate_stack_config_generic_database "$stack_name" "$image_version"
 }
 
 # Function to generate Postgres service configuration JSON
-generate_config_postgres() {
+generate_stack_config_postgres() {
   local stack_name='postgres'
   local image_version='15'
 
   local db_username="postgres"
 
-  generate_config_database "$stack_name" "$image_version" "$db_username"
+  generate_stack_config_generic_database "$stack_name" "$image_version" "$db_username"
 }
 
 # Function to generate PgVector service configuration JSON
-generate_config_pgvector() {
+generate_stack_config_pgvector() {
   local stack_name='pgvector'
   local image_version='pg16'
 
-  generate_config_database "$stack_name" "$image_version"
+  generate_stack_config_generic_database "$stack_name" "$image_version"
 }
 
 # Function to generate MySQL service configuration JSON
-generate_config_mysql() {
+generate_stack_config_mysql() {
   local stack_name='mysql'
   local image_version='8.0'
 
-  generate_config_database "$stack_name" "$image_version"
+  generate_stack_config_generic_database "$stack_name" "$image_version"
 }
 
 # Function to generate MongoDB service configuration JSON
-generate_config_mongodb() {
+generate_stack_config_mongodb() {
   local stack_name='mongodb'
   local image_version='4.4'
 
-  generate_config_database "$stack_name" "$image_version"
+  generate_stack_config_generic_database "$stack_name" "$image_version"
 }
 
-generate_config_whoami() {
+generate_stack_config_whoami() {
   local stack_name='whoami'
 
   total_steps=2
@@ -8329,7 +8340,7 @@ generate_config_whoami() {
 }
 
 # Function to generate Airflow service configuration JSON
-generate_config_airflow() {
+generate_stack_config_airflow() {
   local stack_name='airflow'
 
   total_steps=2
@@ -8407,7 +8418,7 @@ generate_config_airflow() {
 }
 
 # Function to generate Metabase service configuration JSON
-generate_config_metabase() {
+generate_stack_config_metabase() {
   local stack_name='metabase'
 
   total_steps=2
@@ -8474,7 +8485,7 @@ generate_config_metabase() {
   }
 }
 
-generate_config_n8n(){
+generate_stack_config_n8n(){
   local stack_name='n8n'
 
   prompt_items='[
@@ -8616,7 +8627,7 @@ deploy_stack_portainer() {
   deploy_stack 'portainer'
 }
 
-deploy_stack_startup() {
+deploy_stacks_startup() {
   deploy_stack_traefik
 
   if [[ $? -ne 0 ]]; then
@@ -8648,6 +8659,13 @@ deploy_stack_postgres() {
   cleanup
   clean_screen
   deploy_stack 'postgres'
+}
+
+# Function to deploy a PostgreSQL stack
+deploy_stack_pgvector() {
+  cleanup
+  clean_screen
+  deploy_stack 'pgvector'
 }
 
 # Function to deploy a Redis service
@@ -8712,17 +8730,20 @@ define_menu_stacks_databases() {
     build_menu_item "postgres" "Deploy" "deploy_stack_postgres"
   )"
   item_2="$(
-    build_menu_item "redis" "Deploy" "deploy_stack_redis"
+    build_menu_item "pgvector" "Deploy" "deploy_stack_pgvector"
   )"
   item_3="$(
-    build_menu_item "mysql" "Deploy" "deploy_stack_mysql"
+    build_menu_item "redis" "Deploy" "deploy_stack_redis"
   )"
   item_4="$(
+    build_menu_item "mysql" "Deploy" "deploy_stack_mysql"
+  )"
+  item_5="$(
     build_menu_item "mongodb" "Deploy" "deploy_stack_mongodb"
   )"
 
   items=(
-    "$item_1" "$item_2" "$item_3" "$item_4"
+    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5"
   )
 
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
