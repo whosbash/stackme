@@ -5830,8 +5830,10 @@ get_server_info() {
     exit 1
   fi
 
+  collected_object="$(process_prompt_items "$collected_items")"
+
   # Print the merged result
-  echo "$server_array"
+  echo "$collected_object"
 }
 
 # Function to initialize the server information
