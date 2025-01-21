@@ -1478,6 +1478,65 @@ send_email() {
 
 ############################### BEGIN OF SYSTEM-RELATED FUNCTIONS #################################
 
+# Function to generate and print machine specifications and resource usage
+generate_machine_specs() {
+  # Helper function to print key-value pairs
+  print_spec() {
+    local key="$1"
+    local value="$2"
+
+    # If the value is empty or contains 'N/A', use a default fallback value
+    if [[ -z "$value" || "$value" == "N/A" ]]; then
+      value="No data available"
+    fi
+
+    # Print the key-value pair
+    printf "%-20s: %s\n" "$key" "$value"
+  }
+
+  # Helper function to safely execute a command and return the result
+  safe_exec() {
+    local cmd="$1"
+    result=$(eval "$cmd" 2>/dev/null)
+    if [[ -z "$result" || "$result" == "N/A" ]]; then
+      result="No data available"
+    fi
+    echo "$result"
+  }
+
+  # Machine Specifications
+  print_spec "Hostname" "$(hostname)"
+  print_spec "Operating System" "$(\
+    safe_exec "lsb_release -d | cut -f2")"
+  print_spec "Kernel Version" "$(\
+    safe_exec "uname -r")"
+  print_spec "Processor Model" "$(\
+    safe_exec "lscpu | awk -F ':' '/Model name/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
+  print_spec "Processor Cores" "$(\
+    safe_exec "lscpu | awk -F ':' '/^CPU\\(s\\):/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
+  print_spec "Processor Threads" "$(\
+    safe_exec \
+    "lscpu | awk -F ':' '/^Thread\\(s\\) per core:/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
+  print_spec "Clock Speed" "$(\
+    safe_exec "lscpu | grep 'Model name' | grep -o '@ [0-9.]\+GHz' || echo 'N/A'")"
+  print_spec "Total Memory" "$(\
+    safe_exec "free -h | awk '/^Mem:/ {print \$2}'")"
+  print_spec "GPU Details" "$(\
+    safe_exec "lspci | grep -i 'vga\\|3d\\|2d' || echo 'GPU information unavailable.'")"
+  print_spec "Docker Version" "$(\
+    safe_exec "docker --version || echo 'Not installed'")"
+  
+  echo
+  if command -v upower &>/dev/null; then
+    upower -i $(\
+      upower -e | grep BAT) | \
+      grep -E 'state|to full|percentage' |
+      awk -F ':' '{gsub(/^[ \t]+|[ \t]+$/, "", $1); gsub(/^[ \t]+|[ \t]+$/, "", $2); printf "%-15s: %s\n", $1, $2}'
+  else
+    print_spec "Battery Status" "No battery information available."
+  fi
+}
+
 # Function to generate a complete HTML representation of machine specifications and resource usage
 generate_machine_specs_content() {
   local html_content=""
