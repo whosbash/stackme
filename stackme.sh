@@ -5364,6 +5364,8 @@ generate_html() {
   # Use the replace_mustache_variables function to substitute variables in the template
   local email_html=$(replace_mustache_variables "$base_template" email_variables)
 
+  debug "$email_html"
+
   # Output the final HTML email
   echo "$email_html"
 }
@@ -5900,9 +5902,6 @@ initialize_server_info() {
   # Extract server_name and network_name
   server_name="$(echo "$server_info_json" | jq -r  ".server_name")"
   network_name="$(echo "$server_info_json" | jq -r ".network_name" )"
-
-  debug "server_name: $server_name"
-  debug "network_name: $network_name"
 
   # Output results
   if [[ -z "$server_name" || -z "$network_name" ]]; then
