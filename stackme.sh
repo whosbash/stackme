@@ -952,6 +952,37 @@ add_json_objects() {
   echo "$merged"
 }
 
+# Function to filter JSON based on keys
+filter_json_object_by_keys() {
+  local json="$1"         # Input JSON string
+  local keys=("$@")       # Array of keys (after the first argument)
+  local missing_keys=()   # Array to store missing keys
+  local filtered_json={}  # Resultant JSON object
+
+  # Loop through each key
+  for key in "${keys[@]:1}"; do
+    # Extract the value for the current key
+    local value
+    value=$(echo "$json" | jq -r --arg key "$key" 'try getpath($key | split(".")) // empty')
+
+    if [[ -z "$value" ]]; then
+      # Key is missing; add to missing_keys array
+      missing_keys+=("$key")
+    else
+      # Key exists; add it to the filtered JSON object
+      filtered_json=$(echo "$filtered_json" | jq --arg key "$key" --arg value "$value" '. + {($key): $value}')
+    fi
+  done
+
+  # If there are missing keys, print a warning
+  if [[ ${#missing_keys[@]} -gt 0 ]]; then
+    warning "The following keys are missing in the JSON: ${missing_keys[*]}"
+  fi
+
+  # Return the filtered JSON object
+  echo "$filtered_json"
+}
+
 # Function to sort array1 based on the order of names in array2 using a specified key
 sort_array_by_order() {
   local array1="$1"
