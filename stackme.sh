@@ -1431,7 +1431,6 @@ install_ctop() {
     wait_for_input
 }
 
-
 ############################# END OF GENERAL UTILITARY FUNCTIONS #############################
 
 ############################## BEGIN OF EMAIL-RELATED FUNCTIONS ##############################
@@ -5851,20 +5850,20 @@ initialize_server_info() {
     else
       step_error "Content on file $server_filename is invalid. Reinitializing..."
       server_info_json=$(get_server_info)
+      
+      # Save the server information to a JSON file
+      echo "$server_info_json" >"$server_filename"
     fi
   else
     server_info_json=$(get_server_info)
-  fi
 
-  if [[ -z "$server_info_json" ]]; then
-    error "Unable to retrieve server and network names."
-    wait_for_input
-    exit 1
+    # Save the server information to a JSON file
+    echo "$server_info_json" >"$server_filename"
   fi
 
   # Extract server_name and network_name
-  server_name="$(get_variable_value_from_collection "$server_info_json" "server_name")"
-  network_name="$(get_variable_value_from_collection "$server_info_json" "network_name")"
+  server_name="$(echo "$server_info_json" || jq  ".server_name")" 
+  network_name="$(echo "$server_info_json" || jq  ".network_name")"
 
   # Output results
   if [[ -z "$server_name" || -z "$network_name" ]]; then
@@ -5873,8 +5872,6 @@ initialize_server_info() {
     exit 1
   fi
 
-  # Save the server information to a JSON file
-  echo "$server_info_json" >"$server_filename"
   step_success 1 $total_steps "Server information saved to file $server_filename"
 
   step_message="Create stackme folder"
