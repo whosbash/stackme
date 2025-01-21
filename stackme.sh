@@ -5848,12 +5848,8 @@ initialize_server_info() {
   fi 
 
   # Extract server_name and network_name
-  server_name="$(\
-    echo "$server_info_json" | jq  ".server_name" | \
-    sed -n 's/.*"server_name": "\(.*\)",.*/\1/p' )"
-  network_name="$(\
-    echo "$server_info_json" | jq  ".network_name" | \
-    sed -n 's/.*"server_name": "\(.*\)",.*/\1/p' )"
+  server_name="$(echo "$server_info_json" | jq -r  ".server_name")"
+  network_name="$(echo "$server_info_json" | jq -r ".network_name" )"
 
   debug "server_name: $server_name"
   debug "network_name: $network_name"
