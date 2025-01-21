@@ -5385,8 +5385,9 @@ generate_test_smtp_hmtl() {
   # Content for the email
   local email_content="<p>Hi there,</p> <p>
   We are thrilled to have you onboard! Explore the amazing features of StackMe and elevate your workflow.</p> 
-  <a href="https://github.com/whosbash/stackme" class="button">Get Started</a>
-  <p>If you have any questions, feel free to submit an issue to <a href="https://github.com/whosbash/stackme/issues" title="Visit our Issues page on GitHub">our repository
+  <a href=\"https://github.com/whosbash/stackme\" class=\"button\">Get Started</a>
+  <p>If you have any questions, feel free to submit an issue to 
+  <a href=\"https://github.com/whosbash/stackme/issues\" title=\"Visit our Issues page on GitHub\">our repository
   </a>. We''re here to help!</p>"
 
   # Generate the email HTML
