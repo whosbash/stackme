@@ -5831,6 +5831,8 @@ get_server_info() {
 
   collected_object="$(process_prompt_items "$collected_items")"
 
+  debug "$collected_object"
+
   # Print the merged result
   echo "$collected_object"
 }
