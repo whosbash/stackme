@@ -46,8 +46,6 @@ services:
         - traefik.http.routers.langflow.entrypoints=websecure
         - traefik.http.routers.langflow.tls.certresolver=letsencryptresolver
 
-## --------------------------- ORION --------------------------- ##
-
 volumes:
   langflow_data:
     external: true

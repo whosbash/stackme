@@ -62,7 +62,6 @@ volumes:
     name: vaultwarden${1:+_$1}_data
 
 networks:
-  $nome_rede_interna:
+  {{network_name}}:
     external: true
-    name: $nome_rede_interna
-EOF
+    name: {{network_name}}

@@ -1,46 +1,41 @@
-## Criando a stack
-cat > humhub${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  humhub${1:+_$1}:
+  humhub:
     image: mriedmann/humhub:latest
 
     volumes:
-      - humhub${1:+_$1}_data:/var/www/localhost/htdocs/protected/modules
-      - humhub${1:+_$1}_uploads:/var/www/localhost/htdocs/uploads
-      - humhub${1:+_$1}_assets:/var/www/localhost/htdocs/assets
-      - humhub${1:+_$1}_themes:/var/www/localhost/htdocs/themes
+      - humhub_data:/var/www/localhost/htdocs/protected/modules
+      - humhub_uploads:/var/www/localhost/htdocs/uploads
+      - humhub_assets:/var/www/localhost/htdocs/assets
+      - humhub_themes:/var/www/localhost/htdocs/themes
       
     networks:
-      - $nome_rede_interna
+      - {{network_name}}
       
     environment:
       ## Dados de acesso
-      - HUMHUB_ADMIN_USERNAME=$user_humhub
-      - HUMHUB_ADMIN_PASSWORD=$pass_humhub
-      - HUMHUB_EMAIL=$email_humhub
-      - HUMHUB_EMAIL_NAME=$user_humhub
-      - HUMHUB_ADMIN_EMAIL=$email_humhub
+      - HUMHUB_ADMIN_USERNAME={{humhub_username}}
+      - HUMHUB_ADMIN_PASSWORD={{humhub_password}}
+      - HUMHUB_EMAIL={{humhub_email}}
+      - HUMHUB_EMAIL_NAME={{humhub_username}}
+      - HUMHUB_ADMIN_EMAIL={{humhub_email}}
 
       ## Dados SMTP
       - HUMHUB_MAILER_TRANSPORT_TYPE=smtp
-      - HUMHUB_MAILER_SYSTEM_EMAIL_ADDRESS=$email_smtp_humhub
-      - HUMHUB_MAILER_USERNAME=$user_smtp_humhub
-      - HUMHUB_MAILER_PASSWORD=$senha_smtp_humhub
-      - HUMHUB_MAILER_SYSTEM_EMAIL_NAME=Suporte
-      - HUMHUB_MAILER_HOSTNAME=$host_smtp_humhub
-      - HUMHUB_MAILER_PORT=$porta_smtp_humhub
-      - HUMHUB_MAILER_ALLOW_SELF_SIGNED_CERTS=$porta_smtp_humhub_conv ## 0 = TLS | 1 = SSL
+      - HUMHUB_MAILER_SYSTEM_EMAIL_ADDRESS={{humhub_smtp_email}}
+      - HUMHUB_MAILER_USERNAME={{humhub_smtp_username}}
+      - HUMHUB_MAILER_PASSWORD=${humhub_smtp_password}
+      - HUMHUB_MAILER_SYSTEM_EMAIL_NAME=Helpdesk
+      - HUMHUB_MAILER_HOSTNAME={{easyappointments_url}}
+      - HUMHUB_MAILER_PORT={{humhub_smtp_port}}
+      - HUMHUB_MAILER_ALLOW_SELF_SIGNED_CERTS=1 ## 0 = TLS | 1 = SSL
       
       ## Dados do MySQL
       - HUMHUB_DB_HOST=mysql
       - HUMHUB_DB_USER=root
-      - HUMHUB_DB_PASSWORD=$senha_mysql
-      - HUMHUB_DB_NAME=humhub${1:+_$1}
-      $autoconfig_humhub
+      - HUMHUB_DB_PASSWORD={{mysql_password}}
+      - HUMHUB_DB_NAME=humhub
+      - HUMHUB_AUTO_INSTALL=1
 
       ## Dados Redis
       - HUMHUB_REDIS_HOSTNAME=redis
@@ -61,31 +56,28 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.humhub${1:+_$1}.rule=Host(\`$url_humhub\`)
-        - traefik.http.routers.humhub${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.humhub${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.humhub${1:+_$1}.service=humhub${1:+_$1}
-        - traefik.http.services.humhub${1:+_$1}.loadbalancer.server.port=80
-        - traefik.http.services.humhub${1:+_$1}.loadbalancer.passHostHeader=true
-
-## --------------------------- ORION --------------------------- ##
+        - traefik.http.routers.humhub.rule=Host(\`{{humhub_url}}\`)
+        - traefik.http.routers.humhub.entrypoints=websecure
+        - traefik.http.routers.humhub.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.humhub.service=humhub
+        - traefik.http.services.humhub.loadbalancer.server.port=80
+        - traefik.http.services.humhub.loadbalancer.passHostHeader=true
 
 volumes:
-  humhub${1:+_$1}_data:
+  humhub_data:
     external: true
-    name: humhub${1:+_$1}_data
-  humhub${1:+_$1}_uploads:
+    name: humhub_data
+  humhub_uploads:
     external: true
-    name: humhub${1:+_$1}_uploads
-  humhub${1:+_$1}_themes:
+    name: humhub_uploads
+  humhub_themes:
     external: true
-    name: humhub${1:+_$1}_themes
-  humhub${1:+_$1}_assets:
+    name: humhub_themes
+  humhub_assets:
     external: true
-    name: humhub${1:+_$1}_assets
+    name: humhub_assets
 
 networks:
-  $nome_rede_interna:
+  {{network_name}}:
     external: true
-    name: $nome_rede_interna
-EOL
+    name: {{network_name}}

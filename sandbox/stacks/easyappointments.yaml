@@ -1,30 +1,25 @@
-## Criando a stack
-cat > easyappointments${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  easyapointments${1:+_$1}:
+  easyapointments:
     image: alextselegidis/easyappointments:latest
 
     volumes:
-      - easyapointments${1:+_$1}_data:/var/www/html
-      - /root/easyappointments${1:+_$1}/apache-custom.conf:/etc/apache2/conf-enabled/custom.conf:ro
+      - easyapointments_data:/var/www/html
+      - /root/easyappointments/apache-custom.conf:/etc/apache2/conf-enabled/custom.conf:ro
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
       ## Dados de acesso
-      - BASE_URL=https://$url_easyappointments
-      - APACHE_SERVER_NAME=$url_easyappointments
+      - BASE_URL=https://{{easyappointments_url}}
+      - APACHE_SERVER_NAME={{easyappointments_url}}
 
       ## Dados do banco de dados
       - DB_HOST=mysql
-      - DB_NAME=easyapointments${1:+_$1}
+      - DB_NAME=easyapointments
       - DB_USERNAME=root
-      - DB_PASSWORD=$senha_mysql
+      - DB_PASSWORD={{mysql_password}}
 
       ## Dados Google Calendar
       - GOOGLE_SYNC_FEATURE=false
@@ -48,22 +43,19 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.easyapointments${1:+_$1}.rule=Host(\`$url_easyappointments\`)
-        - traefik.http.services.easyapointments${1:+_$1}.loadbalancer.server.port=80
-        - traefik.http.routers.easyapointments${1:+_$1}.service=easyapointments${1:+_$1}
-        - traefik.http.routers.easyapointments${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.easyapointments${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.easyapointments${1:+_$1}.tls=true
-
-## --------------------------- ORION --------------------------- ##
+        - traefik.http.routers.easyapointments.rule=Host(\`{{easyappointments_url}}\`)
+        - traefik.http.services.easyapointments.loadbalancer.server.port=80
+        - traefik.http.routers.easyapointments.service=easyapointments
+        - traefik.http.routers.easyapointments.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.easyapointments.entrypoints=websecure
+        - traefik.http.routers.easyapointments.tls=true
 
 volumes:
-  easyapointments${1:+_$1}_data:
+  easyapointments_data:
     external: true
-    name: easyapointments${1:+_$1}_data
+    name: easyapointments_data
 
 networks:
-  $nome_rede_interna: ## Nome da rede interna
-    name: $nome_rede_interna ## Nome da rede interna
+  {{network_name}}:
+    name: {{network_name}}
     external: true
-EOL

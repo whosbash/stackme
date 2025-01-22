@@ -1,10 +1,5 @@
-## Criando a stack calcom.yaml
-cat > calcom${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
   calcom${1:+_$1}_app:
     image: calcom/cal.com:v4.7.8
 
@@ -18,51 +13,50 @@ services:
       #- CALCOM_LICENSE_KEY= ## Descomente este campo caso tenha licença do mesmo
 
     ## URLs
-      - NEXT_PUBLIC_WEBAPP_URL=https://$url_calcom
-      - BASE_URL=https://$url_calcom
-      - NEXTAUTH_URL=https://$url_calcom
-      - NEXT_PUBLIC_CONSOLE_URL=https://$url_calcom
-      - NEXT_PUBLIC_APP_URL=https://$url_calcom
-      - NEXT_PUBLIC_WEBSITE_URL=https://$url_calcom
-      - WEB_APP=https://$url_calcom
+      - NEXT_PUBLIC_WEBAPP_URL=https://{{calcom_url}}
+      - BASE_URL=https://{{calcom_url}}
+      - NEXTAUTH_URL=https://{{calcom_url}}
+      - NEXT_PUBLIC_CONSOLE_URL=https://{{calcom_url}}
+      - NEXT_PUBLIC_APP_URL=https://{{calcom_url}}
+      - NEXT_PUBLIC_WEBSITE_URL=https://{{calcom_url}}
+      - WEB_APP=https://{{calcom_url}}
 
     ## Encrypition
-      - NEXTAUTH_SECRET=$secret 
-      - CALENDSO_ENCRYPTION_KEY=$secret
+      - NEXTAUTH_SECRET={calcom_secret}
+      - CALENDSO_ENCRYPTION_KEY={calcom_secret}
 
     ## Dados Postgress
-      - DATABASE_URL=postgresql://postgres:$senha_postgres@postgres:5432/calcom${1:+_$1}
-      - DATABASE_DIRECT_URL=postgresql://postgres:$senha_postgres@postgres:5432/calcom${1:+_$1}
-      - CALENDSO_ENCRYPTION_KEY=postgresql://postgres:$senha_postgres@postgres:5432/calcom${1:+_$1}
+      - DATABASE_URL=postgresql://postgres:{{postgres_password}}@postgres:5432/calcom
+      - DATABASE_DIRECT_URL=postgresql://postgres:{{postgres_password}}@postgres:5432/calcom
+      - CALENDSO_ENCRYPTION_KEY=postgresql://postgres:{{postgres_password}}@postgres:5432/calcom
 
     ## Configurações de Email e SMTP
-      - EMAIL_FROM=$email_calcom
-      - EMAIL_SERVER_HOST=$smtp_email_calcom
-      - EMAIL_SERVER_PORT=$porta_smtp_calcom
-      - EMAIL_SERVER_USER=$user_calcom
-      - EMAIL_SERVER_PASSWORD=$senha_email_calcom
+      - EMAIL_FROM={{calcom_email}}
+      - EMAIL_SERVER_HOST={{calcom_smtp_email}}
+      - EMAIL_SERVER_PORT={{calcom_smtp_port}}
+      - EMAIL_SERVER_USER={{calcom_smtp_username}}
+      - EMAIL_SERVER_PASSWORD={{calcom_smtp_password}}
 
     ## Nodes
       - NODE_ENV=production
-      #- NODE_TLS_REJECT_UNAUTHORIZED=0
 
     ## Brand
-      #- NEXT_PUBLIC_APP_NAME="Cal.com"
-      #- NEXT_PUBLIC_SUPPORT_MAIL_ADDRESS="help@cal.com"
-      #- NEXT_PUBLIC_COMPANY_NAME="Cal.com, Inc."
-      #- NEXT_PUBLIC_DISABLE_SIGNUP=false ## false = novas inscrições permitidas | true = novas incrições fechadas
+    #- NEXT_PUBLIC_APP_NAME="Cal.com"
+    #- NEXT_PUBLIC_SUPPORT_MAIL_ADDRESS="help@cal.com"
+    #- NEXT_PUBLIC_COMPANY_NAME="Cal.com, Inc."
+    #- NEXT_PUBLIC_DISABLE_SIGNUP=false ## false = novas inscrições permitidas | true = novas incrições fechadas
 
-    ## Integração com Google (Calendario & Meet)
-      #-GOOGLE_LOGIN_ENABLED=false
-      #-GOOGLE_API_CREDENTIALS=
+    ## Integration (Calendar & Meet)
+    #-GOOGLE_LOGIN_ENABLED=false
+    #-GOOGLE_API_CREDENTIALS=
 
     ## Integração com Microsoft 365
-      #- MS_GRAPH_CLIENT_ID=
-      #- MS_GRAPH_CLIENT_SECRET=
+    #- MS_GRAPH_CLIENT_ID=
+    #- MS_GRAPH_CLIENT_SECRET=
 
     ## Integração com Zoom
-      #- ZOOM_CLIENT_ID=
-      #- ZOOM_CLIENT_SECRET=
+    #- ZOOM_CLIENT_ID=
+    #- ZOOM_CLIENT_SECRET=
 
     deploy:
       mode: replicated
@@ -72,18 +66,15 @@ services:
         - node.role == manager
       labels:
       - traefik.enable=true
-      - traefik.http.routers.calcom${1:+_$1}_app.rule=Host(\`$url_calcom\`)
-      - traefik.http.routers.calcom${1:+_$1}_app.entrypoints=websecure
-      - traefik.http.routers.calcom${1:+_$1}_app.priority=1
-      - traefik.http.routers.calcom${1:+_$1}_app.tls.certresolver=letsencryptresolver
-      - traefik.http.routers.calcom${1:+_$1}_app.service=calcom${1:+_$1}_app
-      - traefik.http.services.calcom${1:+_$1}_app.loadbalancer.server.port=3000
-      - traefik.http.services.calcom${1:+_$1}_app.loadbalancer.passHostHeader=1
-
-## --------------------------- ORION --------------------------- ##
+      - traefik.http.routers.calcom_app.rule=Host(\`{{calcom_url}}\`)
+      - traefik.http.routers.calcom_app.entrypoints=websecure
+      - traefik.http.routers.calcom_app.priority=1
+      - traefik.http.routers.calcom_app.tls.certresolver=letsencryptresolver
+      - traefik.http.routers.calcom_app.service=calcom_app
+      - traefik.http.services.calcom_app.loadbalancer.server.port=3000
+      - traefik.http.services.calcom_app.loadbalancer.passHostHeader=1
 
 networks:
-  $nome_rede_interna:
-    name: $nome_rede_interna
+  {{network_name}}:
+    name: {{network_name}}
     external: true
-EOL

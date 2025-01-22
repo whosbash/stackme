@@ -1,37 +1,32 @@
-## Criando a stack directus.yaml
-cat > directus${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  directus${1:+_$1}:
+  directus}:
     image: directus/directus:latest
 
     volumes:
-      - directus${1:+_$1}_uploads:/directus/uploads
-      - directus${1:+_$1}_data:/directus/database
+      - directus_uploads:/directus/uploads
+      - directus_data:/directus/database
 
     networks:
-      - $nome_rede_interna
+      - {{network_name}}
 
     environment:
       ## Dados de acesso
-      - ADMIN_EMAIL=$email_directus
-      - ADMIN_PASSWORD=$senha_directus
-      - PUBLIC_URL=https://$url_directus
+      - ADMIN_EMAIL={{directus_email}}
+      - ADMIN_PASSWORD={{directus_password}}
+      - PUBLIC_URL=https://{{directus_url}}
 
       ## Dados SMTP
-      - EMAIL_SMTP_USER=$email_smtp_directus
-      - EMAIL_SMTP_PASSWORD=$senha_smtp_directus
-      - EMAIL_SMTP_HOST=$host_smtp_directus
-      - EMAIL_SMTP_PORT=$porta_smtp_directus
-      - EMAIL_SMTP_SECURE=$ssl_smtp_directus
+      - EMAIL_SMTP_USER={{directus_smtp_email}}
+      - EMAIL_SMTP_PASSWORD={{directus_smtp_password}}
+      - EMAIL_SMTP_HOST={{directus_smtp_host}}
+      - EMAIL_SMTP_PORT={{directus_smtp_port}}
+      - EMAIL_SMTP_SECURE={{directus_smtp_secure}}
 
-      ## Dados MinIO
-      - STORAGE_s3_KEY=$S3_ACCESS_KEY
-      - STORAGE_s3_SECRET=$S3_SECRET_KEY
-      - STORAGE_s3_BUCKET=directus${1:+-$1}
+      ## Minio
+      - STORAGE_s3_KEY={{s3_access_key}}
+      - STORAGE_s3_SECRET={{s3_secret_key}}
+      - STORAGE_s3_BUCKET=directus
       - STORAGE_s3_REGION=eu-south
       - STORAGE_s3_ENDPOINT=$url_s3
 

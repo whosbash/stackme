@@ -1,36 +1,32 @@
-## Criando a stack mautic.yaml
-cat > mautic${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
 
-## --------------------------- ORION --------------------------- ##
-
-  mautic_web${1:+_$1}:
+  mautic_web:
     image: mautic/mautic:latest ## Versão do Mautic
 
     volumes:
-      - mautic${1:+_$1}_config:/var/www/html/config
-      - mautic${1:+_$1}_docroot:/var/www/html/docroot
-      - mautic${1:+_$1}_media:/var/www/html/docroot/media
-      - mautic${1:+_$1}_logs:/var/www/html/var/logs
-      - mautic${1:+_$1}_cron:/opt/mautic/cron
+      - mautic_config:/var/www/html/config
+      - mautic_docroot:/var/www/html/docroot
+      - mautic_media:/var/www/html/docroot/media
+      - mautic_logs:/var/www/html/var/logs
+      - mautic_cron:/opt/mautic/cron
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
       ## Dados MySQL
-      - MAUTIC_DB_NAME=mautic${1:+_$1}
+      - MAUTIC_DB_NAME=mautic
       - MAUTIC_DB_HOST=mysql
       - MAUTIC_DB_PORT=3306
       - MAUTIC_DB_USER=root
-      - MAUTIC_DB_PASSWORD=$senha_mysql
+      - MAUTIC_DB_PASSWORD={{mysql_password}}
       
       ## Dados de acesso
-      - MAUTIC_ADMIN_EMAIL=$email_mautic
-      - MAUTIC_ADMIN_USERNAME=$user_mautic
-      - MAUTIC_ADMIN_PASSWORD=$senha_email_mautic
-      - MAUTIC_URL=https://$url_mautic
+      - MAUTIC_ADMIN_EMAIL={{mautic_email}}
+      - MAUTIC_ADMIN_USERNAME={{mautic_user}}
+      - MAUTIC_ADMIN_PASSWORD={{mautic_email_password}}
+      - MAUTIC_URL=https://{{mautic_url}}
 
       ## Configurações
       - MAUTIC_TRUSTED_PROXIES=["0.0.0.0/0"]
@@ -51,41 +47,39 @@ services:
           memory: 2048M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.mautic${1:+_$1}.rule=Host(\`$url_mautic\`) # substitua SeuDominio.com.br pelo seu domínio
-        - traefik.http.services.mautic${1:+_$1}.loadbalancer.server.port=80
-        - traefik.http.routers.mautic${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.mautic${1:+_$1}.service=mautic${1:+_$1}
-        - traefik.http.routers.mautic${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.services.mautic${1:+_$1}.loadbalancer.passHostHeader=true
+        - traefik.http.routers.mautic.rule=Host(\`{{mautic_url}}\`) # substitua SeuDominio.com.br pelo seu domínio
+        - traefik.http.services.mautic.loadbalancer.server.port=80
+        - traefik.http.routers.mautic.entrypoints=websecure
+        - traefik.http.routers.mautic.service=mautic
+        - traefik.http.routers.mautic.tls.certresolver=letsencryptresolver
+        - traefik.http.services.mautic.loadbalancer.passHostHeader=true
 
-## --------------------------- ORION --------------------------- ##
-
-  mautic_worker${1:+_$1}:
+  mautic_worker:
     image: mautic/mautic:latest ## Versão do Mautic
 
     volumes:
-      - mautic${1:+_$1}_config:/var/www/html/config
-      - mautic${1:+_$1}_docroot:/var/www/html/docroot
-      - mautic${1:+_$1}_media:/var/www/html/docroot/media
-      - mautic${1:+_$1}_logs:/var/www/html/var/logs
-      - mautic${1:+_$1}_cron:/opt/mautic/cron
+      - mautic_config:/var/www/html/config
+      - mautic_docroot:/var/www/html/docroot
+      - mautic_media:/var/www/html/docroot/media
+      - mautic_logs:/var/www/html/var/logs
+      - mautic_cron:/opt/mautic/cron
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
-      ## Dados MySQL
-      - MAUTIC_DB_NAME=mautic${1:+_$1}
+      ## MySQL
+      - MAUTIC_DB_NAME=mautic
       - MAUTIC_DB_HOST=mysql
       - MAUTIC_DB_PORT=3306
       - MAUTIC_DB_USER=root
-      - MAUTIC_DB_PASSWORD=$senha_mysql
+      - MAUTIC_DB_PASSWORD={{mysql_pasword}}
       
       ## Dados de acesso
-      - MAUTIC_ADMIN_EMAIL=$email_mautic
-      - MAUTIC_ADMIN_USERNAME=$user_mautic
-      - MAUTIC_ADMIN_PASSWORD=$senha_email_mautic
-      - MAUTIC_URL=https://$url_mautic
+      - MAUTIC_ADMIN_EMAIL={{mautic_email}}
+      - MAUTIC_ADMIN_USERNAME={{mautic_username}}
+      - MAUTIC_ADMIN_PASSWORD={{mautic_email_password}}
+      - MAUTIC_URL=https://{{mautic_url}}
 
       ## Configurações
       - MAUTIC_TRUSTED_PROXIES=["0.0.0.0/0"]
@@ -105,34 +99,32 @@ services:
           cpus: "2"
           memory: 2048M
 
-## --------------------------- ORION --------------------------- ##
-
   mautic_cron${1:+_$1}:
     image: mautic/mautic:latest ## Versão do Mautic
 
     volumes:
-      - mautic${1:+_$1}_config:/var/www/html/config
-      - mautic${1:+_$1}_docroot:/var/www/html/docroot
-      - mautic${1:+_$1}_media:/var/www/html/docroot/media
-      - mautic${1:+_$1}_logs:/var/www/html/var/logs
-      - mautic${1:+_$1}_cron:/opt/mautic/cron
+      - mautic_config:/var/www/html/config
+      - mautic_docroot:/var/www/html/docroot
+      - mautic_media:/var/www/html/docroot/media
+      - mautic_logs:/var/www/html/var/logs
+      - mautic_cron:/opt/mautic/cron
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
       ## Dados MySQL
-      - MAUTIC_DB_NAME=mautic${1:+_$1}
+      - MAUTIC_DB_NAME=mautic
       - MAUTIC_DB_HOST=mysql
       - MAUTIC_DB_PORT=3306
       - MAUTIC_DB_USER=root
-      - MAUTIC_DB_PASSWORD=$senha_mysql
+      - MAUTIC_DB_PASSWORD={{mysql_password}}
       
       ## Dados de acesso
-      - MAUTIC_ADMIN_EMAIL=$email_mautic
-      - MAUTIC_ADMIN_USERNAME=$user_mautic
-      - MAUTIC_ADMIN_PASSWORD=$senha_email_mautic
-      - MAUTIC_URL=https://$url_mautic
+      - MAUTIC_ADMIN_EMAIL={{mautic_email}}
+      - MAUTIC_ADMIN_USERNAME={{mautic_username}}
+      - MAUTIC_ADMIN_PASSWORD={{mautic_email_password}}
+      - MAUTIC_URL=https://{{url_mautic}}
 
       ## Configurações
       - MAUTIC_TRUSTED_PROXIES=["0.0.0.0/0"]
@@ -152,27 +144,24 @@ services:
           cpus: "0.5"
           memory: 512M
 
-## --------------------------- ORION --------------------------- ##
-
 volumes:
-  mautic${1:+_$1}_config:
+  mautic_config:
     external: true
-    name: mautic${1:+_$1}_config
+    name: mautic_config
   mautic${1:+_$1}_docroot:
     external: true
-    name: mautic${1:+_$1}_docroot
-  mautic${1:+_$1}_media:
+    name: mautic_docroot
+  mautic_media:
     external: true
-    name: mautic${1:+_$1}_media
-  mautic${1:+_$1}_logs:
+    name: mautic_media
+  mautic_logs:
     external: true
-    name: mautic${1:+_$1}_logs
-  mautic${1:+_$1}_cron:
+    name: mautic_logs
+  mautic_cron:
     external: true
-    name: mautic${1:+_$1}_cron
+    name: mautic_cron
 
 networks:
-  $nome_rede_interna: ## Nome da rede interna
-    name: $nome_rede_interna ## Nome da rede interna
+  {{network_name}}: 
+    name: {{network_name}}
     external: true
-EOL

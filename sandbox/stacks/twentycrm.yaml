@@ -1,11 +1,6 @@
-## Criando a stack
-cat > twentycrm${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  twentycrm${1:+_$1}_server:
+  twentycrm_server:
     image: twentycrm/twenty:latest
 
     volumes:
@@ -13,18 +8,18 @@ services:
       - twentycrm_docker:/app/docker-data
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
       - PORT=3000
-      - PG_DATABASE_URL=postgres://postgres:$senha_postgres_twentycrm@db:5432/default
-      - SERVER_URL=http://$url_twentycrm  # Substituído diretamente
-      - FRONT_BASE_URL=http://$url_twentycrm  # Mesma URL do SERVER_URL
-      - REDIS_URL=redis://redis:6379  # Já configurado
+      - PG_DATABASE_URL=postgres://postgres:{{twentycrm_postgres_password}}@db:5432/default
+      - SERVER_URL=http://{{twentycrm_url}}
+      - FRONT_BASE_URL=http://{{twentycrm_url}}
+      - REDIS_URL=redis://redis:6379
       - ENABLE_DB_MIGRATIONS=true
       - SIGN_IN_PREFILLED=true
       - STORAGE_TYPE=local
-      - APP_SECRET=$Key_aleatoria_twentycrm_1
+      - APP_SECRET={{twentycrm_secret_key}}
 
     deploy:
       mode: replicated
@@ -38,32 +33,30 @@ services:
           memory: 4192M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.twentycrm${1:+_$1}.rule=Host(\`$url_twentycrm\`) ## Url da aplicação
-        - traefik.http.services.twentycrm${1:+_$1}.loadbalancer.server.port=3000
-        - traefik.http.routers.twentycrm${1:+_$1}.service=twentycrm${1:+_$1}
-        - traefik.http.routers.twentycrm${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.twentycrm${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.twentycrm${1:+_$1}.tls=true
+        - traefik.http.routers.twentycrm.rule=Host(\`{{twentycrm_url}}\`) ## Url da aplicação
+        - traefik.http.services.twentycrm.loadbalancer.server.port=3000
+        - traefik.http.routers.twentycrm.service=twentycrm
+        - traefik.http.routers.twentycrm.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.twentycrm.entrypoints=websecure
+        - traefik.http.routers.twentycrm.tls=true
 
-## --------------------------- ORION --------------------------- ##
-
-  twentycrm${1:+_$1}_worker:
+  twentycrm_worker:
     image: twentycrm/twenty:latest
     command: ["yarn", "worker:prod"]
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
       - PORT=3000
-      - PG_DATABASE_URL=postgres://postgres:$senha_postgres_twentycrm@db:5432/default
-      - SERVER_URL=http://$url_twentycrm  # Substituído diretamente
-      - FRONT_BASE_URL=http://$url_twentycrm  # Mesma URL do SERVER_URL
+      - PG_DATABASE_URL=postgres://postgres:{{twentycrm_postgres_password}}@db:5432/default
+      - SERVER_URL=http://{{twentycrm_url}}
+      - FRONT_BASE_URL=http://{{twentycrm_url}}
       - REDIS_URL=redis://redis:6379  # Já configurado
       - ENABLE_DB_MIGRATIONS=true
       - SIGN_IN_PREFILLED=true
       - STORAGE_TYPE=local
-      - APP_SECRET=$Key_aleatoria_twentycrm_1
+      - APP_SECRET={{twentycrm_secret_key}}
 
     deploy:
       mode: replicated
@@ -76,20 +69,18 @@ services:
           cpus: "0.5"
           memory: 1024M
 
-## --------------------------- ORION --------------------------- ##
-
-  twentycrm${1:+_$1}_db:
+  twentycrm_db:
     image: twentycrm/twenty-postgres:latest
       
     volumes:
       - twentycrm_db_data:/home/postgres/pgdata
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
-        
+      - {{network_name}}
+
     environment:
       - PGUSER_SUPERUSER=postgres
-      - PGPASSWORD_SUPERUSER=$senha_postgres_twentycrm
+      - PGPASSWORD_SUPERUSER={{twentycrm_postgres_password}}
       - ALLOW_NOSSL=true
       - SPILO_PROVIDER=local
         
@@ -103,8 +94,6 @@ services:
         limits:
           cpus: "0.5"
           memory: 1024M    
-    
-## --------------------------- ORION --------------------------- ##
 
 volumes:
   twentycrm_data:
@@ -118,7 +107,6 @@ volumes:
     name: twentycrm_db_data
 
 networks:
-  $nome_rede_interna: ## Nome da sua rede interna
-    name: $nome_rede_interna ## Nome da sua rede interna
+  {{network_name}}:
+    name: {{network_name}}
     external: true
-EOL

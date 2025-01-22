@@ -1,59 +1,52 @@
-## Criando a stack documenso.yaml
-cat > documenso${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  documenso${1:+_$1}:
+  documenso:
     image: documenso/documenso:latest
 
     volumes:
-      - documenso${1:+_$1}_cert:/opt/documenso/cert.p12
+      - documenso_cert:/opt/documenso/cert.p12
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
-      ## Dados de Acesso
       - PORT=3000
-      - NEXTAUTH_URL=https://$url_documenso
-      - NEXT_PUBLIC_WEBAPP_URL=https://$url_documenso
-      - NEXT_PUBLIC_MARKETING_URL=https://oriondesign.art.br
+      - NEXTAUTH_URL=https://{{documenso_url}}
+      - NEXT_PUBLIC_WEBAPP_URL=https://{{documenso_url}}
 
       ## Secret Keys
-      - NEXTAUTH_SECRET=$key_documenso1
-      - NEXT_PRIVATE_ENCRYPTION_KEY=$key_documenso2
-      - NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY=$key_documenso3
+      - NEXTAUTH_SECRET={{documenso_secret}}
+      - NEXT_PRIVATE_ENCRYPTION_KEY={{documenso_secret}}
+      - NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY={{documenso_secret}}
 
       ## Dados do Google Cloud
       #- NEXT_PRIVATE_GOOGLE_CLIENT_ID=
       #- NEXT_PRIVATE_GOOGLE_CLIENT_SECRET=
 
       ## Dados Postgres
-      - NEXT_PRIVATE_DATABASE_URL=postgresql://postgres:$senha_postgres@postgres:5432/documenso${1:+_$1}
-      - NEXT_PRIVATE_DIRECT_DATABASE_URL=postgresql://postgres:$senha_postgres@postgres:5432/documenso${1:+_$1}
+      - NEXT_PRIVATE_DATABASE_URL=postgresql://postgres:{{postgres_password}}@postgres:5432/documenso
+      - NEXT_PRIVATE_DIRECT_DATABASE_URL=postgresql://postgres:{{postgres_password}}@postgres:5432/documenso
 
       ## Configurações MinIO
       - NEXT_PUBLIC_UPLOAD_TRANSPORT=s3
-      - NEXT_PRIVATE_UPLOAD_ENDPOINT=https://$url_s3
+      - NEXT_PRIVATE_UPLOAD_ENDPOINT=https://{{s3_url}}
       - NEXT_PRIVATE_UPLOAD_FORCE_PATH_STYLE=true
       - NEXT_PRIVATE_UPLOAD_REGION=eu-south
-      - NEXT_PRIVATE_UPLOAD_BUCKET=documenso${1:+-$1}
-      - NEXT_PRIVATE_UPLOAD_ACCESS_KEY_ID=$S3_ACCESS_KEY
-      - NEXT_PRIVATE_UPLOAD_SECRET_ACCESS_KEY=$S3_SECRET_KEY
+      - NEXT_PRIVATE_UPLOAD_BUCKET=documenso
+      - NEXT_PRIVATE_UPLOAD_ACCESS_KEY_ID={{s3_access_key}}
+      - NEXT_PRIVATE_UPLOAD_SECRET_ACCESS_KEY={{s3_secret_key}}
 
       ## Dados de SMTP
       - NEXT_PRIVATE_SMTP_TRANSPORT=smtp-auth
-      - NEXT_PRIVATE_SMTP_FROM_ADDRESS=$email_documenso
-      - NEXT_PRIVATE_SMTP_USERNAME=$usuario_email_documenso
-      - NEXT_PRIVATE_SMTP_PASSWORD=$senha_email_documenso
-      - NEXT_PRIVATE_SMTP_HOST=$smtp_email_documenso
-      - NEXT_PRIVATE_SMTP_PORT=$porta_smtp_documenso
-      - NEXT_PRIVATE_SMTP_SECURE=$smtp_secure_documenso
-      - NEXT_PRIVATE_SMTP_FROM_NAME=Suporte
+      - NEXT_PRIVATE_SMTP_FROM_ADDRESS={{documenso_email}}
+      - NEXT_PRIVATE_SMTP_USERNAME={{documenso_email_username}}
+      - NEXT_PRIVATE_SMTP_PASSWORD={{documenso_email_password}}
+      - NEXT_PRIVATE_SMTP_HOST={{documento_smtp_host}}
+      - NEXT_PRIVATE_SMTP_PORT={{documenso_smtp_port}}
+      - NEXT_PRIVATE_SMTP_SECURE={{documenso_smtp_secure}}
+      - NEXT_PRIVATE_SMTP_FROM_NAME=Helpdesk
 
-      ## Configurações
+      ## Settings
       - NEXT_PUBLIC_DOCUMENT_SIZE_UPLOAD_LIMIT=10
       - NEXT_PUBLIC_DISABLE_SIGNUP=false
       - NEXT_PRIVATE_SIGNING_LOCAL_FILE_PATH=/opt/documenso/cert.p12
@@ -70,23 +63,20 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.documenso${1:+_$1}.rule=Host(\`$url_documenso\`)
-        - traefik.http.services.documenso${1:+_$1}.loadbalancer.server.port=3000
-        - traefik.http.routers.documenso${1:+_$1}.service=documenso${1:+_$1}
-        - traefik.http.routers.documenso${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.documenso${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.documenso${1:+_$1}.tls=true
-    
-
-## --------------------------- ORION --------------------------- ##
+        - traefik.http.routers.documenso.rule=Host(\`{{documenso_url}}\`)
+        - traefik.http.services.documenso.loadbalancer.server.port=3000
+        - traefik.http.routers.documenso.service=documenso${1:+_$1}
+        - traefik.http.routers.documenso.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.documenso.entrypoints=websecure
+        - traefik.http.routers.documenso.tls=true
 
 volumes:
-  documenso${1:+_$1}_cert:
+  documenso_cert:
     external: true
-    name: documenso${1:+_$1}_cert
+    name: documenso_cert
 
 networks:
-  $nome_rede_interna: ## Nome da rede interna
-    name: $nome_rede_interna ## Nome da rede interna
+  {{network_name}}:
+    name: {{network_name}}
     external: true
 EOL
