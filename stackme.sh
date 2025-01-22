@@ -1304,10 +1304,6 @@ check_existing_job_name() {
   fi
 }
 
-#################################################################################################
-
-############################### BEGIN OF GENERAL UTILITARY FUNCTIONS ############################
-
 # Function to clean the terminal screen
 clean_screen() {
   echo -ne "\033[H\033[J" >&2
@@ -1429,6 +1425,82 @@ install_ctop() {
 
     success "CTOP was installed successfully. Type 'ctop' in the terminal at any moment from now."
     wait_for_input
+}
+
+# Function to generate a UUID
+generate_uuid() {
+  if command -v uuidgen >/dev/null 2>&1; then
+    # Use uuidgen if available
+    uuidgen
+  elif [[ -f /proc/sys/kernel/random/uuid ]]; then
+    # Use the random UUID file on Linux systems
+    cat /proc/sys/kernel/random/uuid
+  else
+    # Fallback: Generate a random UUID manually
+    printf '%s-%s-%s-%s-%s\n' \
+      "$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c8)" \
+      "$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c4)" \
+      "$(printf '4%x' $(( RANDOM % 16 )))$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c3)" \
+      "$(printf '%x%x' $(( RANDOM % 4 + 8 )) $(( RANDOM % 16 )))$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c3)" \
+      "$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c12)"
+  fi
+}
+
+
+# Function to check if an SMTP port is secure
+is_smtp_port_secure() {
+  local port="$1"
+
+  case "$port" in
+    465|587)
+      echo "true"  # Secure ports
+      ;;
+    25)
+      echo "false" # Not secure by default
+      ;;
+    *)
+      echo "false" # Unknown port; assume not secure
+      ;;
+  esac
+}
+
+# Function to download a file from a URL
+download_file() {
+  local url="$1"
+  local dest_dir="${2:-.}"         # Default to the current directory if not specified
+  local file_name="${3:-}"         # Optional custom file name
+
+  # Check if the URL is provided
+  if [[ -z "$url" ]]; then
+    error "URL is required."
+    return 1
+  fi
+
+  # Create the destination directory if it doesn't exist
+  if [[ ! -d "$dest_dir" ]]; then
+    info "Destination directory does not exist. Creating: $dest_dir"
+    mkdir -p "$dest_dir"
+  fi
+
+  # Extract the file name from the URL if no custom name is provided
+  if [[ -z "$file_name" ]]; then
+    file_name=$(basename "$url")
+  fi
+
+  # Full path to save the file
+  local output_path="$dest_dir/$file_name"
+
+  # Download the file using curl
+  info "Downloading file from: $url"
+  info "Saving to: $output_path"
+
+  if curl -fSL "$url" -o "$output_path"; then
+    success "Download successful."
+    return 0
+  else
+    error "Failed to download the file.\033[0m"
+    return 1
+  fi
 }
 
 ############################# END OF GENERAL UTILITARY FUNCTIONS #############################
