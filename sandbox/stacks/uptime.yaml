@@ -21,11 +21,11 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.uptimekuma${1:+_$1}.rule=Host(\`{{uptimekuma_url}}\`)
-        - traefik.http.routers.uptimekuma${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.uptimekuma${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.services.uptimekuma${1:+_$1}.loadBalancer.server.port=3001
-        - traefik.http.routers.uptimekuma${1:+_$1}.service=uptimekuma
+        - traefik.http.routers.uptimekuma.rule=Host(\`{{uptimekuma_url}}\`)
+        - traefik.http.routers.uptimekuma.entrypoints=websecure
+        - traefik.http.routers.uptimekuma.tls.certresolver=letsencryptresolver
+        - traefik.http.services.uptimekuma.loadBalancer.server.port=3001
+        - traefik.http.routers.uptimekuma.service=uptimekuma
 
 volumes:
   uptimekuma:

@@ -127,12 +127,12 @@ services:
       labels:
         - io.portainer.accesscontrol.users=admin
         - traefik.enable=true
-        - traefik.http.routers.typebot${1:+_$1}_viewer.rule=Host(\`{{viewer_url}}\`)
-        - traefik.http.routers.typebot${1:+_$1}_viewer.entrypoints=websecure
-        - traefik.http.routers.typebot${1:+_$1}_viewer.tls.certresolver=letsencryptresolver
-        - traefik.http.services.typebot${1:+_$1}_viewer.loadbalancer.server.port=3000
-        - traefik.http.services.typebot${1:+_$1}_viewer.loadbalancer.passHostHeader=true
-        - traefik.http.routers.typebot${1:+_$1}_viewer.service=typebot${1:+_$1}_viewer
+        - traefik.http.routers.typebot_viewer.rule=Host(\`{{viewer_url}}\`)
+        - traefik.http.routers.typebot_viewer.entrypoints=websecure
+        - traefik.http.routers.typebot_viewer.tls.certresolver=letsencryptresolver
+        - traefik.http.services.typebot_viewer.loadbalancer.server.port=3000
+        - traefik.http.services.typebot_viewer.loadbalancer.passHostHeader=true
+        - traefik.http.routers.typebot_viewer.service=typebot_viewer
 
 networks:
   {{network_name}}:

@@ -7,12 +7,12 @@ services:
       - {{network_name}}
 
     environment:
-      ## Dados de acesso
+      ## Yourls Urls
       - YOURLS_SITE=https://{{yourls_url}}
       - YOURLS_USER={{yourls_username}}
       - YOURLS_PASS={{yourls_password}}
       
-      ## Dados do Mysql
+      ## Mysql
       - YOURLS_DB_HOST=mysql
       - YOURLS_DB_NAME=yourls
       - YOURLS_DB_USER=root
@@ -32,8 +32,6 @@ services:
         - traefik.http.routers.yourls.tls.certresolver=letsencryptresolver
         - traefik.http.routers.yourls.service=yourls
         - traefik.http.services.yourls.loadbalancer.server.port=80
-
-## --------------------------- ORION --------------------------- ##
 
 networks:
   {{network_name}}:

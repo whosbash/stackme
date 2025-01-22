@@ -68,7 +68,7 @@ services:
 
     environment:  
       ## Dados MariaDB
-      - MARIADB_USER=orion_moodle
+      - MARIADB_USER=moodle
       - MARIADB_ROOT_PASSWORD={{mariadb_password}}
       - MARIADB_DATABASE=moodle
       - MARIADB_PASSWORD={{mariadb_password}}
@@ -91,10 +91,10 @@ volumes:
   moodle_app_apache_conf:
     external: true
     name: moodle_app_apache_conf
-  moodle${1:+_$1}_app_apache:
+  moodle_app_apache:
     external: true
     name: moodle_app_apache
-  moodle${1:+_$1}_mariadb_data:
+  moodle_mariadb_data:
     external: true
     name: moodle$_mariadb_data
 

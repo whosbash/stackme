@@ -1,40 +1,35 @@
-## Criando a stack evolution.yaml
-cat > evolution${1:+_$1}_lite.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  evolution${1:+_$1}_lite:
+  evolution_lite:
     image: atendai/evolution-api-lite:latest ## Versão da Evolution API
     entrypoint: ["/bin/bash", "-c", ". ./Docker/scripts/deploy_database.sh && npm run start:prod" ]
 
     volumes:
-      - evolution${1:+_$1}_lite_instances:/evolution/instances
+      - evolution_lite_instances:/evolution/instances
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
       ## Configurações Gerais
-      - SERVER_URL=https://$url_evolution
-      - AUTHENTICATION_API_KEY=$apikeyglobal
+      - SERVER_URL=https://{{evolution_url}}
+      - AUTHENTICATION_API_KEY={{evolution_api_key}}
       - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
       - DEL_INSTANCE=false
       - QRCODE_LIMIT=1902
       - LANGUAGE=pt-BR
       
-      ## Configuração do Cliente
+      ## Client and Name
       ## Pegue a versão em: https://wppconnect.io/pt-BR/whatsapp-versions/
       - CONFIG_SESSION_PHONE_VERSION=2.3000.1015901307
-      - CONFIG_SESSION_PHONE_CLIENT=OrionDesign
+      - CONFIG_SESSION_PHONE_CLIENT=
       - CONFIG_SESSION_PHONE_NAME=Chrome
       
       ## Configuração do Banco de Dados
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://postgres:$senha_postgres@postgres:5432/evolution${1:+_$1}_lite
-      - DATABASE_CONNECTION_CLIENT_NAME=evolution${1:+_$1}_lite
+      - DATABASE_CONNECTION_URI=postgresql://postgres:$senha_postgres@postgres:5432/evolution_lite
+      - DATABASE_CONNECTION_CLIENT_NAME=evolution_lite
       - DATABASE_SAVE_DATA_INSTANCE=true
       - DATABASE_SAVE_DATA_NEW_MESSAGE=true
       - DATABASE_SAVE_MESSAGE_UPDATE=true
@@ -83,7 +78,7 @@ services:
 
       ## Configuração do RabbitMQ
       - RABBITMQ_ENABLED=false
-      - RABBITMQ_URI=amqp://USER:PASS@rabbitmq:5672/evolution${1:+_$1}
+      - RABBITMQ_URI=amqp://USER:PASS@rabbitmq:5672/evolution
       - RABBITMQ_EXCHANGE_NAME=evolution
       - RABBITMQ_GLOBAL_ENABLED=false
       - RABBITMQ_EVENTS_APPLICATION_STARTUP=false
@@ -148,7 +143,7 @@ services:
       - PROVIDER_ENABLED=false
       - PROVIDER_HOST=127.0.0.1
       - PROVIDER_PORT=5656
-      - PROVIDER_PREFIX=evolution${1:+_$1}
+      - PROVIDER_PREFIX=evolution
       
     deploy:
       mode: replicated
@@ -158,23 +153,20 @@ services:
         - node.role == manager
       labels:
       - traefik.enable=1
-      - traefik.http.routers.evolution${1:+_$1}_lite.rule=Host(\`$url_evolution\`) ## Url da Evolution API
-      - traefik.http.routers.evolution${1:+_$1}_lite.entrypoints=websecure
-      - traefik.http.routers.evolution${1:+_$1}_lite.priority=1
-      - traefik.http.routers.evolution${1:+_$1}_lite.tls.certresolver=letsencryptresolver
-      - traefik.http.routers.evolution${1:+_$1}_lite.service=evolution${1:+_$1}_lite
-      - traefik.http.services.evolution${1:+_$1}_lite.loadbalancer.server.port=8080
-      - traefik.http.services.evolution${1:+_$1}_lite.loadbalancer.passHostHeader=true
-
-## --------------------------- ORION --------------------------- ##
+      - traefik.http.routers.evolution_lite.rule=Host(\`{{url_evolution}}\`) ## Url da Evolution API
+      - traefik.http.routers.evolution_lite.entrypoints=websecure
+      - traefik.http.routers.evolution_lite.priority=1
+      - traefik.http.routers.evolution_lite.tls.certresolver=letsencryptresolver
+      - traefik.http.routers.evolution_lite.service=evolution_lite
+      - traefik.http.services.evolution_lite.loadbalancer.server.port=8080
+      - traefik.http.services.evolution_lite.loadbalancer.passHostHeader=true
 
 volumes:
-  evolution${1:+_$1}_lite_instances:
+  evolution_lite_instances:
     external: true
-    name: evolution${1:+_$1}_lite_instances
+    name: evolution_lite_instances
 
 networks:
-  $nome_rede_interna: ## Nome da rede interna
+  {{network_name}}:
     external: true
-    name: $nome_rede_interna ## Nome da rede interna
-EOL
+    name: {{network_name}}

@@ -1,6 +1,6 @@
 version: "3.7"
 services:
-  directus}:
+  directus:
     image: directus/directus:latest
 
     volumes:
@@ -28,24 +28,24 @@ services:
       - STORAGE_s3_SECRET={{s3_secret_key}}
       - STORAGE_s3_BUCKET=directus
       - STORAGE_s3_REGION=eu-south
-      - STORAGE_s3_ENDPOINT=$url_s3
+      - STORAGE_s3_ENDPOINT={{s2_url}}
 
       ## Redis
       - REDIS=redis://redis:6379/4
 
       ## Secret Keys & Env
-      - KEY=$key_directus
-      - SECRET=$key_directus2
+      - KEY={{directus_key}}
+      - SECRET={{directus_secret}}
       - APP_ENV=production
 
       ## Dados Postgres
       - DB_CLIENT=postgres
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_DATABASE=directus${1:+_$1}
+      - DB_DATABASE=directus
       - DB_USER=postgres
-      - DB_PASSWORD=$senha_postgres
-      - DB_CONNECTION_STRING=postgresql://postgres:$senha_postgres@postgres:5432/directus${1:+_$1}
+      - DB_PASSWORD={{postgres_password}}
+      - DB_CONNECTION_STRING=postgresql://postgres:{{postgres_password}}@postgres:5432/directus
       - DB_PREFIX=drcts_
 
     deploy:
@@ -56,26 +56,23 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.directus${1:+_$1}.rule=Host(\`$url_directus\`)
-        - traefik.http.services.directus${1:+_$1}.loadbalancer.server.port=8055
-        - traefik.http.routers.directus${1:+_$1}.service=directus${1:+_$1}
-        - traefik.http.routers.directus${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.directus${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.directus${1:+_$1}.tls=true
-
-## --------------------------- ORION --------------------------- ##
+        - traefik.http.routers.directus.rule=Host(\`{{directus_url}}\`)
+        - traefik.http.services.directus.loadbalancer.server.port=8055
+        - traefik.http.routers.directus.service=directus
+        - traefik.http.routers.directus.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.directus.entrypoints=websecure
+        - traefik.http.routers.directus.tls=true
 
 volumes:
-  directus${1:+_$1}_uploads:
+  directus_uploads:
     external: true
-    name: directus${1:+_$1}_uploads
-  directus${1:+_$1}_data:
+    name: directus_uploads
+  directus_data:
     external: true
-    name: directus${1:+_$1}_data
+    name: directus_data
 
 networks:
-  $nome_rede_interna:
+  {{network_name}}:
     external: true
     attachable: true
-    name: $nome_rede_interna
-EOL
+    name: {{network_name}}

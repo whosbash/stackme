@@ -1,39 +1,33 @@
-## Criando a stack
-cat > evolution_v2${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  evolution${1:+_$1}:
-    image: atendai/evolution-api:v2.1.2 ## Versão da Evolution API
+  evolution:
+    image: atendai/evolution-api:v2.1.2
 
     volumes:
-      - evolution${1:+_$1}_instances:/evolution/instances
+      - evolution_instances:/evolution/instances
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
       ## Configurações Gerais
-      - SERVER_URL=https://$url_evolution
-      - AUTHENTICATION_API_KEY=$apikeyglobal
+      - SERVER_URL=https://{{evolution_url}}
+      - AUTHENTICATION_API_KEY={{evolution_api_key}}
       - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
       - DEL_INSTANCE=false
       - QRCODE_LIMIT=1902
       - LANGUAGE=pt-BR
       
-      ## Configuração do Cliente
-      ## Pegue a versão em: https://wppconnect.io/pt-BR/whatsapp-versions/
+      ## Available on: https://wppconnect.io/pt-BR/whatsapp-versions/
       - CONFIG_SESSION_PHONE_VERSION=2.3000.1015901307
       - CONFIG_SESSION_PHONE_CLIENT=OrionDesign
       - CONFIG_SESSION_PHONE_NAME=Chrome
       
-      ## Configuração do Banco de Dados
+      ## PostgreSQL
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://postgres:$senha_postgres@postgres:5432/evolution${1:+_$1}
-      - DATABASE_CONNECTION_CLIENT_NAME=evolution${1:+_$1}
+      - DATABASE_CONNECTION_URI=postgresql://postgres:{{postgres_password}}@postgres:5432/evolution
+      - DATABASE_CONNECTION_CLIENT_NAME=evolution
       - DATABASE_SAVE_DATA_INSTANCE=true
       - DATABASE_SAVE_DATA_NEW_MESSAGE=true
       - DATABASE_SAVE_MESSAGE_UPDATE=true
@@ -56,7 +50,7 @@ services:
       - CHATWOOT_ENABLED=true
       - CHATWOOT_MESSAGE_READ=true
       - CHATWOOT_MESSAGE_DELETE=true
-      - CHATWOOT_IMPORT_DATABASE_CONNECTION_URI=postgresql://postgres:$senha_postgres@postgres:5432/chatwoot?sslmode=disable
+      - CHATWOOT_IMPORT_DATABASE_CONNECTION_URI=postgresql://postgres:{{postgres_password}}s@postgres:5432/chatwoot?sslmode=disable
       - CHATWOOT_IMPORT_PLACEHOLDER_MEDIA_MESSAGE=false
       
       ## Configuração do Cache
@@ -99,7 +93,7 @@ services:
 
       ## Configuração do RabbitMQ
       - RABBITMQ_ENABLED=false
-      - RABBITMQ_URI=amqp://USER:PASS@rabbitmq:5672/evolution${1:+_$1}
+      - RABBITMQ_URI=amqp://USER:PASS@rabbitmq:5672/evolution
       - RABBITMQ_EXCHANGE_NAME=evolution
       - RABBITMQ_GLOBAL_ENABLED=false
       - RABBITMQ_EVENTS_APPLICATION_STARTUP=false
@@ -128,7 +122,7 @@ services:
       - RABBITMQ_EVENTS_TYPEBOT_START=false
       - RABBITMQ_EVENTS_TYPEBOT_CHANGE_STATUS=false
 
-      ## Configuração do Webhook
+      ## Webhook
       - WEBHOOK_GLOBAL_ENABLED=false
       - WEBHOOK_GLOBAL_URL=
       - WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS=false
@@ -160,11 +154,11 @@ services:
       - WEBHOOK_EVENTS_ERRORS=false
       - WEBHOOK_EVENTS_ERRORS_WEBHOOK=
 
-      ## Configuração do Provider
+      ## Provider
       - PROVIDER_ENABLED=false
       - PROVIDER_HOST=127.0.0.1
       - PROVIDER_PORT=5656
-      - PROVIDER_PREFIX=evolution${1:+_$1}
+      - PROVIDER_PREFIX=evolution
       
     deploy:
       mode: replicated
@@ -174,23 +168,20 @@ services:
         - node.role == manager
       labels:
       - traefik.enable=1
-      - traefik.http.routers.evolution_v2${1:+_$1}.rule=Host(\`$url_evolution\`) ## Url da Evolution API
-      - traefik.http.routers.evolution_v2${1:+_$1}.entrypoints=websecure
-      - traefik.http.routers.evolution_v2${1:+_$1}.priority=1
-      - traefik.http.routers.evolution_v2${1:+_$1}.tls.certresolver=letsencryptresolver
-      - traefik.http.routers.evolution_v2${1:+_$1}.service=evolution_v2${1:+_$1}
-      - traefik.http.services.evolution_v2${1:+_$1}.loadbalancer.server.port=8080
-      - traefik.http.services.evolution_v2${1:+_$1}.loadbalancer.passHostHeader=true
-
-## --------------------------- ORION --------------------------- ##
+      - traefik.http.routers.evolution_v2.rule=Host(\`{{url_evolution}}\`)
+      - traefik.http.routers.evolution_v2.entrypoints=websecure
+      - traefik.http.routers.evolution_v2.priority=1
+      - traefik.http.routers.evolution_v2.tls.certresolver=letsencryptresolver
+      - traefik.http.routers.evolution_v2.service=evolution_v2
+      - traefik.http.services.evolution_v2.loadbalancer.server.port=8080
+      - traefik.http.services.evolution_v2.loadbalancer.passHostHeader=true
 
 volumes:
-  evolution${1:+_$1}_instances:
+  evolution_instances:
     external: true
-    name: evolution${1:+_$1}_instances
+    name: evolution_instances
 
 networks:
-  $nome_rede_interna: ## Nome da rede interna
+  {{network_name}}:
     external: true
-    name: $nome_rede_interna ## Nome da rede interna
-EOL
+    name: {{network_name}}

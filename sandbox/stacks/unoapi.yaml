@@ -70,8 +70,6 @@ services:
       - traefik.http.services.unoapi.loadbalancer.passHostHeader=true
       - traefik.http.routers.unoapi.service=unoapi
 
-## --------------------------- ORION --------------------------- ##
-
 volumes:
   unoapi_data:
     external: true

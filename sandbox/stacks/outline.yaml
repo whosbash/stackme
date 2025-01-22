@@ -53,7 +53,7 @@ services:
       #- SMTP_PORT=587 ## SMTP port
       #- SMTP_SECURE=false ## if port is 465 ou 25, true. Otherwise false
 
-      ## Outras configurações
+      ## Settings
       - RATE_LIMITER_ENABLED=true
       - RATE_LIMITER_REQUESTS=1000
       - RATE_LIMITER_DURATION_WINDOW=60
@@ -74,12 +74,12 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.outline${1:+_$1}.rule=Host(\`{{outline_url}}\`)
-        - traefik.http.routers.outline${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.outline${1:+_$1}.tls=true
-        - traefik.http.routers.outline${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.outline${1:+_$1}.service=outline
-        - traefik.http.services.outline${1:+_$1}.loadbalancer.server.port=3000
+        - traefik.http.routers.outline.rule=Host(\`{{outline_url}}\`)
+        - traefik.http.routers.outline.entrypoints=websecure
+        - traefik.http.routers.outline.tls=true
+        - traefik.http.routers.outline.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.outline.service=outline
+        - traefik.http.services.outline.loadbalancer.server.port=3000
 
 volumes:
   outline_data:
