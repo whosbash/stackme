@@ -1,36 +1,32 @@
-## Criando a stack langflow.yaml
-cat > langflow${1:+_$1}.yaml <<EOL
 version: "3.8"
 services:
 
-## --------------------------- ORION --------------------------- ##
-
-  langflow${1:+_$1}:
+  langflow:
     image: langflowai/langflow:v1.0.19.post2
 
     volumes:
-      - langflow${1:+_$1}_data:/app/langflow
+      - langflow_data:/app/langflow
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
       ## Dados de acesso
       - LANGFLOW_AUTO_LOGIN=false
-      - LANGFLOW_SUPERUSER=$user_langflow
-      - LANGFLOW_SUPERUSER_PASSWORD=$pass_langflow
+      - LANGFLOW_SUPERUSER={{langflow_username}}
+      - LANGFLOW_SUPERUSER_PASSWORD={{langflow_password}}
       - LANGFLOW_HOST=0.0.0.0
-      - BACKEND_URL=https://$url_langflow
+      - BACKEND_URL=https://{{langflow_url}}
 
       ## Secret Key
       ## Gere em: https://www.uuidgenerator.net/api/version1
-      - LANGFLOW_SECRET_KEY=$key_langflow
+      - LANGFLOW_SECRET_KEY={{langflow_key}}
 
-      ## Permitir novas incrições
-      - LANGFLOW_NEW_USER_IS_ACTIVE=false ## false = Precisa autorizar novas inscrições
+      ## Signup Settings
+      - LANGFLOW_NEW_USER_IS_ACTIVE=false
 
-      ## Dados do Postgres
-      - LANGFLOW_DATABASE_URL=postgresql://postgres:$senha_postgres@postgres:5432/langflow${1:+_$1}
+      ## Postgres
+      - LANGFLOW_DATABASE_URL=postgresql://postgres:{{postgres_password}}@postgres:5432/langflow
 
     deploy:
       mode: replicated
@@ -44,21 +40,20 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.langflow${1:+_$1}.rule=Host(\`$url_langflow\`) ## Url da aplicação
-        - traefik.http.services.langflow${1:+_$1}.loadBalancer.server.port=7860
-        - traefik.http.routers.langflow${1:+_$1}.service=langflow${1:+_$1}
-        - traefik.http.routers.langflow${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.langflow${1:+_$1}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.langflow.rule=Host(\`{{langflow_url}}\`) ## Url da aplicação
+        - traefik.http.services.langflow.loadBalancer.server.port=7860
+        - traefik.http.routers.langflow.service=langflow
+        - traefik.http.routers.langflow.entrypoints=websecure
+        - traefik.http.routers.langflow.tls.certresolver=letsencryptresolver
 
 ## --------------------------- ORION --------------------------- ##
 
 volumes:
-  langflow${1:+_$1}_data:
+  langflow_data:
     external: true
-    name: langflow${1:+_$1}_data
+    name: langflow_data
 
 networks:
-  $nome_rede_interna: ## Nome da rede interna
+  {{network_name}}:
     external: true
-    name: $nome_rede_interna ## Nome da rede interna
-EOL
+    name: {{network_name}}

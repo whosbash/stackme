@@ -1,24 +1,20 @@
-## Criando a stack redisinsight.yaml
-cat > redisinsight${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
 
-## --------------------------- ORION --------------------------- ##
-
-  redisinsight${1:+_$1}:
+  redisinsight:
     image: redislabs/redisinsight:latest
 
     volumes:
-      - redisinsight${1:+_$1}_data:/db
-      - redisinsight${1:+_$1}_logs:/data/logs
+      - redisinsight_data:/db
+      - redisinsight_logs:/data/logs
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
       - RI_APP_PORT=5540
       - RI_APP_HOST=0.0.0.0
-      - RI_ENCRYPTION_KEY=$key_redisinsight
+      - RI_ENCRYPTION_KEY={{redisinsight_key}}
       - RI_LOG_LEVEL=info
       - RI_FILES_LOGGER=false
       - RI_STDOUT_LOGGER=true
@@ -35,25 +31,23 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.redisinsight${1:+_$1}.rule=Host(\`$url_redisinsight\`) ## Dominio do RedisInsight
-        - traefik.http.services.redisinsight${1:+_$1}.loadbalancer.server.port=5540
-        - traefik.http.routers.redisinsight${1:+_$1}.service=redisinsight${1:+_$1}
-        - traefik.http.routers.redisinsight${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.redisinsight${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.redisinsight${1:+_$1}.tls=true
-
-## --------------------------- ORION --------------------------- ##
+        - traefik.http.routers.redisinsight.rule=Host(\`{{redisinsight_url}}\`)
+        - traefik.http.services.redisinsigh.loadbalancer.server.port=5540
+        - traefik.http.routers.redisinsight.service=redisinsight
+        - traefik.http.routers.redisinsight.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.redisinsight.entrypoints=websecure
+        - traefik.http.routers.redisinsight.tls=true
 
 volumes:
-  redisinsight${1:+_$1}_data:
+  redisinsight_data:
     external: true
-    name: redisinsight${1:+_$1}_data
-  redisinsight${1:+_$1}_logs:
+    name: redisinsight_data
+  redisinsight_logs:
     external: true
-    name: redisinsight${1:+_$1}_logs
+    name: redisinsight_logs
 
 networks:
-  $nome_rede_interna: ## Nome da rede interna
-    name: $nome_rede_interna ## Nome da rede interna
+  {{network_name}}:
+    name: {{network_name}}
     external: true
 EOL

@@ -1,18 +1,13 @@
-## Criando a stack
-cat > excalidraw${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  excalidraw${1:+_$1}:
+  excalidraw:
     image: excalidraw/excalidraw:latest
 
     volumes:
-      - excalidraw${1:+_$1}_data:/data
+      - excalidraw_data:/data
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
       - EXCALIDRAW_PORT=80
@@ -30,23 +25,19 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.excalidraw${1:+_$1}.rule=Host(\`$url_excalidraw\`)
-        - traefik.http.services.excalidraw.${1:+_$1}loadbalancer.server.port=80
-        - traefik.http.routers.excalidraw${1:+_$1}.service=excalidraw${1:+_$1}
-        - traefik.http.routers.excalidraw${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.excalidraw${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.excalidraw${1:+_$1}.tls=true
-
-## --------------------------- ORION --------------------------- ##
-
+        - traefik.http.routers.excalidraw.rule=Host(\`$url_excalidraw\`)
+        - traefik.http.services.excalidraw.loadbalancer.server.port=80
+        - traefik.http.routers.excalidraw.service=excalidraw${1:+_$1}
+        - traefik.http.routers.excalidraw.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.excalidraw.entrypoints=websecure
+        - traefik.http.routers.excalidraw.tls=true
 
 volumes:
-  excalidraw${1:+_$1}_data:
+  excalidraw_data:
     external: true
-    name: excalidraw${1:+_$1}_data
+    name: excalidraw_data
 
 networks:
-  $nome_rede_interna: ## Nome da rede interna
-    name: $nome_rede_interna ## Nome da rede interna
+  {{network_name}}:
+    name: {{network_name}}
     external: true
-EOL

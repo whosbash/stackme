@@ -1,24 +1,19 @@
-## Criando a stack appsmith.yaml
-cat > appsmith${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  appsmith${1:+_$1}:
+  appsmith:
     image: appsmith/appsmith-ee:latest
 
     volumes:
-      - appsmith${1:+_$1}_data:/appsmith-stacks
+      - appsmith_data:/appsmith-stacks
 
     networks:
-      - $nome_rede_interna
+      - {{network_name}}
 
     environment:
-      ## Url Appsmith
-      - APPSMITH_CUSTOM_DOMAIN=https://$url_appsmith
+      ## Appsmith Url
+      - APPSMITH_CUSTOM_DOMAIN=https://{{appsmith_url}}
 
-      ## Ativar/Desativar Novas Inscrições
+      ## Enable/unable signup
       - APPSMITH_SIGNUP_DISABLED=false
 
     deploy:
@@ -33,22 +28,19 @@ services:
           memory: 2048M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.appsmith${1:+_$1}.rule=Host(\`$url_appsmith\`)
-        - traefik.http.routers.appsmith${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.appsmith${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.appsmith${1:+_$1}.service=appsmith${1:+_$1}
-        - traefik.http.services.appsmith${1:+_$1}.loadbalancer.server.port=80
-        - traefik.http.services.appsmith${1:+_$1}.loadbalancer.passHostHeader=true
-
-## --------------------------- ORION --------------------------- ##
+        - traefik.http.routers.appsmith.rule=Host(\`{{appsmith_url}}\`)
+        - traefik.http.routers.appsmith.entrypoints=websecure
+        - traefik.http.routers.appsmith.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.appsmith.service=appsmith${1:+_$1}
+        - traefik.http.services.appsmith.loadbalancer.server.port=80
+        - traefik.http.services.appsmith.loadbalancer.passHostHeader=true
 
 volumes:
-  appsmith${1:+_$1}_data:
+  appsmith_data:
     external: true
-    name: appsmith${1:+_$1}_data
+    name: appsmith_data
 
 networks:
-  $nome_rede_interna:
-    name: $nome_rede_interna
+  {{network_name}}:
+    name: {{network_name}}
     external: true
-EOL

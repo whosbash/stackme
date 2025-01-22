@@ -1,19 +1,16 @@
-## Criando a stack clickhouse.yaml
-cat > clickhouse${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
 
-## --------------------------- ORION --------------------------- ##
-
-  clickhouse:${1:+_$1}
+  clickhouse:
     image: clickhouse/clickhouse-server:23.8.8.20-alpine
 
     volumes:
-      - clickhouse${1:+_$1}_data:/var/lib/clickhouse
-      - clickhouse${1:+_$1}_log:/var/log/clickhouse-server
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_log:/var/log/clickhouse-server
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
+    
     #ports:
     #  - "8123:8123"
     #  - "9000:9000"
@@ -21,8 +18,8 @@ services:
 
     environment:
       - CLICKHOUSE_DB=default
-      - CLICKHOUSE_USER=$user_clickhouse
-      - CLICKHOUSE_PASSWORD=$pass_clickhouse
+      - CLICKHOUSE_USER={{clickhouse_username}}
+      - CLICKHOUSE_PASSWORD={{clickhouse_password}}
 
     deploy:
       mode: replicated
@@ -32,26 +29,23 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.clickhouse${1:+_$1}.rule=Host(\`$url_clickhouse\`)
-        - traefik.http.services.clickhouse${1:+_$1}.loadbalancer.server.port=8123
-        - traefik.http.routers.clickhouse${1:+_$1}.service=clickhouse${1:+_$1}
-        - traefik.http.routers.clickhouse${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.services.clickhouse${1:+_$1}.loadbalancer.passHostHeader=true
-        - traefik.http.routers.clickhouse${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.clickhouse${1:+_$1}.tls=true        
-
-## --------------------------- ORION --------------------------- ##
+        - traefik.http.routers.clickhouse.rule=Host(\`{{clickhouse_url}}\`)
+        - traefik.http.services.clickhouse.loadbalancer.server.port=8123
+        - traefik.http.routers.clickhouse.service=clickhouse
+        - traefik.http.routers.clickhouse.tls.certresolver=letsencryptresolver
+        - traefik.http.services.clickhouse.loadbalancer.passHostHeader=true
+        - traefik.http.routers.clickhouse.entrypoints=websecure
+        - traefik.http.routers.clickhouse.tls=true        
 
 volumes:
-  clickhouse${1:+_$1}_data:
+  clickhouse_data:
     external: true
-    name: clickhouse${1:+_$1}_data
-  clickhouse${1:+_$1}_log:
+    name: clickhouse_data
+  clickhouse_log:
     external: true
-    name: clickhouse${1:+_$1}_log
+    name: clickhouse_log
   
 networks:
-  $nome_rede_interna:
+  {{network_name}}:
     external: true
-    name: $nome_rede_interna
-EOL
+    name: {{network_name}}

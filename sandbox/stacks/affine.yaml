@@ -1,18 +1,13 @@
-## Criando a stack affine.yaml
-cat > affine${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  affine${1:+_$1}:
+  affine:
     image: ghcr.io/toeverything/affine-graphql:stable-39476d1
     command:
       ['sh', '-c', 'node ./scripts/self-host-predeploy && node ./dist/index.js']
 
     volumes:
-      - affine${1:+_$1}_config:/root/.affine/config:rw
-      - affine${1:+_$1}_storage:/root/.affine/storage:rw
+      - affine_config:/root/.affine/config:rw
+      - affine_storage:/root/.affine/storage:rw
 
     networks:
       - $nome_rede_interna
@@ -28,29 +23,31 @@ services:
     restart: on-failure:5
 
     environment:
-      ## Dados de acesso
-      - AFFINE_ADMIN_EMAIL=$email_affine
-      - AFFINE_ADMIN_PASSWORD=$senha_affine
-      - AFFINE_SERVER_HOST=$url_affine
+      ## Affine
+      - AFFINE_ADMIN_EMAIL={{affine_email}}
+      - AFFINE_ADMIN_PASSWORD={{affine_password}}
+      - AFFINE_SERVER_HOST={{affine_url}}
+      - AFFINE_CONFIG_PATH=/root/.affine/config
 
-      ## Dados do SMTP
-      - MAILER_USER=$email_smtp_affine
-      - MAILER_PASSWORD=$senha_smtp_affine
-      - MAILER_HOST=$host_smtp_affine
-      - MAILER_PORT=$porta_smtp_affine
+      ## SMTP
+      - MAILER_USER={{affine_smtp_email}}
+      - MAILER_PASSWORD={{affine_smtp_password}}
+      - MAILER_HOST={{affine_smtp_host}}
+      - MAILER_PORT={{affine_smtp_port}}
 
-      ## Dados do Postgres
+      ## Postgres
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=$senha_postgres
-      - POSTGRES_DB=affine${1:+_$1}
-      - DATABASE_URL=postgres://postgres:$senha_postgres@postgres:5432/affine${1:+_$1}?sslmode=disable
+      - POSTGRES_PASSWORD={{postgres_password}}
+      - POSTGRES_DB=affine
+      - DATABASE_URL=postgres://postgres:{{postgres_password}}@postgres:5432/affine?sslmode=disable
       - PGDATA=/var/lib/postgresql/data/pgdata
 
-      ## Outras configurações
-      - NODE_OPTIONS="--import=./scripts/register.js"
-      - AFFINE_CONFIG_PATH=/root/.affine/config
+      ## Redis
       - REDIS_SERVER_HOST=redis
+      
+      # Node
       - NODE_ENV=production
+      - NODE_OPTIONS="--import=./scripts/register.js"
       
     deploy:
       mode: replicated
@@ -60,27 +57,24 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.affine${1:+_$1}.rule=Host(\`$url_affine\`)
-        - traefik.http.services.affine${1:+_$1}.loadbalancer.server.port=3010
-        - traefik.http.routers.affine${1:+_$1}.service=affine${1:+_$1}
-        - traefik.http.routers.affine${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.affine${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.affine${1:+_$1}.tls=true
+        - traefik.http.routers.affine.rule=Host(\`{{affine_url}}\`)
+        - traefik.http.services.affine.loadbalancer.server.port=3010
+        - traefik.http.routers.affine.service=affine
+        - traefik.http.routers.affine.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.affine.entrypoints=websecure
+        - traefik.http.routers.affine.tls=true
         - traefik.frontend.headers.STSPreload=true
         - traefik.frontend.headers.STSSeconds=31536000
 
-## --------------------------- ORION --------------------------- ##
-
 volumes:
-  affine${1:+_$1}_config:
+  affine_config:
     external: true
-    name: affine${1:+_$1}_config
-  affine${1:+_$1}_storage:
+    name: affine_config
+  affine_storage:
     external: true
-    name: affine${1:+_$1}_storage
+    name: affine_storage
 
 networks:
-  $nome_rede_interna:
+  {{network_name}}:
     external: true
-    name: $nome_rede_interna
-EOL
+    name: {{network_name}}

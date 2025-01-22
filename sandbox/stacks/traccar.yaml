@@ -1,23 +1,18 @@
-## Criando a stack traccar.yaml
-cat > traccar${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  traccar${1:+_$1}:
+  traccar:
     image: traccar/traccar:latest
     
     volumes:
-      - /opt/traccar/logs:/opt/traccar${1:+_$1}/logs:rw
-      - /opt/traccar/traccar.xml:/opt/traccar${1:+_$1}/conf/traccar.xml:ro
-      - traccar${1:+_$1}_data:/opt/traccar/
+      - /opt/traccar/logs:/opt/traccar/logs:rw
+      - /opt/traccar/traccar.xml:/opt/traccar/conf/traccar.xml:ro
+      - traccar_data:/opt/traccar/
 
     networks:
-     - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
-     - JAVA_OPTS=-Xms1g -Xmx1g -Djava.net.preferIPv4Stack=true
+      - JAVA_OPTS=-Xms1g -Xmx1g -Djava.net.preferIPv4Stack=true
     
     deploy:
       mode: replicated
@@ -31,29 +26,27 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.traccar${1:+_$1}.rule=Host(\`$url_traccar\`)
-        - traefik.http.services.traccar${1:+_$1}.loadbalancer.server.port=8082
-        - traefik.http.routers.traccar${1:+_$1}.service=traccar${1:+_$1}
-        - traefik.http.routers.traccar${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.traccar${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.traccar${1:+_$1}.tls=true
+        - traefik.http.routers.traccar.rule=Host(\`{{traccar_url}}\`)
+        - traefik.http.services.traccar.loadbalancer.server.port=8082
+        - traefik.http.routers.traccar.service=traccar
+        - traefik.http.routers.traccar.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.traccar.entrypoints=websecure
+        - traefik.http.routers.traccar.tls=true
 
-## --------------------------- ORION --------------------------- ##
-
-  traccar${1:+_$1}_db:
+  traccar_db:
     image: mysql:8.0
 
     volumes:
-      - traccar${1:+_$1}_db:/var/lib/mysql
+      - traccar_db:/var/lib/mysql
 
     networks:
-     - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
       - MYSQL_ROOT_PASSWORD=rootpassword
       - MYSQL_DATABASE=traccar
       - MYSQL_USER=traccar
-      - MYSQL_PASSWORD=$gerar_senha_mysql
+      - MYSQL_PASSWORD={{mysql_password}}
 
     deploy:
       mode: replicated
@@ -66,18 +59,15 @@ services:
           cpus: "1"
           memory: 1024M
 
-## --------------------------- ORION --------------------------- ##
-
 volumes:
-  traccar${1:+_$1}_data:
+  traccar_data:
     external: true
-    name: traccar${1:+_$1}_data
-  traccar${1:+_$1}_db:
+    name: traccar_data
+  traccar_db:
     external: true
-    name: traccar${1:+_$1}_db
+    name: traccar_db
     
 networks:
-  $nome_rede_interna: ## Nome da rede interna
-    name: $nome_rede_interna ## Nome da rede interna
+  {{network_name}}:
+    name: {{network_name}}
     external: true
-EOL

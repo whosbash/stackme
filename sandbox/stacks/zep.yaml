@@ -1,15 +1,10 @@
-## Criando a stack zep.yaml
-cat > zep${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  zep${1:+_$1}_nlp:
+  zep_nlp:
     image: ghcr.io/getzep/zep-nlp-server:latest
 
     networks:
-      - $nome_rede_interna
+      - {{network_name}}
       
     deploy:
       mode: replicated
@@ -18,32 +13,30 @@ services:
         constraints:
           - node.role == manager
 
-## --------------------------- ORION --------------------------- ##
-
-  zep${1:+_$1}_app:
+  zep_app:
     image: ghcr.io/getzep/zep:latest
     
     volumes:
-      - /root/zep${1:+_$1}/config.yaml:/app/config.yaml
+      - /opt/stackme/stacks/zep/config.yaml:/app/config.yaml
 
     networks:
       - $nome_rede_interna
 
     environment:
-      ## Dados Postgres
+      ## Postgres
       - ZEP_STORE_TYPE=postgres
-      - ZEP_STORE_POSTGRES_DSN=postgres://postgres:$senha_pgvector@pgvector:5432/zep${1:+_$1}?sslmode=disable
+      - ZEP_STORE_POSTGRES_DSN=postgres://postgres:{{pgvector_password}}@pgvector:5432/zep?sslmode=disable
 
-      ## Dados de acesso:
-      - ZEP_AUTH_SECRET=$apikey_zep
-      
-      ## Dados OpenAI
-      - ZEP_OPENAI_API_KEY=$apikey_openai_zep
+      ## Auth
+      - ZEP_AUTH_SECRET={{zep_apikey}}
 
-      ## Dados NLP
-      - ZEP_NLP_SERVER_URL=http://zep${1:+_$1}_nlp:5557
+      ## OpenAI
+      - ZEP_OPENAI_API_KEY={{zep_apikey_openai}}
 
-      ## Configurações de extração
+      ## NLP
+      - ZEP_NLP_SERVER_URL=http://zep_nlp:5557
+
+      ## Extraction settings
       - ZEP_EXTRACTORS_DOCUMENTS_EMBEDDINGS_SERVICE=openai
       - ZEP_EXTRACTORS_DOCUMENTS_EMBEDDINGS_DIMENSIONS=1536
       - ZEP_EXTRACTORS_MESSAGES_EMBEDDINGS_SERVICE=openai
@@ -51,8 +44,8 @@ services:
       - ZEP_EXTRACTORS_MESSAGES_SUMMARIZER_EMBEDDINGS_SERVICE=openai
       - ZEP_EXTRACTORS_MESSAGES_SUMMARIZER_EMBEDDINGS_DIMENSIONS=1536
 
-      ## Configuração Graphiti
-      - ZEP_GRAPHITI_URL=http://zep${1:+_$1}_graphiti:8003
+      ## Graphiti
+      - ZEP_GRAPHITI_URL=http://zep_graphiti:8003
 
       ## Degub:
       - ZEP_LOG_LEVEL=debug
@@ -65,17 +58,14 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.zep${1:+_$1}.rule=Host(\`$url_zep\`)
-        - traefik.http.routers.zep${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.zep${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.services.zep${1:+_$1}.loadbalancer.server.port=8000
-        - traefik.http.services.zep${1:+_$1}.loadbalancer.passHostHeader=true
-        - traefik.http.routers.zep${1:+_$1}.service=zep${1:+_$1}
-
-## --------------------------- ORION --------------------------- ##
+        - traefik.http.routers.zep.rule=Host(\`{{zep_url}}\`)
+        - traefik.http.routers.zep.entrypoints=websecure
+        - traefik.http.routers.zep.tls.certresolver=letsencryptresolver
+        - traefik.http.services.zep.loadbalancer.server.port=8000
+        - traefik.http.services.zep.loadbalancer.passHostHeader=true
+        - traefik.http.routers.zep.service=zep${1:+_$1}
     
 networks:
-  $nome_rede_interna: ## Nome da rede interna
+  {{network_name}}:
     external: true
-    name: $nome_rede_interna ## Nome da rede interna
-EOL
+    name: {{network_name}}

@@ -1,32 +1,27 @@
-## Criando a stack nocobase.yaml
-cat > nocobase${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  nocobase${1:+_$1}:
-    image: nocobase/nocobase:latest ## Versão do Nocobase
+  nocobase:
+    image: nocobase/nocobase:latest
 
     volumes:
-      - nocobase${1:+_$1}_storage:/app/nocobase/storage
+      - nocobase_storage:/app/nocobase/storage
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
-      ## Dados de acesso
-      - INIT_ROOT_EMAIL=$mail_nocobase
-      - INIT_ROOT_PASSWORD=$pass_nocobase
-      - INIT_ROOT_NICKNAME=$user_nocobase
-      - INIT_ROOT_USERNAME=$user_nocobase
+      ## Nocobase
+      - INIT_ROOT_EMAIL={{nocobase_email}}
+      - INIT_ROOT_PASSWORD={{nocobase_password}}
+      - INIT_ROOT_NICKNAME={{nocobase_username}}
+      - INIT_ROOT_USERNAME={{nocobase_username}}
 
-      ## Dados do Postgres
+      ## Postgres
       - DB_DIALECT=postgres
       - DB_HOST=postgres
-      - DB_DATABASE=nocobase${1:+_$1}
+      - DB_DATABASE=nocobase
       - DB_USER=postgres
-      - DB_PASSWORD=$senha_postgres
+      - DB_PASSWORD={{postgres_password}}
 
       ## Paths de URL
       - LOCAL_STORAGE_BASE_URL=/storage/uploads
@@ -34,7 +29,7 @@ services:
 
       ## Encryption Key
       - APP_KEY=$nocobase_key
-      - ENCRYPTION_FIELD_KEY=$nocobase_encryption
+      - ENCRYPTION_FIELD_KEY={{nocobase_encryption}}
 
     deploy:
       mode: replicated
@@ -48,21 +43,20 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.nocobase${1:+_$1}.rule=Host(\`$url_nocobase\`) ## Url da aplicação
-        - traefik.http.services.nocobase${1:+_$1}.loadbalancer.server.port=80
-        - traefik.http.routers.nocobase${1:+_$1}.service=nocobase${1:+_$1}
-        - traefik.http.routers.nocobase${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.nocobase${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.nocobase${1:+_$1}.tls=true
+        - traefik.http.routers.nocobase.rule=Host(\`{{nocobase_url}}\`)
+        - traefik.http.services.nocobase.loadbalancer.server.port=80
+        - traefik.http.routers.nocobase.service=nocobase
+        - traefik.http.routers.nocobase.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.nocobase.entrypoints=websecure
+        - traefik.http.routers.nocobase.tls=true
 
 ## --------------------------- ORION --------------------------- ##
 
 volumes:
-  nocobase${1:+_$1}_storage:
+  nocobase_storage:
     external: true
 
 networks:
-  $nome_rede_interna: ## Nome da rede interna
-    name: $nome_rede_interna ## Nome da rede interna
+  {{network_name}}:
+    name: {{network_name}}
     external: true
-EOL

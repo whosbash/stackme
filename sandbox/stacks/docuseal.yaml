@@ -1,37 +1,33 @@
-## Criando a stack docuseal.yaml
-cat > docuseal${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
 
-## --------------------------- ORION --------------------------- ##
-
-  docuseal${1:+_$1}:
+  docuseal:
     image: docuseal/docuseal:latest
 
     volumes:
-      - docuseal${1:+_$1}_data:/data
+      - docuseal_data:/data
 
     networks:
-      - $nome_rede_interna
+      - {{network}}
 
     environment:
-      ## Dados de Acesso
-      - HOST=$url_docuseal
+      ## URLs
+      - HOST={{docuseal_url}}
       - FORCE_SSL=true
 
       ## Secret Key
-      - SECRET_KEY_BASE=$key_docuseal
+      - SECRET_KEY_BASE={{docuseal_key}}
 
       ## Dados do Postgres
-      - DATABASE_URL=postgresql://postgres:$senha_postgres@postgres:5432/docuseal${1:+_$1}
+      - DATABASE_URL=postgresql://postgres:{{postgres_password}}@postgres:5432/docuseal
 
       ## Dados SMTP
-      - SMTP_USERNAME=$user_smtp_docuseal
-      - SMTP_PASSWORD=$senha_smtp_docuseal
-      - SMTP_ADDRESS=$host_smtp_docuseal
-      - SMTP_PORT=$porta_smtp_docuseal
-      - SMTP_FROM=$email_smtp_docuseal
-      - SMTP_DOMAIN=$dominio_smtp_docuseal
+      - SMTP_USERNAME={{docuseal_smtp_username}}
+      - SMTP_PASSWORD={{docuseal_smtp_password}}
+      - SMTP_ADDRESS={{docuseal_smtp_host}}
+      - SMTP_PORT={{docuseal_smtp_port}}
+      - SMTP_FROM={{docuseal_smtp_from}}
+      - SMTP_DOMAIN={{docuseal_smtp_host}}
       - SMTP_AUTHENTICATION=login
 
       ## Dados do S3
@@ -47,22 +43,19 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.docuseal${1:+_$1}.rule=Host(\`$url_docuseal\`)
-        - traefik.http.services.docuseal${1:+_$1}.loadbalancer.server.port=3000
-        - traefik.http.routers.docuseal${1:+_$1}.service=docuseal${1:+_$1}
-        - traefik.http.routers.docuseal${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.docuseal${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.docuseal${1:+_$1}.tls=true
-
-## --------------------------- ORION --------------------------- ##
+        - traefik.http.routers.docuseal.rule=Host(\`{{docuseal_url}}\`)
+        - traefik.http.services.docuseal.loadbalancer.server.port=3000
+        - traefik.http.routers.docuseal.service=docuseal
+        - traefik.http.routers.docuseal.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.docuseal.entrypoints=websecure
+        - traefik.http.routers.docuseal.tls=true
 
 volumes:
-  docuseal${1:+_$1}_data:
+  docuseal_data:
     external: true
-    name: docuseal${1:+_$1}_data
+    name: docuseal_data
 
 networks:
-  $nome_rede_interna:
+  {{network_name}}:
     external: true
-    name: $nome_rede_interna
-EOL
+    name: {{network_name}}
