@@ -1,28 +1,23 @@
-## Criando a stack botpress.yaml
-cat > botpress${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  botpress${1:+_$1}:
+  botpress:
     image: botpress/server:latest
 
     volumes:
-      - botpress${1:+_$1}_data:/botpress/data
+      - botpress_data:/botpress/data
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
-      ## Url Botpress
-      - EXTERNAL_URL=https://$url_botpress
+      ## Botpress Url
+      - EXTERNAL_URL=https://{{botpress_url}}
 
-      ## Modo
+      ## Mode
       - BP_PRODUCTION=true
 
-      ## Dados Postgres
-      - DATABASE_URL=postgresql://postgres:$senha_postgres@postgres:5432/botpress${1:+_$1}
+      ## Postgres
+      - DATABASE_URL=postgresql://postgres:{{postgres_password}}@postgres:5432/botpress
 
       ## Dados Redis
       - REDIS_URL=redis://redis:6379
@@ -39,22 +34,21 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.botpress${1:+_$1}.rule=Host(\`$url_botpress\`)
-        - traefik.http.services.botpress${1:+_$1}.loadbalancer.server.port=3000
-        - traefik.http.routers.botpress${1:+_$1}.service=botpress${1:+_$1}
-        - traefik.http.routers.botpress${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.botpress${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.botpress${1:+_$1}.tls=true
+        - traefik.http.routers.botpress.rule=Host(\`{{botpress_url}}\`)
+        - traefik.http.services.botpress.loadbalancer.server.port=3000
+        - traefik.http.routers.botpress.service=botpress
+        - traefik.http.routers.botpress.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.botpress.entrypoints=websecure
+        - traefik.http.routers.botpress.tls=true
 
 ## --------------------------- ORION --------------------------- ##
 
 volumes:
-  botpress${1:+_$1}_data:
+  botpress_data:
     external: true
-    name: botpress${1:+_$1}_data
+    name: botpress_data
 
 networks:
-  $nome_rede_interna: ## Nome da rede interna
-    name: $nome_rede_interna ## Nome da rede interna
+  {{network_name}}:
+    name: {{network_name}}
     external: true
-EOL

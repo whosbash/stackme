@@ -1,21 +1,16 @@
-## Criando a stack focalboard.yaml
-cat > focalboard${1:+_$1}.yaml <<EOL
 version: "3.8"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  focalboard${1:+_$1}:
+  focalboard:
     image: mattermost/focalboard:latest
 
     volumes:
-      - focalboard${1:+_$1}_data:/opt/focalboard/data
+      - focalboard_data:/opt/focalboard/data
     
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
     
     environment:
-      - VIRTUAL_HOST=$url_focalboard ## Url da Aplicação
+      - VIRTUAL_HOST={{focalboard_url}}
       - VIRTUAL_PORT=8000
     
     deploy:
@@ -30,21 +25,18 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.focalboard${1:+_$1}.rule=Host(\`$url_focalboard\`) ## Url da Aplicação
-        - traefik.http.services.focalboard${1:+_$1}.loadBalancer.server.port=8000
-        - traefik.http.routers.focalboard${1:+_$1}.service=focalboard${1:+_$1}
-        - traefik.http.routers.focalboard${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.focalboard${1:+_$1}.tls.certresolver=letsencryptresolver
-
-## --------------------------- ORION --------------------------- ##
+        - traefik.http.routers.focalboard.rule=Host(\`{{focalboard_url}}\`) ## Url da Aplicação
+        - traefik.http.services.focalboard.loadBalancer.server.port=8000
+        - traefik.http.routers.focalboard.service=focalboard
+        - traefik.http.routers.focalboard.entrypoints=websecure
+        - traefik.http.routers.focalboard.tls.certresolver=letsencryptresolver
 
 volumes:
-  focalboard${1:+_$1}_data:
+  focalboard_data:
     external: true
-    name: focalboard${1:+_$1}_data
+    name: focalboard_data
 
 networks:
-  $nome_rede_interna: ## Nome da rede interna
+  {{network_name}}:
     external: true
-    name: $nome_rede_interna ## Nome da rede interna
-EOL
+    name: {{network_name}}

@@ -1,30 +1,25 @@
-## Criando a stack langfuse.yaml
-cat > langfuse${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  langfuse${1:+_$1}:
+  langfuse:
     image: langfuse/langfuse:latest
 
     networks:
-     - $nome_rede_interna
+      - {{network_name}}
 
     environment:
       ## Url do Langfuse
-      - NEXTAUTH_URL=https://$url_langfuse
+      - NEXTAUTH_URL=https://{{langfuse_url}}
 
       ## Desativar novas incrições
       - NEXT_PUBLIC_SIGN_UP_DISABLED=false
 
       ## Dados Postgres
-      - DATABASE_URL=postgresql://postgres:$senha_postgres@postgres:5432/langfuse${1:+_$1}
+      - DATABASE_URL=postgresql://postgres:{{postgres_password}}@postgres:5432/langfuse
 
       ## Secrets Key
-      - ENCRYPTION_KEY=$key_encryption
-      - NEXTAUTH_SECRET=$key_secret
-      - SALT=$key_salt
+      - ENCRYPTION_KEY={{langfuse_encryption_key}}
+      - NEXTAUTH_SECRET={{langfuse_secret_key}}
+      - SALT={{langfuse_salt}}
 
       ## Ativar Telemetria
       - TELEMETRY_ENABLED=false
@@ -47,17 +42,14 @@ services:
             memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.langfuse${1:+_$1}.rule=Host(\`$url_langfuse\`)
-        - traefik.http.routers.langfuse${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.langfuse${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.langfuse${1:+_$1}.service=langfuse${1:+_$1}
-        - traefik.http.services.langfuse${1:+_$1}.loadbalancer.passHostHeader=true
-        - traefik.http.services.langfuse${1:+_$1}.loadbalancer.server.port=3000
-
-## --------------------------- ORION --------------------------- ##
+        - traefik.http.routers.langfuse.rule=Host(\`{{langfuse_url}}\`)
+        - traefik.http.routers.langfuse.entrypoints=websecure
+        - traefik.http.routers.langfuse.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.langfuse.service=langfuse
+        - traefik.http.services.langfuse.loadbalancer.passHostHeader=true
+        - traefik.http.services.langfuse.loadbalancer.server.port=3000
 
 networks:
-  $nome_rede_interna:
+  {{network_name}}:
     external: true
-    name: $nome_rede_interna
-EOL
+    name: {{network_name}}

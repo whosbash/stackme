@@ -1,43 +1,39 @@
-## Criando a stack formbricks.yaml
-cat > formbricks${1:+_$1}.yaml <<-EOF
 version: "3.7"
 services:
 
-## --------------------------- ORION --------------------------- ##
-
-  formbricks${1:+_$1}:
+  formbricks:
     image: formbricks/formbricks:latest
 
     volumes:
-      - formbricks${1:+_$1}_data:/home/nextjs/apps/web/uploads/
+      - formbricks_data:/home/nextjs/apps/web/uploads/
 
     networks:
-      - $nome_rede_interna
+      - {{network_name}}
 
     environment:
       ## Url da aplicação
-      - WEBAPP_URL=https://$url_formbricks
-      - NEXTAUTH_URL=https://$url_formbricks
+      - WEBAPP_URL=https://{{formbricks_url}}
+      - NEXTAUTH_URL=https://{{formbricks_url}}
 
       ## Banco de dados Postgres
-      - DATABASE_URL=postgresql://postgres:$senha_pgvector@pgvector:5432/formbricks${1:+_$1}?schema=public
+      - DATABASE_URL=postgresql://postgres:{{pgvector_password}}@pgvector:5432/formbricks?schema=public
 
       ## Licença Enterprise ou Self-hosting
       ## Solicitar licenta Self-hosting --> https://oriondesign.art.br/formbricks_licence/ <-- ##
       - ENTERPRISE_LICENSE_KEY=
 
-      ## Keys aleatórias 32 caracteres
-      - ENCRYPTION_KEY=$encryption_key_form
-      - NEXTAUTH_SECRET=$next_key_form
-      - CRON_SECRET=$cron_key_form
+      ## Random keys 32 characters
+      - ENCRYPTION_KEY={{formbricks_encryption_key}}
+      - NEXTAUTH_SECRET={{formbricks_next_key}}
+      - CRON_SECRET={{formbricks_cron_key}}
 
-      ## Dados do SMTP
-      - MAIL_FROM=$email_formbricks
-      - SMTP_HOST=$host_formbricks
-      - SMTP_PORT=$porta_formbricks
-      - SMTP_SECURE_ENABLED=$ssl_formbricks #(0= false | 1= true)
-      - SMTP_USER=$user_smtp_formbricks
-      - SMTP_PASSWORD=$senha_formbricks
+      ## SMTP
+      - MAIL_FROM={{formbricks_email}}
+      - SMTP_HOST={{formbricks_host}}
+      - SMTP_PORT={{formbricks_port}}
+      - SMTP_SECURE_ENABLED={{formbricks_ssl}}
+      - SMTP_USER={{formbricks_smtp_username}}
+      - SMTP_PASSWORD={{formbricks_smtp_password}}
 
       ## Ativar/Desativar registros e convites (0= false | 1= true)
       - SIGNUP_DISABLED=0
@@ -89,22 +85,19 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.formbricks${1:+_$1}.rule=Host(\`$url_formbricks\`)
-        - traefik.http.services.formbricks${1:+_$1}.loadbalancer.server.port=3000
-        - traefik.http.routers.formbricks${1:+_$1}.service=formbricks${1:+_$1}
-        - traefik.http.routers.formbricks${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.formbricks${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.formbricks${1:+_$1}.tls=true
-
-## --------------------------- ORION --------------------------- ##
+        - traefik.http.routers.formbricks.rule=Host(\`{{formbricks_url}}\`)
+        - traefik.http.services.formbricks.loadbalancer.server.port=3000
+        - traefik.http.routers.formbricks.service=formbricks
+        - traefik.http.routers.formbricks.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.formbricks.entrypoints=websecure
+        - traefik.http.routers.formbricks.tls=true
 
 volumes:
-  formbricks${1:+_$1}_data:
+  formbricks_data:
     external: true
-    name: formbricks${1:+_$1}_data
+    name: formbricks_data
 
 networks:
-  $nome_rede_interna:
-    name: $nome_rede_interna
+  {{network_name}}:
+    name: {{network_name}}
     external: true
-EOF

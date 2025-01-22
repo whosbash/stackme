@@ -50,8 +50,6 @@ services:
         - traefik.http.routers.nocobase.entrypoints=websecure
         - traefik.http.routers.nocobase.tls=true
 
-## --------------------------- ORION --------------------------- ##
-
 volumes:
   nocobase_storage:
     external: true

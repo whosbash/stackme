@@ -1,50 +1,46 @@
-## Criando a stack krayincrm.yaml
-cat > krayincrm${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
 
-  ## --------------------------- ORION --------------------------- ##
-
-  krayin${1:+_$1}:
+  krayin:
     image: webkul/krayin:2.0.4
 
     volumes:
-      - krayin${1:+_$1}_data:/var/www/html/laravel-crm
+      - krayin_data:/var/www/html/laravel-crm
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
       
     environment:
       ## Dados de acesso
-      - krayin_PUBLIC_URL=https://$url_krayincrm
-      - APP_URL=https://$url_krayincrm
+      - krayin_PUBLIC_URL=https://{{krayincrm_url}}
+      - APP_URL=https://{{krayincrm_url}}
       - krayin_CADDY_ADDRESSES=:80
       - APP_ENV=production
-      - APP_KEY=$secret_key
+      - APP_KEY={{krayincrm_secret_key}}
       - APP_DEBUG=false
       - APP_TIMEZONE=America/Sao_Paulo
       - APP_LOCALE=pt_BR
       - APP_CURRENCY=BRL
-      - SANCTUM_STATEFUL_DOMAINS=https://$url_krayincrm/public
+      - SANCTUM_STATEFUL_DOMAINS=https://{{krayincrm_url}}/public
 
       ## Configuração do Banco de Dados
       - DB_CONNECTION=mysql
       - DB_HOST=mysql
       - DB_PORT=3306
-      - DB_DATABASE=krayin${1:+_$1}
+      - DB_DATABASE=krayin
       - DB_USERNAME=root
       - DB_PASSWORD=$senha_mysql
       - DB_PREFIX=
 
       ## Configurações de e-mail
       - MAIL_MAILER=smtp
-      - MAIL_FROM_ADDRESS=$email_krayincrm ## mude
-      - MAIL_USERNAME=$usuario_email_krayincrm ## mude
-      - MAIL_PASSWORD=$senha_email_krayincrm ## mude
-      - MAIL_HOST=$smtp_email_krayincrm ## mude
-      - MAIL_PORT=$porta_smtp_krayincrm ## mude
-      - MAIL_ENCRYPTION=$smtp_secure_krayincrm
-      - MAIL_FROM_NAME="OrionCRM" ## mude
+      - MAIL_FROM_ADDRESS={{krayincrm_email}}
+      - MAIL_USERNAME={{krayincrm_email_username}}
+      - MAIL_PASSWORD={{krayincrm_email_password}}
+      - MAIL_HOST={{krayincrm_smtp_email}}
+      - MAIL_PORT={{krayincrm_smtp_port}}
+      - MAIL_ENCRYPTION={{krayincrm_smtp_secure}}
+      - MAIL_FROM_NAME="Helpdesk"
 
       ## Configurações de Cache e Sessão
       - CACHE_DRIVER=file
@@ -68,22 +64,19 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.krayin${1:+_$1}.rule=Host(\`$url_krayincrm\`) && PathPrefix(\`/\`) ## Url do Krayin
-        - traefik.http.services.krayin${1:+_$1}.loadbalancer.server.port=80
-        - traefik.http.routers.krayin${1:+_$1}.service=krayin${1:+_$1}
-        - traefik.http.routers.krayin${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.krayin${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.krayin${1:+_$1}.tls=true
-
-## --------------------------- ORION --------------------------- ##
+        - traefik.http.routers.krayin.rule=Host(\`{{url_krayincrm}}\`) && PathPrefix(\`/\`)
+        - traefik.http.services.krayin.loadbalancer.server.port=80
+        - traefik.http.routers.krayin.service=krayin
+        - traefik.http.routers.krayin.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.krayin.entrypoints=websecure
+        - traefik.http.routers.krayin.tls=true
 
 volumes:
-  krayin${1:+_$1}_data:
+  krayin_data:
     external: true
-    name: krayin${1:+_$1}_data
+    name: krayin_data
 
 networks:
-  $nome_rede_interna: ## Nome da rede interna
-    name: $nome_rede_interna ## Nome da rede interna
+  {{network_name}}:
+    name: {{network_name}}
     external: true
-EOL

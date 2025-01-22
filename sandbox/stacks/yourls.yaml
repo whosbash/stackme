@@ -1,27 +1,22 @@
-## Criando a stack yourls.yaml
-cat > yourls${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  yourls${1:+_$1}:
+  yourls:
     image: yourls:latest
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
       ## Dados de acesso
-      - YOURLS_SITE=https://$url_yourls ## Url da Aplicação
-      - YOURLS_USER=$user_yourls
-      - YOURLS_PASS=$pass_yourls
+      - YOURLS_SITE=https://{{yourls_url}}
+      - YOURLS_USER={{yourls_username}}
+      - YOURLS_PASS={{yourls_password}}
       
       ## Dados do Mysql
       - YOURLS_DB_HOST=mysql
-      - YOURLS_DB_NAME=yourls${1:+_$1}
+      - YOURLS_DB_NAME=yourls
       - YOURLS_DB_USER=root
-      - YOURLS_DB_PASS=$senha_mysql
+      - YOURLS_DB_PASS={{mysql_password}}
 
     deploy:
       mode: replicated
@@ -32,16 +27,15 @@ services:
           memory: 512M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.yourls${1:+_$1}.rule=Host(\`$url_yourls\`) ## Url da aplicação
-        - traefik.http.routers.yourls${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.yourls${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.yourls${1:+_$1}.service=yourls${1:+_$1}
-        - traefik.http.services.yourls${1:+_$1}.loadbalancer.server.port=80
+        - traefik.http.routers.yourls.rule=Host(\`{{yourls_url}}\`) ## Url da aplicação
+        - traefik.http.routers.yourls.entrypoints=websecure
+        - traefik.http.routers.yourls.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.yourls.service=yourls
+        - traefik.http.services.yourls.loadbalancer.server.port=80
 
 ## --------------------------- ORION --------------------------- ##
 
 networks:
-  $nome_rede_interna: ## Nome da rede interna
-    name: $nome_rede_interna ## Nome da rede interna
+  {{network_name}}:
+    name: {{network_name}}
     external: true
-EOL

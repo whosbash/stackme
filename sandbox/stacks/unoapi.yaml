@@ -1,51 +1,46 @@
-## Criando a stack unoapi.yaml
-cat > unoapi${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  unoapi${1:+_$1}:
+  unoapi:
     image: clairton/unoapi-cloud:latest
     entrypoint: yarn cloud
 
     volumes:
-      - unoapi${1:+_$1}_data:/home/u/app
+      - unoapi_data:/home/u/app
 
     networks:
-      - $nome_rede_interna
+      - {{network_name}}
 
     environment:
       ## Url Uno API
-      - BASE_URL=https://$url_unoapi
+      - BASE_URL=https://{{unoapi_url}}
 
       ## Token Uno Api
       - UNOAPI_AUTH_TOKEN=any
 
       ## Configurações da Uno API
-      - IGNORE_GROUP_MESSAGES=$op_1
-      - IGNORE_BROADCAST_STATUSES=$op_2
-      - IGNORE_BROADCAST_MESSAGES=$op_3
-      - IGNORE_STATUS_MESSAGE=$op_4
-      - IGNORE_OWN_MESSAGES=$op_5
+      - IGNORE_GROUP_MESSAGES={{ignore_group_messages}}
+      - IGNORE_BROADCAST_STATUSES=
+      - IGNORE_BROADCAST_MESSAGES={{ignore_broadcast_messages}}
+      - IGNORE_STATUS_MESSAGE={{ignore_status_message}}
+      - IGNORE_OWN_MESSAGES={{ignore_own_messages}}
       - REJECT_CALLS=
       - REJECT_CALLS_WEBHOOK=
-      - SEND_CONNECTION_STATUS=$op_6
+      - SEND_CONNECTION_STATUS={{send_connection_status}}
 
       ## Sobre Webhook
-      - WEBHOOK_URL=https://$url_chatwoot_uno/webhooks/whatsapp
-      - WEBHOOK_HEADER=api_access_token
-      - WEBHOOK_TOKEN=$token_chatwoot_uno
+      - WEBHOOK_URL=https://{{url_chatwoot_uno}}/webhooks/whatsapp
+      - WEBHOOK_HEADER={{api_access_token}}
+      - WEBHOOK_TOKEN={{uno_token_chatwoot}}
 
       ## Dados do Minio/S3
-      - STORAGE_ENDPOINT=https://$url_s3
-      - STORAGE_ACCESS_KEY_ID=$S3_ACCESS_KEY
-      - STORAGE_SECRET_ACCESS_KEY=$S3_SECRET_KEY
-      - STORAGE_BUCKET_NAME=unoapi${1:+_$1}
+      - STORAGE_ENDPOINT=https://${{url_s3}}
+      - STORAGE_ACCESS_KEY_ID={{s3_access_key}}
+      - STORAGE_SECRET_ACCESS_KEY={{s3_secret_key}}
+      - STORAGE_BUCKET_NAME=unoapi
       - STORAGE_FORCE_PATH_STYLE=true
 
       ## Dados do RabbitMQ
-      - AMQP_URL=amqp://$user_rabbit_mqs:$senha_rabbit_mqs@rabbitmq:5672/unoapi${1:+_$1}
+      - AMQP_URL=amqp://{{rabbitmq_password}}:{{rabbitmq_password}}@rabbitmq:5672/unoapi
       
       ## Dados do Redis
       - REDIS_URL=redis://redis:6379
@@ -67,23 +62,22 @@ services:
           memory: 1024M
       labels:
       - traefik.enable=true
-      - traefik.http.routers.unoapi${1:+_$1}.rule=Host(\`$url_unoapi\`)
-      - traefik.http.routers.unoapi${1:+_$1}.entrypoints=websecure
-      - traefik.http.routers.unoapi${1:+_$1}.tls.certresolver=letsencryptresolver
-      - traefik.http.services.unoapi${1:+_$1}.loadbalancer.server.port=9876
-      - traefik.http.routers.unoapi${1:+_$1}.priority=1
-      - traefik.http.services.unoapi${1:+_$1}.loadbalancer.passHostHeader=true
-      - traefik.http.routers.unoapi${1:+_$1}.service=unoapi${1:+_$1}
+      - traefik.http.routers.unoapi.rule=Host(\`{{unoapi_url}}\`)
+      - traefik.http.routers.unoapi.entrypoints=websecure
+      - traefik.http.routers.unoapi.tls.certresolver=letsencryptresolver
+      - traefik.http.services.unoapi.loadbalancer.server.port=9876
+      - traefik.http.routers.unoapi.priority=1
+      - traefik.http.services.unoapi.loadbalancer.passHostHeader=true
+      - traefik.http.routers.unoapi.service=unoapi
 
 ## --------------------------- ORION --------------------------- ##
 
 volumes:
-  unoapi${1:+_$1}_data:
+  unoapi_data:
     external: true
-    name: unoapi${1:+_$1}_data
+    name: unoapi_data
 
 networks:
-  $nome_rede_interna:
+  {{network_name}}:
     external: true
-    name: $nome_rede_interna
-EOL
+    name: {{network_name}}

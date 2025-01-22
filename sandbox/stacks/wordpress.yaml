@@ -1,27 +1,22 @@
-## Criando a stack wordpress.yaml
-cat > wordpress_$nome_site_wordpress.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  wordpress_$nome_site_wordpress:
-    image: wordpress:latest ## Versão do Wordpress
+  wordpress_{{wordpress_site_name}}:
+    image: wordpress:latest
 
     volumes:
-      - wordpress_$nome_site_wordpress:/var/www/html
-      - wordpress_${nome_site_wordpress}_php:/usr/local/etc/php
+      - wordpress_{{wordpress_site_name}}:/var/www/html
+      - wordpress_{{wordpress_site_name}}_php:/usr/local/etc/php
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
       ## Dados do Mysql
-      - WORDPRESS_DB_NAME=$nome_site_wordpress
+      - WORDPRESS_DB_NAME={{wordpress_site_name}}
       - WORDPRESS_DB_HOST=mysql
       - WORDPRESS_DB_PORT=3306
       - WORDPRESS_DB_USER=root
-      - WORDPRESS_DB_PASSWORD=$senha_mysql
+      - WORDPRESS_DB_PASSWORD={{mysql_password}}
 
       ## Redis
       - WP_REDIS_HOST=redis
@@ -29,7 +24,7 @@ services:
       - WP_REDIS_DATABASE=6
 
       ## Url do Wordpress
-      - VIRTUAL_HOST=$url_wordpress
+      - VIRTUAL_HOST={{wordpress_url}}
 
       ## Localização
       - WP_LOCALE=pt_BR
@@ -42,25 +37,22 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.wordpress_$nome_site_wordpress.rule=Host(\`$url_wordpress\`)
-        - traefik.http.routers.wordpress_$nome_site_wordpress.entrypoints=websecure
-        - traefik.http.routers.wordpress_$nome_site_wordpress.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.wordpress_$nome_site_wordpress.service=wordpress_$nome_site_wordpress
-        - traefik.http.services.wordpress_$nome_site_wordpress.loadbalancer.server.port=80
-        - traefik.http.services.wordpress_$nome_site_wordpress.loadbalancer.passHostHeader=true
-
-## --------------------------- ORION --------------------------- ##
+        - traefik.http.routers.wordpress_{{wordpress_site_name}}.rule=Host(\`{{wordpress_url}}\`)
+        - traefik.http.routers.wordpress_{{wordpress_site_name}}.entrypoints=websecure
+        - traefik.http.routers.wordpress_{{wordpress_site_name}}.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.wordpress_{{wordpress_site_name}}.service=wordpress_{{wordpress_site_name}}
+        - traefik.http.services.wordpress_{{wordpress_site_name}}.loadbalancer.server.port=80
+        - traefik.http.services.wordpress_{{wordpress_site_name}}.loadbalancer.passHostHeader=true
 
 volumes:
-  wordpress_$nome_site_wordpress:
+  wordpress_{{wordpress_site_name}}:
     external: true
-    name: wordpress_$nome_site_wordpress
+    name: wordpress_{{wordpress_site_name}}
   wordpress_${nome_site_wordpress}_php:
     external: true
-    name: wordpress_${nome_site_wordpress}_php
+    name: wordpress_{{wordpress_site_name}}_php
 
 networks:
-  $nome_rede_interna: ## Nome da rede interna
-    name: $nome_rede_interna ## Nome da rede interna
+  {{network_name}}:
+    name: {{network_name}}
     external: true
-EOL

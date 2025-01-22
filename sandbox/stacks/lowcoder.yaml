@@ -1,26 +1,23 @@
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  lowcoder${1:+_$1}_api:
+  lowcoder_api:
     image: lowcoderorg/lowcoder-ce-api-service:latest
 
     networks:
-      - $nome_rede_interna
+      - {{network_name}}
 
     environment:
       - LOWCODER_PUID=9001
       - LOWCODER_PGID=9001
 
       ## Dados MongoDB
-      - LOWCODER_MONGODB_URL=mongodb://$user_mongodb_lowcoder:$pass_mongodb_lowcoder@$ip:27017/lowcoder${1:+_$1}?authSource=admin&readPreference=primary&ssl=false&directConnection=true
+      - LOWCODER_MONGODB_URL=mongodb://{{lowcoder_username}}:{{lowcoder_mongodb_password}}@{{host_ip}}:27017/lowcoder?authSource=admin&readPreference=primary&ssl=false&directConnection=true
 
       ## Dados Redis
       - LOWCODER_REDIS_URL=redis://redis:6379
 
       ## Dominio
-      - LOWCODER_NODE_SERVICE_URL=http://lowcoder${1:+_$1}_node:6060
+      - LOWCODER_NODE_SERVICE_URL=http://lowcoder_node:6060
 
       ## Configurações
       - LOWCODER_MAX_QUERY_TIMEOUT=120
@@ -30,9 +27,9 @@ services:
       - LOWCODER_WORKSPACE_MODE=SAAS
 
       ## Encryption
-      - LOWCODER_DB_ENCRYPTION_PASSWORD=$encryption_key_lowcoder1 ## hash Encryption
-      - LOWCODER_DB_ENCRYPTION_SALT=$encryption_key_lowcoder2 ## hash Encryption
-      - LOWCODER_API_KEY_SECRET=$encryption_key_lowcoder3 # hash Encryption
+      - LOWCODER_DB_ENCRYPTION_PASSWORD={{lowcoder_encryption_key}} ## hash Encryption
+      - LOWCODER_DB_ENCRYPTION_SALT={{lowcoder_encryption_key}} ## hash Encryption
+      - LOWCODER_API_KEY_SECRET={{lowcoder_encryption_key}} # hash Encryption
 
       ## Outras configurações
       - LOWCODER_CORS_DOMAINS=*
@@ -43,15 +40,15 @@ services:
       - LOWCODER_MAX_DEVELOPERS=50
 
       ## Dados SMTP
-      - LOWCODER_ADMIN_SMTP_HOST=$host_smtp_lowcoder
-      - LOWCODER_ADMIN_SMTP_PORT=$porta_smtp_lowcoder
-      - LOWCODER_ADMIN_SMTP_USERNAME=$user_smtp_lowcoder
-      - LOWCODER_ADMIN_SMTP_PASSWORD=$senha_smtp_lowcoder
+      - LOWCODER_ADMIN_SMTP_HOST={{lowcoder_host_smtp}}
+      - LOWCODER_ADMIN_SMTP_PORT={{lowcoder_smtp_port}}
+      - LOWCODER_ADMIN_SMTP_USERNAME={{lowcoder_smtp_username}}
+      - LOWCODER_ADMIN_SMTP_PASSWORD={{lowcoder_smtp_senha}}
       - LOWCODER_ADMIN_SMTP_AUTH=true
-      - LOWCODER_ADMIN_SMTP_SSL_ENABLED=$smtp_secure_lowcoder_ssl
-      - LOWCODER_ADMIN_SMTP_STARTTLS_ENABLED=$smtp_secure_lowcoder_startls
-      - LOWCODER_ADMIN_SMTP_STARTTLS_REQUIRED=$smtp_secure_lowcoder_startls
-      - LOWCODER_EMAIL_NOTIFICATIONS_SENDER=$email_smtp_lowcoder
+      - LOWCODER_ADMIN_SMTP_SSL_ENABLED={{lowcoder_smtp_secure}}
+      - LOWCODER_ADMIN_SMTP_STARTTLS_ENABLED={{lowcoder_startls_smtp_secure}}
+      - LOWCODER_ADMIN_SMTP_STARTTLS_REQUIRED={{lowcoder_startls_smtp_secure}}
+      - LOWCODER_EMAIL_NOTIFICATIONS_SENDER={{lowcoder_smtp_email}}
     
     deploy:
       mode: replicated
@@ -64,18 +61,16 @@ services:
           cpus: "0.5"
           memory: 1024M
 
-## --------------------------- ORION --------------------------- ##
-
-  lowcoder${1:+_$1}_node:
+  lowcoder_node:
     image: lowcoderorg/lowcoder-ce-node-service:latest
 
     networks:
-      - $nome_rede_interna
+      - {{network_name}}
 
     environment:
       - LOWCODER_PUID=9001
       - LOWCODER_PGID=9001
-      - LOWCODER_API_SERVICE_URL=http://lowcoder${1:+_$1}_api:8080
+      - LOWCODER_API_SERVICE_URL=http://lowcoder_api:8080
 
     deploy:
       mode: replicated
@@ -88,24 +83,22 @@ services:
           cpus: "0.5"
           memory: 1024M
 
-## --------------------------- ORION --------------------------- ##
-
-  lowcoder${1:+_$1}_frontend:
+  lowcoder_frontend:
     image: lowcoderorg/lowcoder-ce-frontend:latest
 
     volumes:
-     - lowcoder${1:+_$1}_assets:/lowcoder/assets
+     - lowcoder_assets:/lowcoder/assets
 
     networks:
-      - $nome_rede_interna
+      - {{network_name}}
 
     environment:
       - LOWCODER_PUID=9001
       - LOWCODER_PGID=9001
       - LOWCODER_MAX_REQUEST_SIZE=20m
       - LOWCODER_MAX_QUERY_TIMEOUT=120
-      - LOWCODER_API_SERVICE_URL=http://lowcoder${1:+_$1}_api:8080
-      - LOWCODER_NODE_SERVICE_URL=http://lowcoder${1:+_$1}_node:6060
+      - LOWCODER_API_SERVICE_URL=http://lowcoder_api:8080
+      - LOWCODER_NODE_SERVICE_URL=http://lowcoder_node:6060
 
     deploy:
       mode: replicated
@@ -115,21 +108,21 @@ services:
           - node.role == manager  
       labels:
         - traefik.enable=true
-        - traefik.http.routers.lowcoder${1:+_$1}.rule=Host(\`$url_lowcoder\`) && PathPrefix(\`/\`)
-        - traefik.http.services.lowcoder${1:+_$1}.loadbalancer.server.port=3000
-        - traefik.http.routers.lowcoder${1:+_$1}.service=lowcoder${1:+_$1}
-        - traefik.http.routers.lowcoder${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.lowcoder${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.lowcoder${1:+_$1}.tls=true
+        - traefik.http.routers.lowcoder.rule=Host(\`{{lowcoder_url}}\`) && PathPrefix(\`/\`)
+        - traefik.http.services.lowcoder.loadbalancer.server.port=3000
+        - traefik.http.routers.lowcoder.service=lowcoder
+        - traefik.http.routers.lowcoder.entrypoints=websecure
+        - traefik.http.routers.lowcoder.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.lowcoder.tls=true
 
 ## --------------------------- ORION --------------------------- ##
 
 volumes:
-  lowcoder${1:+_$1}_assets:
+  lowcoder_assets:
     external: true
-    name: lowcoder${1:+_$1}_assets
+    name: lowcoder_assets
 
 networks:
-  $nome_rede_interna: ## Nome da rede interna
+  {{network_name}}:
     external: true
-    name: $nome_rede_interna ## Nome da rede interna
+    name: {{network_name}}
