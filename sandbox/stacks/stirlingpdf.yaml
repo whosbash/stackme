@@ -1,29 +1,25 @@
-## Criando a stack stirlingpdf.yaml
-cat > stirlingpdf${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
 
-## --------------------------- ORION --------------------------- ##
-
-  stirlingpdf${1:+_$1}:
-    image: frooodle/s-pdf:latest ## Versão da aplicação
+  stirlingpdf:
+    image: frooodle/s-pdf:latest
 
     volumes:
-      - stirlingpdf${1:+_$1}_data:/usr/share/tessdata
-      - stirlingpdf${1:+_$1}_config:/configs
-      - stirlingpdf${1:+_$1}_logs:/logs
+      - stirlingpdf_data:/usr/share/tessdata
+      - stirlingpdf_config:/configs
+      - stirlingpdf_logs:/logs
     
     networks:
-      - $nome_rede_interna ## Nome da rede interna 
+      - {{network_name}}
 
     environment:
       ## Liberar cadastros
       - SECURITY_ENABLELOGIN=true
 
       ## Branding
-      - UI_APPNAME=$name_stirlingpdf
-      - UI_APPNAMENAVBAR=$name_stirlingpdf
-      - UI_HOMEDESCRIPTION=$desc_stirlingpdf
+      - UI_APPNAME={{stirlingpdf_name}}
+      - UI_APPNAMENAVBAR={{stirlingpdf_name}}
+      - UI_HOMEDESCRIPTION={{stirlingpdf_description}}
 
       ## Configurações
       - DOCKER_ENABLE_SECURITY=false
@@ -45,28 +41,26 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.stirlingpdf${1:+_$1}.rule=Host(\`$url_stirlingpdf\`) ## Url da aplicação
-        - traefik.http.services.stirlingpdf${1:+_$1}.loadbalancer.server.port=8080
-        - traefik.http.routers.stirlingpdf${1:+_$1}.service=stirlingpdf${1:+_$1}
-        - traefik.http.routers.stirlingpdf${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.stirlingpdf${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.stirlingpdf${1:+_$1}.tls=true
-
-## --------------------------- ORION --------------------------- ##
+        - traefik.http.routers.stirlingpdf.rule=Host(\`{{stirlingpdf_url}}\`)
+        - traefik.http.services.stirlingpdf.loadbalancer.server.port=8080
+        - traefik.http.routers.stirlingpdf.service=stirlingpdf
+        - traefik.http.routers.stirlingpdf.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.stirlingpdf.entrypoints=websecure
+        - traefik.http.routers.stirlingpdf.tls=true
 
 volumes:
-  stirlingpdf${1:+_$1}_data:
+  stirlingpdf_data:
     external: true
-    name: stirlingpdf${1:+_$1}_data
-  stirlingpdf${1:+_$1}_config:
+    name: stirlingpdf_data
+  stirlingpdf_config:
     external: true
-    name: stirlingpdf${1:+_$1}_config
-  stirlingpdf${1:+_$1}_logs:
+    name: stirlingpdf_config
+  stirlingpdf_logs:
     external: true
-    name: stirlingpdf${1:+_$1}_logs
+    name: stirlingpdf_logs
 
 networks:
-  $nome_rede_interna: ## Nome da rede interna
+  {{network_name}}: ## Nome da rede interna
     external: true
     name: $nome_rede_interna ## Nome da rede interna
 EOL

@@ -1,37 +1,32 @@
-## Criando a stack nextcloud.yaml
-cat > nextcloud${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  nextcloud${1:+_$1}:
+  nextcloud:
     image: nextcloud:latest
 
     volumes:
-      - nextcloud${1:+_$1}_data:/var/www/html
+      - nextcloud_data:/var/www/html
 
     networks:
-      - $nome_rede_interna
+      - {{network_name}}
 
     #ports:
     #  - 8282:80
 
     environment:
-      ## Dados de acesso:
-      - NEXTCLOUD_ADMIN_USER=$user_nextcloud
-      - NEXTCLOUD_ADMIN_PASSWORD=$pass_nextcloud
+      ## Nextcloud
+      - NEXTCLOUD_ADMIN_USER={{nextcloud_username}}
+      - NEXTCLOUD_ADMIN_PASSWORD={{nextcloud_password}}
 
-      ## Dados do Postgres
+      ## Postgres
       - POSTGRES_HOST=postgres
-      - POSTGRES_DB=nextcloud${1:+_$1}
+      - POSTGRES_DB=nextcloud
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=$senha_postgres
+      - POSTGRES_PASSWORD={{postgres_password}}
 
-      ## Dados do Redis
+      ## Redis
       - REDIS_HOST=redis
 
-      ## Configurações para HTTPS
+      ## HTTPS
       - OVERWRITEPROTOCOL=https
       - TRUSTED_PROXIES=127.0.0.1
 
@@ -43,25 +38,23 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.nextcloud${1:+_$1}.rule=Host(\`$url_nextcloud\`)
-        - traefik.http.services.nextcloud${1:+_$1}.loadbalancer.server.port=80
-        - traefik.http.routers.nextcloud${1:+_$1}.service=nextcloud${1:+_$1}
-        - traefik.http.routers.nextcloud${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.nextcloud${1:+_$1}.entrypoints=web,websecure
-        - traefik.http.routers.nextcloud${1:+_$1}.tls=true
-        - traefik.http.routers.nextcloud${1:+_$1}.middlewares=nextcloud_redirectregex
-        - traefik.http.middlewares.nextcloud${1:+_$1}_redirectregex.redirectregex.permanent=true
-        - traefik.http.middlewares.nextcloud${1:+_$1}_redirectregex.redirectregex.regex=https://(.*)/.well-known/(?:card|cal)dav
-        - traefik.http.middlewares.nextcloud${1:+_$1}_redirectregex.redirectregex.replacement=https://$$1/remote.php/dav
+        - traefik.http.routers.nextcloud.rule=Host(\`{{nextcloud_url}}\`)
+        - traefik.http.services.nextcloud.loadbalancer.server.port=80
+        - traefik.http.routers.nextcloud.service=nextcloud
+        - traefik.http.routers.nextcloud.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.nextcloud.entrypoints=web,websecure
+        - traefik.http.routers.nextcloud.tls=true
+        - traefik.http.routers.nextcloud.middlewares=nextcloud_redirectregex
+        - traefik.http.middlewares.nextcloud_redirectregex.redirectregex.permanent=true
+        - traefik.http.middlewares.nextcloud_redirectregex.redirectregex.regex=https://(.*)/.well-known/(?:card|cal)dav
+        - traefik.http.middlewares.nextcloud_redirectregex.redirectregex.replacement=https://$$1/remote.php/dav
 
-## --------------------------- ORION --------------------------- ##
-
-  nextcloud${1:+_$1}_cron:
+  nextcloud_cron:
     image: nextcloud:latest
     entrypoint: /cron.sh
 
     volumes:
-      - nextcloud${1:+_$1}_data:/var/www/html
+      - nextcloud_data:/var/www/html
 
     deploy:
       mode: replicated
@@ -70,15 +63,12 @@ services:
         constraints:
           - node.role == manager
 
-## --------------------------- ORION --------------------------- ##
-
 volumes:
-  nextcloud${1:+_$1}_data:
+  nextcloud_data:
     external: true
-    name: nextcloud${1:+_$1}_data
+    name: nextcloud_data
 
 networks:
-  $nome_rede_interna:
+  {{network_name}}:
     external: true
-    name: $nome_rede_interna
-EOL
+    name: {{network_name}}

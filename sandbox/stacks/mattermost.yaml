@@ -1,30 +1,26 @@
-## Criando a stack mattermost.yaml
-cat > mattermost${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
 
-## --------------------------- ORION --------------------------- ##
-
-  mattermost${1:+_$1}:
+  mattermost:
     image: mattermost/mattermost-team-edition:latest
 
     volumes:
-      - mattermost${1:+_$1}_data:/mattermost/data
-      - mattermost${1:+_$1}_config:/mattermost/config
-      - mattermost${1:+_$1}_logs:/mattermost/logs
-      - mattermost${1:+_$1}_plugins:/mattermost/plugins
-      - mattermost${1:+_$1}_client_plugins:/mattermost/client/plugins
+      - mattermost_data:/mattermost/data
+      - mattermost_config:/mattermost/config
+      - mattermost_logs:/mattermost/logs
+      - mattermost_plugins:/mattermost/plugins
+      - mattermost_client_plugins:/mattermost/client/plugins
 
     networks:
-      - $nome_rede_interna
+      - {{network_name}}
 
     environment:
-      ## Dados de acesso
-      - MM_SERVICESETTINGS_SITEURL=https://$url_mattermost
+      ## Mattermost
+      - MM_SERVICESETTINGS_SITEURL=https://{{mattermost_url}}
 
-      ## Dados do Postgres
+      ## Postgres
       - MM_SQLSETTINGS_DRIVERNAME=postgres
-      - MM_SQLSETTINGS_DATASOURCE=postgres://postgres:$senha_postgres@postgres:5432/mattermost${1:+_$1}?sslmode=disable&connect_timeout=10
+      - MM_SQLSETTINGS_DATASOURCE=postgres://postgres:{{postgres_password}}@postgres:5432/mattermost?sslmode=disable&connect_timeout=10
 
     deploy:
       mode: replicated
@@ -38,36 +34,33 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.mattermost${1:+_$1}.rule=Host(\`$url_mattermost\`)
-        - traefik.http.routers.mattermost${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.mattermost${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.mattermost${1:+_$1}.service=mattermost${1:+_$1}
-        - traefik.http.services.mattermost${1:+_$1}.loadbalancer.server.port=8065
-        - traefik.http.services.mattermost${1:+_$1}.loadbalancer.passhostheader=true
+        - traefik.http.routers.mattermost.rule=Host(\`{{mattermost_url}}\`)
+        - traefik.http.routers.mattermost.entrypoints=websecure
+        - traefik.http.routers.mattermost.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.mattermost.service=mattermost
+        - traefik.http.services.mattermost.loadbalancer.server.port=8065
+        - traefik.http.services.mattermost.loadbalancer.passhostheader=true
         - traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https
-        - traefik.http.routers.mattermost${1:+_$1}.middlewares=sslheader@docker
-
-## --------------------------- ORION --------------------------- ##
+        - traefik.http.routers.mattermost.middlewares=sslheader@docker
 
 volumes:
-  mattermost${1:+_$1}_data:
+  mattermost_data:
     external: true
-    name: mattermost${1:+_$1}_data
-  mattermost${1:+_$1}_config:
+    name: mattermost_data
+  mattermost_config:
     external: true
-    name: mattermost${1:+_$1}_config
-  mattermost${1:+_$1}_logs:
+    name: mattermost_config
+  mattermost_logs:
     external: true
-    name: mattermost${1:+_$1}_logs
-  mattermost${1:+_$1}_plugins:
+    name: mattermost_logs
+  mattermost_plugins:
     external: true
-    name: mattermost${1:+_$1}_plugins
-  mattermost${1:+_$1}_client_plugins:
+    name: mattermost_plugins
+  mattermost_client_plugins:
     external: true
-    name: mattermost${1:+_$1}_client_plugins
+    name: mattermost_client_plugins
 
 networks:
-  $nome_rede_interna:
+  {{network_name}}:
     external: true
-    name: $nome_rede_interna
-EOL
+    name: {{network_name}}

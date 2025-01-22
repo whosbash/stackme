@@ -1,26 +1,21 @@
-## Criando a stack odoo.yaml
-cat > odoo${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  odoo${1:+_$1}_app:
+  odoo_app:
     image: odoo:18.0
 
     volumes:
-      - odoo${1:+_$1}_app_data:/var/lib/odoo
-      - odoo${1:+_$1}_app_config:/etc/odoo
-      - odoo${1:+_$1}_app_addons:/mnt/extra-addons
+      - odoo_app_data:/var/lib/odoo
+      - odoo_app_config:/etc/odoo
+      - odoo_app_addons:/mnt/extra-addons
 
     networks:
-      - $nome_rede_interna
+      - {{network_name}}
 
     environment:
-      ## Dados postgres do Odoo
-      - HOST=odoo${1:+_$1}_db
+      ## Postgres
+      - HOST=odoo_db
       - USER=odoo
-      - PASSWORD=$senha_postgres_odoo
+      - PASSWORD=$
 
     deploy:
       placement:
@@ -28,28 +23,26 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.odoo${1:+_$1}_app.rule=Host(\`$url_odoo\`)
-        - traefik.http.routers.odoo${1:+_$1}_app.entrypoints=websecure
-        - traefik.http.routers.odoo${1:+_$1}_app.tls=true
-        - traefik.http.routers.odoo${1:+_$1}_app.service=odoo${1:+_$1}_app
-        - traefik.http.routers.odoo${1:+_$1}_app.tls.certresolver=letsencryptresolver
-        - traefik.http.services.odoo${1:+_$1}_app.loadbalancer.server.port=8069
+        - traefik.http.routers.odoo_app.rule=Host(\`{{url_odoo}}\`)
+        - traefik.http.routers.odoo_app.entrypoints=websecure
+        - traefik.http.routers.odoo_app.tls=true
+        - traefik.http.routers.odoo_app.service=odoo_app
+        - traefik.http.routers.odoo_app.tls.certresolver=letsencryptresolver
+        - traefik.http.services.odoo_app.loadbalancer.server.port=8069
 
-## --------------------------- ORION --------------------------- ##
-
-  odoo${1:+_$1}_db:
+  odoo_db:
     image: postgres:15
 
     volumes:
-      - odoo${1:+_$1}_db_data:/var/lib/postgresql/data/pgdata
+      - odoo_db_data:/var/lib/postgresql/data/pgdata
 
     networks:
-      - $nome_rede_interna
+      - {{network_name}}
     #ports:
     #  - 543:45432
 
     environment:
-      ## Dados Postgres
+      ## Postgres
       - POSTGRES_DB=postgres
       - POSTGRES_PASSWORD=$senha_postgres_odoo
       - POSTGRES_USER=odoo
@@ -59,25 +52,22 @@ services:
         constraints:
           - node.role == manager
 
-## --------------------------- ORION --------------------------- ##
-
 volumes:
-  odoo${1:+_$1}_app_data:
+  odoo$_app_data:
     external: true
-    name: odoo${1:+_$1}_app_data
-  odoo${1:+_$1}_app_config:
+    name: odoo_app_data
+  odoo_app_config:
     external: true
-    name: odoo${1:+_$1}_app_config
-  odoo${1:+_$1}_app_addons:
+    name: odoo_app_config
+  odoo_app_addons:
     external: true
-    name: odoo${1:+_$1}_app_addons
-  odoo${1:+_$1}_db_data:
+    name: odoo_app_addons
+  odoo_db_data:
     external: true
-    name: odoo${1:+_$1}_db_data
+    name: odoo_db_data
 
 networks:
-  $nome_rede_interna:
+  {{network_name}}:
     external: true
     attachable: true
-    name: $nome_rede_interna
-EOL
+    name: {{network_name}}

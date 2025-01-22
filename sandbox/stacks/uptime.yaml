@@ -1,18 +1,13 @@
-## Criando a stack uptimekuma.yaml
-cat > uptimekuma${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  uptimekuma${1:+_$1}:
+  uptimekuma:
     image: louislam/uptime-kuma:latest
 
     volumes:
-      - uptimekuma${1:+_$1}:/app/data
+      - uptimekuma:/app/data
 
     networks:
-      - $nome_rede_interna
+      - {{network_name}}
 
     deploy:
       mode: replicated
@@ -26,21 +21,18 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.uptimekuma${1:+_$1}.rule=Host(\`$url_uptimekuma\`)
+        - traefik.http.routers.uptimekuma${1:+_$1}.rule=Host(\`{{uptimekuma_url}}\`)
         - traefik.http.routers.uptimekuma${1:+_$1}.entrypoints=websecure
         - traefik.http.routers.uptimekuma${1:+_$1}.tls.certresolver=letsencryptresolver
         - traefik.http.services.uptimekuma${1:+_$1}.loadBalancer.server.port=3001
-        - traefik.http.routers.uptimekuma${1:+_$1}.service=uptimekuma${1:+_$1}
-
-## --------------------------- ORION --------------------------- ##
+        - traefik.http.routers.uptimekuma${1:+_$1}.service=uptimekuma
 
 volumes:
-  uptimekuma${1:+_$1}:
+  uptimekuma:
     external: true
-    name: uptimekuma${1:+_$1}
+    name: uptimekuma
 
 networks:
-  $nome_rede_interna:
+  {{network_name}}:
     external: true
-    name: $nome_rede_interna
-EOL
+    name: {{network_name}}

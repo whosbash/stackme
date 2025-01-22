@@ -1,23 +1,18 @@
-## Criando a stack pgadmin.yaml 
-cat > pgadmin${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:  
-
-## --------------------------- ORION --------------------------- ##
-
-  pgadmin${1:+_$1}:
-    image: dpage/pgadmin4:latest ## Versão do PgAdmin 4
+  pgadmin:
+    image: dpage/pgadmin4:latest
 
     volumes:
-      - pgadmin${1:+_$1}_data:/var/lib/pgadmin
+      - pgadmin_data:/var/lib/pgadmin
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
       ## Dados de Acesso
-      - PGADMIN_DEFAULT_EMAIL=$user_PgAdmin_4
-      - PGADMIN_DEFAULT_PASSWORD=$pass_PgAdmin_4
+      - PGADMIN_DEFAULT_EMAIL={{pgadmin_username}}
+      - PGADMIN_DEFAULT_PASSWORD={{pgadmin_password}}
 
     deploy:
       mode: replicated
@@ -31,21 +26,19 @@ services:
             memory: 256M
       labels:
           - traefik.enable=true
-          - traefik.http.routers.pgadmin${1:+_$1}.rule=Host(\`$url_PgAdmin_4\`) ## Url da Ferramenta
+          - traefik.http.routers.pgadmin${1:+_$1}.rule=Host(\`{{pgadmin_url}}\`) ## Url da Ferramenta
           - traefik.http.services.pgadmin${1:+_$1}.loadbalancer.server.port=80
-          - traefik.http.routers.pgadmin${1:+_$1}.service=pgadmin${1:+_$1}
+          - traefik.http.routers.pgadmin${1:+_$1}.service=pgadmin
           - traefik.http.routers.pgadmin${1:+_$1}.tls.certresolver=letsencryptresolver
           - traefik.http.routers.pgadmin${1:+_$1}.entrypoints=websecure
           - traefik.http.routers.pgadmin${1:+_$1}.tls=true
 
-## --------------------------- ORION --------------------------- ##
-
 volumes:
-  pgadmin${1:+_$1}_data:
+  pgadmin_data:
     external: true
     
 networks:
-  $nome_rede_interna: ## Nome da rede interna
-    name: $nome_rede_interna ## Nome da rede interna
+  {{network_name}}:
+    name: {{network_name}}
     external: true
 EOL

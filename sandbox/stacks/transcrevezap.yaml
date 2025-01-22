@@ -1,32 +1,26 @@
-## Criando a stack transcrevezap.yaml
-cat > transcrevezap${1:+_$1}.yaml <<EOL
-
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  transcrevezap${1:+_$1}:
+  transcrevezap:
     image: impacteai/transcrevezap:latest
     command: ./start.sh
 
     networks:
-      - $nome_rede_interna
+      - {{network_name}}
 
     environment:
       ## Configurações de acesso
-      - MANAGER_USER=$user_transcrevezap
-      - MANAGER_PASSWORD=$pass_transcrevezap
+      - MANAGER_USER={{transcrevezap_username}}
+      - MANAGER_PASSWORD={{transcrevezap_password}}
 
       ## Configurações Globais
-      - API_DOMAIN=$api_transcrevezap
+      - API_DOMAIN={{transcrevezap_api}}
       - UVICORN_PORT=8005
       - UVICORN_HOST=0.0.0.0
       - UVICORN_RELOAD=true
       - UVICORN_WORKERS=1
 
       ## Configurações do Redis
-      - REDIS_HOST=redis_transcrevezap${1:+_$1}
+      - REDIS_HOST=redis_transcrevezap
       - REDIS_PORT=6380
 
       ## Configurações de Debug
@@ -41,23 +35,21 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.transcrevezap${1:+_$1}.rule=Host(\`$api_transcrevezap\`) ## url do transcrevezap
-        - traefik.http.routers.transcrevezap${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.transcrevezap${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.services.transcrevezap${1:+_$1}.loadbalancer.server.port=8005
-        - traefik.http.services.transcrevezap${1:+_$1}.loadbalancer.passHostHeader=true
-        - traefik.http.routers.transcrevezap${1:+_$1}.service=transcrevezap${1:+_$1}
+        - traefik.http.routers.transcrevezap.rule=Host(\`{{transcrevezap_api_url}}\`)
+        - traefik.http.routers.transcrevezap.entrypoints=websecure
+        - traefik.http.routers.transcrevezap.tls.certresolver=letsencryptresolver
+        - traefik.http.services.transcrevezap.loadbalancer.server.port=8005
+        - traefik.http.services.transcrevezap.loadbalancer.passHostHeader=true
+        - traefik.http.routers.transcrevezap.service=transcrevezap
         - traefik.http.middlewares.traefik-compress.compress=true
-        - traefik.http.routers.transcrevezap${1:+_$1}.middlewares=traefik-compress
-        - traefik.http.routers.transcrevezap${1:+_$1}_manager.rule=Host(\`$url_transcrevezap\`) ## url do manager do transcrevezap
-        - traefik.http.routers.transcrevezap${1:+_$1}_manager.entrypoints=websecure
-        - traefik.http.routers.transcrevezap${1:+_$1}_manager.tls.certresolver=letsencryptresolver
-        - traefik.http.services.transcrevezap${1:+_$1}_manager.loadbalancer.server.port=8501
-        - traefik.http.routers.transcrevezap${1:+_$1}_manager.service=transcrevezap${1:+_$1}_manager
+        - traefik.http.routers.transcrevezap.middlewares=traefik-compress
+        - traefik.http.routers.transcrevezap_manager.rule=Host(\`{{transcrevezap_url}}\`)
+        - traefik.http.routers.transcrevezap_manager.entrypoints=websecure
+        - traefik.http.routers.transcrevezap_manager.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.transcrevezap_manager.service=transcrevezap_manager
+        - traefik.http.services.transcrevezap_manager.loadbalancer.server.port=8501
 
-## --------------------------- ORION --------------------------- ##
-
-  redis_transcrevezap${1:+_$1}:
+  redis_transcrevezap:
     image: redis:6
     command: [
         "redis-server",
@@ -68,20 +60,17 @@ services:
       ]
 
     volumes:
-      - redis_transcrevezap${1:+_$1}_data:/data
+      - redis_transcrevezap_data:/data
 
     networks:
-      - $nome_rede_interna
-
-## --------------------------- ORION --------------------------- ##
+      - {{network_name}}
 
 volumes:
-  redis_transcrevezap${1:+_$1}_data:
+  redis_transcrevezap_data:
     external: true
-    name: redis_transcrevezap${1:+_$1}_data
+    name: redis_transcrevezap_data
 
 networks:
-  $nome_rede_interna:
+  {{network_name}}:
     external: true
-    name: $nome_rede_interna
-EOL
+    name: {{network_name}}

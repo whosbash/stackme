@@ -1,20 +1,16 @@
-## Criando a stack anythingllm.yaml
-cat > anythingllm${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
 
-## --------------------------- ORION --------------------------- ##
-
-  anythingllm${1:+_$1}:
+  anythingllm:
     image: mintplexlabs/anythingllm:latest
 
     volumes:
-      - anythingllm${1:+_$1}_storage:/app/server/storage
-      - anythingllm${1:+_$1}_hotdir:/app/collector/hotdir
-      - anythingllm${1:+_$1}_outputs:/app/collector/outputs
+      - anythingllm_storage:/app/server/storage
+      - anythingllm_hotdir:/app/collector/hotdir
+      - anythingllm_outputs:/app/collector/outputs
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
       - SERVER_PORT=3001
@@ -24,8 +20,7 @@ services:
 
       ## Dados Qdrant
       - VECTOR_DB=qdrant
-      - QDRANT_ENDPOINT=$qdrant_anythingllm
-      - QDRANT_API_KEY=$api_qdrant_anythingllm
+      - QDRANT_ENDPOINT={{qdrant_anythingllm}}
 
     deploy:
       mode: replicated
@@ -39,34 +34,27 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.anythingllm${1:+_$1}.rule=Host(\`$url_anythingllm\`)
-        - traefik.http.services.anythingllm${1:+_$1}.loadbalancer.server.port=3001
-        - traefik.http.routers.anythingllm${1:+_$1}.service=anythingllm${1:+_$1}
-        - traefik.http.routers.anythingllm${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.anythingllm${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.anythingllm${1:+_$1}.tls=true
+        - traefik.http.routers.anythingllm.rule=Host(\`{{anythingllm_url}}\`)
+        - traefik.http.services.anythingllm.loadbalancer.server.port=3001
+        - traefik.http.routers.anythingllm.service=anythingllm
+        - traefik.http.routers.anythingllm.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.anythingllm.entrypoints=websecure
+        - traefik.http.routers.anythingllm.tls=true
 
 ## --------------------------- ORION --------------------------- ##
 
 volumes:
-  anythingllm${1:+_$1}_storage:
+  anythingllm_storage:
     external: true
-    name: anythingllm${1:+_$1}_storage
-  anythingllm${1:+_$1}_hotdir:
+    name: anythingllm_storage
+  anythingllm_hotdir:
     external: true
-    name: anythingllm${1:+_$1}_hotdir
-  anythingllm${1:+_$1}_outputs:
+    name: anythingllm_hotdir
+  anythingllm_outputs:
     external: true
-    name: anythingllm${1:+_$1}_outputs
+    name: anythingllm_outputs
 
 networks:
-  $nome_rede_interna: ## Nome da rede interna
-    name: $nome_rede_interna ## Nome da rede interna
+  {{network_name}}:
+    name: {{network_name}}
     external: true
-EOL
-if [ $? -eq 0 ]; then
-    echo "1/10 - [ OK ] - Criando Stack"
-else
-    echo "1/10 - [ OFF ] - Criando Stack"
-    echo "Não foi possivel criar a stack do anythingllm"
-fi

@@ -1,20 +1,15 @@
-## Criando a stack glpi.yaml
-cat > glpi${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
-
-## --------------------------- ORION --------------------------- ##
-
-  glpi${1:+_$1}:
+  glpi:
     image: diouxx/glpi:latest
 
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - glpi${1:+_$1}_glpi:/var/www/html/glpi
+      - glpi_glpi:/var/www/html/glpi
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
       - TIMEZONE=America/Sao_Paulo
@@ -31,22 +26,19 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.glpi${1:+_$1}.rule=Host(\`$url_glpi\`)
-        - traefik.http.services.glpi${1:+_$1}.loadbalancer.server.port=80
-        - traefik.http.routers.glpi${1:+_$1}.service=glpi${1:+_$1}
-        - traefik.http.routers.glpi${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.glpi${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.glpi${1:+_$1}.tls=true
-
-## --------------------------- ORION --------------------------- ##
+        - traefik.http.routers.glpi.rule=Host(\`{{url_glpi}}\`)
+        - traefik.http.routers.glpi.service=glpi
+        - traefik.http.routers.glpi.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.glpi.entrypoints=websecure
+        - traefik.http.routers.glpi.tls=true
+        - traefik.http.services.glpi.loadbalancer.server.port=80
 
 volumes:
-  glpi${1:+_$1}_glpi:
+  glpi_glpi:
     external: true
-    name: glpi${1:+_$1}_glpi
+    name: glpi_glpi
 
 networks:
-  $nome_rede_interna: ## Nome da rede interna
-    name: $nome_rede_interna ## Nome da rede interna
+  {{network_name}}:
+    name: {{network_name}}
     external: true
-EOL

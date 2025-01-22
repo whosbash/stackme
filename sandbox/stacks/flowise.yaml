@@ -1,38 +1,34 @@
-## Criando a stack flowise.yaml
-cat > flowise${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
 
-## --------------------------- ORION --------------------------- ##
-
-  flowise${1:+_$1}:
+  flowise:
     image: flowiseai/flowise:latest ## Versão do Flowise
 
     volumes:
-     - flowise${1:+_$1}_data:/root/.flowise
+      - flowise_data:/root/.flowise
 
     networks:
-     - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
-     ## Dados de acesso
-     - FLOWISE_USERNAME=$user_flowise
-     - FLOWISE_PASSWORD=$pass_flowise
+      ## Flowise
+      - FLOWISE_USERNAME={{flowise_username}}
+      - FLOWISE_PASSWORD={{flowise_password}}
 
-     ## Dados do Postgres
-     - DATABASE_TYPE=postgres
-     - DATABASE_HOST=postgres
-     - DATABASE_PORT=5432
-     - DATABASE_USER=postgres
-     - DATABASE_PASSWORD=$senha_postgres
-     - DATABASE_NAME=flowise${1:+_$1}
+      ## Postgres
+      - DATABASE_TYPE=postgres
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD={{postgres_password}}
+      - DATABASE_NAME=flowise
 
-     ## Encryption Key
-     - FLOWISE_SECRETKEY_OVERWRITE=$encryption_key
+      ## Encryption Key
+      - FLOWISE_SECRETKEY_OVERWRITE={{encryption_key}}
 
-     ## Diretório das API Keys
-     - APIKEY_PATH=/root/.flowise
-     - SECRETKEY_PATH=/root/.flowise
+      ## API Keys
+      - APIKEY_PATH=/root/.flowise
+      - SECRETKEY_PATH=/root/.flowise
 
     deploy:
       mode: replicated
@@ -46,20 +42,17 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.flowise${1:+_$1}.rule=Host(\`$url_flowise\`) ## Url da aplicação
-        - traefik.http.services.flowise${1:+_$1}.loadBalancer.server.port=3000
-        - traefik.http.routers.flowise${1:+_$1}.service=flowise${1:+_$1}
-        - traefik.http.routers.flowise${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.flowise${1:+_$1}.tls.certresolver=letsencryptresolver
-
-## --------------------------- ORION --------------------------- ##
+        - traefik.http.routers.flowise.rule=Host(\`{{url_flowise}}\`)
+        - traefik.http.services.flowise.loadBalancer.server.port=3000
+        - traefik.http.routers.flowise.service=flowise
+        - traefik.http.routers.flowise.entrypoints=websecure
+        - traefik.http.routers.flowise.tls.certresolver=letsencryptresolver
 
 volumes:
-  flowise${1:+_$1}_data:
+  flowise_data:
     external: true
 
 networks:
-  $nome_rede_interna: ## Nome da rede interna
+  {{network_name}}:
     external: true
-    name: $nome_rede_interna ## Nome da rede interna
-EOL
+    name: {{network_name}}
