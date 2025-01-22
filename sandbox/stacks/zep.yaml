@@ -63,7 +63,7 @@ services:
         - traefik.http.routers.zep.tls.certresolver=letsencryptresolver
         - traefik.http.services.zep.loadbalancer.server.port=8000
         - traefik.http.services.zep.loadbalancer.passHostHeader=true
-        - traefik.http.routers.zep.service=zep${1:+_$1}
+        - traefik.http.routers.zep.service=zep
     
 networks:
   {{network_name}}:

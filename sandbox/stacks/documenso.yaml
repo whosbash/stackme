@@ -65,7 +65,7 @@ services:
         - traefik.enable=true
         - traefik.http.routers.documenso.rule=Host(\`{{documenso_url}}\`)
         - traefik.http.services.documenso.loadbalancer.server.port=3000
-        - traefik.http.routers.documenso.service=documenso${1:+_$1}
+        - traefik.http.routers.documenso.service=documenso
         - traefik.http.routers.documenso.tls.certresolver=letsencryptresolver
         - traefik.http.routers.documenso.entrypoints=websecure
         - traefik.http.routers.documenso.tls=true

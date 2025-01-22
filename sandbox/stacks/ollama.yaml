@@ -36,7 +36,7 @@ services:
     image: ghcr.io/open-webui/open-webui:main
 
     volumes:
-      - open${1:+_$1}_webui:/app/backend/data
+      - open_webui:/app/backend/data
 
     networks:
       - $nome_rede_interna
@@ -46,7 +46,7 @@ services:
 
     environment:
       - OLLAMA_BASE_URL=https://{{ollama_api_url}}
-      - WEBUI_SECRET_KEY=$WEBUI_SECRET_KEY
+      - WEBUI_SECRET_KEY={{webui_secret_key}}
 
     deploy:
       mode: replicated
@@ -68,7 +68,7 @@ volumes:
   ollama_data:
     external: true
     name: ollama_data
-  open${1:+_$1}_webui:
+  open_webui:
     external: true
     name: open_webui
   

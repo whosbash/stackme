@@ -68,12 +68,12 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.tooljet${1:+_$1}.rule=Host(\`{{tooljet_url}}\`)
-        - traefik.http.services.tooljet${1:+_$1}.loadbalancer.server.port=80
-        - traefik.http.routers.tooljet${1:+_$1}.service=tooljet
-        - traefik.http.routers.tooljet${1:+_$1}.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.tooljet${1:+_$1}.entrypoints=websecure
-        - traefik.http.routers.tooljet${1:+_$1}.tls=true
+        - traefik.http.routers.tooljet.rule=Host(\`{{tooljet_url}}\`)
+        - traefik.http.services.tooljet.loadbalancer.server.port=80
+        - traefik.http.routers.tooljet.service=tooljet
+        - traefik.http.routers.tooljet.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.tooljet.entrypoints=websecure
+        - traefik.http.routers.tooljet.tls=true
 
   tooljet_postgrest:
     image: postgrest/postgrest:v12.0.2

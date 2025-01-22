@@ -41,8 +41,6 @@ services:
         - traefik.http.routers.botpress.entrypoints=websecure
         - traefik.http.routers.botpress.tls=true
 
-## --------------------------- ORION --------------------------- ##
-
 volumes:
   botpress_data:
     external: true

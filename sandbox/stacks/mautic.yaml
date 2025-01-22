@@ -2,7 +2,7 @@ version: "3.7"
 services:
 
   mautic_web:
-    image: mautic/mautic:latest ## Versão do Mautic
+    image: mautic/mautic:latest
 
     volumes:
       - mautic_config:/var/www/html/config
@@ -99,7 +99,7 @@ services:
           cpus: "2"
           memory: 2048M
 
-  mautic_cron${1:+_$1}:
+  mautic_cron:
     image: mautic/mautic:latest ## Versão do Mautic
 
     volumes:
@@ -148,7 +148,7 @@ volumes:
   mautic_config:
     external: true
     name: mautic_config
-  mautic${1:+_$1}_docroot:
+  mautic_docroot:
     external: true
     name: mautic_docroot
   mautic_media:

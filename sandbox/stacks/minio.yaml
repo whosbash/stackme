@@ -38,9 +38,7 @@ services:
         - traefik.http.routers.minio_console.tls.certresolver=letsencryptresolver
         - traefik.http.services.minio_console.loadbalancer.server.port=9001
         - traefik.http.services.minio_console.loadbalancer.passHostHeader=true
-        - traefik.http.routers.minio_console.service=minio_console${1:+_$1}
-
-## --------------------------- ORION --------------------------- ##
+        - traefik.http.routers.minio_console.service=minio_console
 
 volumes:
   minio$_data:

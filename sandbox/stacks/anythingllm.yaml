@@ -18,7 +18,7 @@ services:
       - UID=1000
       - GID=1000
 
-      ## Dados Qdrant
+      ## Qdrant
       - VECTOR_DB=qdrant
       - QDRANT_ENDPOINT={{qdrant_anythingllm}}
 
@@ -40,8 +40,6 @@ services:
         - traefik.http.routers.anythingllm.tls.certresolver=letsencryptresolver
         - traefik.http.routers.anythingllm.entrypoints=websecure
         - traefik.http.routers.anythingllm.tls=true
-
-## --------------------------- ORION --------------------------- ##
 
 volumes:
   anythingllm_storage:
