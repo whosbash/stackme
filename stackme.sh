@@ -8930,20 +8930,17 @@ start_main_menu() {
 
 # Display help message
 usage() {
-  joined_arrows="$(join_array "," "${!ARROWS[@]}")"
+  joined_arrows="$(join_array ", " "${!ARROWS[@]}")"
 
   usage_messages=(
     "Usage: $0 [options]"
     "Options:"
-    "  -i, --install           Install required packages."
     "  -c, --clean             Clean docker environment."
     "  -a, --arrow             Arrow style: {$joined_arrows}."
     "  -h, --help              Display this help message and exit."
   )
-  format_array "info" usage_messages
 
   display_parallel usage_messages
-  sleep 1
 
   exit 1
 }
