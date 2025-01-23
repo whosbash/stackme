@@ -1,0 +1,26 @@
+version: '3'
+
+services:
+  postgres:
+    image: postgres:{{image_version}}
+    environment:
+      - POSTGRES_PASSWORD={{db_password}}
+      - PG_MAX_CONNECTIONS=500
+    
+    ports:
+      - 5432:5432
+    
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    
+    networks:
+      - {{network_name}}
+
+volumes:
+  postgres_data:
+    external: true
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}

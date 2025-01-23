@@ -7,10 +7,10 @@ services:
       - $nome_rede_interna
 
     environment:
-    ## Licenças
+    ## Licences
       - NEXT_PUBLIC_LICENSE_CONSENT=agree
       - LICENSE=agree
-      #- CALCOM_LICENSE_KEY= ## Descomente este campo caso tenha licença do mesmo
+      #- CALCOM_LICENSE_KEY= ## Uncomment and set your license key here
 
     ## URLs
       - NEXT_PUBLIC_WEBAPP_URL=https://{{calcom_url}}
@@ -21,16 +21,16 @@ services:
       - NEXT_PUBLIC_WEBSITE_URL=https://{{calcom_url}}
       - WEB_APP=https://{{calcom_url}}
 
-    ## Encrypition
+    ## Encryption
       - NEXTAUTH_SECRET={calcom_secret}
       - CALENDSO_ENCRYPTION_KEY={calcom_secret}
 
-    ## Dados Postgress
+    ## Postgres
       - DATABASE_URL=postgresql://postgres:{{postgres_password}}@postgres:5432/calcom
       - DATABASE_DIRECT_URL=postgresql://postgres:{{postgres_password}}@postgres:5432/calcom
       - CALENDSO_ENCRYPTION_KEY=postgresql://postgres:{{postgres_password}}@postgres:5432/calcom
 
-    ## Configurações de Email e SMTP
+    ## Email and SMTP
       - EMAIL_FROM={{calcom_email}}
       - EMAIL_SERVER_HOST={{calcom_smtp_email}}
       - EMAIL_SERVER_PORT={{calcom_smtp_port}}
@@ -44,17 +44,17 @@ services:
     #- NEXT_PUBLIC_APP_NAME="Cal.com"
     #- NEXT_PUBLIC_SUPPORT_MAIL_ADDRESS="help@cal.com"
     #- NEXT_PUBLIC_COMPANY_NAME="Cal.com, Inc."
-    #- NEXT_PUBLIC_DISABLE_SIGNUP=false ## false = novas inscrições permitidas | true = novas incrições fechadas
+    #- NEXT_PUBLIC_DISABLE_SIGNUP=false ## false = now signup allowed | true = new signups not allowed
 
     ## Integration (Calendar & Meet)
     #-GOOGLE_LOGIN_ENABLED=false
     #-GOOGLE_API_CREDENTIALS=
 
-    ## Integração com Microsoft 365
+    ## Microsoft 365
     #- MS_GRAPH_CLIENT_ID=
     #- MS_GRAPH_CLIENT_SECRET=
 
-    ## Integração com Zoom
+    ## Zoom
     #- ZOOM_CLIENT_ID=
     #- ZOOM_CLIENT_SECRET=
 

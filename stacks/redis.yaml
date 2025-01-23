@@ -1,0 +1,26 @@
+version: '3'
+
+services:
+  redis:
+    image: redis:{{image_version}}
+    command: [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--port",
+        "6379"
+    ]
+    volumes:
+      - redis_data:/data
+    networks:
+      - {{network_name}}
+
+volumes:
+  redis_data:
+    external: true
+    name: redis_data
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}

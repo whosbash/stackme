@@ -1,0 +1,160 @@
+version: '3'
+
+services:
+  grafana:
+    image: grafana/grafana:10.2.2
+    ports:
+      - '3000:3000'
+    deploy:
+      mode: replicated
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.grafana.rule=Host(\`{{url_grafana}}\`)"
+        - "traefik.http.routers.grafana.entrypoints=websecure"
+        - "traefik.http.routers.grafana.service=grafana"
+        - "traefik.http.routers.grafana.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+    logging:
+      driver: json-file
+
+  elasticsearch:
+    image: elasticsearch:7.8.1
+    ports:
+      - 9200:9200
+    environment:
+      discovery.type: 'single-node'
+      xpack.security.enabled: 'true'
+      ELASTIC_PASSWORD: '{{elasticsearch_password}}'
+      ES_JAVA_OPTS: '-Xmx2g -Xms2g'
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.15.1
+    ports:
+      - '5601:5601'
+    deploy:
+      mode: replicated
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.kibana.rule=Host(\`{{url_kibana}}\`)"
+        - "traefik.http.routers.kibana.entrypoints=websecure"
+        - "traefik.http.routers.kibana.service=kibana"
+        - "traefik.http.routers.kibana.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.kibana.loadbalancer.server.port=5601"
+    logging:
+      driver: json-file
+
+  loki:
+    image: grafana/loki:2.9.2
+    ports:
+      - '3100:3100'
+    # send Loki traces to Jaeger
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
+      - JAEGER_SAMPLER_TYPE=const
+      - JAEGER_SAMPLER_PARAM=1
+    logging:
+      driver: json-file
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.51
+    ports:
+      - '6831:6831'
+      - '16686:16686'
+    logging:
+      driver: json-file
+    deploy:
+      mode: replicated
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.jaeger.rule=Host(\`{{url_jaeger}}\`)"
+        - "traefik.http.routers.jaeger.entrypoints=websecure"
+        - "traefik.http.routers.jaeger.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
+
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    volumes:
+      - /opt/stackme/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090" # Prometheus web interface
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    logging:
+      driver: json-file
+    networks:
+      - {{network_name}}
+    deploy:
+      mode: replicated
+      replicas: 1
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.prometheus.rule=Host(\`{{url_prometheus}}\`)
+        - traefik.http.services.prometheus.loadbalancer.server.port=9090
+        - traefik.http.routers.prometheus.service=prometheus
+        - traefik.http.routers.prometheus.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.prometheus.entrypoints=websecure
+        - traefik.http.routers.prometheus.tls=true
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    restart: unless-stopped
+
+    networks:
+      - {{network_name}}
+
+    ports:
+      - "9100:9100"
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.node-exporter.rule=Host(\`{{url_node_exporter}}\`)
+        - traefik.http.services.node-exporter.loadbalancer.server.port=9100
+        - traefik.http.routers.node-exporter.service=node-exporter
+        - traefik.http.routers.node-exporter.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.node-exporter.entrypoints=websecure
+        - traefik.http.routers.node-exporter.tls=true
+  
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor
+    restart: unless-stopped
+
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup
+      - /var/lib/docker/:/var/lib/docker:ro
+
+    networks:
+      - {{network_name}}
+
+    ports:
+      - "8181:8080"
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.cadvisor.rule=Host(\`{{url_cadvisor}}\`)
+        - traefik.http.services.cadvisor.loadbalancer.server.port=8080
+        - traefik.http.routers.cadvisor.service=cadvisor
+        - traefik.http.routers.cadvisor.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.cadvisor.entrypoints=websecure
+        - traefik.http.routers.cadvisor.tls=true
+
+networks:
+  {{network_name}}:
+    external: true
+    attachable: true
+EOL

@@ -1,0 +1,50 @@
+version: "3.7"
+services:
+  mongodb:
+    image: mongo:{{image_version}}
+    command: mongod --port 27017
+
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_dump:/dump
+      - mongodb_configdb_data:/data/configdb
+
+    networks:
+      - {{network_name}}
+    
+    ports:
+      - 27017:27017
+
+    environment:
+      ## Dados de acesso
+      - MONGO_INITDB_ROOT_USERNAME={{db_username}}
+      - MONGO_INITDB_ROOT_PASSWORD={{db_password}}
+      - PUID=1000
+      - PGID=1000
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2048M
+
+volumes:
+  mongodb_data:
+    external: true
+    name: mongodb_data
+  mongodb_dump:
+    external: true
+    name: mongodb_dump
+  mongodb_configdb_data:
+    external: true
+    name: mongodb_configdb_data
+
+networks:
+  {{network_name}}:
+    name: {{network_name}}
+    external: true
