@@ -1,0 +1,112 @@
+version: "3.7"
+services:
+  twentycrm_server:
+    image: twentycrm/twenty:latest
+
+    volumes:
+      - twentycrm_data:/app/packages/twenty-server/.local-storage
+      - twentycrm_docker:/app/docker-data
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      - PORT=3000
+      - PG_DATABASE_URL=postgres://postgres:{{twentycrm_postgres_password}}@db:5432/default
+      - SERVER_URL=http://{{twentycrm_url}}
+      - FRONT_BASE_URL=http://{{twentycrm_url}}
+      - REDIS_URL=redis://redis:6379
+      - ENABLE_DB_MIGRATIONS=true
+      - SIGN_IN_PREFILLED=true
+      - STORAGE_TYPE=local
+      - APP_SECRET={{twentycrm_secret_key}}
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 4192M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.twentycrm.rule=Host(\`{{twentycrm_url}}\`) ## Url da aplicação
+        - traefik.http.services.twentycrm.loadbalancer.server.port=3000
+        - traefik.http.routers.twentycrm.service=twentycrm
+        - traefik.http.routers.twentycrm.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.twentycrm.entrypoints=websecure
+        - traefik.http.routers.twentycrm.tls=true
+
+  twentycrm_worker:
+    image: twentycrm/twenty:latest
+    command: ["yarn", "worker:prod"]
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      - PORT=3000
+      - PG_DATABASE_URL=postgres://postgres:{{twentycrm_postgres_password}}@db:5432/default
+      - SERVER_URL=http://{{twentycrm_url}}
+      - FRONT_BASE_URL=http://{{twentycrm_url}}
+      - REDIS_URL=redis://redis:6379  # Já configurado
+      - ENABLE_DB_MIGRATIONS=true
+      - SIGN_IN_PREFILLED=true
+      - STORAGE_TYPE=local
+      - APP_SECRET={{twentycrm_secret_key}}
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1024M
+
+  twentycrm_db:
+    image: twentycrm/twenty-postgres:latest
+      
+    volumes:
+      - twentycrm_db_data:/home/postgres/pgdata
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      - PGUSER_SUPERUSER=postgres
+      - PGPASSWORD_SUPERUSER={{twentycrm_postgres_password}}
+      - ALLOW_NOSSL=true
+      - SPILO_PROVIDER=local
+        
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1024M    
+
+volumes:
+  twentycrm_data:
+    external: true
+    name: twentycrm_data
+  twentycrm_docker:
+    external: true
+    name: twentycrm_docker
+  twentycrm_db_data:
+    external: true
+    name: twentycrm_db_data
+
+networks:
+  {{network_name}}:
+    name: {{network_name}}
+    external: true

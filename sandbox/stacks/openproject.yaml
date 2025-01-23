@@ -1,0 +1,58 @@
+version: "3.7"
+services:
+  openproject:
+    image: openproject/openproject:14.1.1
+
+    volumes:
+      - openproject_pgdata:/var/openproject/pgdata
+      - openproject_assets:/var/openproject/assets
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Secret Key
+      - OPENPROJECT_SECRET_KEY_BASE={{openproject_key}}
+
+      ## Domain
+      - OPENPROJECT_HOST__NAME={{openproject_url}}
+      - OPENPROJECT_HTTPS=true
+
+      ## Redis
+      - OPENPROJECT_RAILS__CACHE__STORE=redis
+      - OPENPROJECT_CACHE_REDIS_URL=redis://redis:6379
+
+      ## Postgres
+      - DATABASE_URL=postgresql://postgres:{{postgres_password}}@postgres:5432/openproject
+
+      ## Settings
+      - OPENPROJECT_DEFAULT__LANGUAGE=pt-BR      
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=1
+        - traefik.http.routers.openproject.rule=Host(\`{{openproject_url}}\`)
+        - traefik.http.routers.openproject.entrypoints=websecure
+        - traefik.http.routers.openproject.priority=1
+        - traefik.http.routers.openproject.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.openproject.service=openproject
+        - traefik.http.services.openproject.loadbalancer.server.port=8080
+        - traefik.http.services.openproject.loadbalancer.passHostHeader=true
+
+volumes:
+  openproject_pgdata:
+    external: true
+    name: openproject_pgdata
+  openproject_assets:
+    external: true
+    name: openproject_assets
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}
+EOL

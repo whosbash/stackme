@@ -1,0 +1,99 @@
+version: "3.7"
+services:
+  strapi_app:
+    image: strapi/strapi
+
+    volumes:
+      - strapi_config:/srv/app/config
+      - strapi_src:/srv/app/src
+      - strapi_public_uploads:/srv/app/public/uploads
+      - strapi_data:/srv/app
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## MySQL
+      - DATABASE_CLIENT=mysql
+      - DATABASE_HOST=strapi_db
+      - DATABASE_NAME=strapi
+      - DATABASE_PORT=3306
+      - DATABASE_USERNAME=root
+      - DATABASE_PASSWORD={{mysql_password}}
+
+      ## Secret Keys
+      - JWT_SECRET={{jwt_secret}}
+      - ADMIN_JWT_SECRET={{admin_jwt_secret}}
+      - APP_KEYS=$app_key
+
+      ## Outros dados
+      - NODE_ENV=production
+      - STRAPI_TELEMETRY_DISABLED=true
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.strapi.rule=Host(\`{{strapi_url}}\`)
+        - traefik.http.routers.strapi.entrypoints=web,websecure
+        - traefik.http.routers.strapi.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.strapi.service=strapi
+        - traefik.http.services.strapi.loadbalancer.server.port=1337
+        - traefik.http.services.strapi.loadbalancer.passHostHeader=true
+
+  strapi_db:
+    image: percona/percona-server:8.0
+    command:
+      [
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_general_ci",
+        "--sql-mode=",
+        "--default-authentication-plugin=mysql_native_password",
+        "--max-allowed-packet=512MB"
+      ]
+
+    volumes:
+      - strapi_db:/var/lib/mysql
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      - MYSQL_ROOT_PASSWORD=$mysql_password
+      - MYSQL_DATABASE=strapi
+      - TZ=America/Sao_Paulo
+
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+
+volumes:
+  strapi_config:
+    external: true
+    name: strapi_config
+  strapi_src:
+    external: true
+    name: strapi_src
+  strapi_public_uploads:
+    external: true
+    name: strapi_public_uploads
+  strapi_data:
+    external: true
+    name: strapi_data
+  strapi_db:
+    external: true
+    name: strapi_db
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}

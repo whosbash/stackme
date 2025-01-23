@@ -1,0 +1,66 @@
+version: "3.7"
+services:
+
+  mattermost:
+    image: mattermost/mattermost-team-edition:latest
+
+    volumes:
+      - mattermost_data:/mattermost/data
+      - mattermost_config:/mattermost/config
+      - mattermost_logs:/mattermost/logs
+      - mattermost_plugins:/mattermost/plugins
+      - mattermost_client_plugins:/mattermost/client/plugins
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Mattermost
+      - MM_SERVICESETTINGS_SITEURL=https://{{mattermost_url}}
+
+      ## Postgres
+      - MM_SQLSETTINGS_DRIVERNAME=postgres
+      - MM_SQLSETTINGS_DATASOURCE=postgres://postgres:{{postgres_password}}@postgres:5432/mattermost?sslmode=disable&connect_timeout=10
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.mattermost.rule=Host(\`{{mattermost_url}}\`)
+        - traefik.http.routers.mattermost.entrypoints=websecure
+        - traefik.http.routers.mattermost.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.mattermost.service=mattermost
+        - traefik.http.services.mattermost.loadbalancer.server.port=8065
+        - traefik.http.services.mattermost.loadbalancer.passhostheader=true
+        - traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https
+        - traefik.http.routers.mattermost.middlewares=sslheader@docker
+
+volumes:
+  mattermost_data:
+    external: true
+    name: mattermost_data
+  mattermost_config:
+    external: true
+    name: mattermost_config
+  mattermost_logs:
+    external: true
+    name: mattermost_logs
+  mattermost_plugins:
+    external: true
+    name: mattermost_plugins
+  mattermost_client_plugins:
+    external: true
+    name: mattermost_client_plugins
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}

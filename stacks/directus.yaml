@@ -28,7 +28,11 @@ services:
       - STORAGE_s3_SECRET={{s3_secret_key}}
       - STORAGE_s3_BUCKET=directus
       - STORAGE_s3_REGION=eu-south
+<<<<<<< HEAD:stacks/directus.yaml
       - STORAGE_s3_ENDPOINT={{s3_url}}
+=======
+      - STORAGE_s3_ENDPOINT={{s2_url}}
+>>>>>>> main:sandbox/stacks/directus.yaml
 
       ## Redis
       - REDIS=redis://redis:6379/4

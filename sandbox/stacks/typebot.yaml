@@ -1,0 +1,140 @@
+version: "3.7"
+services:
+  typebot_builder:
+    image: baptistearno/typebot-builder:{{typebot_version}}
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Postgres
+      - DATABASE_URL=postgresql://postgres:{{postgres_password}}@postgres:5432/typebot
+
+      ## Encryption key
+      - ENCRYPTION_SECRET={{typebot_key}}
+
+      ## Default Plan (for new accounts)
+      - DEFAULT_WORKSPACE_PLAN=UNLIMITED
+
+      ## Typebot Urls 
+      - NEXTAUTH_URL=https://{{typebot_url}} ## URL Builder
+      - NEXT_PUBLIC_VIEWER_URL=https://{{viewer_url}} ## URL Viewer
+      - NEXTAUTH_URL_INTERNAL=http://localhost:3000
+
+      ## Enable/unable new signups
+      - DISABLE_SIGNUP=false
+
+      ## SMTP
+      - ADMIN_EMAIL={{typebot_email_username}}
+      - NEXT_PUBLIC_SMTP_FROM='Helpdesk' <{{typebot_email}}>
+      - SMTP_AUTH_DISABLED=false
+      - SMTP_USERNAME={{typebot_email_username}}
+      - SMTP_PASSWORD={{typebot_email_password}}
+      - SMTP_HOST={{typebot_smtp_host}}
+      - SMTP_PORT={{typebot_smtp_port}}
+      - SMTP_SECURE={{typebot_smtp_secure}}
+
+      ## Dados Google Cloud
+      #- GOOGLE_AUTH_CLIENT_ID=
+      #- GOOGLE_SHEETS_CLIENT_ID=
+      #- GOOGLE_AUTH_CLIENT_SECRET=
+      #- GOOGLE_SHEETS_CLIENT_SECRET=
+      #- NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY=
+
+      ## Dados do Minio/S3
+      - S3_ACCESS_KEY={{s3_access_key}}
+      - S3_SECRET_KEY={{s3_secret_key}}
+      - S3_BUCKET=typebot
+      - S3_ENDPOINT={{s3_url}}
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - io.portainer.accesscontrol.users=admin
+        - traefik.enable=true
+        - traefik.http.routers.typebot_builder.rule=Host(\`{{typebot_url}}\`) ## Url do Builder do Typebot
+        - traefik.http.routers.typebot_builder.entrypoints=websecure
+        - traefik.http.routers.typebot_builder.tls.certresolver=letsencryptresolver
+        - traefik.http.services.typebot_builder.loadbalancer.server.port=3000
+        - traefik.http.services.typebot_builder.loadbalancer.passHostHeader=true
+        - traefik.http.routers.typebot_builder.service=typebot_builder
+
+  typebot_viewer:
+    image: baptistearno/typebot-viewer:{{typebot_version}}
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Dados do Postgres
+      - DATABASE_URL=postgresql://postgres:{{postgres_password}}@postgres:5432/typebot
+
+      ## Encryption key
+      - ENCRYPTION_SECRET={{typebot_key}}
+
+      ## Plano Padrão (das novas contas)
+      - DEFAULT_WORKSPACE_PLAN=UNLIMITED
+
+      ## Urls do typebot
+      - NEXTAUTH_URL=https://{{typebot_url}} ## Builder URL 
+      - NEXT_PUBLIC_VIEWER_URL=https://{{viewer_url}} ## Viewer URL 
+      - NEXTAUTH_URL_INTERNAL=http://localhost:3000
+
+      ## Unable/enable new signups
+      - DISABLE_SIGNUP=false
+
+      ## SMTP
+      - ADMIN_EMAIL={{typebot_email_username}}
+      - NEXT_PUBLIC_SMTP_FROM='Helpdesk' <{{typebot_email}}>
+      - SMTP_AUTH_DISABLED=false
+      - SMTP_USERNAME={{typebot_email_username}}
+      - SMTP_PASSWORD={{typebot_email_password}}
+      - SMTP_HOST={{typebot_smtp_host}}
+      - SMTP_PORT={{typebot_smtp_port}}
+      - SMTP_SECURE={{typebot_smtp_secure}}
+
+      ## Google Cloud
+      #- GOOGLE_AUTH_CLIENT_ID=
+      #- GOOGLE_SHEETS_CLIENT_ID=
+      #- GOOGLE_AUTH_CLIENT_SECRET=
+      #- GOOGLE_SHEETS_CLIENT_SECRET=
+      #- NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY=
+
+      ## Minio/S3
+      - S3_ACCESS_KEY=$S3_ACCESS_KEY
+      - S3_SECRET_KEY=$S3_SECRET_KEY
+      - S3_BUCKET=typebot${1:+-$1}
+      - S3_ENDPOINT=$url_s3
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - io.portainer.accesscontrol.users=admin
+        - traefik.enable=true
+        - traefik.http.routers.typebot_viewer.rule=Host(\`{{viewer_url}}\`)
+        - traefik.http.routers.typebot_viewer.entrypoints=websecure
+        - traefik.http.routers.typebot_viewer.tls.certresolver=letsencryptresolver
+        - traefik.http.services.typebot_viewer.loadbalancer.server.port=3000
+        - traefik.http.services.typebot_viewer.loadbalancer.passHostHeader=true
+        - traefik.http.routers.typebot_viewer.service=typebot_viewer
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}

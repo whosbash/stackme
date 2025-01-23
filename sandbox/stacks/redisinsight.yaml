@@ -1,0 +1,53 @@
+version: "3.7"
+services:
+
+  redisinsight:
+    image: redislabs/redisinsight:latest
+
+    volumes:
+      - redisinsight_data:/db
+      - redisinsight_logs:/data/logs
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      - RI_APP_PORT=5540
+      - RI_APP_HOST=0.0.0.0
+      - RI_ENCRYPTION_KEY={{redisinsight_key}}
+      - RI_LOG_LEVEL=info
+      - RI_FILES_LOGGER=false
+      - RI_STDOUT_LOGGER=true
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.redisinsight.rule=Host(\`{{redisinsight_url}}\`)
+        - traefik.http.services.redisinsigh.loadbalancer.server.port=5540
+        - traefik.http.routers.redisinsight.service=redisinsight
+        - traefik.http.routers.redisinsight.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.redisinsight.entrypoints=websecure
+        - traefik.http.routers.redisinsight.tls=true
+
+volumes:
+  redisinsight_data:
+    external: true
+    name: redisinsight_data
+  redisinsight_logs:
+    external: true
+    name: redisinsight_logs
+
+networks:
+  {{network_name}}:
+    name: {{network_name}}
+    external: true
+EOL

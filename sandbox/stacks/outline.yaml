@@ -1,0 +1,92 @@
+version: "3.7"
+services:
+  outline:
+    image: outlinewiki/outline:0.75.0
+
+    volumes:
+      - outline_data:/var/lib/outline/data
+      
+    networks:
+      - {{network_name}}
+    
+    environment:
+      ## Dados de acesso
+      - URL=https://{{outline_url}}
+      - FORCE_HTTPS=true
+
+      ## Desativar novos cadastros
+      - LIMITS_INVITATION_REQUIRED=false
+
+      # IDIOMA PADRÃO
+      - DEFAULT_LANGUAGE=pt_BR
+
+      ## Secrets Keys
+      - SECRET_KEY=$Key_aleatoria_outline_1
+      - UTILS_SECRET=$Key_aleatoria_outline_2
+
+      ## Dados Postgres
+      - DATABASE_URL=postgres://postgres:{{postgres_password}}@postgres:5432/outline
+      - DATABASE_URL_TEST=postgres://postgres:{{postgres_password}}@postgres:5432/outline_test
+      - PGSSLMODE=disable
+
+      ## Dados Redis
+      - REDIS_URL=redis://redis:6379/3
+
+      ## Dados sobre Armazenamento
+      - FILE_STORAGE=local
+      - FILE_STORAGE_LOCAL_ROOT_DIR=/var/lib/outline/data
+      - FILE_STORAGE_UPLOAD_MAX_SIZE=26214400
+      - FILE_STORAGE_IMPORT_MAX_SIZE=18874368
+      - FILE_STORAGE_WORKSPACE_IMPORT_MAX_SIZE=18874368
+      
+      # LOGIN COM O GOOGLE
+      - GOOGLE_CLIENT_ID=$id_google_outline
+      - GOOGLE_CLIENT_SECRET=$key_google_outline
+      - NEXT_PUBLIC_GOOGLE_API_KEY=$api_google_outline
+
+      ## SMTP
+      #- SMTP_FROM_EMAIL=email@domain.com ## SMTP Email 
+      #- SMTP_REPLY_EMAIL=email@dominio.com ## SMTP Email 
+      #- SMTP_USERNAME=email@dominio.com ## SMTP Username
+      #- SMTP_PASSWORD=Secret_Password_shh ## SMTP password
+      #- SMTP_HOST=smtp.provider.com ## SMTP Host 
+      #- SMTP_PORT=587 ## SMTP port
+      #- SMTP_SECURE=false ## if port is 465 ou 25, true. Otherwise false
+
+      ## Settings
+      - RATE_LIMITER_ENABLED=true
+      - RATE_LIMITER_REQUESTS=1000
+      - RATE_LIMITER_DURATION_WINDOW=60
+      - ENABLE_UPDATES=false
+      - WEB_CONCURRENCY=6
+      - DEBUG=http
+      - LOG_LEVEL=info
+      
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.outline.rule=Host(\`{{outline_url}}\`)
+        - traefik.http.routers.outline.entrypoints=websecure
+        - traefik.http.routers.outline.tls=true
+        - traefik.http.routers.outline.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.outline.service=outline
+        - traefik.http.services.outline.loadbalancer.server.port=3000
+
+volumes:
+  outline_data:
+    external: true
+    name: outline_data
+    
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}

@@ -1,0 +1,167 @@
+version: "3.7"
+services:
+
+  mautic_web:
+    image: mautic/mautic:latest
+
+    volumes:
+      - mautic_config:/var/www/html/config
+      - mautic_docroot:/var/www/html/docroot
+      - mautic_media:/var/www/html/docroot/media
+      - mautic_logs:/var/www/html/var/logs
+      - mautic_cron:/opt/mautic/cron
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Dados MySQL
+      - MAUTIC_DB_NAME=mautic
+      - MAUTIC_DB_HOST=mysql
+      - MAUTIC_DB_PORT=3306
+      - MAUTIC_DB_USER=root
+      - MAUTIC_DB_PASSWORD={{mysql_password}}
+      
+      ## Dados de acesso
+      - MAUTIC_ADMIN_EMAIL={{mautic_email}}
+      - MAUTIC_ADMIN_USERNAME={{mautic_user}}
+      - MAUTIC_ADMIN_PASSWORD={{mautic_email_password}}
+      - MAUTIC_URL=https://{{mautic_url}}
+
+      ## Configurações
+      - MAUTIC_TRUSTED_PROXIES=["0.0.0.0/0"]
+      - DOCKER_MAUTIC_ROLE=mautic_web
+      - DOCKER_MAUTIC_WORKERS_CONSUME_EMAIL=2
+      - DOCKER_MAUTIC_WORKERS_CONSUME_HIT=2
+      - DOCKER_MAUTIC_WORKERS_CONSUME_FAILED=2
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2048M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.mautic.rule=Host(\`{{mautic_url}}\`) # substitua SeuDominio.com.br pelo seu domínio
+        - traefik.http.services.mautic.loadbalancer.server.port=80
+        - traefik.http.routers.mautic.entrypoints=websecure
+        - traefik.http.routers.mautic.service=mautic
+        - traefik.http.routers.mautic.tls.certresolver=letsencryptresolver
+        - traefik.http.services.mautic.loadbalancer.passHostHeader=true
+
+  mautic_worker:
+    image: mautic/mautic:latest ## Versão do Mautic
+
+    volumes:
+      - mautic_config:/var/www/html/config
+      - mautic_docroot:/var/www/html/docroot
+      - mautic_media:/var/www/html/docroot/media
+      - mautic_logs:/var/www/html/var/logs
+      - mautic_cron:/opt/mautic/cron
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## MySQL
+      - MAUTIC_DB_NAME=mautic
+      - MAUTIC_DB_HOST=mysql
+      - MAUTIC_DB_PORT=3306
+      - MAUTIC_DB_USER=root
+      - MAUTIC_DB_PASSWORD={{mysql_pasword}}
+      
+      ## Dados de acesso
+      - MAUTIC_ADMIN_EMAIL={{mautic_email}}
+      - MAUTIC_ADMIN_USERNAME={{mautic_username}}
+      - MAUTIC_ADMIN_PASSWORD={{mautic_email_password}}
+      - MAUTIC_URL=https://{{mautic_url}}
+
+      ## Configurações
+      - MAUTIC_TRUSTED_PROXIES=["0.0.0.0/0"]
+      - DOCKER_MAUTIC_ROLE=mautic_worker
+      - DOCKER_MAUTIC_WORKERS_CONSUME_EMAIL=2
+      - DOCKER_MAUTIC_WORKERS_CONSUME_HIT=2
+      - DOCKER_MAUTIC_WORKERS_CONSUME_FAILED=2
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2048M
+
+  mautic_cron:
+    image: mautic/mautic:latest ## Versão do Mautic
+
+    volumes:
+      - mautic_config:/var/www/html/config
+      - mautic_docroot:/var/www/html/docroot
+      - mautic_media:/var/www/html/docroot/media
+      - mautic_logs:/var/www/html/var/logs
+      - mautic_cron:/opt/mautic/cron
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Dados MySQL
+      - MAUTIC_DB_NAME=mautic
+      - MAUTIC_DB_HOST=mysql
+      - MAUTIC_DB_PORT=3306
+      - MAUTIC_DB_USER=root
+      - MAUTIC_DB_PASSWORD={{mysql_password}}
+      
+      ## Dados de acesso
+      - MAUTIC_ADMIN_EMAIL={{mautic_email}}
+      - MAUTIC_ADMIN_USERNAME={{mautic_username}}
+      - MAUTIC_ADMIN_PASSWORD={{mautic_email_password}}
+      - MAUTIC_URL=https://{{url_mautic}}
+
+      ## Configurações
+      - MAUTIC_TRUSTED_PROXIES=["0.0.0.0/0"]
+      - DOCKER_MAUTIC_ROLE=mautic_cron
+      - DOCKER_MAUTIC_WORKERS_CONSUME_EMAIL=2
+      - DOCKER_MAUTIC_WORKERS_CONSUME_HIT=2
+      - DOCKER_MAUTIC_WORKERS_CONSUME_FAILED=2
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+volumes:
+  mautic_config:
+    external: true
+    name: mautic_config
+  mautic_docroot:
+    external: true
+    name: mautic_docroot
+  mautic_media:
+    external: true
+    name: mautic_media
+  mautic_logs:
+    external: true
+    name: mautic_logs
+  mautic_cron:
+    external: true
+    name: mautic_cron
+
+networks:
+  {{network_name}}: 
+    name: {{network_name}}
+    external: true

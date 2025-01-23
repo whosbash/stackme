@@ -1,0 +1,83 @@
+version: "3.7"
+services:
+  humhub:
+    image: mriedmann/humhub:latest
+
+    volumes:
+      - humhub_data:/var/www/localhost/htdocs/protected/modules
+      - humhub_uploads:/var/www/localhost/htdocs/uploads
+      - humhub_assets:/var/www/localhost/htdocs/assets
+      - humhub_themes:/var/www/localhost/htdocs/themes
+      
+    networks:
+      - {{network_name}}
+      
+    environment:
+      ## Dados de acesso
+      - HUMHUB_ADMIN_USERNAME={{humhub_username}}
+      - HUMHUB_ADMIN_PASSWORD={{humhub_password}}
+      - HUMHUB_EMAIL={{humhub_email}}
+      - HUMHUB_EMAIL_NAME={{humhub_username}}
+      - HUMHUB_ADMIN_EMAIL={{humhub_email}}
+
+      ## Dados SMTP
+      - HUMHUB_MAILER_TRANSPORT_TYPE=smtp
+      - HUMHUB_MAILER_SYSTEM_EMAIL_ADDRESS={{humhub_smtp_email}}
+      - HUMHUB_MAILER_USERNAME={{humhub_smtp_username}}
+      - HUMHUB_MAILER_PASSWORD=${humhub_smtp_password}
+      - HUMHUB_MAILER_SYSTEM_EMAIL_NAME=Helpdesk
+      - HUMHUB_MAILER_HOSTNAME={{easyappointments_url}}
+      - HUMHUB_MAILER_PORT={{humhub_smtp_port}}
+      - HUMHUB_MAILER_ALLOW_SELF_SIGNED_CERTS=1 ## 0 = TLS | 1 = SSL
+      
+      ## Dados do MySQL
+      - HUMHUB_DB_HOST=mysql
+      - HUMHUB_DB_USER=root
+      - HUMHUB_DB_PASSWORD={{mysql_password}}
+      - HUMHUB_DB_NAME=humhub
+      - HUMHUB_AUTO_INSTALL=1
+
+      ## Dados Redis
+      - HUMHUB_REDIS_HOSTNAME=redis
+      - HUMHUB_REDIS_PORT=6379
+      - HUMHUB_CACHE_EXPIRE_TIME=3600
+      - HUMHUB_CACHE_CLASS=yii\redis\Cache
+      - HUMHUB_QUEUE_CLASS=humhub\modules\queue\driver\Redis
+  
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.humhub.rule=Host(\`{{humhub_url}}\`)
+        - traefik.http.routers.humhub.entrypoints=websecure
+        - traefik.http.routers.humhub.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.humhub.service=humhub
+        - traefik.http.services.humhub.loadbalancer.server.port=80
+        - traefik.http.services.humhub.loadbalancer.passHostHeader=true
+
+volumes:
+  humhub_data:
+    external: true
+    name: humhub_data
+  humhub_uploads:
+    external: true
+    name: humhub_uploads
+  humhub_themes:
+    external: true
+    name: humhub_themes
+  humhub_assets:
+    external: true
+    name: humhub_assets
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}

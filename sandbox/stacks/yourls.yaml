@@ -1,0 +1,39 @@
+version: "3.7"
+services:
+  yourls:
+    image: yourls:latest
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Yourls Urls
+      - YOURLS_SITE=https://{{yourls_url}}
+      - YOURLS_USER={{yourls_username}}
+      - YOURLS_PASS={{yourls_password}}
+      
+      ## Mysql
+      - YOURLS_DB_HOST=mysql
+      - YOURLS_DB_NAME=yourls
+      - YOURLS_DB_USER=root
+      - YOURLS_DB_PASS={{mysql_password}}
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.yourls.rule=Host(\`{{yourls_url}}\`) ## Url da aplicação
+        - traefik.http.routers.yourls.entrypoints=websecure
+        - traefik.http.routers.yourls.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.yourls.service=yourls
+        - traefik.http.services.yourls.loadbalancer.server.port=80
+
+networks:
+  {{network_name}}:
+    name: {{network_name}}
+    external: true
