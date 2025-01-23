@@ -8,7 +8,7 @@ services:
       - dify_storage:/app/api/storage
 
     networks:
-      - $nome_rede_interna
+      - {{network_name}}
 
     environment:
       ## Mode
@@ -18,7 +18,7 @@ services:
       - LOG_LEVEL=INFO
 
       ## Secret Key
-      - SECRET_KEY=$secret_key
+      - SECRET_KEY={{secret_key}}
 
       ## Outras Url (vazio = mesmo do APP_WEB_URL)
       - CONSOLE_WEB_URL=https://{{url_dify}}
@@ -33,7 +33,7 @@ services:
       ## Postgres
       - MIGRATION_ENABLED=true
       - DB_USERNAME=postgres
-      - DB_PASSWORD=$senha_postgres
+      - DB_PASSWORD={{postgres_password}}
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_DATABASE=dify
@@ -54,10 +54,10 @@ services:
       ## S3
       - STORAGE_TYPE=s3
       - STORAGE_LOCAL_PATH=storage
-      - S3_ENDPOINT=https://$url_s3
-      - S3_BUCKET_NAME=dify${1:+-$1}
-      - S3_ACCESS_KEY=$S3_ACCESS_KEY
-      - S3_SECRET_KEY=$S3_SECRET_KEY
+      - S3_ENDPOINT=https://{{s3_url}}
+      - S3_BUCKET_NAME=dify
+      - S3_ACCESS_KEY={{s3_access_key}}
+      - S3_SECRET_KEY={{s3_secret_key}}
 
       ## Sandbox Settings
       - CODE_EXECUTION_ENDPOINT=http://dify_sandbox:8194
@@ -73,7 +73,7 @@ services:
       ## Weaviate
       - VECTOR_STORE=weaviate
       - WEAVIATE_ENDPOINT=http://dify_weaviate:8080
-      - WEAVIATE_API_KEY=$token_weaviate
+      - WEAVIATE_API_KEY={{weaviate_token}}
       - WEAVIATE_CLIENT_TIMEOUT=20
 
       ## Email
@@ -114,7 +114,7 @@ services:
     image: langgenius/dify-api:0.13.2
 
     volumes:
-      - dify$_storage:/app/api/storage
+      - dify_storage:/app/api/storage
 
     networks:
       - {{network_name}}
@@ -142,7 +142,7 @@ services:
       ## Postgres
       - MIGRATION_ENABLED=true
       - DB_USERNAME=postgres
-      - DB_PASSWORD=$senha_postgres
+      - DB_PASSWORD={{postgres_password}}
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_DATABASE=dify
@@ -164,9 +164,9 @@ services:
       - STORAGE_TYPE=s3
       - STORAGE_LOCAL_PATH=storage
       - S3_ENDPOINT=https://{{s3_url}}
-      - S3_BUCKET_NAME=dify${1:+-$1}
-      - S3_ACCESS_KEY=$S3_ACCESS_KEY
-      - S3_SECRET_KEY=$S3_SECRET_KEY
+      - S3_BUCKET_NAME=dify
+      - S3_ACCESS_KEY={{s3_access_key}}
+      - S3_SECRET_KEY={{s3_secret_key}}
 
       ## Configurações do Sandbox
       - CODE_EXECUTION_ENDPOINT=http://dify_sandbox:8194
@@ -216,10 +216,10 @@ services:
     image: langgenius/dify-web:0.13.2 ## Versão do Dify
 
     networks:
-      - $nome_rede_interna
+      - {{network_name}}
 
     environment:
-      ## Tipo da Edição
+      ## Urls
       - EDITION=SELF_HOSTED
       - CONSOLE_API_URL=https://{{dify_api_url}} ## Dify API Url 
 
@@ -276,9 +276,6 @@ volumes:
   dify_storage:
     external: true
     name: dify_storage
-  dify$_weaviate:
-    external: true
-    name: dify_weaviate
 
 networks:
   {{network_name}}:

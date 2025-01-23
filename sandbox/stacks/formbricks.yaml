@@ -19,7 +19,7 @@ services:
       - DATABASE_URL=postgresql://postgres:{{pgvector_password}}@pgvector:5432/formbricks?schema=public
 
       ## Licença Enterprise ou Self-hosting
-      ## Solicitar licenta Self-hosting --> https://oriondesign.art.br/formbricks_licence/ <-- ##
+      ## Request self-hosting license: https://oriondesign.art.br/formbricks_licence/
       - ENTERPRISE_LICENSE_KEY=
 
       ## Random keys 32 characters

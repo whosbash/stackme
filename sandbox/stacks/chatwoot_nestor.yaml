@@ -1,39 +1,35 @@
-## Criando a stack chatwoot_nestor.yaml
-cat > chatwoot_nestor${1:+_$1}.yaml <<EOL
 version: "3.7"
 services:
 
-## --------------------------- ORION --------------------------- ##
-
-  chatwoot_nestor${1:+_$1}_app:
+  chatwoot_nestor_app:
     image: sendingtk/chatwoot:v3.13.8 ## Versão do Chatwoot
     command: bundle exec rails s -p 3000 -b 0.0.0.0
     entrypoint: docker/entrypoints/rails.sh
 
     volumes:
-      - chatwoot_nestor${1:+_$1}_storage:/app/storage ## Arquivos de conversa
-      - chatwoot_nestor${1:+_$1}_public:/app/public ## Arquivos de logos
-      - chatwoot_nestor${1:+_$1}_mailer:/app/app/views/devise/mailer ## Arquivos de email
-      - chatwoot_nestor${1:+_$1}_mailers:/app/app/views/mailers ## Arquivos de emails
+      - chatwoot_nestor_storage:/app/storage
+      - chatwoot_nestor_public:/app/public
+      - chatwoot_nestor_mailer:/app/app/views/devise/mailer
+      - chatwoot_nestor_mailers:/app/app/views/mailers
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{ nome_rede_interna }}
     
     environment:
-      ## Qualquer Url com # no final
-      - CHATWOOT_HUB_URL=https://oriondesign.art.br/setup#
+      ## Any Url with # at the end
+      - CHATWOOT_HUB_URL=https://example.com/#
 
-      ## Nome da Empresa
-      - INSTALLATION_NAME=$nome_empresa_chatwoot
+      ## Company 
+      - INSTALLATION_NAME={{chatwoot_company_name}}
 
       ## Secret key
-      - SECRET_KEY_BASE=$encryption_key
+      - SECRET_KEY_BASE={{encryption_key}}
 
-      ## Url Chatwoot
-      - FRONTEND_URL=https://$url_chatwoot
+      ## Chatwoot Url
+      - FRONTEND_URL=https://{{chatwoot_url}}
       - FORCE_SSL=true
 
-      ## Idioma/Localização padrão
+      ## Language and Timezone
       - DEFAULT_LOCALE=pt_BR
       - TZ=America/Brasil
 
@@ -42,36 +38,36 @@ services:
       #- GOOGLE_OAUTH_CLIENT_SECRET=ABCDEF-GHijklmnoPqrstuvwX-yz1234567
       #- GOOGLE_OAUTH_CALLBACK_URL=https://<your-server-domain>/omniauth/google_oauth2/callback
 
-      ## Dados do Redis
+      ## Redis
       - REDIS_URL=redis://redis:6379
 
       ## Dados do Postgres
       - POSTGRES_HOST=postgres
       - POSTGRES_USERNAME=postgres
-      - POSTGRES_PASSWORD=$senha_postgres ## Senha do postgres
-      - POSTGRES_DATABASE=chatwoot_nestor${1:+_$1}
+      - POSTGRES_PASSWORD={{postgres_password}}
+      - POSTGRES_DATABASE=chatwoot_nestor
 
       ## Armazenamento
-      - ACTIVE_STORAGE_SERVICE=local ## use s3_compatible para MinIO
+      - ACTIVE_STORAGE_SERVICE=local ## s3_compatible para MinIO
       #- STORAGE_BUCKET_NAME=chatwoot
       #- STORAGE_ACCESS_KEY_ID=ACCESS_KEY_MINIO
       #- STORAGE_SECRET_ACCESS_KEY=SECRET_KEY_MINIO
       #- STORAGE_REGION=eu-south
-      #- STORAGE_ENDPOINT=https://s3.DOMINIO.COM
+      #- STORAGE_ENDPOINT=https://s3.domain.COM
       #- STORAGE_FORCE_PATH_STYLE=true
 
       ## Dados do SMTP
-      - MAILER_SENDER_EMAIL=$email_admin_chatwoot <$email_admin_chatwoot> ## Email SMTP
-      - SMTP_DOMAIN=$dominio_smtp_chatwoot ## Dominio do email
-      - SMTP_ADDRESS=$smtp_email_chatwoot ## Host SMTP
-      - SMTP_PORT=$porta_smtp_chatwoot ## Porta SMTP
-      - SMTP_SSL=$sobre_ssl ## Se a porta for 465 = true | Se a porta for 587 = false
-      - SMTP_USERNAME=$user_smtp_chatwoot ## Usuario SMTP
-      - SMTP_PASSWORD=$senha_email_chatwoot ## Senha do SMTP
+      - MAILER_SENDER_EMAIL={{chatwoot_admin_email}} <{{chatwoot_admin_email}}>
+      - SMTP_DOMAIN={{chatwoot_smtp_domain}}
+      - SMTP_ADDRESS={{chatwoot_smtp_email}}
+      - SMTP_PORT={{chatwoot_smtp_port}}
+      - SMTP_SSL={{chatwoot_smtp_secure}}
+      - SMTP_USERNAME={{chatwoot_smtp_username}}
+      - SMTP_PASSWORD={{chatwoot_email_password}}
       - SMTP_AUTHENTICATION=login
       - SMTP_ENABLE_STARTTLS_AUTO=true
       - SMTP_OPENSSL_VERIFY_MODE=peer
-      - MAILER_INBOUND_EMAIL_DOMAIN=$email_admin_chatwoot ## Email SMTP
+      - MAILER_INBOUND_EMAIL_DOMAIN={{chatwoot_admin_email}}
 
       ## Melhorias
       - SIDEKIQ_CONCURRENCY=10
@@ -100,43 +96,41 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.chatwoot_nestor${1:+_$1}_app.rule=Host(\`$url_chatwoot\`)
-        - traefik.http.routers.chatwoot_nestor${1:+_$1}_app.entrypoints=websecure
-        - traefik.http.routers.chatwoot_nestor${1:+_$1}_app.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.chatwoot_nestor${1:+_$1}_app.priority=1
-        - traefik.http.routers.chatwoot_nestor${1:+_$1}_app.service=chatwoot_nestor${1:+_$1}_app
-        - traefik.http.services.chatwoot_nestor${1:+_$1}_app.loadbalancer.server.port=3000 
-        - traefik.http.services.chatwoot_nestor${1:+_$1}_app.loadbalancer.passhostheader=true 
+        - traefik.http.routers.chatwoot_nestor_app.rule=Host(\`{{chatwoot_url}}\`)
+        - traefik.http.routers.chatwoot_nestor_app.entrypoints=websecure
+        - traefik.http.routers.chatwoot_nestor_app.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.chatwoot_nestor_app.priority=1
+        - traefik.http.routers.chatwoot_nestor_app.service=chatwoot_nestor_app
+        - traefik.http.services.chatwoot_nestor_app.loadbalancer.server.port=3000 
+        - traefik.http.services.chatwoot_nestor_app.loadbalancer.passhostheader=true 
         - traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https
-        - traefik.http.routers.chatwoot_nestor${1:+_$1}_app.middlewares=sslheader@docker
+        - traefik.http.routers.chatwoot_nestor_app.middlewares=sslheader@docker
 
-## --------------------------- ORION --------------------------- ##
-
-  chatwoot_nestor${1:+_$1}_sidekiq:
-    image: sendingtk/chatwoot:v3.13.8 ## Versão do Chatwoot
+  chatwoot_nestor_sidekiq:
+    image: sendingtk/chatwoot:v3.13.8
     command: bundle exec sidekiq -C config/sidekiq.yml
 
     volumes:
-      - chatwoot_nestor${1:+_$1}_storage:/app/storage ## Arquivos de conversa
-      - chatwoot_nestor${1:+_$1}_public:/app/public ## Arquivos de logos
-      - chatwoot_nestor${1:+_$1}_mailer:/app/app/views/devise/mailer ## Arquivos de email
-      - chatwoot_nestor${1:+_$1}_mailers:/app/app/views/mailers ## Arquivos de emails
+      - chatwoot_nestor_storage:/app/storage
+      - chatwoot_nestor_public:/app/public
+      - chatwoot_nestor_mailer:/app/app/views/devise/mailer
+      - chatwoot_nestor_mailers:/app/app/views/mailers
 
     networks:
-      - $nome_rede_interna ## Nome da rede interna
+      - {{network_name}}
 
     environment:
-      ## Qualquer Url com # no final
-      - CHATWOOT_HUB_URL=https://oriondesign.art.br/setup#
+      ## Any URL with # at the end
+      - CHATWOOT_HUB_URL=https://example.com/#
 
       ## Nome da Empresa
-      - INSTALLATION_NAME=$nome_empresa_chatwoot
+      - INSTALLATION_NAME={{chatwoot_company_name}}
 
       ## Secret key
-      - SECRET_KEY_BASE=$encryption_key
+      - SECRET_KEY_BASE={{encryption_key}}
 
       ## Url Chatwoot
-      - FRONTEND_URL=https://$url_chatwoot
+      - FRONTEND_URL=https://{{chatwoot_url}}
       - FORCE_SSL=true
 
       ## Idioma/Localização padrão
@@ -154,8 +148,8 @@ services:
       ## Dados do Postgres
       - POSTGRES_HOST=postgres
       - POSTGRES_USERNAME=postgres
-      - POSTGRES_PASSWORD=$senha_postgres ## Senha do postgres
-      - POSTGRES_DATABASE=chatwoot_nestor${1:+_$1}
+      - POSTGRES_PASSWORD={{postgres_password}} ## Postgres
+      - POSTGRES_DATABASE=chatwoot_nestor
 
       ## Armazenamento
       - ACTIVE_STORAGE_SERVICE=local ## use s3_compatible para MinIO
@@ -163,30 +157,30 @@ services:
       #- STORAGE_ACCESS_KEY_ID=ACCESS_KEY_MINIO
       #- STORAGE_SECRET_ACCESS_KEY=SECRET_KEY_MINIO
       #- STORAGE_REGION=eu-south
-      #- STORAGE_ENDPOINT=https://s3.DOMINIO.COM
+      #- STORAGE_ENDPOINT=https://s3.domain.COM
       #- STORAGE_FORCE_PATH_STYLE=true
 
-      ## Dados do SMTP
-      - MAILER_SENDER_EMAIL=$email_admin_chatwoot <$email_admin_chatwoot> ## Email SMTP
-      - SMTP_DOMAIN=$dominio_smtp_chatwoot ## Dominio do email
-      - SMTP_ADDRESS=$smtp_email_chatwoot ## Host SMTP
-      - SMTP_PORT=$porta_smtp_chatwoot ## Porta SMTP
-      - SMTP_SSL=$sobre_ssl ## Se a porta for 465 = true | Se a porta for 587 = false
-      - SMTP_USERNAME=$user_smtp_chatwoot ## Usuario SMTP
-      - SMTP_PASSWORD=$senha_email_chatwoot ## Senha do SMTP
+      ## SMTP
+      - MAILER_SENDER_EMAIL={{chatwoot_admin_email}} <{{chatwoot_admin_email}}> ## Email SMTP
+      - SMTP_DOMAIN={{chatwoot_smtp_domain}} ## Dominio do email
+      - SMTP_ADDRESS={{chatwoot_smtp_email}} ## Host SMTP
+      - SMTP_PORT={{chatwoot_smtp_port}} ## Porta SMTP
+      - SMTP_SSL={{chatwoot_smtp_secure}} ## Se a porta for 465 = true | Se a porta for 587 = false
+      - SMTP_USERNAME={{chatwoot_smtp_username}} ## Usuario SMTP
+      - SMTP_PASSWORD={{chatwoot_email_password}} ## Senha do SMTP
       - SMTP_AUTHENTICATION=login
       - SMTP_ENABLE_STARTTLS_AUTO=true
       - SMTP_OPENSSL_VERIFY_MODE=peer
-      - MAILER_INBOUND_EMAIL_DOMAIN=$email_admin_chatwoot ## Email SMTP
+      - MAILER_INBOUND_EMAIL_DOMAIN={{chatwoot_admin_email}} ## Email SMTP
 
-      ## Melhorias
+      ## Improvements
       - SIDEKIQ_CONCURRENCY=10
       - RACK_TIMEOUT_SERVICE_TIMEOUT=0
       - RAILS_MAX_THREADS=5
       - WEB_CONCURRENCY=2
       - ENABLE_RACK_ATTACK=false
 
-      ## Outras configurações
+      ## Settings
       - NODE_ENV=production
       - RAILS_ENV=production
       - INSTALLATION_ENV=docker
@@ -205,24 +199,21 @@ services:
           cpus: "1"
           memory: 1024M
 
-## --------------------------- ORION --------------------------- ##
-
 volumes:
-  chatwoot_nestor${1:+_$1}_storage:
+  chatwoot_nestor_storage:
     external: true
-    name: chatwoot_nestor${1:+_$1}_storage
-  chatwoot_nestor${1:+_$1}_public:
+    name: chatwoot_nestor_storage
+  chatwoot_nestor_public:
     external: true
-    name: chatwoot_nestor${1:+_$1}_public
-  chatwoot_nestor${1:+_$1}_mailer:
+    name: chatwoot_nestor_public
+  chatwoot_nestor_mailer:
     external: true
-    name: chatwoot_nestor${1:+_$1}_mailer
-  chatwoot_nestor${1:+_$1}_mailers:
+    name: chatwoot_nestor_mailer
+  chatwoot_nestor_mailers:
     external: true
-    name: chatwoot_nestor${1:+_$1}_mailers
+    name: chatwoot_nestor_mailers
 
 networks:
-  $nome_rede_interna: ## Nome da rede interna
+  {{network_name}}:
     external: true
-    name: $nome_rede_interna ## Nome da rede interna
-EOL
+    name: {{network_name}}

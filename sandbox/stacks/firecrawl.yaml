@@ -5,7 +5,7 @@ services:
     command: [ "pnpm", "run", "start:production" ]
 
     networks:
-     - {{network_name}}
+      - {{network_name}}
 
     environment:
       ## Credencial
