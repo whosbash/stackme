@@ -1470,10 +1470,8 @@ stack_url(){
   local host='raw.githubusercontent.com'
   local organization='whosbash'
   local repository='stackme'
-  local hash="7360b363f9a567f5c4cb1fd44e88f9be5b929e7b"
-  local path="stacks/$stack_name.yaml"
-
-  echo "https://${host}/${organization}/${repository}/${hash}/${path}"
+  local path="refs/heads/main/stacks/$stack_name.yaml"
+  echo "https://${host}/${organization}/${repository}/${path}"
 }
 
 # Function to download a file from a URL
@@ -4810,12 +4808,14 @@ load_portainer_url_and_credentials(){
 deploy_failed_message() {
   stack_name="$1"
   error "Failed to deploy service $stack_name!"
+  wait_for_input
 }
 
 # Function to display a deploy success message
 deploy_success_message() {
   stack_name="$1"
   success "Successfully deployed stack $stack_name!"
+  wait_for_input
 }
 
 # Function to remove a failed deployment
@@ -5276,7 +5276,6 @@ deployment_pipeline() {
 
   # Success message
   deploy_success_message "$stack_name"
-  wait_for_input
 }
 
 # Function to deploy a traefik service
@@ -6130,6 +6129,20 @@ get_network_name(){
   )"
 
   return 0
+}
+
+# Function to fetch stack compose file
+fetch_stack_compose(){
+  local stack_name='$1'
+  filepath="$STACKS_DIR/$stack_name"
+  
+  download_file "$(stack_url "$stack_name")" "$filepath" "docker-compose.yaml"
+
+  if [[ -f "$filepath/docker-compose.yaml" ]]; then
+    return 0
+  else
+    return 1
+  fi
 }
 
 ############################## END OF STACK DEPLOYMENT UTILITARY FUNCTIONS #########################
