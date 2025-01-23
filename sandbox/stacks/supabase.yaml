@@ -1,0 +1,499 @@
+version: "3.7"
+services:
+
+  studio:
+    image: supabase/studio:20241014-c083b3b
+
+    networks:
+      - {{network_name}}
+    
+    environment:
+    ## Hostname
+      - HOSTNAME=0.0.0.0
+
+    ## Logs
+      - DEBUG=next:*
+      - NEXT_PUBLIC_ENABLE_LOGS=true
+      - NEXT_ANALYTICS_BACKEND_PROVIDER=postgres
+
+    ## Branding
+      - DEFAULT_ORGANIZATION_NAME=stackme
+      - DEFAULT_PROJECT_NAME=stackme
+
+    ## Configuração do Banco de Dados PostgreSQL
+      - POSTGRES_PASSWORD={{postgres_password}}
+      - STUDIO_PG_META_URL=http://meta:8080
+
+    ## Configuração do Supabase
+      - SUPABASE_URL=http://kong:8000
+      - SUPABASE_PUBLIC_URL=https://{{supabase_url}}
+
+    ## Integração com Logflare
+      - LOGFLARE_API_KEY={{logflare_key}}
+      - LOGFLARE_URL=http://analytics:4000
+
+    ## Configurações de Autenticação
+      - SUPABASE_ANON_KEY={{supabase_anon_key}}
+      - SUPABASE_SERVICE_KEY={{supabase_service_key}}
+      - AUTH_JWT_SECRET={{jwt_secret}}
+
+    ## Configuração do OpenAI (opcional)
+    # - OPENAI_API_KEY=
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  kong:
+    image: kong:2.8.1
+    entrypoint: bash -c 'eval "echo \"\$\$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
+
+    volumes:
+      - /root/supabase/docker/volumes/api/kong.yml:/home/kong/temp.yml:ro
+
+    networks:
+      - {{network_name}}
+
+    environment:
+    ## Configuração de usuário e senha do Dashboard
+      - DASHBOARD_USERNAME={{supabase_username}}
+      - DASHBOARD_PASSWORD={{supabase_password}}
+
+    ## Configurações de Autenticação
+      - JWT_SECRET={{jwt_secret}}
+      - SUPABASE_ANON_KEY={{anon_key}}
+      - SUPABASE_SERVICE_KEY={{service_key}}
+
+    ## Configuração do Banco de Dados
+      - KONG_DATABASE=off
+      - KONG_DECLARATIVE_CONFIG=/home/kong/kong.yml
+
+    ## Configuração de DNS
+      - KONG_DNS_ORDER=LAST,A,CNAME
+
+    ## Configuração de Plugins
+      - KONG_PLUGINS=request-transformer,cors,key-auth,acl,basic-auth
+
+    ## Configurações de Buffers do NGINX
+      - KONG_NGINX_PROXY_PROXY_BUFFER_SIZE=160k
+      - KONG_NGINX_PROXY_PROXY_BUFFERS=64 160k
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager  
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.kong.rule=Host(\`{{supabase_url}}\`) && PathPrefix(\`/\`) ## Url do Supabase
+        - traefik.http.services.kong.loadbalancer.server.port=8000
+        - traefik.http.routers.kong.service=kong
+        - traefik.http.routers.kong.entrypoints=websecure
+        - traefik.http.routers.kong.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.kong.tls=true
+
+  auth:
+    image: supabase/gotrue:v2.158.1
+    
+    networks:
+      - {{network_name}}
+
+    environment:
+    ## API Auth
+      - GOTRUE_API_HOST=0.0.0.0
+      - GOTRUE_API_PORT=9999
+      - API_EXTERNAL_URL=https://{{supabase_url}}
+
+    ## Database
+      - GOTRUE_DB_DRIVER=postgres
+      - GOTRUE_DB_DATABASE_URL=postgres://supabase_auth_admin:{{postgres_password}}@db:5432/postgres
+
+    ## Permissions
+      - GOTRUE_SITE_URL=https://{{supabase_url}}
+      - GOTRUE_URI_ALLOW_LIST=
+      - GOTRUE_DISABLE_SIGNUP=false
+
+    ## Configurações de JWT
+      - GOTRUE_JWT_ADMIN_ROLES=service_role
+      - GOTRUE_JWT_AUD=authenticated
+      - GOTRUE_JWT_DEFAULT_GROUP_NAME=authenticated
+      - GOTRUE_JWT_EXP=31536000
+      - GOTRUE_JWT_SECRET={{jwt_secret}}
+
+    ## Email
+      - GOTRUE_EXTERNAL_EMAIL_ENABLED=false
+      - GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED=false
+      #- GOTRUE_MAILER_AUTOCONFIRM=true # Envia emails automaticamente para confirmar cadastros
+      #- GOTRUE_SMTP_ADMIN_EMAIL=email@dominio.com # Email administrador SMTP
+      #- GOTRUE_SMTP_HOST=smtp.dominio.com # Host SMTP
+      #- GOTRUE_SMTP_PORT=587 # Porta SMTP
+      #- GOTRUE_SMTP_USER=email@dominio.com # Usuário SMTP
+      #- GOTRUE_SMTP_PASS=senha # Senha SMTP
+      #- GOTRUE_SMTP_SENDER_NAME=email@dominio.com # Nome do remetente SMTP
+
+    ## Configurações de URL para Emails
+      - GOTRUE_MAILER_URLPATHS_INVITE=/auth/v1/verify
+      - GOTRUE_MAILER_URLPATHS_CONFIRMATION=/auth/v1/verify
+      - GOTRUE_MAILER_URLPATHS_RECOVERY=/auth/v1/verify
+      - GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE=/auth/v1/verify
+
+    ## Configurações de SMS
+      - GOTRUE_EXTERNAL_PHONE_ENABLED=false
+      - GOTRUE_SMS_AUTOCONFIRM=false
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  rest:
+    image: postgrest/postgrest:v12.2.0 ## Versão do Supabase Rest
+    command: "postgrest"
+    
+    networks:
+      - {{network_name}}
+
+    environment:
+    ## Configuração do Banco de Dados
+      - PGRST_DB_URI=postgres://authenticator:{{postgres_password}}@db:5432/postgres
+      - PGRST_DB_SCHEMAS=public,storage,graphql_public
+      - PGRST_DB_ANON_ROLE=anon
+
+    ## JWT (JSON Web Tokens)
+      - PGRST_JWT_SECRET={{jwt_key}}
+      - PGRST_APP_SETTINGS_JWT_SECRET={{jwt_key}}
+      - PGRST_APP_SETTINGS_JWT_EXP=31536000
+
+    ## Outras Configurações
+      - PGRST_DB_USE_LEGACY_GUCS="false"
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  realtime:
+    image: supabase/realtime:v2.30.34
+
+    networks:
+      - {{network_name}}
+    
+    environment:
+      ## Realtime API 
+      - PORT=4000
+      - API_JWT_SECRET={{jwt_secret}}
+      - SECRET_KEY_BASE={{secret_key_base}}
+      - APP_NAME=realtime
+
+      ## Database
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=supabase_admin
+      - DB_PASSWORD={{postgres_password}}
+      - DB_NAME=postgres
+      - DB_AFTER_CONNECT_QUERY='SET search_path TO _realtime'
+      - DB_ENC_KEY=supabaserealtime
+
+    ## Network and TLS
+      - ERL_AFLAGS=-proto_dist inet_tcp
+      - DNS_NODES="''"
+      - RLIMIT_NOFILE=10000
+
+    ## Environment
+      - SEED_SELF_HOST=true
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  storage:
+    image: supabase/storage-api:v1.11.13
+
+    volumes:
+      - /root/supabase/docker/volumes/storage:/var/lib/storage:z
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## PostgREST and JWT
+      - ANON_KEY={{supabase_anon_key}}
+      - SERVICE_KEY={{supabase_service_key}}
+      - POSTGREST_URL=http://rest:3000
+      - PGRST_JWT_SECRET={{jwt_key}}
+      - DATABASE_URL=postgres://supabase_storage_admin:{{postgres_password}}@db:5432/postgres
+
+    ## Storage on MinIO
+      - FILE_SIZE_LIMIT=52428800
+      - STORAGE_BACKEND=s3
+      - GLOBAL_S3_BUCKET=supabase
+      - GLOBAL_S3_ENDPOINT=https://{{s3_url}}
+      - GLOBAL_S3_PROTOCOL=https
+      - GLOBAL_S3_FORCE_PATH_STYLE=true
+      - AWS_ACCESS_KEY_ID={{s3_access_key}} 
+      - AWS_SECRET_ACCESS_KEY={{s3_access_key}}
+      - AWS_DEFAULT_REGION=eu-south
+      - FILE_STORAGE_BACKEND_PATH=/var/lib/storage
+
+      ## Images
+      - ENABLE_IMAGE_TRANSFORMATION="true"
+      - IMGPROXY_URL=http://imgproxy:5001
+
+    ## ID and region
+      - TENANT_ID=stub
+      - REGION=eu-south ## Região
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  imgproxy:
+    image: darthsim/imgproxy:v3.8.0
+  
+    volumes:
+      - /root/supabase/docker/volumes/storage:/var/lib/storage:z
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## IMGPROXY
+      - IMGPROXY_BIND=:5001
+      - IMGPROXY_LOCAL_FILESYSTEM_ROOT=/
+      - IMGPROXY_USE_ETAG="true"
+      - IMGPROXY_ENABLE_WEBP_DETECTION=true
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  meta:
+    image: supabase/postgres-meta:v0.84.2
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## PG_META
+      - PG_META_PORT=8080
+      - PG_META_DB_HOST=db
+      - PG_META_DB_PORT=5432
+      - PG_META_DB_NAME=postgres
+      - PG_META_DB_USER=supabase_admin
+      - PG_META_DB_PASSWORD={{postgres_password}}
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  functions:
+    image: supabase/edge-runtime:v1.59.0
+    command:
+      - start
+      - --main-service
+      - /home/deno/functions/main
+    
+    volumes:
+      - /root/supabase/docker/volumes/functions:/home/deno/functions:Z
+
+    networks:
+      - {{network_name}}
+
+    environment:
+    ## Configuração de JWT e Supabase
+      - VERIFY_JWT="false"
+      - JWT_SECRET={{jwt_secret}}
+      - SUPABASE_URL=http://kong:8000
+      - SUPABASE_ANON_KEY={{supabase_anon_key}}
+      - SUPABASE_SERVICE_ROLE_KEY={{supabase_service_key}}
+      - SUPABASE_DB_URL=postgresql://postgres:{{postgres_password}}@db:5432/postgres
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  analytics:
+    image: supabase/logflare:1.4.0
+
+    networks:
+      - {{network_name}}
+    
+    environment:
+      ## Database
+      - DB_USERNAME=supabase_admin
+      - DB_DATABASE=_supabase
+      - DB_HOSTNAME=db
+      - DB_PORT=5432
+      - DB_PASSWORD={{postgres_password}}
+      - DB_SCHEMA=_analytics
+    
+    ## Postgres Backend
+      - POSTGRES_BACKEND_URL=postgresql://supabase_admin:{{postgres_password}}@db:5432/_supabase
+      - POSTGRES_BACKEND_SCHEMA=_analytics
+    
+      ## Logflare
+      - LOGFLARE_NODE_HOST=127.0.0.1
+      - LOGFLARE_API_KEY={{logflare_key}}
+      - LOGFLARE_SINGLE_TENANT=true
+      - LOGFLARE_SUPABASE_MODE=true
+      - LOGFLARE_MIN_CLUSTER_SIZE=1
+      - LOGFLARE_FEATURE_FLAG_OVERRIDE=multibackend=true
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  db:
+    image: supabase/postgres:15.1.1.78
+    command:
+      - postgres
+      - '-c'
+      - config_file=/etc/postgresql/postgresql.conf
+      - '-c'
+      - log_min_messages=fatal
+    
+    volumes:
+      - /root/supabase/docker/volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
+      - /root/supabase/docker/volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
+      - /root/supabase/docker/volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:Z
+      - /root/supabase/docker/volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:Z
+      - /root/supabase/docker/volumes/db/data:/var/lib/postgresql/data:Z
+      - /root/supabase/docker/volumes/db/_supabase.sql:/docker-entrypoint-initdb.d/migrations/97-_supabase.sql:Z
+      - /root/supabase/docker/volumes/db/logs.sql:/docker-entrypoint-initdb.d/migrations/99-logs.sql:Z
+      - /root/supabase/docker/volumes/db/pooler.sql:/docker-entrypoint-initdb.d/migrations/99-pooler.sql:Z
+      - supabase_db_config:/etc/postgresql-custom
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## PostgreSQL
+      - POSTGRES_HOST=/var/run/postgresql
+      - PGPORT=5432
+      - POSTGRES_PORT=5432
+      - POSTGRES_PASSWORD={{postgres_password}}
+      - POSTGRES_DB=postgres
+      - PGDATABASE=postgres
+
+      ## JWT
+      - JWT_SECRET={{jwt_key}}
+      - JWT_EXP=31536000
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  vector:
+    image: timberio/vector:0.28.1-alpine
+    command:
+      - '--config'
+      - etc/vector/vector.yml
+    
+    volumes:
+    - /root/supabase/docker/volumes/logs/vector.yml:/etc/vector/vector.yml:ro
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Logflare
+      - LOGFLARE_API_KEY={{logflare_key}}
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  supavisor:
+    image: supabase/supavisor:1.1.56
+    command:
+      - /bin/sh
+      - -c
+      - /app/bin/migrate && /app/bin/supavisor eval "\$\$(cat /etc/pooler/pooler.exs)" && /app/bin/server
+
+
+    volumes:
+      -  /root/supabase/docker/volumes/pooler/pooler.exs:/etc/pooler/pooler.exs:ro
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Database
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD={{postgres_password}}
+      - DATABASE_URL=ecto://postgres:{{postgres_password}}@db:5432/_supabase
+      - CLUSTER_POSTGRES=true
+
+      ## JWT
+      - API_JWT_SECRET={{jwt_secret}}
+      - METRICS_JWT_SECRET={{jwt_secret}}
+
+      ## Security
+      - SECRET_KEY_BASE={{secret_key_base}}
+      - VAULT_ENC_KEY=your-encryption-key-32-chars-min
+
+      ## Region
+      - REGION=local
+
+      ## Erlang
+      - ERL_AFLAGS=-proto_dist inet_tcp
+
+      ## Pooler
+      - POOLER_TENANT_ID=1
+      - POOLER_DEFAULT_POOL_SIZE=20
+      - POOLER_MAX_CLIENT_CONN=100
+      - POOLER_POOL_MODE=transaction
+
+      ## Port
+      - PORT=4000
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+volumes:
+  supabase_db_config:
+    external: true
+    name: supabase_db_config
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}
