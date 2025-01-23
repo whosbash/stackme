@@ -1464,6 +1464,18 @@ is_smtp_port_secure() {
   esac
 }
 
+# Function to get the URL of a stack
+stack_url(){
+  local stack_name="$1"
+  local host='raw.githubusercontent.com'
+  local organization='whosbash'
+  local repository='stackme'
+  local hash="7360b363f9a567f5c4cb1fd44e88f9be5b929e7b"
+  local path="stacks/$stack_name.yaml"
+
+  echo "https://${host}/${organization}/${repository}/${hash}/${path}"
+}
+
 # Function to download a file from a URL
 download_file() {
   local url="$1"
