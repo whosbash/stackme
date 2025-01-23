@@ -21,7 +21,7 @@ services:
       - SIGNUPS_ALLOWED=true
 
       ## Dados do SMTP
-      - SMTP_FROM={{email_vaultwarden}}
+      - SMTP_FROM={{vaultwarden_email}}
       - SMTP_USERNAME={{vaultwarden_smtp_username}}
       - SMTP_PASSWORD={{vaultwarden_smtp_password}}
       - SMTP_HOST={{vaultwarden_smtp_host}}

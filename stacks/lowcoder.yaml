@@ -11,7 +11,7 @@ services:
       - LOWCODER_PGID=9001
 
       ## Dados MongoDB
-      - LOWCODER_MONGODB_URL=mongodb://{{lowcoder_username}}:{{lowcoder_mongodb_password}}@{{host_ip}}:27017/lowcoder?authSource=admin&readPreference=primary&ssl=false&directConnection=true
+      - LOWCODER_MONGODB_URL=mongodb://{{mongodb_username}}:{{mongodb_password}}@mongodb:27017/lowcoder?authSource=admin&readPreference=primary&ssl=false&directConnection=true
 
       ## Dados Redis
       - LOWCODER_REDIS_URL=redis://redis:6379
@@ -22,8 +22,8 @@ services:
       ## Configurações
       - LOWCODER_MAX_QUERY_TIMEOUT=120
       - LOWCODER_EMAIL_AUTH_ENABLED=true
-      - LOWCODER_EMAIL_SIGNUP_ENABLED=true ## true = permitir criar novas contas
-      - LOWCODER_CREATE_WORKSPACE_ON_SIGNUP=true ## true = permitir criar novos workspaces
+      - LOWCODER_EMAIL_SIGNUP_ENABLED=true ## true = allow signups
+      - LOWCODER_CREATE_WORKSPACE_ON_SIGNUP=true ## true = allow signups
       - LOWCODER_WORKSPACE_MODE=SAAS
 
       ## Encryption

@@ -79,4 +79,3 @@ networks:
   {{network_name}}:
     name: {{network_name}}
     external: true
-EOL

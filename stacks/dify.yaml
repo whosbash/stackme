@@ -21,14 +21,14 @@ services:
       - SECRET_KEY={{secret_key}}
 
       ## Outras Url (vazio = mesmo do APP_WEB_URL)
-      - CONSOLE_WEB_URL=https://{{url_dify}}
+      - CONSOLE_WEB_URL=https://{{dify_url}}
       - INIT_PASSWORD=
-      - CONSOLE_API_URL=https://{{url_dify_api}}
-      - SERVICE_API_URL=https://{{url_dify_api}}
-      - FILES_URL=https://{{url_dify_api}}
+      - CONSOLE_API_URL=https://{{dify_api_url}}
+      - SERVICE_API_URL=https://{{dify_api_url}}
+      - FILES_URL=https://{{dify_api_url}}
 
       ## Url Dify
-      - APP_WEB_URL=https://{{url_dify}}
+      - APP_WEB_URL=https://{{dify_url}}
 
       ## Postgres
       - MIGRATION_ENABLED=true
@@ -101,7 +101,7 @@ services:
           memory: 4096M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.dify_api.rule=Host(\`{{url_dify_api}}\`)
+        - traefik.http.routers.dify_api.rule=Host(\`{{dify_api_url}}\`)
         - traefik.http.services.dify_api.loadbalancer.server.port=5001
         - traefik.http.routers.dify_api.service=dify_api
         - traefik.http.routers.dify_api.tls.certresolver=letsencryptresolver

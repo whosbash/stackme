@@ -60,7 +60,6 @@ volumes:
     name: stirlingpdf_logs
 
 networks:
-  {{network_name}}: ## Nome da rede interna
+  {{network_name}}:
     external: true
-    name: $nome_rede_interna ## Nome da rede interna
-EOL
+    name: {{network_name}}

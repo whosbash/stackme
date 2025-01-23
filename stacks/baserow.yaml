@@ -23,8 +23,7 @@ services:
       - EMAIL_SMTP_PASSWORD={{baserow_password}} ## SMTP Password
       - EMAIL_SMTP_HOST={{baserow_smtp_host}} ## SMTP Host
       - EMAIL_SMTP_PORT={{baserow_port}} ## SMTP port
-
-      $ssl_baserow_environments
+      - EMAIL_SMTP_USE_SSL=true"
 
       ## Dados Redis
       - REDIS_URL=redis://redis:6379/11

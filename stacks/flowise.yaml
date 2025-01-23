@@ -42,7 +42,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.flowise.rule=Host(\`{{url_flowise}}\`)
+        - traefik.http.routers.flowise.rule=Host(\`{{flowise_url}}\`)
         - traefik.http.services.flowise.loadBalancer.server.port=3000
         - traefik.http.routers.flowise.service=flowise
         - traefik.http.routers.flowise.entrypoints=websecure

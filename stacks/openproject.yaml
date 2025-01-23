@@ -55,4 +55,3 @@ networks:
   {{network_name}}:
     external: true
     name: {{network_name}}
-EOL

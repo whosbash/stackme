@@ -64,7 +64,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.krayin.rule=Host(\`{{url_krayincrm}}\`) && PathPrefix(\`/\`)
+        - traefik.http.routers.krayin.rule=Host(\`{{krayincrm_url}}\`) && PathPrefix(\`/\`)
         - traefik.http.services.krayin.loadbalancer.server.port=80
         - traefik.http.routers.krayin.service=krayin
         - traefik.http.routers.krayin.tls.certresolver=letsencryptresolver

@@ -1,0 +1,40 @@
+version: '3.7'
+services:
+  mariadb:
+      image: bitnami/mariadb:latest
+
+      volumes:
+        - mariadb_data:/bitnami/mariadb
+
+      networks:
+        - {{network_name}}
+
+      environment:  
+        ## Dados MariaDB
+        - MARIADB_USER=mariadb
+        - MARIADB_ROOT_PASSWORD={{mariadb_password}}
+        - MARIADB_PASSWORD={{mariadb_password}}
+        - MARIADB_CHARACTER_SET=utf8mb4
+        - MARIADB_COLLATE=utf8mb4_unicode_ci
+        - ALLOW_EMPTY_PASSWORD=no
+
+      deploy:
+        mode: replicated
+        replicas: 1
+        placement:
+          constraints:
+            - node.role == manager
+        resources:
+          limits:
+            cpus: "1"
+            memory: 1024M
+
+volumes:
+  mariadb_data:
+    external: true
+    name: mariadb_data
+
+networks:
+  {{network_name}}:
+    name: {{network_name}}
+    external: true

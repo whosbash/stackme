@@ -168,7 +168,7 @@ services:
         - node.role == manager
       labels:
       - traefik.enable=1
-      - traefik.http.routers.evolution_v2.rule=Host(\`{{url_evolution}}\`)
+      - traefik.http.routers.evolution_v2.rule=Host(\`{{evolution_url}}\`)
       - traefik.http.routers.evolution_v2.entrypoints=websecure
       - traefik.http.routers.evolution_v2.priority=1
       - traefik.http.routers.evolution_v2.tls.certresolver=letsencryptresolver
