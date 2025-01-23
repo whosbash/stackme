@@ -1,0 +1,52 @@
+version: "3.7"
+services:
+  botpress:
+    image: botpress/server:latest
+
+    volumes:
+      - botpress_data:/botpress/data
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Botpress Url
+      - EXTERNAL_URL=https://{{botpress_url}}
+
+      ## Mode
+      - BP_PRODUCTION=true
+
+      ## Postgres
+      - DATABASE_URL=postgresql://postgres:{{postgres_password}}@postgres:5432/botpress
+
+      ## Dados Redis
+      - REDIS_URL=redis://redis:6379
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.botpress.rule=Host(\`{{botpress_url}}\`)
+        - traefik.http.services.botpress.loadbalancer.server.port=3000
+        - traefik.http.routers.botpress.service=botpress
+        - traefik.http.routers.botpress.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.botpress.entrypoints=websecure
+        - traefik.http.routers.botpress.tls=true
+
+volumes:
+  botpress_data:
+    external: true
+    name: botpress_data
+
+networks:
+  {{network_name}}:
+    name: {{network_name}}
+    external: true

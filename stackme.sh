@@ -1464,6 +1464,18 @@ is_smtp_port_secure() {
   esac
 }
 
+# Function to get the URL of a stack
+stack_url(){
+  local stack_name="$1"
+  local host='raw.githubusercontent.com'
+  local organization='whosbash'
+  local repository='stackme'
+  local hash="7360b363f9a567f5c4cb1fd44e88f9be5b929e7b"
+  local path="stacks/$stack_name.yaml"
+
+  echo "https://${host}/${organization}/${repository}/${hash}/${path}"
+}
+
 # Function to download a file from a URL
 download_file() {
   local url="$1"
@@ -9121,20 +9133,17 @@ start_main_menu() {
 
 # Display help message
 usage() {
-  joined_arrows="$(join_array "," "${!ARROWS[@]}")"
+  joined_arrows="$(join_array ", " "${!ARROWS[@]}")"
 
   usage_messages=(
     "Usage: $0 [options]"
     "Options:"
-    "  -i, --install           Install required packages."
     "  -c, --clean             Clean docker environment."
     "  -a, --arrow             Arrow style: {$joined_arrows}."
     "  -h, --help              Display this help message and exit."
   )
-  format_array "info" usage_messages
 
   display_parallel usage_messages
-  sleep 1
 
   exit 1
 }

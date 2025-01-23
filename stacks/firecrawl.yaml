@@ -5,7 +5,11 @@ services:
     command: [ "pnpm", "run", "start:production" ]
 
     networks:
+<<<<<<< HEAD:stacks/firecrawl.yaml
+      - {{network_name}}
+=======
      - {{network_name}}
+>>>>>>> main:sandbox/stacks/firecrawl.yaml
 
     environment:
       ## Credencial

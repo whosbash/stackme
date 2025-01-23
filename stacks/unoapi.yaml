@@ -1,0 +1,81 @@
+version: "3.7"
+services:
+  unoapi:
+    image: clairton/unoapi-cloud:latest
+    entrypoint: yarn cloud
+
+    volumes:
+      - unoapi_data:/home/u/app
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Url Uno API
+      - BASE_URL=https://{{unoapi_url}}
+
+      ## Token Uno Api
+      - UNOAPI_AUTH_TOKEN=any
+
+      ## Configurações da Uno API
+      - IGNORE_GROUP_MESSAGES={{unoapi_ignore_group_messages}}
+      - IGNORE_BROADCAST_STATUSES=
+      - IGNORE_BROADCAST_MESSAGES={{unoapi_ignore_broadcast_messages}}
+      - IGNORE_STATUS_MESSAGE={{unoapi_ignore_status_message}}
+      - IGNORE_OWN_MESSAGES={{unoapi_ignore_own_messages}}
+      - REJECT_CALLS=
+      - REJECT_CALLS_WEBHOOK=
+      - SEND_CONNECTION_STATUS={{unoapi_send_connection_status}}
+
+      ## Sobre Webhook
+      - WEBHOOK_URL=https://{{chatwoot_uno_url}}/webhooks/whatsapp
+      - WEBHOOK_HEADER=api_access_token
+      - WEBHOOK_TOKEN={{chatwoot_uno_token}}
+
+      ## Dados do Minio/S3
+      - STORAGE_ENDPOINT=https://${{s3_url}}
+      - STORAGE_ACCESS_KEY_ID={{s3_access_key}}
+      - STORAGE_SECRET_ACCESS_KEY={{s3_secret_key}}
+      - STORAGE_BUCKET_NAME=unoapi
+      - STORAGE_FORCE_PATH_STYLE=true
+
+      ## Dados do RabbitMQ
+      - AMQP_URL=amqp://{{rabbitmq_password}}:{{rabbitmq_password}}@rabbitmq:5672/unoapi
+      
+      ## Dados do Redis
+      - REDIS_URL=redis://redis:6379
+
+      ## Outras configurações
+      - LOG_LEVEL=debug
+      - UNO_LOG_LEVEL=debug
+      - UNOAPI_RETRY_REQUEST_DELAY=1_000
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+      - traefik.enable=true
+      - traefik.http.routers.unoapi.rule=Host(\`{{unoapi_url}}\`)
+      - traefik.http.routers.unoapi.entrypoints=websecure
+      - traefik.http.routers.unoapi.tls.certresolver=letsencryptresolver
+      - traefik.http.services.unoapi.loadbalancer.server.port=9876
+      - traefik.http.routers.unoapi.priority=1
+      - traefik.http.services.unoapi.loadbalancer.passHostHeader=true
+      - traefik.http.routers.unoapi.service=unoapi
+
+volumes:
+  unoapi_data:
+    external: true
+    name: unoapi_data
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}

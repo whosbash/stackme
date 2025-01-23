@@ -36,38 +36,20 @@ StackMe is a comprehensive shell script designed to manage Docker Swarm deployme
 
 ### Command-Line Options
 
-- `-i, --install`: Install required packages.
 - `-c, --clean`: Clean the Docker environment.
-- `-p, --prepare`: Install packages and clean the environment.
-- `-u, --startup`: Initialize server information.
-- `-s, --stack STACK`: Specify which stack to install (e.g., traefik, portainer, redis, postgres, n8n).
-- `-h, --help`: Display the help message and exit.
+- `-a, --arrow`: Choose the application arrow.
+- `-h, --help` : Display the help message and exit.
 
 ### Examples
 
-1. **Install required packages:**
-    ```bash
-    ./stackme.sh --install
-    ```
-
-2. **Clean the Docker environment:**
+1. **Clean the Docker environment:**
     ```bash
     ./stackme.sh --clean
     ```
 
-3. **Prepare the environment (install packages and clean the environment):**
+2. **Change de default :**
     ```bash
-    ./stackme.sh --prepare
-    ```
-
-4. **Initialize server information:**
-    ```bash
-    ./stackme.sh --startup
-    ```
-
-5. **Deploy a specific stack (e.g., Traefik):**
-    ```bash
-    ./stackme.sh --stack traefik
+    ./stackme.sh --clean
     ```
 
 ### Deploying a Stack

@@ -1,0 +1,58 @@
+version: "3.7"
+services:
+
+  anythingllm:
+    image: mintplexlabs/anythingllm:latest
+
+    volumes:
+      - anythingllm_storage:/app/server/storage
+      - anythingllm_hotdir:/app/collector/hotdir
+      - anythingllm_outputs:/app/collector/outputs
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      - SERVER_PORT=3001
+      - STORAGE_DIR=/app/server/storage
+      - UID=1000
+      - GID=1000
+
+      ## Qdrant
+      - VECTOR_DB=qdrant
+      - QDRANT_ENDPOINT={{qdrant_anythingllm}}
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.anythingllm.rule=Host(\`{{anythingllm_url}}\`)
+        - traefik.http.services.anythingllm.loadbalancer.server.port=3001
+        - traefik.http.routers.anythingllm.service=anythingllm
+        - traefik.http.routers.anythingllm.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.anythingllm.entrypoints=websecure
+        - traefik.http.routers.anythingllm.tls=true
+
+volumes:
+  anythingllm_storage:
+    external: true
+    name: anythingllm_storage
+  anythingllm_hotdir:
+    external: true
+    name: anythingllm_hotdir
+  anythingllm_outputs:
+    external: true
+    name: anythingllm_outputs
+
+networks:
+  {{network_name}}:
+    name: {{network_name}}
+    external: true

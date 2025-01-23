@@ -1,0 +1,61 @@
+version: "3.7"
+services:
+  easyapointments:
+    image: alextselegidis/easyappointments:latest
+
+    volumes:
+      - easyapointments_data:/var/www/html
+      - /root/easyappointments/apache-custom.conf:/etc/apache2/conf-enabled/custom.conf:ro
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Dados de acesso
+      - BASE_URL=https://{{easyappointments_url}}
+      - APACHE_SERVER_NAME={{easyappointments_url}}
+
+      ## Dados do banco de dados
+      - DB_HOST=mysql
+      - DB_NAME=easyapointments
+      - DB_USERNAME=root
+      - DB_PASSWORD={{mysql_password}}
+
+      ## Dados Google Calendar
+      - GOOGLE_SYNC_FEATURE=false
+      - GOOGLE_PRODUCT_NAME=
+      - GOOGLE_CLIENT_ID=
+      - GOOGLE_CLIENT_SECRET=
+      - GOOGLE_API_KEY=
+
+      ## Modo de Debug
+      - DEBUG_MODE=TRUE
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.easyapointments.rule=Host(\`{{easyappointments_url}}\`)
+        - traefik.http.services.easyapointments.loadbalancer.server.port=80
+        - traefik.http.routers.easyapointments.service=easyapointments
+        - traefik.http.routers.easyapointments.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.easyapointments.entrypoints=websecure
+        - traefik.http.routers.easyapointments.tls=true
+
+volumes:
+  easyapointments_data:
+    external: true
+    name: easyapointments_data
+
+networks:
+  {{network_name}}:
+    name: {{network_name}}
+    external: true

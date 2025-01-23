@@ -1,0 +1,71 @@
+version: "3.7"
+services:
+  moodle_app:
+    image: bitnami/moodle:latest
+
+    volumes:
+      - moodle_app_apache_conf:/opt/bitnami/apache/conf
+      - moodle_app_apache:/bitnami/apache/conf
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Dados do projeto
+      - MOODLE_SITE_NAME={{moodle_project_name}}
+
+      ## Dados de acesso
+      - MOODLE_HOST={{moodle_url}}
+      - MOODLE_USERNAME={{moodle_username}}
+      - MOODLE_PASSWORD={{moodle_password}}
+      - MOODLE_EMAIL={{moodle_email}}
+
+      ## Dados SMTP
+      - MOODLE_SMTP_USER={{smtp_user}}
+      - MOODLE_SMTP_PASSWORD={{smtp_password}}
+      - MOODLE_SMTP_HOST={{smtp_host}}
+      - MOODLE_SMTP_PORT_NUMBER={{smtp_moodle_port}}
+      - MOODLE_SMTP_PROTOCOL=moodle_smtp_secure ## 587 = tls ou plain | 465 = ssl 
+
+      ## Idioma
+      - MOODLE_LANG=pt
+      
+      ## Dados MarinaDB
+      - MOODLE_DATABASE_HOST=mariadb
+      - MOODLE_DATABASE_PORT_NUMBER=3306
+      - MOODLE_DATABASE_USER=mariadb
+      - MOODLE_DATABASE_PASSWORD={{mariadb_password}}
+      - MOODLE_DATABASE_NAME=moodle
+      - ALLOW_EMPTY_PASSWORD=no
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.moodle.rule=Host(\`{{moodle_url}}\`)
+        - traefik.http.services.moodle.loadbalancer.server.port=8080
+        - traefik.http.routers.moodle.service=moodle
+        - traefik.http.routers.moodle.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.moodle.entrypoints=websecure
+        - traefik.http.routers.moodle.tls=true
+
+volumes:
+  moodle_app_apache_conf:
+    external: true
+    name: moodle_app_apache_conf
+  moodle_app_apache:
+    external: true
+    name: moodle_app_apache
+
+networks:
+  {{network_name}}:
+    name: {{network_name}}
+    external: true

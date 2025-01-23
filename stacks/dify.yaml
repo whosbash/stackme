@@ -1,0 +1,283 @@
+version: "3.7"
+services:
+
+  dify_api:
+    image: langgenius/dify-api:0.13.2
+
+    volumes:
+      - dify_storage:/app/api/storage
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Mode
+      - MODE=api
+
+      ## Logs
+      - LOG_LEVEL=INFO
+
+      ## Secret Key
+      - SECRET_KEY={{secret_key}}
+
+      ## Outras Url (vazio = mesmo do APP_WEB_URL)
+      - CONSOLE_WEB_URL=https://{{dify_url}}
+      - INIT_PASSWORD=
+      - CONSOLE_API_URL=https://{{dify_api_url}}
+      - SERVICE_API_URL=https://{{dify_api_url}}
+      - FILES_URL=https://{{dify_api_url}}
+
+      ## Url Dify
+      - APP_WEB_URL=https://{{dify_url}}
+
+      ## Postgres
+      - MIGRATION_ENABLED=true
+      - DB_USERNAME=postgres
+      - DB_PASSWORD={{postgres_password}}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=dify
+
+      ## Redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_USERNAME=
+      - REDIS_PASSWORD=
+      - REDIS_USE_SSL=false
+      - REDIS_DB=0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+
+      ## Allow ALL Origins
+      - WEB_API_CORS_ALLOW_ORIGINS=*
+      - CONSOLE_CORS_ALLOW_ORIGINS=*
+
+      ## S3
+      - STORAGE_TYPE=s3
+      - STORAGE_LOCAL_PATH=storage
+      - S3_ENDPOINT=https://{{s3_url}}
+      - S3_BUCKET_NAME=dify
+      - S3_ACCESS_KEY={{s3_access_key}}
+      - S3_SECRET_KEY={{s3_secret_key}}
+
+      ## Sandbox Settings
+      - CODE_EXECUTION_ENDPOINT=http://dify_sandbox:8194
+      - CODE_EXECUTION_API_KEY={{dify_sandbox_api_key}}
+      - CODE_MAX_NUMBER=9223372036854775807
+      - CODE_MIN_NUMBER=-9223372036854775808
+      - CODE_MAX_STRING_LENGTH=80000
+      - TEMPLATE_TRANSFORM_MAX_LENGTH=80000
+      - CODE_MAX_STRING_ARRAY_LENGTH=30
+      - CODE_MAX_OBJECT_ARRAY_LENGTH=30
+      - CODE_MAX_NUMBER_ARRAY_LENGTH=1000
+
+      ## Weaviate
+      - VECTOR_STORE=weaviate
+      - WEAVIATE_ENDPOINT=http://dify_weaviate:8080
+      - WEAVIATE_API_KEY={{weaviate_token}}
+      - WEAVIATE_CLIENT_TIMEOUT=20
+
+      ## Email
+      - MAIL_TYPE=smtp
+      - MAIL_DEFAULT_SEND_FROM={{dify_email}} (eg=no-reply {{dify_email}})
+      - SMTP_SERVER={{dify_smtp_email}}
+      - SMTP_PORT={{dify_smtp_porta}}
+      - SMTP_USERNAME={{dify_email_username}}
+      - SMTP_PASSWORD={{dify_email_password}}
+
+      ## Sentry
+      - SENTRY_DSN=
+      - SENTRY_TRACES_SAMPLE_RATE=1.0
+      - SENTRY_PROFILES_SAMPLE_RATE=1.0
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "2"
+          memory: 4096M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.dify_api.rule=Host(\`{{dify_api_url}}\`)
+        - traefik.http.services.dify_api.loadbalancer.server.port=5001
+        - traefik.http.routers.dify_api.service=dify_api
+        - traefik.http.routers.dify_api.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.dify_api.entrypoints=websecure
+        - traefik.http.routers.dify_api.tls=true
+        - traefik.http.middlewares.corsMiddleware.headers.accessControlAllowMethods=GET,POST,PUT,DELETE,OPTIONS
+        - traefik.http.middlewares.corsMiddleware.headers.accessControlAllowHeaders=Content-Type,Authorization
+
+  dify_worker:
+    image: langgenius/dify-api:0.13.2
+
+    volumes:
+      - dify_storage:/app/api/storage
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Modo da execução
+      - MODE=worker
+
+      ## Logs
+      - LOG_LEVEL=INFO
+
+      ## Secret Key
+      - SECRET_KEY={{dify_secret_key}}
+
+      ## Outras Url (vazio = mesmo do APP_WEB_URL)
+      - CONSOLE_WEB_URL=https://{{dify_url}} ## Url Dify Web
+      - INIT_PASSWORD=
+      - CONSOLE_API_URL=https://{{dify_api_url}} ## Url Dify API
+      - SERVICE_API_URL=https://{{dify_api_url}} ## Url Dify API
+      - FILES_URL=https://{{dify_api_url}}
+
+      ## Url Dify
+      - APP_WEB_URL=https://{{dify_url}} ## Url Dify Web
+
+      ## Postgres
+      - MIGRATION_ENABLED=true
+      - DB_USERNAME=postgres
+      - DB_PASSWORD={{postgres_password}}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=dify
+
+      ## Redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_USERNAME=
+      - REDIS_PASSWORD=
+      - REDIS_USE_SSL=false
+      - REDIS_DB=0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+
+      ## Allow ALL CORS
+      - WEB_API_CORS_ALLOW_ORIGINS=*
+      - CONSOLE_CORS_ALLOW_ORIGINS=*
+
+      ## S3
+      - STORAGE_TYPE=s3
+      - STORAGE_LOCAL_PATH=storage
+      - S3_ENDPOINT=https://{{s3_url}}
+      - S3_BUCKET_NAME=dify
+      - S3_ACCESS_KEY={{s3_access_key}}
+      - S3_SECRET_KEY={{s3_secret_key}}
+
+      ## Configurações do Sandbox
+      - CODE_EXECUTION_ENDPOINT=http://dify_sandbox:8194
+      - CODE_EXECUTION_API_KEY={{dify_sandbox_api_key}}
+      - CODE_MAX_NUMBER=9223372036854775807
+      - CODE_MIN_NUMBER=-9223372036854775808
+      - CODE_MAX_STRING_LENGTH=80000
+      - TEMPLATE_TRANSFORM_MAX_LENGTH=80000
+      - CODE_MAX_STRING_ARRAY_LENGTH=30
+      - CODE_MAX_OBJECT_ARRAY_LENGTH=30
+      - CODE_MAX_NUMBER_ARRAY_LENGTH=1000
+
+      ## Weaviate
+      - VECTOR_STORE=weaviate
+      - WEAVIATE_ENDPOINT=http://weaviate:8080
+      - WEAVIATE_API_KEY={{weaviate_token}}
+      - WEAVIATE_CLIENT_TIMEOUT=20
+
+      ## SMTP
+      - MAIL_TYPE=smtp
+      - MAIL_DEFAULT_SEND_FROM={{dify_email}} (eg=no-reply {{dify_email}})
+      - SMTP_SERVER={{dify_smtp_email}}
+      - SMTP_PORT={{dify_smtp_port}}
+      - SMTP_USERNAME={{dify_smtp_username}}
+      - SMTP_PASSWORD={{dify_smtp_password}}
+
+      ## Sentry
+      - SENTRY_DSN=
+      - SENTRY_TRACES_SAMPLE_RATE=1.0
+      - SENTRY_PROFILES_SAMPLE_RATE=1.0
+
+    depends_on:
+      - postgres
+      - redis          
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager       
+      resources:
+        limits:
+          cpus: "2"
+          memory: 4096M
+
+  dify_web:
+    image: langgenius/dify-web:0.13.2 ## Versão do Dify
+
+    networks:
+      - {{network_name}}
+
+    environment:
+      ## Urls
+      - EDITION=SELF_HOSTED
+      - CONSOLE_API_URL=https://{{dify_api_url}} ## Dify API Url 
+
+      ## Url Dify
+      - APP_API_URL=https://{{dify_api_url}} ## Dify API Url 
+
+      ## Sentry
+      - SENTRY_DSN=
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "2"
+          memory: 4096M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.dify_web.rule=Host(\`{{dify_url}}\`)
+        - traefik.http.services.dify_web.loadbalancer.server.port=3000
+        - traefik.http.routers.dify_web.service=dify_web
+        - traefik.http.routers.dify_web.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.dify_web.entrypoints=websecure
+        - traefik.http.routers.dify_web.tls=true
+        - traefik.http.middlewares.corsMiddleware.headers.accessControlAllowMethods=GET,POST,PUT,DELETE,OPTIONS
+        - traefik.http.middlewares.corsMiddleware.headers.accessControlAllowHeaders=Content-Type,Authorization
+
+  dify_sandbox:
+    image: langgenius/dify-sandbox:0.2.10
+
+    networks:
+      - {{network_name}}
+    
+    environment:
+      - API_KEY={{dify_sandbox_api_key}}
+      - GIN_MODE=release
+      - WORKER_TIMEOUT=15
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "2"
+          memory: 4096M
+
+volumes:
+  dify_storage:
+    external: true
+    name: dify_storage
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}

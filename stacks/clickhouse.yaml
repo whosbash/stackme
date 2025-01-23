@@ -1,0 +1,51 @@
+version: "3.7"
+services:
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.8.8.20-alpine
+
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_log:/var/log/clickhouse-server
+
+    networks:
+      - {{network_name}}
+    
+    #ports:
+    #  - "8123:8123"
+    #  - "9000:9000"
+    #  - "9009:9009"
+
+    environment:
+      - CLICKHOUSE_DB=default
+      - CLICKHOUSE_USER={{clickhouse_username}}
+      - CLICKHOUSE_PASSWORD={{clickhouse_password}}
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.clickhouse.rule=Host(\`{{clickhouse_url}}\`)
+        - traefik.http.services.clickhouse.loadbalancer.server.port=8123
+        - traefik.http.routers.clickhouse.service=clickhouse
+        - traefik.http.routers.clickhouse.tls.certresolver=letsencryptresolver
+        - traefik.http.services.clickhouse.loadbalancer.passHostHeader=true
+        - traefik.http.routers.clickhouse.entrypoints=websecure
+        - traefik.http.routers.clickhouse.tls=true        
+
+volumes:
+  clickhouse_data:
+    external: true
+    name: clickhouse_data
+  clickhouse_log:
+    external: true
+    name: clickhouse_log
+  
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}
