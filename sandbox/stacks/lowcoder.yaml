@@ -115,8 +115,6 @@ services:
         - traefik.http.routers.lowcoder.tls.certresolver=letsencryptresolver
         - traefik.http.routers.lowcoder.tls=true
 
-## --------------------------- ORION --------------------------- ##
-
 volumes:
   lowcoder_assets:
     external: true
