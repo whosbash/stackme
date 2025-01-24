@@ -5390,6 +5390,8 @@ save_stack_configuration() {
 deployment_pipeline() {
   local config_json="$1"
 
+  debug "$config_json"
+
   local stack_name="$(echo "$config_json" | jq -r '.name')"
 
   total_steps=7
@@ -5397,6 +5399,8 @@ deployment_pipeline() {
   # Parse stack variables
   local stack_variables
   stack_variables=$(echo "$config_json" | jq -r '.variables // []')
+
+  debug "$stack_variables"
 
   highlight "Starting deployment pipeline for stack '$stack_name'"
 
