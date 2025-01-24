@@ -1335,6 +1335,55 @@ to_boolean() {
   [[ "$1" -ne 0 ]] && echo "true" || echo "false"
 }
 
+progress_bar() {
+  local current="$1"        # Current item
+  local total="$2"          # Total items
+  local elapsed_time="$3"   # Elapsed time in seconds
+  local total_width="${4:-50}"  # Total width of the progress bar (default: 50)
+  local marker="${5:-#}"    # Custom marker character (default: #)
+  local space_char="${6:- }"  # Character for remaining space (default: space)
+  local percentage=$((current * 100 / total))  # Calculate percentage
+
+  # Clamp the percentage and current value to prevent invalid ranges
+  current=$((current < 0 ? 0 : (current > total ? total : current)))
+  percentage=$((percentage > 100 ? 100 : percentage))
+
+  # Calculate the number of markers and spaces
+  local filled_width=$((percentage * total_width / 100))
+  local empty_width=$((total_width - filled_width))
+
+  # Calculate speed (items per second)
+  local speed=0
+  if (( elapsed_time > 0 )); then
+    speed=$(echo "scale=2; $current / $elapsed_time" | bc)
+  fi
+
+  # Round speed to 2 decimal places and ensure 3 digits before the comma
+  local rounded_speed=$(printf "%6.2f" "$speed")
+
+  # Check if speed is slower than 0.5 items/sec
+  local display_speed_or_time
+  if (( $(echo "$speed < 0.5" | bc -l) )); then
+    # Display time per item
+    if (( current > 0 )); then
+      local time_per_item=$(echo "scale=2; $elapsed_time / $current" | bc)
+      display_speed_or_time="Time: ${time_per_item} secs/item"
+    else
+      display_speed_or_time="Time:     0.00 secs/item"
+    fi
+  else
+    # Display speed with 3 digits before the comma and 2 decimal places
+    display_speed_or_time="Speed: ${rounded_speed} items/sec"
+  fi
+
+  # Create the progress bar
+  local filled_part=$(printf "%-${filled_width}s" "" | tr ' ' "$marker")
+  local empty_part=$(printf "%-${empty_width}s" "" | tr ' ' "$space_char")
+
+  # Display the progress bar with current and total items, and speed or time
+  printf "\r[%-s] %3d%% (%d/%d) ${display_speed_or_time}" "${filled_part}${empty_part}" "$percentage" "$current" "$total"
+}
+
 # Function to check the IP address of a domain
 check_domain_ip() {
   local domain="$1"
@@ -1463,16 +1512,6 @@ is_smtp_port_secure() {
       echo "false" # Unknown port; assume not secure
       ;;
   esac
-}
-
-# Function to get the URL of a stack
-stack_url(){
-  local stack_name="$1"
-  local host='raw.githubusercontent.com'
-  local organization='whosbash'
-  local repository='stackme'
-  local path="refs/heads/main/stacks/$stack_name.yaml"
-  echo "https://${host}/${organization}/${repository}/${path}"
 }
 
 # Function to download a file from a URL
@@ -4260,22 +4299,23 @@ map_stacks_to_services() {
   echo "$json_object"
 }
 
+# Function to download stack compose templates with progress bar
 download_stack_compose_templates() {
     local destination_folder="$TEMPLATES_DIR"
     
     # Ensure the destination folder is provided
     if [[ -z "$destination_folder" ]]; then
-        error "Destination folder not specified."
+        echo "Error: Destination folder not specified."
         return 1
     fi
 
     # Create the destination folder if it doesn't exist
     mkdir -p "$destination_folder" || {
-        error "Failed to create destination folder $destination_folder."
+        echo "Error: Failed to create destination folder $destination_folder."
         return 1
     }
 
-    info "Fetching file list from GitHub API..."
+    echo "Fetching file list from GitHub API..."
     # Fetch the file information from the API
     file_urls=$(\
         curl -s -H "Accept: application/vnd.github.v3+json" "$STACKS_TEMPLATE_URL" | \
@@ -4284,33 +4324,41 @@ download_stack_compose_templates() {
 
     # Check if files were found
     if [[ -z "$file_urls" ]]; then
-        warning "No files found at $STACKS_TEMPLATE_URL."
+        echo "Warning: No files found at $STACKS_TEMPLATE_URL."
         return 1
     fi
 
-    info "Found $(echo "$file_urls" | wc -l) files. Starting download..."
+    total_files=$(echo "$file_urls" | wc -l)
+    echo "Found $total_files files. Starting download..."
 
     # Prepare a variable to track failed downloads
     failed_downloads=()
 
-    # Download all files in parallel with minimal output
-    echo "$file_urls" | xargs -P 10 -I {} bash -c '
-        file_name=$(basename "{}")
-        if curl -s --fail -o "'"$destination_folder"'/$file_name" "{}"; then 
+    # Initialize the progress bar
+    current=0
+
+    # Download all files in parallel with a progress bar
+    echo "$file_urls" | while read -r url; do
+        current=$((current + 1))
+        file_name=$(basename "$url")
+
+        if curl -s --fail -o "$destination_folder/$file_name" "$url"; then
             echo -n "."  # Success
         else 
             echo -n "x" >&2  # Failure
-            echo "$file_name" >> "'"$destination_folder"'/failed_downloads.txt"  # Log failed downloads
+            echo "$file_name" >> "$destination_folder/failed_downloads.txt"  # Log failed downloads
         fi
-    '
+
+        # Update the progress bar
+        progress_bar "$current" "$total_files" 50 "#"
+    done
 
     # End timing and report
-    echo >&2
-    
+    echo  # New line for progress bar
+
     # Display the failed downloads
     if [[ -f "$destination_folder/failed_downloads.txt" ]]; then
-        failure "Failed downloads: $(cat "$destination_folder/failed_downloads.txt")"
-        
+        echo "Failed downloads: $(cat "$destination_folder/failed_downloads.txt")"
     fi
 }
 
@@ -4410,6 +4458,17 @@ stack_exists() {
     return 1 # Stack does not exist
   fi
 }
+
+# Function to get the URL of a stack
+stack_url(){
+  local stack_name="$1"
+  local host='raw.githubusercontent.com'
+  local organization='whosbash'
+  local repository='stackme'
+  local path="refs/heads/main/stacks/$stack_name.yaml"
+  echo "https://${host}/${organization}/${repository}/${path}"
+}
+
 
 # Function to list the required fields on a stack docker-compose
 list_stack_compose_required_fields() {
