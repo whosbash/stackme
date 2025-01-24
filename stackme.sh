@@ -1344,6 +1344,9 @@ progress_bar() {
   local space_char="${6:- }"  # Character for remaining space (default: space)
   local percentage=$((current * 100 / total))  # Calculate percentage
 
+  debug "Current: $current, Total: $total, Elapsed Time: $elapsed_time, Percentage: $percentage"
+  debug "Total width: $total_width, Marker: $marker, Space char: $space_char"
+
   # Clamp the percentage and current value to prevent invalid ranges
   current=$((current < 0 ? 0 : (current > total ? total : current)))
   percentage=$((percentage > 100 ? 100 : percentage))
