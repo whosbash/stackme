@@ -1336,7 +1336,6 @@ to_boolean() {
 }
 
 # Function to display a progress bar
-# Function to display a progress bar
 progress_bar() {
   local current="$1"         # Current item
   local total="$2"           # Total items
@@ -1390,8 +1389,6 @@ progress_bar() {
   # Create the progress bar
   local filled_part=$(printf "%-${filled_width}s" "" | tr ' ' "$marker")
   local empty_part=$(printf "%-${empty_width}s" "" | tr ' ' "$space_char")
-
-  debug "Progress: $percentage% ($current/$total) Speed: $speed_display, Elapsed: $formatted_elapsed_time secs, Final: $formatted_final_time secs"
 
   # Display the progress bar with current, total, speed, elapsed time, and final estimated time
   printf "\r[%-s] %3d%% (%d/%d) Speed: %10s, Elapsed: %6s secs, Final: %6s secs" \
@@ -4372,7 +4369,7 @@ download_stack_compose_templates() {
         fi
   
         # Update the progress bar
-        progress_bar "$i" "$total_files" "$elapsed_ns" "$width" "$marker"
+        progress_bar "$i" "$total_items" "$elapsed_ns" "$width" "$marker"
     done
 
     # End timing and report
