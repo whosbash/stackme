@@ -4373,15 +4373,11 @@ stack_exists() {
 # Function to list the required fields on a stack docker-compose
 list_stack_compose_required_fields() {
   local stack_name="$1"
-  local function_name="compose_file_${stack_name}"
+  stack_template="${TEMPLATES_DIR}/${stack_name}.yaml"
+  cat "$stack_template" | grep -oP '\{\{\K[^}]+(?=\}\})' | sort -u
 
-  # Check if the function exists
-  if declare -f "$function_name" >/dev/null; then
-    pattern='\{\{\K[^}]+(?=\}\})'
-    # Call the function and extract mustache parameters
-    $function_name | grep -oP "$pattern" | sort -u
-  else
-    error "Function $function_name does not exist."
+  if [[ $? -ne 0 ]]; then
+    error "Failed to list required fields for stack $stack_name"
     return 1
   fi
 }
@@ -5359,8 +5355,6 @@ deploy_stack() {
   # Generate the stack JSON configuration
   local stack_config
   stack_config=$(eval "generate_stack_config_$stack_name")
-
-  debug "$stack_config"
 
   if [ -z "$stack_config" ]; then
     return 1
