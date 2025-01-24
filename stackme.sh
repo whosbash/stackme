@@ -4357,6 +4357,10 @@ download_stack_compose_templates() {
             file_name=$(basename "$url")
             destination_file="$destination_folder/$file_name"
 
+            # Current time in nanoseconds
+            local current_time=$(date +%s%N)
+            local elapsed_ns=$((current_time - start_time))
+
             # Download the file and handle errors
             if curl -s --fail -o "$destination_file" "$url"; then
                 echo -n "."  # Success
@@ -4368,7 +4372,9 @@ download_stack_compose_templates() {
             
             # Increment progress
             current=$((current + 1))
-            progress_bar "$current" "$total_files"
+
+            # Update the progress bar
+            progress_bar "$current" "$total_files" "$elapsed_ns" "$width" "$marker"
 
         } &
     done
