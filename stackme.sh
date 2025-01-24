@@ -5360,6 +5360,8 @@ deploy_stack() {
   local stack_config
   stack_config=$(eval "generate_stack_config_$stack_name")
 
+  debug "$stack_config"
+
   if [ -z "$stack_config" ]; then
     return 1
   fi
