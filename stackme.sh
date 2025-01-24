@@ -116,8 +116,9 @@ magenta="\033[35m"
 cyan="\033[35m"
 normal="\033[0m"
 
-# Define the separator
-separator="=============================================="
+
+# API URL
+STACKS_TEMPLATE_URL="https://api.github.com/repos/whosbash/stackme/contents/stacks"
 
 # Cleanup
 current_pid=0
@@ -136,9 +137,10 @@ HEADER_LENGTH=120
 # Default arrow
 STACKME_DIR="/opt/stackme"
 STACKS_DIR="$STACKME_DIR/stacks"
+TEMPLATES_DIR="$STACKME_DIR/templates"
 
 # Default arrow
-DEFAULT_ARROW_OPTION='diamond'
+DEFAULT_ARROW_OPTION='angle'
 USER_DEFINED_ARROW=""
 
 DEFAULT_PAGE_SIZE=5
@@ -2992,7 +2994,8 @@ wait_for_input() {
         return 0
       } # Exit on key press
     done
-    echo -e "\r${prompt_message} (Timed out)" >&2 # Timeout message
+    # Erasing the line content
+    echo -e "\r${prompt_message}" >&2 # Timeout message
     return 1                                      # Timeout
   else
     # Wait for key press without a timeout
@@ -3372,6 +3375,11 @@ pop_menu_from_history() {
   fi
 }
 
+# Function to reset the menu navigation history
+reset_menu_navigation_history() {
+  menu_navigation_history=("main")
+}
+
 # Helper function to check if a menu is already in the stack
 is_menu_in_history() {
   local menu_name=$1
@@ -3653,13 +3661,23 @@ print_centered_header() {
   printf "%-${padding}s" " " # Right padding
 }
 
-# Render breadcrumb trail
+# Render breadcrumb trail with each node separated by ' > '
 render_breadcrumb() {
   local breadcrumb=""
+  
+  # Loop through each menu node in the history
   for menu in "${menu_navigation_history[@]}"; do
-    breadcrumb+="$menu > "
+    # Extract the last part after the last colon
+    last_part="${menu##*:}"
+    
+    # Append it to the breadcrumb with ' > ' separator
+    breadcrumb+="$last_part > "
   done
+
+  # Remove the trailing ' > ' from the breadcrumb
   breadcrumb=${breadcrumb% > }
+  
+  # Display the breadcrumb
   echo -e "${highlight_color}Current Path: ${breadcrumb}${reset_color}" >&2
 }
 
@@ -3713,7 +3731,6 @@ render_menu() {
   local search_option="${search_color}/${reset_color}: Search"
   local help_option="${help_color}h${reset_color}: Help"
   local quit_option=""
-  local exit_option="${help_color}x${reset_color}: Exit"
 
   if ((num_options > page_size)); then
     lr_nav_option="${highlight_color}◁▷${reset_color}: Pages"
@@ -3742,8 +3759,6 @@ render_menu() {
   [[ -n "$lr_nav_option" ]] && keyboard_options+=("$lr_nav_option")
   [[ -n "$goto_nav_option" ]] && keyboard_options+=("$goto_nav_option")
   [[ -n "$quit_option" ]] && keyboard_options+=("$quit_option")
-
-  keyboard_options+=("$exit_option")
 
   local keyboard_options_string=$(join_array ", " "${keyboard_options[@]}")
 
@@ -4153,10 +4168,6 @@ navigate_menu() {
         continue
       fi
       ;;
-    "x")
-      kill -TERM -$$
-      finish_session
-      ;;
 
     *)
       echo >&2
@@ -4209,6 +4220,60 @@ map_stacks_to_services() {
 
   # Output the final JSON object
   echo "$json_object"
+}
+
+download_stack_compose_templates() {
+    local destination_folder="$TEMPLATES_DIR"
+    
+    # Ensure the destination folder is provided
+    if [[ -z "$destination_folder" ]]; then
+        error "Destination folder not specified."
+        return 1
+    fi
+
+    # Create the destination folder if it doesn't exist
+    mkdir -p "$destination_folder" || {
+        error "Failed to create destination folder $destination_folder."
+        return 1
+    }
+
+    info "Fetching file list from GitHub API..."
+    # Fetch the file information from the API
+    file_urls=$(\
+        curl -s -H "Accept: application/vnd.github.v3+json" "$STACKS_TEMPLATE_URL" | \
+        jq -r '.[] | select(.type == "file") | .download_url'
+    )
+
+    # Check if files were found
+    if [[ -z "$file_urls" ]]; then
+        warning "No files found at $STACKS_TEMPLATE_URL."
+        return 1
+    fi
+
+    info "Found $(echo "$file_urls" | wc -l) files. Starting download..."
+
+    # Prepare a variable to track failed downloads
+    failed_downloads=()
+
+    # Download all files in parallel with minimal output
+    echo "$file_urls" | xargs -P 10 -I {} bash -c '
+        file_name=$(basename "{}")
+        if curl -s --fail -o "'"$destination_folder"'/$file_name" "{}"; then 
+            echo -n "."  # Success
+        else 
+            echo -n "x" >&2  # Failure
+            echo "$file_name" >> "'"$destination_folder"'/failed_downloads.txt"  # Log failed downloads
+        fi
+    '
+
+    # End timing and report
+    echo >&2
+    
+    # Display the failed downloads
+    if [[ -f "$destination_folder/failed_downloads.txt" ]]; then
+        failure "Failed downloads: $(cat "$destination_folder/failed_downloads.txt")"
+        
+    fi
 }
 
 # Function to list the services of a stack
@@ -5081,7 +5146,7 @@ execute_prepare_actions() {
 }
 
 # Function to build the Docker Compose template
-build_compose_template() {
+build_compose_file() {
   local stack_name="$1"
   local stack_variables_json="$2"
 
@@ -5092,12 +5157,11 @@ build_compose_template() {
   stack_info=$(build_stack_info "$stack_name")
 
   # Extract paths and function for template generation
-  local config_path
-  config_path=$(echo "$stack_info" | jq -r '.config_path')
-  local compose_path
-  compose_path=$(echo "$stack_info" | jq -r '.compose_path')
-  local compose_template_func
-  compose_template_func=$(echo "$stack_info" | jq -r '.compose_func')
+  local stack_dir="${STACKS_DIR}/${stack_name}"
+  local config_path="${stack_dir}/stack_config.json"
+  local compose_template_path="${stack_dir}/docker-compose-template.yaml"
+  local compose_path="${stack_dir}/docker-compose.yaml"
+  local compose_url="$(stack_url "$stack_name")"
 
   # Ensure the directory for the compose file exists
   local compose_dir
@@ -5107,6 +5171,12 @@ build_compose_template() {
       error "Failed to create directory: $compose_dir"
       return 1
     }
+  fi
+
+  fetch_stack_compose "$stack_name" "$compose_template_path"
+  if [ $? -ne 0 ]; then
+    error "Failed to fetch Docker Compose template for stack '$stack_name'"
+    return 1
   fi
 
   # Convert stack_variables JSON into an array of key=value pairs
@@ -5119,12 +5189,12 @@ build_compose_template() {
 
   # Generate the substituted template
   local substituted_template
-  substituted_template=$(replace_mustache_variables "$($compose_template_func)" stack_variables)
+  substituted_template=$(replace_mustache_variables "$(cat "$compose_template_path")" stack_variables)
 
   # Write the template to the compose file
   echo "$substituted_template" >"$compose_path"
   if [ $? -ne 0 ]; then
-    error "Failed to write Docker Compose template to $compose_path"
+    error "Failed to write Docker Compose template to $compose_template_path"
     return 1
   fi
 
@@ -5244,7 +5314,7 @@ deployment_pipeline() {
   # Step 4: Build and substitute Docker Compose template
   step_info 4 $total_steps "Building Docker Compose template"
   local compose_path
-  compose_path=$(build_compose_template "$stack_name" "$stack_variables") || {
+  compose_path=$(build_compose_file "$stack_name" "$stack_variables") || {
     failure "Failed to build Docker Compose template"
     return 1
   }
@@ -5958,20 +6028,14 @@ get_server_info() {
   echo "$collected_object"
 }
 
-# Function to initialize the server information
-initialize_server_info() {
-  total_steps=7
+fetch_and_save_server_info() {
   server_filename="$STACKME_DIR/server_info.json"
-
-  # Step 1: Check if server_info.json exists and is valid
-  message="Initialization of server information"
-  step_progress 1 $total_steps "$message"
   if [[ -f "$server_filename" ]]; then
     server_info_json=$(cat "$server_filename" 2>/dev/null)
     if jq -e . >/dev/null 2>&1 <<<"$server_info_json"; then
-      step_info 1 $total_steps "Valid $server_filename found. Using existing information."
+      info "Valid $server_filename found. Using existing information."
     else
-      step_error "Content on file $server_filename is invalid. Reinitializing..."
+      error "Content on file $server_filename is invalid. Reinitializing..."
       server_info_json=$(get_server_info)
       
       # Save the server information to a JSON file
@@ -5982,7 +6046,19 @@ initialize_server_info() {
 
     # Save the server information to a JSON file
     echo "$server_info_json" >"$server_filename"
-  fi 
+  fi
+
+  echo "$server_info_json"
+}
+
+# Function to initialize the server information
+initialize_server_info() {
+  total_steps=7
+  
+  # Step 1: Check if server_info.json exists and is valid
+  message="Initialization of server information"
+  step_progress 1 $total_steps "$message"
+  server_info_json="$(fetch_and_save_server_info)"   
 
   # Extract server_name and network_name
   server_name="$(echo "$server_info_json" | jq -r  ".server_name")"
@@ -6067,6 +6143,8 @@ initialize_server_info() {
   wait_for_input
 }
 
+######################################## END OF SETUP FUNCTIONS ###################################
+
 ############################# BEGIN OF STACK DEPLOYMENT UTILITARY FUNCTIONS #######################
 
 # Function to get the password from a JSON file
@@ -6133,8 +6211,8 @@ get_network_name(){
 
 # Function to fetch stack compose file
 fetch_stack_compose(){
-  local stack_name='$1'
-  filepath="$STACKS_DIR/$stack_name"
+  local stack_name="$1"
+  local filepath="$2"
   
   download_file "$(stack_url "$stack_name")" "$filepath" "docker-compose.yaml"
 
@@ -9162,16 +9240,6 @@ usage() {
 }
 
 startup() {
-  set_arrow
-  clear
-
-  # Check if the script is running as root
-  if [ "$EUID" -ne 0 ]; then
-    failure "Please run this script as root or use sudo."
-    sleep 2
-    exit 1
-  fi
-
   # Install required packages
   update_and_install_packages
   clear
@@ -9229,6 +9297,16 @@ parse_args() {
 # Main script execution
 main() {
   parse_args "$@"
+
+  set_arrow
+  clear
+
+  # Check if the script is running as root
+  if [ "$EUID" -ne 0 ]; then
+    failure "Please run this script as root or use sudo."
+    sleep 2
+    exit 1
+  fi
 
   # Perform startup tasks
   startup
