@@ -1391,6 +1391,8 @@ progress_bar() {
   local filled_part=$(printf "%-${filled_width}s" "" | tr ' ' "$marker")
   local empty_part=$(printf "%-${empty_width}s" "" | tr ' ' "$space_char")
 
+  debug "Progress: $percentage% ($current/$total) Speed: $speed_display, Elapsed: $formatted_elapsed_time secs, Final: $formatted_final_time secs"
+
   # Display the progress bar with current, total, speed, elapsed time, and final estimated time
   printf "\r[%-s] %3d%% (%d/%d) Speed: %10s, Elapsed: %6s secs, Final: %6s secs" \
     "${filled_part}${empty_part}" "$percentage" "$current" "$total" "$speed_display" "$formatted_elapsed_time" "$formatted_final_time"
