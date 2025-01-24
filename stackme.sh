@@ -4375,9 +4375,6 @@ download_stack_compose_templates() {
     # Wait for all background jobs to finish
     wait
 
-    # Display the progress bar finalization
-    echo  # New line for progress bar
-
     # Write failed downloads to the file
     if [[ ${#failed_downloads[@]} -gt 0 ]]; then
         for failed in "${failed_downloads[@]}"; do
@@ -5305,9 +5302,13 @@ build_compose_file() {
     stack_variables["$key"]="$value"
   done < <(echo "$stack_variables_json" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"')
 
+  debug "$stack_variables_json"
+
   # Generate the substituted template
   local substituted_template
   substituted_template=$(replace_mustache_variables "$(cat "$compose_template_path")" stack_variables)
+
+  debug "$substituted_template"
 
   # Write the template to the compose file
   echo "$substituted_template" >"$compose_path"
