@@ -1395,7 +1395,7 @@ progress_bar() {
   printf "\r[%-s] %3d%% (%d/%d) Speed: %10s, Elapsed: %6s secs, Final: %6s secs" \
     "${filled_part}${empty_part}" \
     "$percentage" "$current" "$total" \ 
-    "$speed_display" 
+    "$speed_display" \
     "$formatted_elapsed_time" "$formatted_final_time"
 }
 
