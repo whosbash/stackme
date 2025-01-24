@@ -1361,7 +1361,7 @@ progress_bar() {
   fi
 
   # Display speed as secs/item if less than 1 item/sec
-  local speed_display="N/A"
+  local speed_display="0"
   if (( $(echo "$speed > 0" | bc -l) )); then
     if (( $(echo "$speed < 1" | bc -l) )); then
       speed_display=$(echo "scale=2; 1 / $speed" | bc)
@@ -1371,8 +1371,10 @@ progress_bar() {
     fi
   fi
 
+  info "Elapsed: $formatted_elapsed_time, Speed: $speed_display"
+
   # Estimate time remaining
-  local time_remaining="N/A"
+  local time_remaining="0"
   if (( current < total && $(echo "$speed > 0" | bc -l) )); then
     time_remaining=$(echo "scale=2; ($total - $current) / $speed" | bc 2>/dev/null)
   fi
