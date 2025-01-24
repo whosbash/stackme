@@ -1371,8 +1371,6 @@ progress_bar() {
     fi
   fi
 
-  info "Current: $current, Total: $total, Speed: $speed"
-
   # Estimate time remaining
   local time_remaining="0"
   if (( current < total && $(echo "$speed > 0" | bc -l) )); then
@@ -4360,8 +4358,6 @@ download_stack_compose_templates() {
     echo "$file_urls" | while read -r url; do
         current=$((current + 1))
         file_name=$(basename "$url")
-
-        info "$url"
 
         # Current time in nanoseconds
         local current_time=$(date +%s%N)
