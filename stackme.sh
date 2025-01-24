@@ -4363,11 +4363,13 @@ download_stack_compose_templates() {
         local current_time=$(date +%s%N)
         local elapsed_ns=$((current_time - start_time))
 
+        # Download the file and log failure with a specific message
         if curl -s --fail -o "$destination_folder/$file_name" "$url"; then
             echo -n "."  # Success
         else 
             echo -n "x" >&2  # Failure
-            echo "$file_name" >> "$destination_folder/failed_downloads.txt"  # Log failed downloads
+            error_message=$(curl -s -w "%{http_code}" -o /dev/null "$url")
+            echo "$(date '+%Y-%m-%d %H:%M:%S') - $file_name - Error: HTTP $error_message" >> "$destination_folder/failed_downloads.txt"
         fi
   
         # Update the progress bar
