@@ -6188,7 +6188,7 @@ create_postgres_database() {
 }
 
 get_network_name(){
-  server_info_filename="${HOME}/server_info.json"
+  server_info_filename="${STACKME_DIR}/server_info.json"
   
   if [[ ! -f "$server_info_filename" ]]; then
     error "File $server_info_filename not found."
