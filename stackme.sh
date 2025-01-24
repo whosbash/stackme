@@ -4609,12 +4609,10 @@ signup_on_portainer() {
   local username="$2"
   local password="$3"
 
-  # Validate and reformat JSON
-  credentials=$(echo "$credentials" | jq -c . 2>/dev/null)
-  if [ $? -ne 0 ]; then
-    echo "Invalid JSON provided for credentials: $credentials" >&2
-    return 1
-  fi
+  credentials="$(\
+    jq -n --arg username "$username" --arg password "$password" \
+    '{ "username": $username, "password": $password }'
+  )"
 
   # Setup headers and endpoint
   local protocol="https"
