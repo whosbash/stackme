@@ -1393,10 +1393,7 @@ progress_bar() {
 
   # Display the progress bar with current, total, speed, elapsed time, and final estimated time
   printf "\r[%-s] %3d%% (%d/%d) Speed: %10s, Elapsed: %6s secs, Final: %6s secs" \
-    "${filled_part}${empty_part}" \
-    "$percentage" "$current" "$total" \ 
-    "$speed_display" \
-    "$formatted_elapsed_time" "$formatted_final_time"
+    "${filled_part}${empty_part}" "$percentage" "$current" "$total" "$speed_display" "$formatted_elapsed_time" "$formatted_final_time"
 }
 
 # Function to check the IP address of a domain
