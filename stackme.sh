@@ -2162,6 +2162,8 @@ remove_dangling_images() {
     echo "no_dangling_images"
     echo "No dangling images to clean up."
   else
+    info "$dangling_images"
+    wait_for_input
     # Attempt to remove dangling images
     if docker rmi $dangling_images &>/dev/null; then
       echo "success"
