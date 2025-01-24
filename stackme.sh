@@ -2152,6 +2152,27 @@ clean_docker_environment() {
   wait_for_input
 }
 
+# Function to remove dangling images
+remove_dangling_images() {
+  # Find dangling images
+  dangling_images=$(docker images -f "dangling=true" -q)
+
+  if [[ -z "$dangling_images" ]]; then
+    # No dangling images found
+    echo "no_dangling_images"
+    echo "No dangling images to clean up."
+  else
+    # Attempt to remove dangling images
+    if docker rmi $dangling_images &>/dev/null; then
+      echo "success"
+      echo "Removed $(echo "$dangling_images" | wc -w) dangling images."
+    else
+      echo "error"
+      echo "Failed to remove dangling images. Please check permissions or running containers."
+    fi
+  fi
+}
+
 # Function to clean docker environment with one confirmation step
 sanitize() {
   total_steps=5
@@ -2169,8 +2190,6 @@ sanitize() {
     message="Pruning unused containers, networks, volumes, and build cache"
     command="docker system prune --all --volumes -f"
     command "$command" 1 $total_steps "$message" "yes"
-
-    message="Removing dangling images"
 
     # Call the function and capture its output
     message="Removing dangling images"
