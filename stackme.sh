@@ -4352,10 +4352,14 @@ download_stack_compose_templates() {
     local elapsed_time
     local start_time=$(date +%s%N)
 
+    info "$start_time"
+
     # Download all files in parallel with a progress bar
     echo "$file_urls" | while read -r url; do
         current=$((current + 1))
         file_name=$(basename "$url")
+
+        info "$url"
 
         # Current time in nanoseconds
         local current_time=$(date +%s%N)

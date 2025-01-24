@@ -78,7 +78,7 @@ simulate_progress() {
     progress_bar "$i" "$total_items" "$elapsed_ns" "$width" "$marker"
 
     # Simulate work
-    sleep 2
+    sleep 0.1
   done
 
   # Ensure progress bar is complete after loop ends
