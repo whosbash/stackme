@@ -18,7 +18,7 @@ services:
       - "--entrypoints.web.transport.respondingTimeouts.idleTimeout=3600"
       - "--certificatesresolvers.letsencryptresolver.acme.httpchallenge=true"
       - "--certificatesresolvers.letsencryptresolver.acme.httpchallenge.entrypoint=web"
-      - "--certificatesresolvers.letsencryptresolver.acme.storage=$CERT_PATH"
+      - "--certificatesresolvers.letsencryptresolver.acme.storage=/etc/traefik/letsencrypt/acme.json"
       - "--certificatesresolvers.letsencryptresolver.acme.email={{email_ssl}}"
       - "--certificatesresolvers.letsencryptresolver.acme.dnschallenge=true"
       - "--log.level=DEBUG"
