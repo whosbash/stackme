@@ -5166,12 +5166,6 @@ build_compose_file() {
     }
   fi
 
-  fetch_stack_compose "$stack_name" "$compose_template_path"
-  if [ $? -ne 0 ]; then
-    error "Failed to fetch Docker Compose template for stack '$stack_name'"
-    return 1
-  fi
-
   # Convert stack_variables JSON into an array of key=value pairs
   declare -A stack_variables
 
