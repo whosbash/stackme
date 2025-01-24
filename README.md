@@ -47,22 +47,18 @@ StackMe is a comprehensive shell script designed to manage Docker Swarm deployme
     ./stackme.sh --clean
     ```
 
-2. **Change de default :**
+2. **Change the default arrow:**
     ```bash
-    ./stackme.sh --clean
+    ./stackme.sh --arrow 'diamond' 
     ```
 
-### Deploying a Stack
+### Main Menu
 
-You can deploy a stack by selecting it from the main menu or using the `--stack` option. For example, to deploy the Traefik stack:
+The script will display a main menu where you can choose the stack to install. Navigate through the options to select the desired stack.
 
 ```bash
 ./stackme.sh --stack traefik
 ```
-
-### Main Menu
-
-If no stack is specified, the script will display a main menu where you can choose the stack to install. Navigate through the options to select the desired stack.
 
 ## Contributing
 
