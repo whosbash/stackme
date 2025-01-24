@@ -4310,6 +4310,56 @@ map_stacks_to_services() {
   echo "$json_object"
 }
 
+# Function to wait for all services to be healthy using docker service ps
+wait_for_services() {
+    local stack_name="$1"
+
+    local timeout=60
+    local interval=5   # Check every 5 seconds
+    local elapsed=0
+
+    # Get the list of service names from the docker-compose setup (in swarm mode)
+    services=$(docker stack services --format '{{.Name}}' "$stack_name")
+
+    # Loop until all services are healthy or timeout occurs
+    while true; do
+        all_healthy=true
+        for service in $services; do
+            # Get the current state of the service using docker service ps
+            service_state=$(\
+              docker service ps \
+              --filter "desired-state=running" \
+              --format "{{.CurrentState}}" "$service" | \
+              grep -o "Running"
+            )
+
+            # If the service is not running or not in the "Running" state
+            if [[ -z "$service_state" ]]; then
+                all_healthy=false
+                echo "Service '$service' is not healthy yet. Waiting..."
+                break
+            fi
+        done
+
+        # If all services are healthy, exit the loop
+        if [[ "$all_healthy" == true ]]; then
+            success "All services of stack $stack_name are healthy!"
+            break
+        fi
+
+        # Check if we've exceeded the timeout
+        if (( elapsed >= timeout )); then
+            failure "Timeout reached! Not all services of stack $stack_name are healthy."
+            exit 1
+        fi
+
+        # Sleep for the interval before checking again
+        sleep "$interval"
+        elapsed=$((elapsed + interval))
+    done
+}
+
+
 # Function to download stack compose templates with progress bar
 download_stack_compose_templates() {
     local destination_folder="$TEMPLATES_DIR"
