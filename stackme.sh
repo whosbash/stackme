@@ -6195,11 +6195,7 @@ get_network_name(){
     return 1
   fi
 
-  server_info_json="$(cat "$server_info_filename")"
-  echo "$(
-    search_on_json_array "$server_info_json" "name" "network_name" | \
-    jq -r ".value"
-  )"
+  echo "$(cat "$server_info_filename" | jq -r ".network_name")"
 
   return 0
 }
