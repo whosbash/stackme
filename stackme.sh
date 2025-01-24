@@ -2162,15 +2162,31 @@ remove_dangling_images() {
     echo "no_dangling_images"
     echo "No dangling images to clean up."
   else
-    info "$dangling_images"
-    wait_for_input
-    # Attempt to remove dangling images
-    if docker rmi $dangling_images &>/dev/null; then
+    # Initialize counters
+    success_count=0
+    failure_count=0
+    failed_images=()
+
+    for image_id in $dangling_images; do
+      # Attempt to remove each dangling image
+      if docker rmi "$image_id" &>/dev/null; then
+        ((success_count++))
+      else
+        ((failure_count++))
+        failed_images+=("$image_id")
+      fi
+    done
+
+    # Prepare status and message
+    if [[ $failure_count -eq 0 ]]; then
       echo "success"
-      echo "Removed $(echo "$dangling_images" | wc -w) dangling images."
-    else
+      echo "Removed $success_count dangling images successfully."
+    elif [[ $success_count -eq 0 ]]; then
       echo "error"
-      echo "Failed to remove dangling images. Please check permissions or running containers."
+      echo "Failed to remove $failure_count dangling images. Images might be in use."
+    else
+      echo "partial_success"
+      echo "Removed $success_count images successfully. Failed to remove $failure_count images: ${failed_images[*]}"
     fi
   fi
 }
