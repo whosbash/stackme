@@ -4375,7 +4375,7 @@ download_stack_compose_templates() {
         fi
   
         # Update the progress bar
-        progress_bar "$i" "$total_files" "$elapsed_ns" "$width" "$marker"
+        progress_bar "$current" "$total_files" "$elapsed_ns" "$width" "$marker"
     done
 
     # End timing and report
