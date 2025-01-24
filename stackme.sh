@@ -4430,6 +4430,10 @@ download_stack_compose_templates() {
         echo # Move to a new line after progress indicators
     } > /dev/null 2>&1
 
+
+    # Wait for all background jobs to finish
+    wait
+
     # Write failed downloads to the file
     if [[ ${#failed_downloads[@]} -gt 0 ]]; then
         for failed in "${failed_downloads[@]}"; do
