@@ -4353,6 +4353,8 @@ download_stack_compose_templates() {
     local start_time=$(date +%s%N)
 
     info "$start_time"
+    local failed_filename="$destination_folder/failed_downloads.txt"
+    local destination_file="$destination_folder/$file_name"
 
     # Download all files in parallel with a progress bar
     echo "$file_urls" | while read -r url; do
@@ -4364,12 +4366,15 @@ download_stack_compose_templates() {
         local elapsed_ns=$((current_time - start_time))
 
         # Download the file and log failure with a specific message
-        if curl -s --fail -o "$destination_folder/$file_name" "$url"; then
+        if curl -s --fail -o "$destination_file" "$url"; then
             echo -n "."  # Success
         else 
             echo -n "x" >&2  # Failure
-            error_message=$(curl -s -w "%{http_code}" -o /dev/null "$url")
-            echo "$(date '+%Y-%m-%d %H:%M:%S') - $file_name - Error: HTTP $error_message" >> "$destination_folder/failed_downloads.txt"
+            error_message=$(\
+              curl -s -w "%{http_code}" -o /dev/null "$url"\
+            )
+            echo "$(date '+%Y-%m-%d %H:%M:%S') - $file_name - Error: HTTP $error_message" >> \
+            "$failed_filename"
         fi
   
         # Update the progress bar
@@ -4380,8 +4385,8 @@ download_stack_compose_templates() {
     echo  # New line for progress bar
 
     # Display the failed downloads
-    if [[ -f "$destination_folder/failed_downloads.txt" ]]; then
-        failure "Failed downloads: $(cat "$destination_folder/failed_downloads.txt")"
+    if [[ -f "$failed_filename" ]]; then
+        failure "Failed downloads: $(cat "$failed_filename")"
     fi
 }
 
