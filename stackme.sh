@@ -4366,7 +4366,7 @@ download_stack_compose_templates() {
     
     # Ensure the destination folder is provided
     if [[ -z "$destination_folder" ]]; then
-        echo "Error: Destination folder not specified."
+        error "Destination folder not specified."
         return 1
     fi
 
@@ -4402,25 +4402,32 @@ download_stack_compose_templates() {
     local failed_filename="$destination_folder/failed_downloads.txt"
     
     # Download all files in parallel with a progress bar
-    echo "$file_urls" | while read -r url; do
-        {
-            file_name=$(basename "$url")
-            destination_file="$destination_folder/$file_name"
+    {
+        echo "$file_urls" | while read -r url; do
+            {
+                file_name=$(basename "$url")
+                destination_file="$destination_folder/$file_name"
 
-            # Current time in nanoseconds
-            local current_time=$(date +%s%N)
-            local elapsed_ns=$((current_time - start_time))
+                # Current time in nanoseconds
+                local current_time=$(date +%s%N)
+                local elapsed_ns=$((current_time - start_time))
 
-            # Download the file and handle errors
-            if curl -s --fail -o "$destination_file" "$url"; then
-                echo -n "."  # Success
-            else 
-                echo -n "x" >&2  # Failure
-                error_message=$(curl -s -w "%{http_code}" -o /dev/null "$url")
-                failed_downloads+=("$(date '+%Y-%m-%d %H:%M:%S') - $file_name - Error: HTTP $error_message")
-            fi
-        } &
-    done
+                # Download the file and handle errors
+                if curl -s --fail -o "$destination_file" "$url"; then
+                    # Print progress to stdout (will be collected separately)
+                    echo "." > /dev/tty
+                else 
+                    # Print error to stderr (will be collected separately)
+                    echo "x" > /dev/tty
+                    error_message=$(curl -s -w "%{http_code}" -o /dev/null "$url")
+                    failed_downloads+=("$(date '+%Y-%m-%d %H:%M:%S') - $file_name - Error: HTTP $error_message")
+                fi
+            } &
+        done
+
+        # Wait for all background processes to complete
+        wait
+    } > /dev/null 2>&1
 
     # Wait for all background jobs to finish
     wait
