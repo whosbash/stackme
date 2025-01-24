@@ -1751,6 +1751,8 @@ generate_machine_specs_table() {
   network_rows+=$(generate_table_row "Wi-Fi" "$wifi_info")
   html_content+=$(create_table "Network Information" "<th>Type</th><th>Details</th>" "$network_rows")
 
+  debug "$html_content"
+
   # Return the complete HTML content
   echo "$html_content"
 }
