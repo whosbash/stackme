@@ -6387,23 +6387,6 @@ create_postgres_database_n8n(){
   create_database_postgres 'n8n'
 }
 
-get_network_name() {
-  server_info_filename="$STACKME_DIR/server_info.json"
-
-  if [[ ! -f "$server_info_filename" ]]; then
-    error "File $server_info_filename not found."
-    return 1
-  fi
-
-  server_info_json="$(cat "$server_info_filename")"
-  echo "$(
-    search_on_json_array "$server_info_json" "name" "network_name" |
-      jq -r ".value"
-  )"
-
-  return 0
-}
-
 #################################### BEGIN OF STACK CONFIGURATION #################################
 
 manage_prometheus_config_file() {
