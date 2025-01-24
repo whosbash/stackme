@@ -5152,7 +5152,7 @@ build_compose_file() {
   # Extract paths and function for template generation
   local stack_dir="${STACKS_DIR}/${stack_name}"
   local config_path="${stack_dir}/stack_config.json"
-  local compose_template_path="${stack_dir}/docker-compose-template.yaml"
+  local compose_template_path="${TEMPLATES_DIR}/${stack_name}.yaml"
   local compose_path="${stack_dir}/docker-compose.yaml"
   local compose_url="$(stack_url "$stack_name")"
 
