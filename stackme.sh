@@ -5271,6 +5271,8 @@ build_compose_file() {
   local stack_name="$1"
   local stack_variables_json="$2"
 
+  debug "$stack_variables_json"
+
   info "Building Docker Compose template for stack '$stack_name'"
 
   # Get stack info
@@ -5390,8 +5392,6 @@ save_stack_configuration() {
 deployment_pipeline() {
   local config_json="$1"
 
-  debug "$config_json"
-
   local stack_name="$(echo "$config_json" | jq -r '.name')"
 
   total_steps=7
@@ -5399,8 +5399,6 @@ deployment_pipeline() {
   # Parse stack variables
   local stack_variables
   stack_variables=$(echo "$config_json" | jq -r '.variables // []')
-
-  debug "$stack_variables"
 
   highlight "Starting deployment pipeline for stack '$stack_name'"
 
@@ -5437,6 +5435,7 @@ deployment_pipeline() {
   # Step 4: Build and substitute Docker Compose template
   step_info 4 $total_steps "Building Docker Compose template"
   local compose_path
+  debug "$stack_variables"
   compose_path=$(build_compose_file "$stack_name" "$stack_variables") || {
     failure "Failed to build Docker Compose template"
     return 1
