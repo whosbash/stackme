@@ -4336,7 +4336,7 @@ wait_for_services() {
             # If the service is not running or not in the "Running" state
             if [[ -z "$service_state" ]]; then
                 all_healthy=false
-                echo "Service '$service' is not healthy yet. Waiting..."
+                info "Service '$service' is not healthy yet. Waiting..."
                 break
             fi
         done
@@ -5231,6 +5231,9 @@ deploy_dependencies() {
     if ! docker stack ls --format '{{.Name}}' | grep -q "^$dependency$"; then
       info "Deploying dependency: $dependency"
       deploy_stack "$dependency"
+
+      wait_for_services "$stack_name"
+
       if [ $? -ne 0 ]; then
         error "Failed to deploy dependency: $dependency"
         return 1
@@ -5491,6 +5494,8 @@ deployment_pipeline() {
     failure "Failed to deploy stack on target: $target"
     return 1
   }
+
+  wait_for_services "$stack_name"
 
   # Step 6: Execute finalize actions
   step_info 6 $total_steps "Executing finalize actions"
