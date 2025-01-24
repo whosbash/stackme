@@ -5880,14 +5880,6 @@ update_and_install_packages() {
   wait_for_input
 }
 
-# Function to clean the local docker environment
-clean_docker_environment() {
-  highlight "Cleaning local docker environment"
-  sanitize
-
-  wait_for_input
-}
-
 install_docker() {
   # Ensure the script is running with elevated privileges
   if [[ $EUID -ne 0 ]]; then
@@ -6038,7 +6030,7 @@ fetch_and_save_server_info() {
 
 # Function to initialize the server information
 initialize_server_info() {
-  total_steps=7
+  total_steps=8
   
   # Step 1: Check if server_info.json exists and is valid
   message="Initialization of server information"
@@ -7589,6 +7581,11 @@ parse_args() {
 # Main script execution
 main() {
   parse_args "$@"
+
+  if [[ $CLEAN == true ]]; then
+    clean_docker_environment
+    exit 0
+  fi
 
   set_arrow
   clear
