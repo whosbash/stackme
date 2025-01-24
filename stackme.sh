@@ -4434,8 +4434,6 @@ download_stack_compose_templates() {
     # Wait for all background jobs to finish
     wait
 
-    echo # Move to a new line after progress indicators
-
     # Write failed downloads to the file
     if [[ ${#failed_downloads[@]} -gt 0 ]]; then
         for failed in "${failed_downloads[@]}"; do
@@ -4683,11 +4681,9 @@ signup_on_portainer() {
 
   # Get the URL
   url="$(get_api_url "$protocol" "$portainer_url" "$resource")"
-  echo "URL: $url" >&2
 
   # Make the request
-  info "Request: curl -s -k -X POST '$url' -H '$header' -d '$credentials'"
-  response=$(curl -s -k -X POST "$url" -H "$header" -d "$credentials")
+  response="$(curl -s -k -X POST "$url" -H "$header" -d "$credentials")"
   info "Response: $response" >&2
 
   # Check for existing administrator user in the response
