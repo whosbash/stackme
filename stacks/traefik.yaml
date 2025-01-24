@@ -57,7 +57,7 @@ services:
           - node.role == manager
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.dashboard.rule=Host(`{{url_traefik}}`)"
+        - "traefik.http.routers.dashboard.rule=Host(`{{traefik_url}}`)"
         - "traefik.http.routers.dashboard.entrypoints=websecure"
         - "traefik.http.routers.dashboard.service=api@internal"
         - "traefik.http.routers.dashboard.tls.certresolver=letsencryptresolver"

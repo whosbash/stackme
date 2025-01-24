@@ -6532,7 +6532,7 @@ generate_stack_config_traefik() {
           "validate_fn": "validate_email_value" 
       },
       {
-          "name": "url_traefik",
+          "name": "traefik_url",
           "label": "Traefik Domain Name",
           "description": "Domain name for Traefik",
           "required": "yes",
@@ -6716,42 +6716,42 @@ generate_stack_config_monitor() {
 
   prompt_items='[
       {
-          "name": "url_prometheus",
+          "name": "prometheus_url_",
           "label": "Prometheus Domain Name",
           "description": "Domain name for logs and metrics",
           "required": "yes",
           "validate_fn": "validate_url_suffix" 
       },
       {
-          "name": "url_jaeger",
+          "name": "jaeger_url",
           "label": "Jaeger Domain Name",
           "description": "Domain for tracing tool",
           "required": "yes",
           "validate_fn": "validate_url_suffix" 
       },
       {
-          "name": "url_node_exporter",
+          "name": "node_exporter_url",
           "label": "Node Exporter Domain Name",
           "description": "Domain name for Node Exporter",
           "required": "yes",
           "validate_fn": "validate_url_suffix" 
       },
       {
-          "name": "url_cadvisor",
+          "name": "cadvisor_url",
           "label": "cAdvisor Domain Name",
           "description": "Domain name for cAdvisor",
           "required": "yes",
           "validate_fn": "validate_url_suffix" 
       },
       {
-          "name": "url_grafana",
+          "name": "grafana_url",
           "label": "Grafana Domain Name",
           "description": "Domain name for Grafana",
           "required": "yes",
           "validate_fn": "validate_url_suffix" 
       },
       {
-        "name": "url_kibana",
+        "name": "kibana_url",
         "label": "Kibana Domain Name",
         "description": "Domain name for Kibana",
         "required": "yes",
@@ -6769,12 +6769,12 @@ generate_stack_config_monitor() {
 
   collected_object="$(process_prompt_items "$collected_items")"
 
-  url_jaeger="$(echo "$collected_object" | jq -r '.url_jaeger')"
-  url_prometheus="$(echo "$collected_object" | jq -r '.url_prometheus')"
-  url_grafana="$(echo "$collected_object" | jq -r '.url_grafana')"
-  url_node_exporter="$(echo "$collected_object" | jq -r '.url_node_exporter')"
-  url_cadvisor="$(echo "$collected_object" | jq -r '.url_cadvisor')"
-  url_kibana="$(echo "$collected_object" | jq -r '.url_kibana')"
+  jaeger_url="$(echo "$collected_object" | jq -r '.jaeger_url')"
+  prometheus_url="$(echo "$collected_object" | jq -r '.prometheus_url')"
+  grafana_url="$(echo "$collected_object" | jq -r '.grafana_url')"
+  node_exporter_url="$(echo "$collected_object" | jq -r '.node_exporter_url')"
+  cadvisor_url="$(echo "$collected_object" | jq -r '.cadvisor_url')"
+  kibana_url="$(echo "$collected_object" | jq -r '.kibana_url')"
 
   step_info 2 $total_steps "Retrieving network name"
   local network_name="$(get_network_name)"
@@ -6790,7 +6790,7 @@ generate_stack_config_monitor() {
   # Ensure everything is quoted correctly
   prometheus_config_path="${STACKME_DIR}/prometheus/prometheus.yml"
   manage_prometheus_config_file "$prometheus_config_path" \
-    "$url_prometheus" "$url_jaeger" "$url_node_exporter" "$url_cadvisor"
+    "$prometheus_url" "$jaeger_url" "$node_exporter_url" "$cadvisor_url"
 
   handle_exit "$?" 3 "$total_steps" "$message"
 
@@ -6804,7 +6804,7 @@ apiVersion: 1
 datasources:
 - name: Prometheus
   type: prometheus
-  url: https://$url_prometheus
+  url: https://$prometheus_url
   isDefault: true
   access: proxy
   editable: true
@@ -6815,23 +6815,23 @@ EOL
   # Ensure everything is quoted correctly
   jq -n \
     --arg stack_name "$stack_name" \
-    --arg url_jaeger "$url_jaeger" \
-    --arg url_prometheus "$url_prometheus" \
-    --arg url_node_exporter "$url_node_exporter" \
-    --arg url_cadvisor "$url_cadvisor" \
-    --arg url_grafana "$url_grafana" \
-    --arg url_kibana "$url_kibana" \
+    --arg jaeger_url "$jaeger_url" \
+    --arg prometheus_url "$prometheus_url" \
+    --arg node_exporter_url "$node_exporter_url" \
+    --arg cadvisor_url "$cadvisor_url" \
+    --arg grafana_url "$grafana_url" \
+    --arg kibana_url "$kibana_url" \
     --arg network_name "$network_name" \
     '{
         "name": $stack_name,
         "target": "portainer",
         "variables": {
-          "url_jaeger": $url_jaeger,
-          "url_prometheus": $url_prometheus,
-          "url_node_exporter": $url_node_exporter,
-          "url_cadvisor": $url_cadvisor,
-          "url_grafana": $url_grafana,
-          "url_kibana": $url_kibana,
+          "jaeger_url": $jaeger_url,
+          "prometheus_url": $prometheus_url,
+          "node_exporter_url": $node_exporter_url,
+          "cadvisor_url": $cadvisor_url,
+          "grafana_url": $grafana_url,
+          "kibana_url": $kibana_url,
           "network_name": $network_name
         },
         "dependencies": ["traefik", "portainer"],

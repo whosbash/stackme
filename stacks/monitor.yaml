@@ -10,7 +10,7 @@ services:
       replicas: 1
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.grafana.rule=Host(`{{url_grafana}}`)"
+        - "traefik.http.routers.grafana.rule=Host(`{{grafana_url}}`)"
         - "traefik.http.routers.grafana.entrypoints=websecure"
         - "traefik.http.routers.grafana.service=grafana"
         - "traefik.http.routers.grafana.tls.certresolver=letsencryptresolver"
@@ -37,7 +37,7 @@ services:
       replicas: 1
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.kibana.rule=Host(`{{url_kibana}}`)"
+        - "traefik.http.routers.kibana.rule=Host(`{{kibana_url}}`)"
         - "traefik.http.routers.kibana.entrypoints=websecure"
         - "traefik.http.routers.kibana.service=kibana"
         - "traefik.http.routers.kibana.tls.certresolver=letsencryptresolver"
@@ -70,7 +70,7 @@ services:
       replicas: 1
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.jaeger.rule=Host(`{{url_jaeger}}`)"
+        - "traefik.http.routers.jaeger.rule=Host(`{{jaeger_url}}`)"
         - "traefik.http.routers.jaeger.entrypoints=websecure"
         - "traefik.http.routers.jaeger.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
@@ -92,7 +92,7 @@ services:
       replicas: 1
       labels:
         - traefik.enable=true
-        - traefik.http.routers.prometheus.rule=Host(`{{url_prometheus}}`)
+        - traefik.http.routers.prometheus.rule=Host(`{{prometheus_url}}`)
         - traefik.http.services.prometheus.loadbalancer.server.port=9090
         - traefik.http.routers.prometheus.service=prometheus
         - traefik.http.routers.prometheus.tls.certresolver=letsencryptresolver
@@ -114,7 +114,7 @@ services:
       replicas: 1
       labels:
         - traefik.enable=true
-        - traefik.http.routers.node-exporter.rule=Host(`{{url_node_exporter}}`)
+        - traefik.http.routers.node-exporter.rule=Host(`{{node_exporter_url}}`)
         - traefik.http.services.node-exporter.loadbalancer.server.port=9100
         - traefik.http.routers.node-exporter.service=node-exporter
         - traefik.http.routers.node-exporter.tls.certresolver=letsencryptresolver
@@ -146,7 +146,7 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.cadvisor.rule=Host(`{{url_cadvisor}}`)
+        - traefik.http.routers.cadvisor.rule=Host(`{{cadvisor_url}}`)
         - traefik.http.services.cadvisor.loadbalancer.server.port=8080
         - traefik.http.routers.cadvisor.service=cadvisor
         - traefik.http.routers.cadvisor.tls.certresolver=letsencryptresolver
