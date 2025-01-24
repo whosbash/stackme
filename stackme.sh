@@ -5272,8 +5272,6 @@ build_compose_file() {
   local stack_name="$1"
   local stack_variables_json="$2"
 
-  debug "$stack_variables_json"
-
   info "Building Docker Compose template for stack '$stack_name'"
 
   # Get stack info
@@ -5305,13 +5303,9 @@ build_compose_file() {
     stack_variables["$key"]="$value"
   done < <(echo "$stack_variables_json" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"')
 
-  debug "$stack_variables_json"
-
   # Generate the substituted template
   local substituted_template
   substituted_template=$(replace_mustache_variables "$(cat "$compose_template_path")" stack_variables)
-
-  debug "$substituted_template"
 
   # Write the template to the compose file
   echo "$substituted_template" >"$compose_path"
@@ -5867,8 +5861,6 @@ send_smtp_test_email() {
     return 1
   fi
 
-  debug "Loaded SMTP configuration: $smtp_json"
-
   smtp_server="$(echo "$smtp_json" | jq -r ".smtp_server")"
   smtp_port="$(echo "$smtp_json" | jq -r ".smtp_port")"
   username="$(echo "$smtp_json" | jq -r ".username")"
@@ -5876,8 +5868,6 @@ send_smtp_test_email() {
 
   subject="[StackMe] Test SMTP e-mail"
   body="$(generate_test_smtp_hmtl)"
-
-  debug "$body"
 
   # Send the test email
   send_email \
