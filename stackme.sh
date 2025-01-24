@@ -5085,7 +5085,7 @@ execute_refresh_actions() {
   }
 
   # Iterate over the refresh actions
-  while IFS= read -r action; do
+  echo "$refresh_actions" | jq -c '.[]' | while IFS= read -r action; do
     local action_name
     action_name=$(echo "$action" | jq -r '.name')
 
@@ -5110,7 +5110,7 @@ execute_refresh_actions() {
       error "Failed to update stack variables after executing '$action_name'"
       return 1
     }
-  done <<<"$actions"
+  done
 
   echo "$updated_variables"
 }
