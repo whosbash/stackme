@@ -4347,48 +4347,47 @@ download_stack_compose_templates() {
 
     # Initialize the progress bar
     current=0
-    
-    local current_time
-    local elapsed_time
-    local start_time=$(date +%s%N)
 
-    info "$start_time"
+    # Prepare the failed download log file
     local failed_filename="$destination_folder/failed_downloads.txt"
-    local destination_file="$destination_folder/$file_name"
-
+    
     # Download all files in parallel with a progress bar
     echo "$file_urls" | while read -r url; do
-        current=$((current + 1))
-        file_name=$(basename "$url")
+        {
+            file_name=$(basename "$url")
+            destination_file="$destination_folder/$file_name"
 
-        # Current time in nanoseconds
-        local current_time=$(date +%s%N)
-        local elapsed_ns=$((current_time - start_time))
+            # Download the file and handle errors
+            if curl -s --fail -o "$destination_file" "$url"; then
+                echo -n "."  # Success
+            else 
+                echo -n "x" >&2  # Failure
+                error_message=$(curl -s -w "%{http_code}" -o /dev/null "$url")
+                failed_downloads+=("$(date '+%Y-%m-%d %H:%M:%S') - $file_name - Error: HTTP $error_message")
+            fi
+            
+            # Increment progress
+            current=$((current + 1))
+            progress_bar "$current" "$total_files"
 
-        # Download the file and log failure with a specific message
-        if curl -s --fail -o "$destination_file" "$url"; then
-            echo -n "."  # Success
-        else 
-            echo -n "x" >&2  # Failure
-            error_message=$(\
-              curl -s -w "%{http_code}" -o /dev/null "$url"\
-            )
-            echo "$(date '+%Y-%m-%d %H:%M:%S') - $file_name - Error: HTTP $error_message" >> \
-            "$failed_filename"
-        fi
-  
-        # Update the progress bar
-        progress_bar "$current" "$total_files" "$elapsed_ns" "$width" "$marker"
+        } &
     done
 
-    # End timing and report
+    # Wait for all background jobs to finish
+    wait
+
+    # Display the progress bar finalization
     echo  # New line for progress bar
 
-    # Display the failed downloads
-    if [[ -f "$failed_filename" ]]; then
-        failure "Failed downloads: $(cat "$failed_filename")"
+    # Write failed downloads to the file
+    if [[ ${#failed_downloads[@]} -gt 0 ]]; then
+        for failed in "${failed_downloads[@]}"; do
+            echo "$failed" >> "$failed_filename"
+        done
+        failure "Failed downloads logged in $failed_filename"
     fi
 }
+
 
 # Function to list the services of a stack
 list_stack_services() {
