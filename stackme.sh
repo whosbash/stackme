@@ -4615,32 +4615,32 @@ signup_on_portainer() {
   echo "URL: $url" >&2
 
   # Make the request
+  info "Request: curl -s -k -X POST '$url' -H '$header' -d '$credentials'"
   response=$(curl -s -k -X POST "$url" -H "$header" -d "$credentials")
-  echo "Response: $response" >&2
+  info "Response: $response" >&2
 
   # Check for existing administrator user in the response
   if [[ "$response" == *"An administrator user already exists"* ]]; then
-    echo "Warning: An administrator user already exists." >&2
+    warning "An administrator user already exists."
     return 1
   fi
 
   # Parse the response and check if it contains the expected fields
   user_info=$(
-    echo "$response" |
-      jq -c 'select(.Id and .Username and .Password and .Role)'
+    echo "$response" | jq -c 'select(.Id and .Username and .Password and .Role)'
   )
   if [ $? -ne 0 ]; then
-    echo "Error: The response does not contain the expected fields." >&2
+    error "The response does not contain the expected fields." >&2
     return 1
   fi
 
   # Ensure the password is correctly hashed (checking the format of the password)
   password_hash=$(echo "$response" | jq -r '.Password')
   if [[ "$password_hash" =~ ^\$2a\$10\$ ]]; then
-    echo "Administrator user created successfully."
+    info "Administrator user created successfully."
     return 0
   else
-    echo "Error: Password hashing failed or response is incorrect." >&2
+    error "Password hashing failed or response is incorrect."
     return 1
   fi
 }
