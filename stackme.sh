@@ -5209,6 +5209,7 @@ execute_refresh_actions() {
 
   if [ "$(echo "$refresh_actions_json" | jq length)" -eq 0 ]; then
     warning "No refresh actions to execute."
+    echo "$updated_variables"
     return 0
   fi
 
@@ -5435,7 +5436,6 @@ deployment_pipeline() {
   # Step 4: Build and substitute Docker Compose template
   step_info 4 $total_steps "Building Docker Compose template"
   local compose_path
-  debug "$stack_variables"
   compose_path=$(build_compose_file "$stack_name" "$stack_variables") || {
     failure "Failed to build Docker Compose template"
     return 1
