@@ -1344,9 +1344,6 @@ progress_bar() {
   local space_char="${6:- }"  # Character for remaining space (default: space)
   local percentage=$((current * 100 / total))  # Calculate percentage
 
-  debug "Current: $current, Total: $total, Elapsed Time: $elapsed_time, Percentage: $percentage"
-  debug "Total width: $total_width, Marker: $marker, Space char: $space_char"
-
   # Clamp the percentage and current value to prevent invalid ranges
   current=$((current < 0 ? 0 : (current > total ? total : current)))
   percentage=$((percentage > 100 ? 100 : percentage))
@@ -1384,7 +1381,8 @@ progress_bar() {
   local empty_part=$(printf "%-${empty_width}s" "" | tr ' ' "$space_char")
 
   # Display the progress bar with current and total items, and speed or time
-  printf "\r[%-s] %3d%% (%d/%d) ${display_speed_or_time}" "${filled_part}${empty_part}" "$percentage" "$current" "$total"
+  printf "\r[%-s] %3d%% (%d/%d) ${display_speed_or_time}" "${filled_part}${empty_part}" \
+    "$percentage" "$current" "$total"
 }
 
 # Function to check the IP address of a domain
