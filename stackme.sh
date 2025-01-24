@@ -1801,7 +1801,7 @@ generate_machine_specs_table() {
   network_rows+=$(generate_table_row "Wi-Fi" "$wifi_info")
   html_content+=$(create_table "Network Information" "<th>Type</th><th>Details</th>" "$network_rows")
 
-  debug "$html_content"
+    debug "$html_content"
 
   # Return the complete HTML content
   echo "$html_content"
@@ -5386,6 +5386,8 @@ save_stack_configuration() {
 # Function to deploy a stack
 deployment_pipeline() {
   local config_json="$1"
+
+  debug "$config_json"
 
   local stack_name="$(echo "$config_json" | jq -r '.name')"
 
