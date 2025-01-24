@@ -4311,11 +4311,11 @@ download_stack_compose_templates() {
 
     # Create the destination folder if it doesn't exist
     mkdir -p "$destination_folder" || {
-        echo "Error: Failed to create destination folder $destination_folder."
+        error "Failed to create destination folder $destination_folder."
         return 1
     }
 
-    echo "Fetching file list from GitHub API..."
+    info "Fetching file list from GitHub API..."
     # Fetch the file information from the API
     file_urls=$(\
         curl -s -H "Accept: application/vnd.github.v3+json" "$STACKS_TEMPLATE_URL" | \
@@ -4324,12 +4324,12 @@ download_stack_compose_templates() {
 
     # Check if files were found
     if [[ -z "$file_urls" ]]; then
-        echo "Warning: No files found at $STACKS_TEMPLATE_URL."
+        warning "No files found at $STACKS_TEMPLATE_URL."
         return 1
     fi
 
     total_files=$(echo "$file_urls" | wc -l)
-    echo "Found $total_files files. Starting download..."
+    info "Found $total_files files. Starting download..."
 
     # Prepare a variable to track failed downloads
     failed_downloads=()
@@ -4358,7 +4358,7 @@ download_stack_compose_templates() {
 
     # Display the failed downloads
     if [[ -f "$destination_folder/failed_downloads.txt" ]]; then
-        echo "Failed downloads: $(cat "$destination_folder/failed_downloads.txt")"
+        failure "Failed downloads: $(cat "$destination_folder/failed_downloads.txt")"
     fi
 }
 
