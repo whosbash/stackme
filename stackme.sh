@@ -4336,11 +4336,19 @@ download_stack_compose_templates() {
 
     # Initialize the progress bar
     current=0
+    
+    local current_time
+    local elapsed_time
+    local start_time=$(date +%s)
 
     # Download all files in parallel with a progress bar
     echo "$file_urls" | while read -r url; do
         current=$((current + 1))
         file_name=$(basename "$url")
+
+        # Calculate elapsed time
+        current_time=$(date +%s)
+        elapsed_time=$((current_time - start_time))
 
         if curl -s --fail -o "$destination_folder/$file_name" "$url"; then
             echo -n "."  # Success
@@ -4348,8 +4356,9 @@ download_stack_compose_templates() {
             echo -n "x" >&2  # Failure
             echo "$file_name" >> "$destination_folder/failed_downloads.txt"  # Log failed downloads
         fi
-
+  
         # Update the progress bar
+        progress_bar "$i" "$total_items" "$elapsed_time" "$width" "$marker"
         progress_bar "$current" "$total_files" 50 "#"
     done
 
