@@ -4351,6 +4351,13 @@ download_stack_compose_templates() {
         current_time=$(date +%s%N)  # Nanoseconds since epoch
         elapsed_time=$(( (current_time - start_time) / 1000000 ))
 
+        # Calculate the speed or time per item
+        if (( current > 0 && elapsed_time > 0 )); then
+            time_per_item=$(echo "scale=2; $elapsed_time / $current / 1000" | bc) 
+        else
+            time_per_item="0.00"
+        fi
+
         if curl -s --fail -o "$destination_folder/$file_name" "$url"; then
             echo -n "."  # Success
         else 
