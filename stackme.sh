@@ -4340,16 +4340,16 @@ download_stack_compose_templates() {
     
     local current_time
     local elapsed_time
-    local start_time=$(date +%s)
+    local start_time=$(date +%s%N)
 
     # Download all files in parallel with a progress bar
     echo "$file_urls" | while read -r url; do
         current=$((current + 1))
         file_name=$(basename "$url")
 
-        # Calculate elapsed time
-        current_time=$(date +%s)
-        elapsed_time=$((current_time - start_time))
+        # Calculate elapsed time in milliseconds
+        current_time=$(date +%s%N)  # Nanoseconds since epoch
+        elapsed_time=$(( (current_time - start_time) / 1000000 ))
 
         if curl -s --fail -o "$destination_folder/$file_name" "$url"; then
             echo -n "."  # Success
@@ -4359,7 +4359,7 @@ download_stack_compose_templates() {
         fi
   
         # Update the progress bar
-        progress_bar "$current" "$total_files" "$elapsed_time" 50 "#"
+        progress_bar "$current" "$total_files" "$(echo "scale=2; $elapsed_time / 1000" | bc)" 50 "#"
     done
 
     # End timing and report
