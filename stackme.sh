@@ -3994,7 +3994,9 @@ handle_quit_key() {
     if [[ "$current_menu" == "Main" ]]; then
       message="${faded_color}Exiting program.${reset_color}"
     else
-      message="${faded_color}Returning to $previous_menu menu.${reset_color}"
+      last_menu_label="${previous_menu##*:}"
+
+      message="${faded_color}Returning to $last_menu_label menu.${reset_color}"
     fi
 
     echo -e "$message" >&2
