@@ -7789,7 +7789,8 @@ main() {
   define_menus
 
   start_main_menu
-  wait_for_input
+  wait_for_input 5
+  clean_screen
 }
 
 # Call the main function
