@@ -2606,7 +2606,7 @@ validate_stack_config() {
   local stack_config="$1"
 
   # Get the stack name
-  stack_name="(echo $stack_config | jq -r '.name')"
+  stack_name="$(echo $stack_config | jq -r '.name')"
 
   # Get required fields from the stack template
   required_fields=$(list_stack_compose_required_fields "$stack_name")
@@ -6076,64 +6076,68 @@ initialize_server_info() {
 
   handle_exit $? 2 $total_steps "$step_message"
 
+  step_message="Download stacks templates"
+  step_progress 3 $total_steps "$step_message"
+  download_stack_compose_templates
+  handle_exit $? 3 $total_steps "$step_message"
+
   # Update /etc/hosts
   step_message="Add name to server name in hosts file at path /etc/hosts"
-  step_progress 3 $total_steps "$step_message"
+  step_progress 4 $total_steps "$step_message"
   # Ensure /etc/hosts has the correct entry
   if ! grep -q "^127.0.0.1[[:space:]]$server_name" /etc/hosts; then
     sed -i "/^127.0.0.1[[:space:]]/d" /etc/hosts # Remove old entries
     echo "127.0.0.1 $server_name" >>/etc/hosts
   else
-    step_info 3 $total_steps "$server_name is already present in /etc/hosts"
+    step_info 4 $total_steps "$server_name is already present in /etc/hosts"
   fi
-
-  handle_exit $? 3 $total_steps "$step_message"
+  handle_exit $? 5 $total_steps "$step_message"
 
   # Set Hostname
   step_message="Set Hostname"
-  step_progress 4 $total_steps "$step_message"
+  step_progress 5 $total_steps "$step_message"
 
   current_hostname="$(hostnamectl --static)"
 
   if [[ "$current_hostname" != "$server_name" ]]; then
     hostnamectl set-hostname "$server_name"
-    handle_exit $? 4 $total_steps "Set Hostname"
+    handle_exit $? 5 $total_steps "Set Hostname"
 
-    step_success 4 $total_steps "Hostname set to $server_name"
+    step_success 5 $total_steps "Hostname set to $server_name"
 
     # Allow a brief delay for changes to propagate
     sleep 1
   else
-    step_info 4 $total_steps "Hostname is already set to $server_name"
+    step_info 5 $total_steps "Hostname is already set to $server_name"
   fi
 
   # Install docker
   step_message="Installing Docker"
-  step_progress 5 $total_steps "$step_message"
+  step_progress 6 $total_steps "$step_message"
   install_docker
-  handle_exit $? 5 $total_steps "$step_message"
+  handle_exit $? 6 $total_steps "$step_message"
 
   # Initialize Docker Swarm
   step_message="Docker Swarm initialization"
-  step_progress 6 $total_steps "$step_message"
+  step_progress 7 $total_steps "$step_message"
 
   read -r ip _ <<<$(
     hostname -I | tr ' ' '\n' | grep -v '^127\.0\.0\.1' | tr '\n' ' '
   )
   if is_swarm_active; then
-    step_warning 6 $total_steps "Swarm is already active"
+    step_warning 7 $total_steps "Swarm is already active"
   else
     # server_ip=$(curl ipinfo.io/ip)
     docker swarm init --advertise-addr $ip 2>&1
 
-    handle_exit $? 6 $total_steps "$step_message"
+    handle_exit $? 7 $total_steps "$step_message"
   fi
 
   # Initialize Network
   message="Network initialization"
-  step_progress 7 $total_steps "$message"
+  step_progress 8 $total_steps "$message"
   create_network_if_not_exists "$network_name"
-  handle_exit $? 7 $total_steps "$step_message"
+  handle_exit $? 8 $total_steps "$step_message"
 
   success "Server initialization complete"
 
