@@ -5183,18 +5183,23 @@ deploy_dependencies() {
 
 # Function to execute a refresh action (command must output JSON)
 execute_refresh_actions() {
-  local refresh_actions="$1"
+  local refresh_actions_json="$1"
   local stack_variables="$2"
   local updated_variables="$stack_variables" # Initialize with input variables
 
   local actions
-  actions=$(echo "$refresh_actions" | jq -c '.[]') || {
+  actions=$(echo "$refresh_actions_json" | jq -c '.[]') || {
     error "Invalid JSON in refresh actions"
     return 1
   }
 
+  if [ "$(echo "$refresh_actions_json" | jq length)" -eq 0 ]; then
+    warning "No refresh actions to execute."
+    return 0
+  fi
+
   # Iterate over the refresh actions
-  echo "$refresh_actions" | jq -c '.[]' | while IFS= read -r action; do
+  echo "$refresh_actions_json" | jq -c '.[]' | while IFS= read -r action; do
     local action_name
     action_name=$(echo "$action" | jq -r '.name')
 
