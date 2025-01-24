@@ -6011,15 +6011,13 @@ get_server_info() {
         }
     ]'
 
-  server_array="$(run_collection_process "$items")"
+  collected_items="$(run_collection_process "$items")"
   if [[ "$server_array" == "[]" ]]; then
     error "Unable to retrieve server and network names."
     exit 1
   fi
 
   collected_object="$(process_prompt_items "$collected_items")"
-
-  debug "$collected_object"
 
   # Print the merged result
   echo "$collected_object"
