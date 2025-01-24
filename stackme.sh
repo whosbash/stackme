@@ -1335,17 +1335,20 @@ to_boolean() {
   [[ "$1" -ne 0 ]] && echo "true" || echo "false"
 }
 
+# Function to display a progress bar
+# Function to display a progress bar
 progress_bar() {
-  local current="$1"        # Current item
-  local total="$2"          # Total items
-  local elapsed_time="$3"   # Elapsed time in seconds
+  local current="$1"         # Current item
+  local total="$2"           # Total items
+  local elapsed_ns="$3"      # Elapsed time in nanoseconds
   local total_width="${4:-50}"  # Total width of the progress bar (default: 50)
-  local marker="${5:-#}"    # Custom marker character (default: #)
-  local space_char="${6:- }"  # Character for remaining space (default: space)
+  local marker="${5:-#}"     # Custom marker character (default: #)
+  local space_char="${6:- }" # Character for remaining space (default: space)
+  
   local percentage=$((current * 100 / total))  # Calculate percentage
-
-  # Clamp the percentage and current value to prevent invalid ranges
-  current=$((current < 0 ? 0 : (current > total ? total : current)))
+  local elapsed_seconds=$(echo "scale=2; $elapsed_ns / 1000000000" | bc)  # Convert ns to seconds
+  
+  # Clamp the percentage to valid ranges
   percentage=$((percentage > 100 ? 100 : percentage))
 
   # Calculate the number of markers and spaces
@@ -1354,35 +1357,46 @@ progress_bar() {
 
   # Calculate speed (items per second)
   local speed=0
-  if (( elapsed_time > 0 )); then
-    speed=$(echo "scale=2; $current / $elapsed_time" | bc)
+  if (( $(echo "$elapsed_seconds > 0" | bc -l) )); then
+    speed=$(echo "scale=2; $current / $elapsed_seconds" | bc)
   fi
 
-  # Round speed to 2 decimal places and ensure 3 digits before the comma
-  local rounded_speed=$(printf "%6.2f" "$speed")
-
-  # Check if speed is slower than 0.5 items/sec
-  local display_speed_or_time
-  if (( $(echo "$speed < 0.5" | bc -l) )); then
-    # Display time per item
-    if (( current > 0 )); then
-      local time_per_item=$(echo "scale=2; $elapsed_time / $current" | bc)
-      display_speed_or_time="Time: ${time_per_item} secs/item"
+  # Display speed as secs/item if less than 1 item/sec
+  local speed_display="N/A"
+  if (( $(echo "$speed > 0" | bc -l) )); then
+    if (( $(echo "$speed < 1" | bc -l) )); then
+      speed_display=$(echo "scale=2; 1 / $speed" | bc)
+      speed_display="${speed_display} secs/item"
     else
-      display_speed_or_time="Time:     0.00 secs/item"
+      speed_display="${speed} items/sec"
     fi
-  else
-    # Display speed with 3 digits before the comma and 2 decimal places
-    display_speed_or_time="Speed: ${rounded_speed} items/sec"
   fi
+
+  # Estimate time remaining
+  local time_remaining="N/A"
+  if (( current < total && $(echo "$speed > 0" | bc -l) )); then
+    time_remaining=$(echo "scale=2; ($total - $current) / $speed" | bc 2>/dev/null)
+  fi
+
+  # Calculate the estimated final time
+  local estimated_final_time="0"
+  if [[ "$time_remaining" != "0" ]]; then
+    estimated_final_time=$(echo "$elapsed_seconds + $time_remaining" | bc 2>/dev/null)
+  fi
+
+  local formatted_elapsed_time=$(printf "%6.2f" "$elapsed_seconds")
+  local formatted_final_time=$(printf "%6.2f" "$estimated_final_time")
 
   # Create the progress bar
   local filled_part=$(printf "%-${filled_width}s" "" | tr ' ' "$marker")
   local empty_part=$(printf "%-${empty_width}s" "" | tr ' ' "$space_char")
 
-  # Display the progress bar with current and total items, and speed or time
-  printf "\r[%-s] %3d%% (%d/%d) ${display_speed_or_time}" "${filled_part}${empty_part}" \
-    "$percentage" "$current" "$total"
+  # Display the progress bar with current, total, speed, elapsed time, and final estimated time
+  printf "\r[%-s] %3d%% (%d/%d) Speed: %10s, Elapsed: %6s secs, Final: %6s secs" \
+    "${filled_part}${empty_part}" \
+    "$percentage" "$current" "$total" \ 
+    "$speed_display" 
+    "$formatted_elapsed_time" "$formatted_final_time"
 }
 
 # Function to check the IP address of a domain
@@ -4347,16 +4361,9 @@ download_stack_compose_templates() {
         current=$((current + 1))
         file_name=$(basename "$url")
 
-        # Calculate elapsed time in milliseconds
-        current_time=$(date +%s%N)  # Nanoseconds since epoch
-        elapsed_time=$(( (current_time - start_time) / 1000000 ))
-
-        # Calculate the speed or time per item
-        if (( current > 0 && elapsed_time > 0 )); then
-            time_per_item=$(echo "scale=2; $elapsed_time / $current / 1000" | bc) 
-        else
-            time_per_item="0.00"
-        fi
+        # Current time in nanoseconds
+        local current_time=$(date +%s%N)
+        local elapsed_ns=$((current_time - start_time))
 
         if curl -s --fail -o "$destination_folder/$file_name" "$url"; then
             echo -n "."  # Success
@@ -4366,7 +4373,7 @@ download_stack_compose_templates() {
         fi
   
         # Update the progress bar
-        progress_bar "$current" "$total_files" "$(echo "scale=2; $elapsed_time / 1000" | bc)" 50 "#"
+        progress_bar "$i" "$total_items" "$elapsed_ns" "$width" "$marker"
     done
 
     # End timing and report
