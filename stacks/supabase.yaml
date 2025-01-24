@@ -89,7 +89,7 @@ services:
           - node.role == manager  
       labels:
         - traefik.enable=true
-        - traefik.http.routers.kong.rule=Host(\`{{supabase_url}}\`) && PathPrefix(\`/\`) ## Url do Supabase
+        - traefik.http.routers.kong.rule=Host(`{{supabase_url}}`) && PathPrefix(`/`) ## Url do Supabase
         - traefik.http.services.kong.loadbalancer.server.port=8000
         - traefik.http.routers.kong.service=kong
         - traefik.http.routers.kong.entrypoints=websecure

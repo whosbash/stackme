@@ -42,7 +42,7 @@ services:
             memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.langfuse.rule=Host(\`{{langfuse_url}}\`)
+        - traefik.http.routers.langfuse.rule=Host(`{{langfuse_url}}`)
         - traefik.http.routers.langfuse.entrypoints=websecure
         - traefik.http.routers.langfuse.tls.certresolver=letsencryptresolver
         - traefik.http.routers.langfuse.service=langfuse

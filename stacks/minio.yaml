@@ -27,13 +27,13 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.minio_public.rule=Host(\`{{url_s3}}\`)
+        - traefik.http.routers.minio_public.rule=Host(`{{url_s3}}`)
         - traefik.http.routers.minio_public.entrypoints=websecure
         - traefik.http.routers.minio_public.tls.certresolver=letsencryptresolver
         - traefik.http.services.minio_public.loadbalancer.server.port=9000
         - traefik.http.services.minio_public.loadbalancer.passHostHeader=true
         - traefik.http.routers.minio_public.service=minio_public
-        - traefik.http.routers.minio_console.rule=Host(\`{{url_minio}}\`) 
+        - traefik.http.routers.minio_console.rule=Host(`{{url_minio}}`) 
         - traefik.http.routers.minio_console.entrypoints=websecure
         - traefik.http.routers.minio_console.tls.certresolver=letsencryptresolver
         - traefik.http.services.minio_console.loadbalancer.server.port=9001

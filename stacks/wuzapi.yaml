@@ -35,7 +35,7 @@ services:
             memory: 1024M
         labels:
           - traefik.enable=true
-          - traefik.http.routers.wuzapi.rule=Host(\`{{wuzapi_url}}\`)
+          - traefik.http.routers.wuzapi.rule=Host(`{{wuzapi_url}}`)
           - traefik.http.services.wuzapi.loadbalancer.server.port=8080
           - traefik.http.routers.wuzapi.service=wuzapi
           - traefik.http.routers.wuzapi.tls.certresolver=letsencryptresolver

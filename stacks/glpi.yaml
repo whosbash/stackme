@@ -26,7 +26,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.glpi.rule=Host(\`{{glpi_url}}\`)
+        - traefik.http.routers.glpi.rule=Host(`{{glpi_url}}`)
         - traefik.http.routers.glpi.service=glpi
         - traefik.http.routers.glpi.tls.certresolver=letsencryptresolver
         - traefik.http.routers.glpi.entrypoints=websecure

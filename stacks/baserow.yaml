@@ -43,7 +43,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.baserow.rule=Host(\`{{baserow_url}}\`)
+        - traefik.http.routers.baserow.rule=Host(`{{baserow_url}}`)
         - traefik.http.services.baserow.loadbalancer.server.port=80
         - traefik.http.routers.baserow.service=baserow
         - traefik.http.routers.baserow.tls.certresolver=letsencryptresolver

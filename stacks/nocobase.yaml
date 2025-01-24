@@ -43,7 +43,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.nocobase.rule=Host(\`{{nocobase_url}}\`)
+        - traefik.http.routers.nocobase.rule=Host(`{{nocobase_url}}`)
         - traefik.http.services.nocobase.loadbalancer.server.port=80
         - traefik.http.routers.nocobase.service=nocobase
         - traefik.http.routers.nocobase.tls.certresolver=letsencryptresolver

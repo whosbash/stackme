@@ -96,7 +96,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.chatwoot_nestor_app.rule=Host(\`{{chatwoot_url}}\`)
+        - traefik.http.routers.chatwoot_nestor_app.rule=Host(`{{chatwoot_url}}`)
         - traefik.http.routers.chatwoot_nestor_app.entrypoints=websecure
         - traefik.http.routers.chatwoot_nestor_app.tls.certresolver=letsencryptresolver
         - traefik.http.routers.chatwoot_nestor_app.priority=1

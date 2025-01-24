@@ -43,7 +43,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.easyapointments.rule=Host(\`{{easyappointments_url}}\`)
+        - traefik.http.routers.easyapointments.rule=Host(`{{easyappointments_url}}`)
         - traefik.http.services.easyapointments.loadbalancer.server.port=80
         - traefik.http.routers.easyapointments.service=easyapointments
         - traefik.http.routers.easyapointments.tls.certresolver=letsencryptresolver

@@ -58,7 +58,7 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.zep.rule=Host(\`{{zep_url}}\`)
+        - traefik.http.routers.zep.rule=Host(`{{zep_url}}`)
         - traefik.http.routers.zep.entrypoints=websecure
         - traefik.http.routers.zep.tls.certresolver=letsencryptresolver
         - traefik.http.services.zep.loadbalancer.server.port=8000

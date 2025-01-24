@@ -56,7 +56,7 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.directus.rule=Host(\`{{directus_url}}\`)
+        - traefik.http.routers.directus.rule=Host(`{{directus_url}}`)
         - traefik.http.services.directus.loadbalancer.server.port=8055
         - traefik.http.routers.directus.service=directus
         - traefik.http.routers.directus.tls.certresolver=letsencryptresolver

@@ -26,7 +26,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.traccar.rule=Host(\`{{traccar_url}}\`)
+        - traefik.http.routers.traccar.rule=Host(`{{traccar_url}}`)
         - traefik.http.services.traccar.loadbalancer.server.port=8082
         - traefik.http.routers.traccar.service=traccar
         - traefik.http.routers.traccar.tls.certresolver=letsencryptresolver

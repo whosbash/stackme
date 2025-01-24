@@ -29,7 +29,7 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.clickhouse.rule=Host(\`{{clickhouse_url}}\`)
+        - traefik.http.routers.clickhouse.rule=Host(`{{clickhouse_url}}`)
         - traefik.http.services.clickhouse.loadbalancer.server.port=8123
         - traefik.http.routers.clickhouse.service=clickhouse
         - traefik.http.routers.clickhouse.tls.certresolver=letsencryptresolver

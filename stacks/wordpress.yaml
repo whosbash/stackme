@@ -37,7 +37,7 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.wordpress_{{wordpress_site_name}}.rule=Host(\`{{wordpress_url}}\`)
+        - traefik.http.routers.wordpress_{{wordpress_site_name}}.rule=Host(`{{wordpress_url}}`)
         - traefik.http.routers.wordpress_{{wordpress_site_name}}.entrypoints=websecure
         - traefik.http.routers.wordpress_{{wordpress_site_name}}.tls.certresolver=letsencryptresolver
         - traefik.http.routers.wordpress_{{wordpress_site_name}}.service=wordpress_{{wordpress_site_name}}

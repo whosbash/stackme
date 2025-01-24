@@ -27,7 +27,7 @@ services:
           memory: 512M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.yourls.rule=Host(\`{{yourls_url}}\`) ## Url da aplicação
+        - traefik.http.routers.yourls.rule=Host(`{{yourls_url}}`) ## Url da aplicação
         - traefik.http.routers.yourls.entrypoints=websecure
         - traefik.http.routers.yourls.tls.certresolver=letsencryptresolver
         - traefik.http.routers.yourls.service=yourls

@@ -63,7 +63,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.woofedcrm.rule=Host(\`{{woofed_url}}\`)
+        - traefik.http.routers.woofedcrm.rule=Host(`{{woofed_url}}`)
         - traefik.http.routers.woofedcrm.entrypoints=websecure
         - traefik.http.routers.woofedcrm.tls.certresolver=letsencryptresolver
         - traefik.http.routers.woofedcrm.priority=1

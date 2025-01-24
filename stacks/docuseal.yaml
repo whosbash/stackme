@@ -43,7 +43,7 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.docuseal.rule=Host(\`{{docuseal_url}}\`)
+        - traefik.http.routers.docuseal.rule=Host(`{{docuseal_url}}`)
         - traefik.http.services.docuseal.loadbalancer.server.port=3000
         - traefik.http.routers.docuseal.service=docuseal
         - traefik.http.routers.docuseal.tls.certresolver=letsencryptresolver

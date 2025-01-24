@@ -47,7 +47,7 @@ services:
           memory: 2048M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.mautic.rule=Host(\`{{mautic_url}}\`) # substitua SeuDominio.com.br pelo seu domínio
+        - traefik.http.routers.mautic.rule=Host(`{{mautic_url}}`) # substitua SeuDominio.com.br pelo seu domínio
         - traefik.http.services.mautic.loadbalancer.server.port=80
         - traefik.http.routers.mautic.entrypoints=websecure
         - traefik.http.routers.mautic.service=mautic

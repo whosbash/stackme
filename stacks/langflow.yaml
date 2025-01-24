@@ -40,7 +40,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.langflow.rule=Host(\`{{langflow_url}}\`) ## Url da aplicação
+        - traefik.http.routers.langflow.rule=Host(`{{langflow_url}}`) ## Url da aplicação
         - traefik.http.services.langflow.loadBalancer.server.port=7860
         - traefik.http.routers.langflow.service=langflow
         - traefik.http.routers.langflow.entrypoints=websecure

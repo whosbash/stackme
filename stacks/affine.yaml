@@ -57,7 +57,7 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.affine.rule=Host(\`{{affine_url}}\`)
+        - traefik.http.routers.affine.rule=Host(`{{affine_url}}`)
         - traefik.http.services.affine.loadbalancer.server.port=3010
         - traefik.http.routers.affine.service=affine
         - traefik.http.routers.affine.tls.certresolver=letsencryptresolver

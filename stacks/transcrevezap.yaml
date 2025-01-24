@@ -35,7 +35,7 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.transcrevezap.rule=Host(\`{{transcrevezap_api_url}}\`)
+        - traefik.http.routers.transcrevezap.rule=Host(`{{transcrevezap_api_url}}`)
         - traefik.http.routers.transcrevezap.entrypoints=websecure
         - traefik.http.routers.transcrevezap.tls.certresolver=letsencryptresolver
         - traefik.http.services.transcrevezap.loadbalancer.server.port=8005
@@ -43,7 +43,7 @@ services:
         - traefik.http.routers.transcrevezap.service=transcrevezap
         - traefik.http.middlewares.traefik-compress.compress=true
         - traefik.http.routers.transcrevezap.middlewares=traefik-compress
-        - traefik.http.routers.transcrevezap_manager.rule=Host(\`{{transcrevezap_url}}\`)
+        - traefik.http.routers.transcrevezap_manager.rule=Host(`{{transcrevezap_url}}`)
         - traefik.http.routers.transcrevezap_manager.entrypoints=websecure
         - traefik.http.routers.transcrevezap_manager.tls.certresolver=letsencryptresolver
         - traefik.http.routers.transcrevezap_manager.service=transcrevezap_manager

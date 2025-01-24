@@ -60,7 +60,7 @@ services:
       labels:
         - io.portainer.accesscontrol.users=admin
         - traefik.enable=true
-        - traefik.http.routers.typebot_builder.rule=Host(\`{{typebot_url}}\`) ## Url do Builder do Typebot
+        - traefik.http.routers.typebot_builder.rule=Host(`{{typebot_url}}`) ## Url do Builder do Typebot
         - traefik.http.routers.typebot_builder.entrypoints=websecure
         - traefik.http.routers.typebot_builder.tls.certresolver=letsencryptresolver
         - traefik.http.services.typebot_builder.loadbalancer.server.port=3000
@@ -127,7 +127,7 @@ services:
       labels:
         - io.portainer.accesscontrol.users=admin
         - traefik.enable=true
-        - traefik.http.routers.typebot_viewer.rule=Host(\`{{viewer_url}}\`)
+        - traefik.http.routers.typebot_viewer.rule=Host(`{{viewer_url}}`)
         - traefik.http.routers.typebot_viewer.entrypoints=websecure
         - traefik.http.routers.typebot_viewer.tls.certresolver=letsencryptresolver
         - traefik.http.services.typebot_viewer.loadbalancer.server.port=3000

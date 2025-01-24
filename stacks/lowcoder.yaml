@@ -108,7 +108,7 @@ services:
           - node.role == manager  
       labels:
         - traefik.enable=true
-        - traefik.http.routers.lowcoder.rule=Host(\`{{lowcoder_url}}\`) && PathPrefix(\`/\`)
+        - traefik.http.routers.lowcoder.rule=Host(`{{lowcoder_url}}`) && PathPrefix(`/`)
         - traefik.http.services.lowcoder.loadbalancer.server.port=3000
         - traefik.http.routers.lowcoder.service=lowcoder
         - traefik.http.routers.lowcoder.entrypoints=websecure

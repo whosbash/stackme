@@ -34,7 +34,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.mattermost.rule=Host(\`{{mattermost_url}}\`)
+        - traefik.http.routers.mattermost.rule=Host(`{{mattermost_url}}`)
         - traefik.http.routers.mattermost.entrypoints=websecure
         - traefik.http.routers.mattermost.tls.certresolver=letsencryptresolver
         - traefik.http.routers.mattermost.service=mattermost

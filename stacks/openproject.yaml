@@ -35,7 +35,7 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=1
-        - traefik.http.routers.openproject.rule=Host(\`{{openproject_url}}\`)
+        - traefik.http.routers.openproject.rule=Host(`{{openproject_url}}`)
         - traefik.http.routers.openproject.entrypoints=websecure
         - traefik.http.routers.openproject.priority=1
         - traefik.http.routers.openproject.tls.certresolver=letsencryptresolver

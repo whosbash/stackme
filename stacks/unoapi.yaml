@@ -62,7 +62,7 @@ services:
           memory: 1024M
       labels:
       - traefik.enable=true
-      - traefik.http.routers.unoapi.rule=Host(\`{{unoapi_url}}\`)
+      - traefik.http.routers.unoapi.rule=Host(`{{unoapi_url}}`)
       - traefik.http.routers.unoapi.entrypoints=websecure
       - traefik.http.routers.unoapi.tls.certresolver=letsencryptresolver
       - traefik.http.services.unoapi.loadbalancer.server.port=9876

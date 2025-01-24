@@ -34,7 +34,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.anythingllm.rule=Host(\`{{anythingllm_url}}\`)
+        - traefik.http.routers.anythingllm.rule=Host(`{{anythingllm_url}}`)
         - traefik.http.services.anythingllm.loadbalancer.server.port=3001
         - traefik.http.routers.anythingllm.service=anythingllm
         - traefik.http.routers.anythingllm.tls.certresolver=letsencryptresolver

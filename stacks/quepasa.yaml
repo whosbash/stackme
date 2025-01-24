@@ -79,7 +79,7 @@ services:
                       
       labels:
         - traefik.enable=true
-        - traefik.http.routers.quepasa.rule=Host(\`{{quepasa_url}}\`)
+        - traefik.http.routers.quepasa.rule=Host(`{{quepasa_url}}`)
         - traefik.http.routers.quepasa.tls=true
         - traefik.http.routers.quepasa.entrypoints=web,websecure
         - traefik.http.routers.quepasa.tls.certresolver=letsencryptresolver

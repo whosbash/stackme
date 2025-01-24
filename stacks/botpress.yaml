@@ -34,7 +34,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.botpress.rule=Host(\`{{botpress_url}}\`)
+        - traefik.http.routers.botpress.rule=Host(`{{botpress_url}}`)
         - traefik.http.services.botpress.loadbalancer.server.port=3000
         - traefik.http.routers.botpress.service=botpress
         - traefik.http.routers.botpress.tls.certresolver=letsencryptresolver

@@ -101,7 +101,7 @@ services:
           memory: 4096M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.dify_api.rule=Host(\`{{dify_api_url}}\`)
+        - traefik.http.routers.dify_api.rule=Host(`{{dify_api_url}}`)
         - traefik.http.services.dify_api.loadbalancer.server.port=5001
         - traefik.http.routers.dify_api.service=dify_api
         - traefik.http.routers.dify_api.tls.certresolver=letsencryptresolver
@@ -241,7 +241,7 @@ services:
           memory: 4096M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.dify_web.rule=Host(\`{{dify_url}}\`)
+        - traefik.http.routers.dify_web.rule=Host(`{{dify_url}}`)
         - traefik.http.services.dify_web.loadbalancer.server.port=3000
         - traefik.http.routers.dify_web.service=dify_web
         - traefik.http.routers.dify_web.tls.certresolver=letsencryptresolver

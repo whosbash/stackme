@@ -26,7 +26,7 @@ services:
             memory: 256M
       labels:
           - traefik.enable=true
-          - traefik.http.routers.pgadmin.rule=Host(\`{{pgadmin_url}}\`) ## Url da Ferramenta
+          - traefik.http.routers.pgadmin.rule=Host(`{{pgadmin_url}}`) ## Url da Ferramenta
           - traefik.http.services.pgadmin.loadbalancer.server.port=80
           - traefik.http.routers.pgadmin.service=pgadmin
           - traefik.http.routers.pgadmin.tls.certresolver=letsencryptresolver

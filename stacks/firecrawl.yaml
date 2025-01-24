@@ -52,7 +52,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.firecrawl_api.rule=Host(\`{{firecrawl_url}}\`)
+        - traefik.http.routers.firecrawl_api.rule=Host(`{{firecrawl_url}}`)
         - traefik.http.services.firecrawl_api.loadbalancer.server.port=3002
         - traefik.http.routers.firecrawl_api.service=firecrawl_api
         - traefik.http.routers.firecrawl_api.tls.certresolver=letsencryptresolver

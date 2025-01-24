@@ -39,7 +39,7 @@ services:
         - node.role == manager
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.vaultwarden.rule=Host(\`{{vaultwarden_url}}\`)"
+        - "traefik.http.routers.vaultwarden.rule=Host(`{{vaultwarden_url}}`)"
         - "traefik.http.routers.vaultwarden.service=vaultwarden"
         - "traefik.http.routers.vaultwarden.entrypoints=websecure"
         - "traefik.http.services.vaultwarden.loadbalancer.server.port=80"

@@ -68,7 +68,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.tooljet.rule=Host(\`{{tooljet_url}}\`)
+        - traefik.http.routers.tooljet.rule=Host(`{{tooljet_url}}`)
         - traefik.http.services.tooljet.loadbalancer.server.port=80
         - traefik.http.routers.tooljet.service=tooljet
         - traefik.http.routers.tooljet.tls.certresolver=letsencryptresolver

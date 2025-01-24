@@ -23,7 +23,7 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.odoo_app.rule=Host(\`{{url_odoo}}\`)
+        - traefik.http.routers.odoo_app.rule=Host(`{{url_odoo}}`)
         - traefik.http.routers.odoo_app.entrypoints=websecure
         - traefik.http.routers.odoo_app.tls=true
         - traefik.http.routers.odoo_app.service=odoo_app

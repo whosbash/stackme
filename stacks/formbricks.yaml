@@ -85,7 +85,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.formbricks.rule=Host(\`{{formbricks_url}}\`)
+        - traefik.http.routers.formbricks.rule=Host(`{{formbricks_url}}`)
         - traefik.http.services.formbricks.loadbalancer.server.port=3000
         - traefik.http.routers.formbricks.service=formbricks
         - traefik.http.routers.formbricks.tls.certresolver=letsencryptresolver

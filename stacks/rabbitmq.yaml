@@ -33,7 +33,7 @@ services:
           memory: 512M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.rabbitmq.rule=Host(\`{{url_rabbitmq}}\`)
+        - traefik.http.routers.rabbitmq.rule=Host(`{{url_rabbitmq}}`)
         - traefik.http.routers.rabbitmq.entrypoints=websecure
         - traefik.http.routers.rabbitmq.tls.certresolver=letsencryptresolver
         - traefik.http.routers.rabbitmq.service=rabbitmq

@@ -38,7 +38,7 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.strapi.rule=Host(\`{{strapi_url}}\`)
+        - traefik.http.routers.strapi.rule=Host(`{{strapi_url}}`)
         - traefik.http.routers.strapi.entrypoints=web,websecure
         - traefik.http.routers.strapi.tls.certresolver=letsencryptresolver
         - traefik.http.routers.strapi.service=strapi

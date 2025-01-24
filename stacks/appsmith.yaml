@@ -28,7 +28,7 @@ services:
           memory: 2048M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.appsmith.rule=Host(\`{{appsmith_url}}\`)
+        - traefik.http.routers.appsmith.rule=Host(`{{appsmith_url}}`)
         - traefik.http.routers.appsmith.entrypoints=websecure
         - traefik.http.routers.appsmith.tls.certresolver=letsencryptresolver
         - traefik.http.routers.appsmith.service=appsmith

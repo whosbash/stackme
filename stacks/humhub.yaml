@@ -56,7 +56,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.humhub.rule=Host(\`{{humhub_url}}\`)
+        - traefik.http.routers.humhub.rule=Host(`{{humhub_url}}`)
         - traefik.http.routers.humhub.entrypoints=websecure
         - traefik.http.routers.humhub.tls.certresolver=letsencryptresolver
         - traefik.http.routers.humhub.service=humhub

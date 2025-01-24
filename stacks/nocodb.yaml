@@ -32,7 +32,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.nocodb.rule=Host(\`{{nocodb_url}}\`)
+        - traefik.http.routers.nocodb.rule=Host(`{{nocodb_url}}`)
         - traefik.http.routers.nocodb.entrypoints=websecure
         - traefik.http.services.nocodb.loadbalancer.server.port=8080
         - traefik.http.routers.nocodb.service=nocodb

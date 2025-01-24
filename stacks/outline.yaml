@@ -74,7 +74,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.outline.rule=Host(\`{{outline_url}}\`)
+        - traefik.http.routers.outline.rule=Host(`{{outline_url}}`)
         - traefik.http.routers.outline.entrypoints=websecure
         - traefik.http.routers.outline.tls=true
         - traefik.http.routers.outline.tls.certresolver=letsencryptresolver

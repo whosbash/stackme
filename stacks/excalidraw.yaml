@@ -25,7 +25,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.excalidraw.rule=Host(\`{{excalidraw_url}}\`)
+        - traefik.http.routers.excalidraw.rule=Host(`{{excalidraw_url}}`)
         - traefik.http.services.excalidraw.loadbalancer.server.port=80
         - traefik.http.routers.excalidraw.service=excalidraw
         - traefik.http.routers.excalidraw.tls.certresolver=letsencryptresolver

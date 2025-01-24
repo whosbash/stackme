@@ -33,7 +33,7 @@ services:
           memory: 4192M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.twentycrm.rule=Host(\`{{twentycrm_url}}\`) ## Url da aplicação
+        - traefik.http.routers.twentycrm.rule=Host(`{{twentycrm_url}}`) ## Url da aplicação
         - traefik.http.services.twentycrm.loadbalancer.server.port=3000
         - traefik.http.routers.twentycrm.service=twentycrm
         - traefik.http.routers.twentycrm.tls.certresolver=letsencryptresolver

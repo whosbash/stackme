@@ -50,7 +50,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.moodle.rule=Host(\`{{moodle_url}}\`)
+        - traefik.http.routers.moodle.rule=Host(`{{moodle_url}}`)
         - traefik.http.services.moodle.loadbalancer.server.port=8080
         - traefik.http.routers.moodle.service=moodle
         - traefik.http.routers.moodle.tls.certresolver=letsencryptresolver

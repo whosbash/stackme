@@ -32,7 +32,7 @@ services:
           memory: 2048M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.phpmyadmin.rule=Host(\`{{phpmyadmin_url}}\`)
+        - traefik.http.routers.phpmyadmin.rule=Host(`{{phpmyadmin_url}}`)
         - traefik.http.routers.phpmyadmin.entrypoints=web,websecure
         - traefik.http.routers.phpmyadmin.tls.certresolver=letsencryptresolver
         - traefik.http.services.phpmyadmin.loadbalancer.server.port=80

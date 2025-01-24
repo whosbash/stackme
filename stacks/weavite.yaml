@@ -40,7 +40,7 @@ services:
 
       labels:
         - traefik.enable=true
-        - traefik.http.routers.weaviate.rule=Host(\`{{weaviate_url}}\`)
+        - traefik.http.routers.weaviate.rule=Host(`{{weaviate_url}}`)
         - traefik.http.routers.weaviate.entrypoints=websecure
         - traefik.http.routers.weaviate.tls.certresolver=letsencryptresolver 
 

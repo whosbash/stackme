@@ -25,7 +25,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.focalboard.rule=Host(\`{{focalboard_url}}\`) ## Url da Aplicação
+        - traefik.http.routers.focalboard.rule=Host(`{{focalboard_url}}`) ## Url da Aplicação
         - traefik.http.services.focalboard.loadBalancer.server.port=8000
         - traefik.http.routers.focalboard.service=focalboard
         - traefik.http.routers.focalboard.entrypoints=websecure
