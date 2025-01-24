@@ -4414,11 +4414,11 @@ download_stack_compose_templates() {
 
                 # Download the file and handle errors
                 if curl -s --fail -o "$destination_file" "$url"; then
-                    # Print progress to stdout (will be collected separately)
-                    echo "." > /dev/tty
+                    # Print progress to stdout (append to the same line)
+                    printf "." > /dev/tty
                 else 
-                    # Print error to stderr (will be collected separately)
-                    echo "x" > /dev/tty
+                    # Print error to stdout (append to the same line)
+                    printf "x" > /dev/tty
                     error_message=$(curl -s -w "%{http_code}" -o /dev/null "$url")
                     failed_downloads+=("$(date '+%Y-%m-%d %H:%M:%S') - $file_name - Error: HTTP $error_message")
                 fi
@@ -4427,10 +4427,8 @@ download_stack_compose_templates() {
 
         # Wait for all background processes to complete
         wait
+        echo # Move to a new line after progress indicators
     } > /dev/null 2>&1
-
-    # Wait for all background jobs to finish
-    wait
 
     # Write failed downloads to the file
     if [[ ${#failed_downloads[@]} -gt 0 ]]; then
