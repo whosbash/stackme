@@ -7347,7 +7347,7 @@ define_menu_stacks() {
   item_1="$(
     build_menu_item "Startup" \
       "Traefik & Portainer" \
-      "deploy_stack_startup"
+      "deploy_stacks_startup"
   )"
   item_2="$(
     build_menu_item "Monitor" \
