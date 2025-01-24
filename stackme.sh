@@ -4610,12 +4610,7 @@ signup_on_portainer() {
   local password="$3"
 
   # Credentials (raw, not indented)
-  credentials="$(\
-    jq -c \
-      --arg username "$username" \
-      --arg password "$password" \
-      '{ "username": $username, "password": $password }'
-  )"
+  credentials="{\"username\": \"$username\",\"password\": \"$password\"}"
 
   # Setup headers and endpoint
   local protocol="https"
