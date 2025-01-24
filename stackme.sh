@@ -1371,7 +1371,7 @@ progress_bar() {
     fi
   fi
 
-  info "Elapsed: $formatted_elapsed_time, Speed: $speed_display"
+  info "Current: $current, Total: $total, Speed: $speed"
 
   # Estimate time remaining
   local time_remaining="0"
