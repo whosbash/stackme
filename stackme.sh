@@ -5288,6 +5288,8 @@ execute_refresh_actions() {
 
   # Iterate over the refresh actions
   for action in "${actions[@]}"; do
+    debug "Processing refresh action: $action"
+    
     local action_name
     action_name=$(echo "$action" | jq -r '.name') || {
       error "Missing 'name' field in refresh action."
