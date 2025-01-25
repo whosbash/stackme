@@ -1989,7 +1989,7 @@ replace_mustache_variables() {
     value="${vars_ref[$key]}"
 
     # Escape special characters in the value to make it safe for sed
-    safe_value=$(echo "$value" | sed -e 's/[\/&]/\\&/g')
+    safe_value=$(escape_sed_special_chars "$value")
 
     debug "Replacing {{${key}}} with $safe_value"
 
@@ -2599,55 +2599,6 @@ create_error_item() {
     }'
 }
 
-# Function to create a collection item
-create_prompt_item() {
-  local name="$1"
-  local label="$2"
-  local description="$3"
-  local value="$4"
-  local required="$5"
-  local validate_fn="${6-validate_empty_value}"
-
-  # Check if the item is required and the value is empty
-  if [[ "$required" == "yes" && -z "$value" ]]; then
-    error_message="The value for '$name' is required but is empty."
-    error_obj=$(create_error_item "$name" "$error_message" "${FUNCNAME[0]}")
-    echo "$error_obj"
-    return 1
-  fi
-
-  # Validate the value using the provided validation function
-  validation_output=$(validate_value "$value" "$validate_fn" 2>&1)
-
-  # If validation failed, capture the validation message
-  if [[ $? -ne 0 ]]; then
-    # Validation failed, use the validation message captured in validation_output
-    error_obj=$(create_error_item "$name" "$validation_output" "$validate_fn")
-    echo "$error_obj"
-    return 1
-  fi
-
-  # Build the JSON object by echoing the data and piping it to jq for proper escaping
-  item_json=$(echo "
-    {
-        \"name\": \"$name\",
-        \"label\": \"$label\",
-        \"description\": \"$description\",
-        \"value\": \"$value\",
-        \"required\": \"$required\",
-        \"validate_fn\": \"$validate_fn\"
-    }" | jq .)
-
-  # Check if jq creation was successful
-  if [[ $? -ne 0 ]]; then
-    echo "Failed to create JSON object"
-    return 1 # Return an error code
-  fi
-
-  # Return the JSON object
-  echo "$item_json"
-}
-
 # Function to generate a JSON configuration for a service
 generate_schema_stack_config() {
   local required_fields="$1"
@@ -3132,6 +3083,13 @@ handle_exit() {
     error "Error Code: $exit_code"
   fi
   step "$current_step" "$total_steps" "$status_message" "$status"
+}
+
+escape_sed_special_chars() {
+  local input="$1"
+  
+  # Escape &, /, and \ characters
+  echo "$input" | sed -e 's/[\/&]/\\&/g' -e 's/\\/\\\\/g'
 }
 
 ####################################################################
