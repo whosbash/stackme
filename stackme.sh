@@ -4900,12 +4900,8 @@ upload_stack_on_portainer() {
   portainer_url="$(echo "$portainer_config" | jq -r '.portainer_url')"
   portainer_credentalias="$(echo "$portainer_config" | jq -r '.portainer_credentials')"
 
-  debug "Portainer Config: $portainer_config"
-  debug "Portainer URL: $portainer_url"
-  debug "Portainer Credentials: $portainer_credentials"
-
   highlight "Uploading stack $stack_name on Portainer $portainer_url"
-  token="$(get_portainer_auth_token "$portainer_url" "$credentials")"
+  token="$(get_portainer_auth_token "$portainer_url" "$portainer_credentials")"
 
   if [[ -z "$token" ]] || [[ "$token" == "" ]]; then
     error "Failed to retrieve Portainer token."
