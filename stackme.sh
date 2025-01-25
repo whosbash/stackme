@@ -5284,7 +5284,9 @@ execute_refresh_actions() {
   fi
 
   # Convert the JSON array to a Bash array
-  actions=($(echo "$refresh_actions_json" | jq -c -r '.[]'))
+  while IFS= read -r item; do
+    actions+=("$item")
+  done < <(jq -r '.[] | @json' <<<"$refresh_actions_json")
 
   # Iterate over the refresh actions
   for action in "${actions[@]}"; do
