@@ -5284,7 +5284,7 @@ execute_refresh_actions() {
   fi
 
   # Iterate over the refresh actions
-  for action in $(echo "$actions" | jq -c -r '.'); do
+  for action in $(echo "$actions" | jq -c -r '.[]'); do
     local action_name
     action_name=$(echo "$action" | jq -r '.name') || {
       error "Missing 'name' field in refresh action."
