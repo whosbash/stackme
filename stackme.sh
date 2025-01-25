@@ -1985,10 +1985,13 @@ replace_mustache_variables() {
   local -n vars_ref="$2" # Associative array passed by reference
 
   debug "On replace_mustache_variables function"
-
   debug "Template before substitution: $template"
-
-  debug "Variables passed by reference: ${!vars_ref[@]}"
+  
+  # Debug associative array contents
+  debug "Variables passed by reference and their contents:"
+  for key in "${!vars_ref[@]}"; do
+    debug "  Key: $key, Value: ${vars_ref[$key]}"
+  done
 
   # Iterate over the variables and replace each instance of {{KEY}} in the template
   for key in "${!vars_ref[@]}"; do
