@@ -5270,12 +5270,13 @@ execute_refresh_actions() {
   local stack_variables="$2"
   local updated_variables="$stack_variables" # Initialize with input variables
 
-  local actions
-  actions=$(echo "$refresh_actions_json" | jq -c '.[]') || {
+  # Validate that refresh_actions_json is a valid JSON
+  echo "$refresh_actions_json" | jq empty >/dev/null 2>&1 || {
     error "Invalid JSON in refresh actions"
     return 1
   }
 
+  # Check if there are no actions in the JSON
   if [ "$(echo "$refresh_actions_json" | jq length)" -eq 0 ]; then
     warning "No refresh actions to execute."
     echo "$updated_variables"
@@ -5283,12 +5284,18 @@ execute_refresh_actions() {
   fi
 
   # Iterate over the refresh actions
-  echo "$refresh_actions_json" | jq -c '.[]' | while IFS= read -r action; do
+  for action in $(echo "$actions" | jq -c -r '.'); do
     local action_name
-    action_name=$(echo "$action" | jq -r '.name')
+    action_name=$(echo "$action" | jq -r '.name') || {
+      error "Missing 'name' field in refresh action."
+      return 1
+    }
 
     local command
-    command=$(echo "$action" | jq -r '.command')
+    command=$(echo "$action" | jq -r '.command') || {
+      error "Missing 'command' field in refresh action."
+      return 1
+    }
 
     # Execute the command and capture its output (must be a valid JSON)
     info "Executing refresh action: $action_name"
@@ -5296,8 +5303,6 @@ execute_refresh_actions() {
       error "Failed to execute refresh action: $action_name"
       return 1
     }
-
-    debug "Refresh action '$action_name' output: $command_output"
 
     # Validate if the output is a valid JSON object
     echo "$command_output" | jq empty >/dev/null 2>&1 || {
@@ -5311,11 +5316,11 @@ execute_refresh_actions() {
       return 1
     }
 
-    debug "Updated stack variables after executing '$action_name': $updated_variables"
   done
 
   echo "$updated_variables"
 }
+
 
 # Function to execute prepare actions
 execute_prepare_actions() {
