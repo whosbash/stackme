@@ -5032,8 +5032,6 @@ load_portainer_url_and_credentials(){
       "variables.portainer_url" "variables.portainer_credentials"
   )"
 
-  echo "$portainer_info" >&2
-
   # Extract the portainer_url as a string
   portainer_url="$(echo "$portainer_info" | jq -r '.["variables.portainer_url"]')"
 
@@ -6501,6 +6499,7 @@ fetch_stack_compose(){
 
 ############################# BEGIN OF STACK DEPLOYMENT UTILITARY FUNCTIONS #######################
 
+# Function to get the database password from a configuration
 fetch_database_password() {
   local stack_name="$1"
   local config_file="$STACKS_DIR/$stack_name/stack_config.json"
@@ -6512,8 +6511,8 @@ fetch_database_password() {
   # Generate the output JSON
   jq -n \
     --arg stack_name "$stack_name" \
-    --arg postgres_password "$database_password" \
-    '{($stack_name + "_password"): $postgres_password}'
+    --arg database_password "$database_password" \
+    '{($stack_name + "_password"): $database_password}'
 }
 
 # Function to get the postgres password from a configuration
