@@ -4318,8 +4318,8 @@ map_stacks_to_services() {
 wait_for_services() {
     local stack_name="$1"
 
-    local timeout=60
-    local interval=5   # Check every 5 seconds
+    local timeout=300
+    local interval=5
     local elapsed=0
 
     # Get the list of service names from the docker-compose setup (in swarm mode)
@@ -5290,7 +5290,7 @@ execute_refresh_actions() {
 
   # Iterate over the refresh actions
   for action in "${actions[@]}"; do
-    debug "Processing refresh action: $action"
+    info "Processing refresh action: $action"
     
     local action_name
     action_name=$(echo "$action" | jq -r '.name') || {
@@ -5323,11 +5323,11 @@ execute_refresh_actions() {
       return 1
     }
 
-    debug "Updated stack variables after executing '$action_name': $updated_variables"
+    info "Updated stack variables after executing '$action_name': $(echo "$updated_variables" | jq -c '.')"
 
   done
 
-  debug "Final updated stack variables: $updated_variables"
+  debug "Final updated stack variables: $(echo "$updated_variables" | jq -c '.')"
 
   echo "$updated_variables"
 }
