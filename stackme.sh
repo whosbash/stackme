@@ -4682,7 +4682,8 @@ signup_on_portainer() {
   # Get the URL
   url="$(get_api_url "$protocol" "$portainer_url" "$resource")"
 
-  # Make the request
+  # Get the URL
+  info "Request call: curl -s -k -X POST $url -H $header -d $credentials"
   response="$(curl -s -k -X POST "$url" -H "$header" -d "$credentials")"
   info "Response: $response" >&2
 
