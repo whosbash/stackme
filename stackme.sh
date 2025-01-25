@@ -1984,6 +1984,12 @@ replace_mustache_variables() {
   local template="$1"
   local -n vars_ref="$2" # Associative array passed by reference
 
+  debug "On replace_mustache_variables function"
+
+  debug "Template before substitution: $template"
+
+  debug "Variables passed by reference: ${!vars_ref[@]}"
+
   # Iterate over the variables and replace each instance of {{KEY}} in the template
   for key in "${!vars_ref[@]}"; do
     value="${vars_ref[$key]}"
@@ -5730,6 +5736,8 @@ generate_html() {
     [header_title]="$header_title"
     [email_content]="$email_content"
   )
+
+  debug "On generate_html function"
 
   # Use the replace_mustache_variables function to substitute variables in the template
   local email_html=$(replace_mustache_variables "$base_template" email_variables)
