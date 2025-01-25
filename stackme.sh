@@ -4900,6 +4900,10 @@ upload_stack_on_portainer() {
   portainer_url="$(echo "$portainer_config" | jq -r '.portainer_url')"
   portainer_credentalias="$(echo "$portainer_config" | jq -r '.portainer_credentials')"
 
+  debug "Portainer Config: $portainer_config"
+  debug "Portainer URL: $portainer_url"
+  debug "Portainer Credentials: $portainer_credentials"
+
   highlight "Uploading stack $stack_name on Portainer $portainer_url"
   token="$(get_portainer_auth_token "$portainer_url" "$credentials")"
 
@@ -4970,8 +4974,10 @@ deploy_stack_on_portainer() {
   fi
 
   # Upload the stack
-  upload_stack_on_portainer "$portainer_config" "$stack_name" "$compose_path" ||
-    error "Failed to upload stack '$stack_name'"
+  upload_stack_on_portainer "$portainer_config" "$stack_name" "$compose_path" || {
+    error "Failed to upload stack '$stack_name'."
+    return 1
+  }
 }
 
 # Function to delete a stack
@@ -5396,12 +5402,16 @@ deploy_stack_on_target() {
   swarm)
     info "Deploying stack '$stack_name' on Docker Swarm"
     docker stack deploy -c "$compose_path" "$stack_name"
+    
+    return $?
     ;;
   portainer)
     info "Deploying stack '$stack_name' on Portainer"
     portainer_config="$(load_portainer_url_and_credentials)"
 
     deploy_stack_on_portainer "$portainer_config" "$stack_name" "$compose_path"
+
+    return $?
     ;;
   *)
     error "Unknown deployment target: $target"
