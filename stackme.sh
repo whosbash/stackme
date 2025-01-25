@@ -5739,6 +5739,15 @@ generate_html() {
 
   debug "On generate_html function"
 
+  debug "Echo title: $email_title"
+  debug "Echo header_title: $header_title"
+  debug "Echo email_content: $email_content"
+  debug "Variables: ${email_variables[@]}"
+
+  debug "Template before substitution: $base_template"
+  debug "Variables passed by reference: ${!email_variables[@]}"
+  debug "Template after substitution: $(replace_mustache_variables "$base_template" email_variables)"
+
   # Use the replace_mustache_variables function to substitute variables in the template
   local email_html=$(replace_mustache_variables "$base_template" email_variables)
 
