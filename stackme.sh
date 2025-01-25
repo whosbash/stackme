@@ -2001,7 +2001,7 @@ replace_mustache_variables() {
     safe_value=$(echo "$value" | sed -e 's/[\/&]/\\&/g')
 
     # Use sed to replace instances of {{key}}, {{ key}}, and {{key }}
-    template=$(echo "$template" | sed -E "s/\{\{\s*${key}\s*\}\}/$safe_value/g")
+    template=$(printf '%s' "$template" | sed -E "s/\{\{\s*${key}\s*\}\}/$safe_value/g")
   done
 
   # Output the substituted template
