@@ -1984,15 +1984,6 @@ replace_mustache_variables() {
   local template="$1"
   local -n vars_ref="$2" # Associative array passed by reference
 
-  debug "On replace_mustache_variables function"
-  debug "Template before substitution: $template"
-  
-  # Debug associative array contents
-  debug "Variables passed by reference and their contents:"
-  for key in "${!vars_ref[@]}"; do
-    debug "  Key: $key, Value: ${vars_ref[$key]}"
-  done
-
   # Iterate over the variables and replace each instance of {{KEY}} in the template
   for key in "${!vars_ref[@]}"; do
     value="${vars_ref[$key]}"
@@ -2000,8 +1991,11 @@ replace_mustache_variables() {
     # Escape special characters in the value to make it safe for sed
     safe_value=$(echo "$value" | sed -e 's/[\/&]/\\&/g')
 
+    debug "Replacing {{${key}}} with $safe_value"
+
     # Use sed to replace instances of {{key}}, {{ key}}, and {{key }}
-    template=$(printf '%s' "$template" | sed -E "s/\{\{\s*${key}\s*\}\}/$safe_value/g")
+    pattern="s/\{\{\s*${key}\s*\}\}/$safe_value/g"
+    template=$(printf '%s' "$template" | sed -E "$pattern")
   done
 
   # Output the substituted template
