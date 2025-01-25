@@ -5316,7 +5316,11 @@ execute_refresh_actions() {
       return 1
     }
 
+    debug "Updated stack variables after executing '$action_name': $updated_variables"
+
   done
+
+  debug "Final updated stack variables: $updated_variables"
 
   echo "$updated_variables"
 }
