@@ -5297,6 +5297,8 @@ execute_refresh_actions() {
       return 1
     }
 
+    debug "Refresh action '$action_name' output: $command_output"
+
     # Validate if the output is a valid JSON object
     echo "$command_output" | jq empty >/dev/null 2>&1 || {
       error "Refresh action '$action_name' did not return a valid JSON."
@@ -5308,6 +5310,8 @@ execute_refresh_actions() {
       error "Failed to update stack variables after executing '$action_name'"
       return 1
     }
+
+    debug "Updated stack variables after executing '$action_name': $updated_variables"
   done
 
   echo "$updated_variables"
