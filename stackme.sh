@@ -5027,12 +5027,20 @@ load_portainer_url_and_credentials(){
 
   portainer_info="$(
     filter_json_object_by_keys "$portainer_config_json" \
-      ".variables.portainer_url" ".variables.portainer_credentials"
+      "variables.portainer_url" "variables.portainer_credentials"
   )"
 
-  portainer_url="$(echo "$portainer_info" | jq -r '.variables.portainer_url')"
-  portainer_credentials="$(echo "$portainer_info" | jq -r '.variables.portainer_credentials')"
+  echo "$portainer_info" >&2
 
+  # Extract the portainer_url as a string
+  portainer_url="$(echo "$portainer_info" | jq -r '.["variables.portainer_url"]')"
+
+  # Parse the portainer_credentials string into a JSON object (using fromjson)
+  portainer_credentials="$(\
+    echo "$portainer_info" | \
+    jq -r '.["variables.portainer_credentials"] | fromjson')"
+
+  # Return the filtered JSON with portainer_url and portainer_credentials
   jq -n \
     --arg portainer_url "$portainer_url" \
     --argjson portainer_credentials "$portainer_credentials" \
