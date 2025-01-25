@@ -5222,14 +5222,14 @@ execute_action() {
   fi
 
   # Use eval safely to execute the command
-  eval "$action_command"
+  eval "$action_command" >&2
 
   # Check command success
   local exit_code=$?
   if [ $exit_code -ne 0 ]; then
-    echo "Action '$action_name' failed with exit code $exit_code"
+    failure "Action '$action_name' failed with exit code $exit_code"
   else
-    echo "Action '$action_name' executed successfully"
+    success "Action '$action_name' executed successfully"
   fi
 }
 
@@ -5460,8 +5460,6 @@ save_stack_configuration() {
 deployment_pipeline() {
   local config_json="$1"
 
-  debug "$config_json"
-
   local stack_name="$(echo "$config_json" | jq -r '.name')"
 
   total_steps=7
@@ -5492,6 +5490,8 @@ deployment_pipeline() {
     failure "Failed to execute refresh actions"
     return 1
   }
+
+  debug "$stack_variables" >&2
 
   # Step 3: Execute prepare actions
   step_info 3 $total_steps "Executing prepare actions"
