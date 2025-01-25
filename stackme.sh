@@ -961,6 +961,8 @@ filter_json_object_by_keys() {
   local missing_keys=()   # Array to store missing keys
   local filtered_json={}  # Resultant JSON object
 
+  info "$json"
+
   # Loop through each key
   for key in "${keys[@]:1}"; do
     # Extract the value for the current key
