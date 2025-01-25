@@ -3085,11 +3085,11 @@ handle_exit() {
   step "$current_step" "$total_steps" "$status_message" "$status"
 }
 
+# Function to escape special characters in a string
 escape_sed_special_chars() {
   local input="$1"
-  
-  # Escape &, /, and \ characters
-  echo "$input" | sed -e 's/[\/&]/\\&/g' -e 's/\\/\\\\/g'
+  # Escape &, /, and \ characters, and handle newlines
+  echo "$input" | sed -e 's/[\/&]/\\&/g' -e 's/\\/\\\\/g' | tr '\n' '\\n'
 }
 
 ####################################################################
