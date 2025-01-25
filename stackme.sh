@@ -5283,8 +5283,11 @@ execute_refresh_actions() {
     return 0
   fi
 
+  # Convert the JSON array to a Bash array
+  actions=($(echo "$refresh_actions_json" | jq -c -r '.[]'))
+
   # Iterate over the refresh actions
-  for action in $(echo "$actions" | jq -c -r '.[]'); do
+  for action in "${actions[@]}"; do
     local action_name
     action_name=$(echo "$action" | jq -r '.name') || {
       error "Missing 'name' field in refresh action."
