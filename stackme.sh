@@ -5682,7 +5682,6 @@ BASE_TEMPLATE='<!DOCTYPE html>
     </header>
     <section class="content">
       {{email_content}}
-      <a href="{{cta_url}}" class="button">{{cta_text}}</a>
     </section>
     <footer class="footer">
       <p>Sent using a Shell Script and the Swaks tool.</p>
