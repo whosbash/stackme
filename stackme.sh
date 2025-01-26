@@ -5555,87 +5555,92 @@ BASE_TEMPLATE='<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{email_title}}</title>
   <style>
-    body { 
-      font-family: Arial, sans-serif; 
-      background-color: #f9f9fb; 
-      margin: 0; 
-      padding: 0; 
-      color: #333; 
-      line-height: 1.6; /* Improve readability */
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f9f9fb;
+      margin: 0;
+      padding: 0;
+      color: #333;
+      line-height: 1.6;
     }
 
     /* Container Styles */
-    .container { 
-      margin: 20px auto; 
-      padding: 20px; 
-      max-width: 600px; 
-      background-color: #ffffff; 
-      border-radius: 10px; 
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); 
+    .container {
+      margin: 20px auto;
+      padding: 20px;
+      max-width: 600px;
+      background-color: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     }
 
     /* Header Styles */
-    .header { 
-      text-align: center; 
-      background-color: #4caf50; 
-      color: #ffffff; 
-      padding: 20px; 
-      border-radius: 10px 10px 0 0; 
+    .header {
+      text-align: center;
+      background-color: #4caf50;
+      color: #ffffff;
+      padding: 20px;
+      border-radius: 10px 10px 0 0;
     }
-    .header img { 
-      max-width: 80px; 
-      margin-bottom: 10px; 
+    .header img {
+      max-width: 80px;
+      margin-bottom: 10px;
     }
-    .header h1 { 
-      font-size: 1.6em; /* Scalable font size */
-      margin: 0; 
+    .header h1 {
+      font-size: 1.6em;
+      margin: 0;
     }
 
     /* Content Styles */
-    .content { 
-      padding: 20px; 
-      font-size: 1em; /* Adjust for readability */
+    .content {
+      padding: 20px;
+      font-size: 1em;
     }
 
     /* Footer Styles */
-    .footer { 
-      text-align: center; 
-      padding: 20px 0; 
-      color: #aaaaaa; 
-      border-top: 1px solid #eeeeee; 
-      font-size: 0.9em; /* Slightly smaller font for footer */
+    .footer {
+      text-align: center;
+      padding: 20px 0;
+      color: #aaaaaa;
+      border-top: 1px solid #eeeeee;
+      font-size: 0.9em;
     }
-    .footer img { 
-      width: 24px; 
-      height: 24px; 
-      vertical-align: middle; 
+    .footer img {
+      width: 24px;
+      height: 24px;
+      vertical-align: middle;
     }
-    .footer a { 
-      text-decoration: none; 
-      color: #aaaaaa; 
+    .footer a {
+      text-decoration: none;
+      color: #aaaaaa;
     }
 
     /* Button Styling */
     .button {
-      display: inline-block; /* Prevent button from spanning the full width */
-      margin: 20px auto; /* Center button horizontally */
+      display: inline-block;
+      margin: 20px auto;
       padding: 12px 25px;
-      background-color: #4caf50; /* Green background */
-      color: #ffffff; /* White text */
-      text-decoration: none; /* No underline */
-      font-size: 1.1em; /* Slightly larger font */
+      background-color: #4caf50;
+      color: #ffffff;
+      text-decoration: none;
+      font-size: 1.1em;
       font-weight: bold;
       border-radius: 5px;
       text-align: center;
       cursor: pointer;
-      transition: background-color 0.3s ease;
+      transition: background-color 0.3s ease, transform 0.2s ease;
     }
+
     .button:hover {
       background-color: #45a049;
+      transform: translateY(-2px);
     }
+
     .button:active {
       background-color: #3e8e41;
+      transform: translateY(2px);
     }
+
     .button:focus {
       outline: 3px solid #4caf50;
       outline-offset: 2px;
@@ -5643,15 +5648,15 @@ BASE_TEMPLATE='<!DOCTYPE html>
 
     /* Global Link Styling */
     a {
-      color: #4caf50; /* Green text */
-      font-weight: bold; /* Bold text */
-      text-decoration: none; /* No underline */
+      color: #4caf50;
+      font-weight: bold;
+      text-decoration: none;
     }
     a:hover {
-      text-decoration: underline; /* Underline on hover */
+      text-decoration: underline;
     }
     a:focus {
-      outline: 3px solid #4caf50; /* Accessibility for keyboard navigation */
+      outline: 3px solid #4caf50;
       outline-offset: 2px;
     }
 
@@ -5672,29 +5677,40 @@ BASE_TEMPLATE='<!DOCTYPE html>
         font-size: 1em;
       }
     }
+
+    /* Preheader (Hidden Text for Email Clients) */
+    .preheader {
+      display: none;
+      max-height: 0;
+      overflow: hidden;
+      mso-hide: all;
+      visibility: hidden;
+    }
   </style>
 </head>
 <body>
+  <!-- Preheader Text -->
+  <div class="preheader">{{preheader_text}}</div>
+  
   <section class="container">
-    <header class="header">
+    <header class="header" role="banner">
       <img src="https://raw.githubusercontent.com/whosbash/stackme/main/images/stackme_tiny.png" alt="StackMe Logo">
       <h1>{{header_title}}</h1>
     </header>
     <section class="content">
       {{email_content}}
     </section>
-    <footer class="footer">
+    <footer class="footer" role="contentinfo">
       <p>Sent using a Shell Script and the Swaks tool.</p>
       <p>
-        <a href="https://github.com/whosbash/stackme" target="_blank">
+        <a href="https://github.com/whosbash/stackme" target="_blank" aria-label="Visit StackMe GitHub page">
           <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub Logo">
         </a>
       </p>
     </footer>
   </section>
 </body>
-</html>
-'
+</html>'
 
 # Function to generate email
 generate_html() {
