@@ -28,8 +28,8 @@ services:
       - API_BASE_PATH=/api/
 
       ## Encryption Key
-      - APP_KEY={{nocobase_encryption}}
-      - ENCRYPTION_FIELD_KEY={{nocobase_encryption}}
+      - APP_KEY={{nocobase_encryption_key}}
+      - ENCRYPTION_FIELD_KEY={{nocobase_encryption_key}}
 
     deploy:
       mode: replicated

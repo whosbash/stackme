@@ -40,7 +40,7 @@ services:
       - STORAGE_FORCE_PATH_STYLE=true
 
       ## Dados do RabbitMQ
-      - AMQP_URL=amqp://{{rabbitmq_password}}:{{rabbitmq_password}}@rabbitmq:5672/unoapi
+      - AMQP_URL=amqp://{{rabbitmq_username}}:{{rabbitmq_password}}@rabbitmq:5672/unoapi
       
       ## Dados do Redis
       - REDIS_URL=redis://redis:6379

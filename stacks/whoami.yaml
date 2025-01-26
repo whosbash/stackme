@@ -10,7 +10,7 @@ services:
       mode: global
       labels:
         - traefik.enable=true
-        - traefik.http.routers.whoami.rule=Host(`{{url_whoami}}`)
+        - traefik.http.routers.whoami.rule=Host(`{{whoami_url}}`)
         - traefik.http.routers.whoami.entrypoints=websecure
         - traefik.http.routers.whoami.priority=1
         - traefik.http.routers.whoami.tls.certresolver=letsencryptresolver

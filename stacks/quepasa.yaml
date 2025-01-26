@@ -39,10 +39,6 @@ services:
       - WEBSOCKETSSL=true
       - REMOVEDIGIT9=true
       - SIGNING_SECRET={{quepasa_signing_secret}}
-
-      ## Webhook
-      #- WEBHOOK_QUEPASA={{n8n_webhook_url}}/webhook/quepasa
-      #- WEBHOOK_TESTE_QUEPASA={{n8n_webhook_url}}/webhook-test/quepasa
             
       ## Ports
       - QUEPASA_EXTERNAL_PORT=31000

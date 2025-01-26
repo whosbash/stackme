@@ -12,8 +12,8 @@ services:
       environment:  
         ## Dados MariaDB
         - MARIADB_USER=mariadb
-        - MARIADB_ROOT_PASSWORD={{mariadb_password}}
-        - MARIADB_PASSWORD={{mariadb_password}}
+        - MARIADB_ROOT_PASSWORD={{db_password}}
+        - MARIADB_PASSWORD={{db_password}}
         - MARIADB_CHARACTER_SET=utf8mb4
         - MARIADB_COLLATE=utf8mb4_unicode_ci
         - ALLOW_EMPTY_PASSWORD=no

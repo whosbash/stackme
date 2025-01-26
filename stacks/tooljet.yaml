@@ -19,7 +19,7 @@ services:
       ## Enable Onboarding
       - ENABLE_ONBOARDING_QUESTIONS_FOR_ALL_SIGN_UPS=true
 
-      ## Chaves de segurança
+      ## Security settings
       - LOCKBOX_MASTER_KEY={{lockbox_secret_key}}
       - SECRET_KEY_BASE={{tooljet_secret_key}}
 
@@ -52,7 +52,6 @@ services:
       - COMMENT_FEATURE_ENABLE=true
       - ENABLE_MULTIPLAYER_EDITING=true
       - ENABLE_MARKETPLACE_FEATURE=true
-
       - CHECK_FOR_UPDATES=false
       - USER_SESSION_EXPIRY=120
 

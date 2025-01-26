@@ -46,7 +46,7 @@ services:
 
     environment:
       - OLLAMA_BASE_URL=https://{{ollama_api_url}}
-      - WEBUI_SECRET_KEY={{webui_secret_key}}
+      - WEBUI_SECRET_KEY={{ollama_webui_secret_key}}
 
     deploy:
       mode: replicated

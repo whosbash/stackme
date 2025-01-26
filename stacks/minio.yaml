@@ -19,8 +19,8 @@ services:
 
       ## Minio url 
       - MINIO_DOMAIN={{url_minio}}
-      - MINIO_BROWSER_REDIRECT_URL=https://{{url_minio}} ## Minio url
-      - MINIO_SERVER_URL=https://{{url_s3}}
+      - MINIO_BROWSER_REDIRECT_URL=https://{{minio_url}} ## Minio url
+      - MINIO_SERVER_URL=https://{{s3_url}}
 
     deploy:
       mode: replicated
@@ -30,20 +30,20 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.minio_public.rule=Host(`{{url_s3}}`)
+        - traefik.http.routers.minio_public.rule=Host(`{{s3_url}}`)
         - traefik.http.routers.minio_public.entrypoints=websecure
         - traefik.http.routers.minio_public.tls.certresolver=letsencryptresolver
         - traefik.http.services.minio_public.loadbalancer.server.port=9000
         - traefik.http.services.minio_public.loadbalancer.passHostHeader=true
         - traefik.http.routers.minio_public.service=minio_public
-        - traefik.http.routers.minio_console.rule=Host(`{{url_minio}}`) 
+        - traefik.http.routers.minio_console.rule=Host(`{{minio_url}}`) 
         - traefik.http.routers.minio_console.entrypoints=websecure
         - traefik.http.routers.minio_console.tls.certresolver=letsencryptresolver
         - traefik.http.services.minio_console.loadbalancer.server.port=9001
         - traefik.http.services.minio_console.loadbalancer.passHostHeader=true
         - traefik.http.routers.minio_console.service=minio_console
 
-    mc:
+    minio_console:
       image: minio/mc
       container_name: mc
       networks:
@@ -61,23 +61,20 @@ services:
         tail -f /dev/null
         "
       deploy:
+        mode: replicated
         replicas: 1
-        restart_policy:
-          condition: on-failure
-          delay: 5s
-          max_attempts: 3
-          window: 120s
         placement:
-          constraints: [node.role == manager]
-        labels: 
+          constraints:
+            - node.role == manager
+        labels:
           - traefik.enable=true
-          - traefik.http.routers.mc.rule=Host(\`{{iceberg_url}}\`)
-          - traefik.http.routers.mc.entrypoints=websecure
-          - traefik.http.routers.mc.tls.certresolver=letsencryptresolver
-          - traefik.http.routers.mc.service=mc@internal
-          - traefik.http.routers.mc.middlewares=auth@file
-          - traefik.http.middlewares.auth.basicauth.users={{iceberg_credentials}}
-          - traefik.http.routers.mc.priority=1
+          - traefik.http.routers.mc_public.rule=Host(`{{minio_url}}`)
+          - traefik.http.routers.mc_public.entrypoints=websecure
+          - traefik.http.routers.mc_public.tls.certresolver=letsencryptresolver
+          - traefik.http.services.mc_public.loadbalancer.server.port=9000
+          - traefik.http.services.mc_public.loadbalancer.passHostHeader=true
+          - traefik.http.routers.mc_public.service=minio_public
+      
 
 volumes:
   minio_data:
