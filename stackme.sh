@@ -5609,7 +5609,7 @@ BASE_TEMPLATE='<!DOCTYPE html>
 
     /* Button Styling */
     .button {
-      display: block; /* Make the button a block element */
+      display: inline-block; /* Prevent button from spanning the full width */
       margin: 20px auto; /* Center button horizontally */
       padding: 12px 25px;
       background-color: #4caf50; /* Green background */
@@ -5622,6 +5622,7 @@ BASE_TEMPLATE='<!DOCTYPE html>
       cursor: pointer;
       transition: background-color 0.3s ease; /* Smooth hover effect */
     }
+
     .button:hover {
       background-color: #45a049;
     }
@@ -5634,6 +5635,7 @@ BASE_TEMPLATE='<!DOCTYPE html>
       outline: 3px solid #4caf50; /* Accessibility for keyboard navigation */
       outline-offset: 2px;
     }
+
 
     /* Global Link Styling */
     a {
