@@ -15,7 +15,7 @@ services:
       - DOMAIN={{quepasa_url}}
 
       ## Email Quepasa
-      - EMAIL=$email_quepasa
+      - EMAIL={{quepasa_email_username}}
       - QUEPASA_BASIC_AUTH_USER={{quepasa_email_username}}
       - QUEPASA_BASIC_AUTH_PASSWORD={{quepasa_email_password}}
 
@@ -38,11 +38,7 @@ services:
       - QUEPASA_MEMORY_LIMIT=4096M
       - WEBSOCKETSSL=true
       - REMOVEDIGIT9=true
-      - SIGNING_SECRET=$key_quepasa
-
-      ## Webhook
-      #- WEBHOOK_QUEPASA={{n8n_webhook_url}}/webhook/quepasa
-      #- WEBHOOK_TESTE_QUEPASA={{n8n_webhook_url}}/webhook-test/quepasa
+      - SIGNING_SECRET={{quepasa_signing_secret}}
             
       ## Ports
       - QUEPASA_EXTERNAL_PORT=31000

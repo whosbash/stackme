@@ -47,7 +47,7 @@ services:
 volumes:
   weaviate_data:
     external: true
-    name: weaviate
+    name: weaviate_data
 
 networks:
   {{network_name}}:

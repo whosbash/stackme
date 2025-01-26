@@ -24,9 +24,9 @@ services:
       - HUMHUB_MAILER_TRANSPORT_TYPE=smtp
       - HUMHUB_MAILER_SYSTEM_EMAIL_ADDRESS={{humhub_smtp_email}}
       - HUMHUB_MAILER_USERNAME={{humhub_smtp_username}}
-      - HUMHUB_MAILER_PASSWORD=${humhub_smtp_password}
+      - HUMHUB_MAILER_PASSWORD={{humhub_smtp_password}}
       - HUMHUB_MAILER_SYSTEM_EMAIL_NAME=Helpdesk
-      - HUMHUB_MAILER_HOSTNAME={{easyappointments_url}}
+      - HUMHUB_MAILER_HOSTNAME={{humhub_hostname}}
       - HUMHUB_MAILER_PORT={{humhub_smtp_port}}
       - HUMHUB_MAILER_ALLOW_SELF_SIGNED_CERTS=1 ## 0 = TLS | 1 = SSL
       

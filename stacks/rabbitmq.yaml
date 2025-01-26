@@ -18,7 +18,7 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: {{rabbitmq_username}}
       RABBITMQ_DEFAULT_PASS: {{rabbitmq_password}}
-      RABBITMQ_ERLANG_COOKIE: {{cookie_key}}
+      RABBITMQ_ERLANG_COOKIE: {{rabbitmq_cookie_key}}
       RABBITMQ_DEFAULT_VHOST: "/"
 
     deploy:
@@ -33,7 +33,7 @@ services:
           memory: 512M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.rabbitmq.rule=Host(`{{url_rabbitmq}}`)
+        - traefik.http.routers.rabbitmq.rule=Host(`{{rabbitmq_url}}`)
         - traefik.http.routers.rabbitmq.entrypoints=websecure
         - traefik.http.routers.rabbitmq.tls.certresolver=letsencryptresolver
         - traefik.http.routers.rabbitmq.service=rabbitmq

@@ -19,12 +19,12 @@ services:
       ## Enable Onboarding
       - ENABLE_ONBOARDING_QUESTIONS_FOR_ALL_SIGN_UPS=true
 
-      ## Chaves de segurança
-      - LOCKBOX_MASTER_KEY=$master_key
-      - SECRET_KEY_BASE=$secret_key
+      ## Security settings
+      - LOCKBOX_MASTER_KEY={{lockbox_secret_key}}
+      - SECRET_KEY_BASE={{tooljet_secret_key}}
 
       ## Database settings
-      - DATABASE_URL=postgres://postgres:$senha_postgres@postgres:5432/tooljet_app?sslmode=disable
+      - DATABASE_URL=postgres://postgres:{{postgres_password}}@postgres:5432/tooljet_app?sslmode=disable
 
       ## Settings for ToolJet DB
       - ENABLE_TOOLJET_DB=true
@@ -35,24 +35,23 @@ services:
 
       ## Settings for PostgREST
       - PGRST_HOST=tooljet_postgrest
-      - PGRST_JWT_SECRET=$jwt_key
+      - PGRST_JWT_SECRET={{postgrest_jwt_key}}
 
       ## Redis Settings
       - REDIS_HOST=redis
       - REDIS_PORT=6379
 
       ## SMTP Settings
-      - DEFAULT_FROM_EMAIL={{smtp_email_tooljet}}
-      - SMTP_USERNAME={{smtp_usuario_tooljet}}
-      - SMTP_PASSWORD={{smtp_password_tooljet}}
-      - SMTP_DOMAIN={{smtp_host_tooljet}}
-      - SMTP_PORT={{smtp_port_tooljet}}
+      - DEFAULT_FROM_EMAIL={{tooljet_smtp_email}}
+      - SMTP_USERNAME={{tooljet_smtp_username}}
+      - SMTP_PASSWORD={{tooljet_smtp_password}}
+      - SMTP_DOMAIN={{tooljet_smtp_host}}
+      - SMTP_PORT={{tooljet_smtp_port}}
 
       ## ToolJet Features
       - COMMENT_FEATURE_ENABLE=true
       - ENABLE_MULTIPLAYER_EDITING=true
       - ENABLE_MARKETPLACE_FEATURE=true
-
       - CHECK_FOR_UPDATES=false
       - USER_SESSION_EXPIRY=120
 
@@ -86,7 +85,7 @@ services:
       - PGRST_DB_URI=postgres://postgres:{{postgres_password}}@postgres:5432/tooljet_app?sslmode=disable
       - PGRST_DB_SCHEMA=public 
       - PGRST_DB_ANON_ROLE=anon 
-      - PGRST_JWT_SECRET=$jwt_key
+      - PGRST_JWT_SECRET={{postgrest_jwt_key}}
       - PGRST_JWT_AUD=tooljet
 
     deploy:

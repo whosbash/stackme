@@ -32,7 +32,7 @@ services:
         - traefik.http.routers.ntfy.service=ntfy
         - traefik.http.routers.ntfy.tls.certresolver=letsencryptresolver
         - traefik.http.routers.ntfy.entrypoints=websecure
-        - traefik.http.middlewares.ntfy-auth.basicauth.users={{hashed_password}}
+        - traefik.http.middlewares.ntfy-auth.basicauth.users={{ntfy_credentials}}
         - traefik.http.routers.ntfy.middlewares=ntfy-auth
         - traefik.http.routers.ntfy.tls=true
 

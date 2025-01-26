@@ -1,0 +1,116 @@
+services:
+  spark-iceberg:
+    image: tabulario/spark-iceberg
+    container_name: spark-iceberg
+    build: spark/
+    networks:
+      {{network_name}}:
+    depends_on:
+      - rest
+    volumes:
+      - /opt/stackme/warehouse:/home/iceberg/warehouse
+      - /opt/stackme/notebooks:/home/iceberg/notebooks/notebooks
+    environment:
+      - AWS_ACCESS_KEY_ID={{aws_access_key_id}}
+      - AWS_SECRET_ACCESS_KEY={{aws_secret_access_key}}
+      - AWS_REGION=us-east-1
+    ports:
+      - 8888:8888
+      - 8080:8080
+      - 10000:10000
+      - 10001:10001
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      placement:
+        constraints: [node.role == manager]
+      labels: 
+        - traefik.enable=true
+        - traefik.http.routers.spark-iceberg.rule=Host(\`{{iceberg_url}}\`)
+        - traefik.http.routers.spark-iceberg.entrypoints=websecure
+        - traefik.http.routers.spark-iceberg.tls.certresolver=letsencryptresolver
+        - traefik.http.services.spark-iceberg.loadbalancer.server.port=8888
+        - traefik.http.routers.spark-iceberg.service=spark-iceberg@internal
+        - traefik.http.routers.spark-iceberg.middlewares=auth@file
+        - traefik.http.middlewares.auth.basicauth.users={{iceberg_credentials}}
+        - traefik.http.routers.spark-iceberg.priority=1
+      
+    
+  rest:
+    image: tabulario/iceberg-rest
+    container_name: iceberg-rest
+    networks:
+      iceberg_net:
+    ports:
+      - 8181:8181
+    environment:
+      - AWS_ACCESS_KEY_ID={{aws_access_key_id}}
+      - AWS_SECRET_ACCESS_KEY={{aws_secret_access_key}}
+      - AWS_REGION=us-east-1
+      - CATALOG_WAREHOUSE=s3://warehouse/
+      - CATALOG_IO__IMPL=org.apache.iceberg.aws.s3.S3FileIO
+      - CATALOG_S3_ENDPOINT=http://minio:9000
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      placement:
+        constraints: [node.role == manager]
+      labels: 
+        - traefik.enable=true
+        - traefik.http.routers.iceberg-rest.rule=Host(\`{{iceberg_url}}\`)
+        - traefik.http.routers.iceberg-rest.entrypoints=websecure
+        - traefik.http.routers.iceberg-rest.tls.certresolver=letsencryptresolver
+        - traefik.http.services.iceberg-rest.loadbalancer.server.port=8181
+        - traefik.http.routers.iceberg-rest.service=iceberg-rest@internal
+        - traefik.http.routers.iceberg-rest.middlewares=auth@file
+        - traefik.http.middlewares.auth.basicauth.users={{iceberg_credentials}}
+        - traefik.http.routers.iceberg-rest.priority=1
+
+  mc:
+    image: minio/mc
+    container_name: mc
+    networks:
+      iceberg_net:
+    environment:
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+      - AWS_REGION=us-east-1
+    entrypoint: >
+      /bin/sh -c "
+      until (/usr/bin/mc config host add minio http://minio:9000 {{aws_access_key_id}} {{aws_secret_access_key}}) do echo '...waiting...' && sleep 1; done;
+      /usr/bin/mc rm -r --force minio/warehouse;
+      /usr/bin/mc mb minio/warehouse;
+      /usr/bin/mc policy set public minio/warehouse;
+      tail -f /dev/null
+      "
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      placement:
+        constraints: [node.role == manager]
+      labels: 
+        - traefik.enable=true
+        - traefik.http.routers.mc.rule=Host(\`{{iceberg_url}}\`)
+        - traefik.http.routers.mc.entrypoints=websecure
+        - traefik.http.routers.mc.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.mc.service=mc@internal
+        - traefik.http.routers.mc.middlewares=auth@file
+        - traefik.http.middlewares.auth.basicauth.users={{iceberg_credentials}}
+        - traefik.http.routers.mc.priority=1
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}

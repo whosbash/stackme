@@ -35,7 +35,7 @@ services:
     ## Configurações de Autenticação
       - SUPABASE_ANON_KEY={{supabase_anon_key}}
       - SUPABASE_SERVICE_KEY={{supabase_service_key}}
-      - AUTH_JWT_SECRET={{jwt_secret}}
+      - AUTH_JWT_SECRET={{supabase_jwt_secret}}
 
     ## Configuração do OpenAI (opcional)
     # - OPENAI_API_KEY=
@@ -63,9 +63,9 @@ services:
       - DASHBOARD_PASSWORD={{supabase_password}}
 
     ## Configurações de Autenticação
-      - JWT_SECRET={{jwt_secret}}
-      - SUPABASE_ANON_KEY={{anon_key}}
-      - SUPABASE_SERVICE_KEY={{service_key}}
+      - JWT_SECRET={{kong_jwt_secret}}
+      - SUPABASE_ANON_KEY={{kong_anon_key}}
+      - SUPABASE_SERVICE_KEY={{kong_service_key}}
 
     ## Configuração do Banco de Dados
       - KONG_DATABASE=off
@@ -166,8 +166,8 @@ services:
       - PGRST_DB_ANON_ROLE=anon
 
     ## JWT (JSON Web Tokens)
-      - PGRST_JWT_SECRET={{jwt_key}}
-      - PGRST_APP_SETTINGS_JWT_SECRET={{jwt_key}}
+      - PGRST_JWT_SECRET={{pgrst_jwt_key}}
+      - PGRST_APP_SETTINGS_JWT_SECRET={{pgrst_jwt_key}}
       - PGRST_APP_SETTINGS_JWT_EXP=31536000
 
     ## Outras Configurações
@@ -189,8 +189,8 @@ services:
     environment:
       ## Realtime API 
       - PORT=4000
-      - API_JWT_SECRET={{jwt_secret}}
-      - SECRET_KEY_BASE={{secret_key_base}}
+      - API_JWT_SECRET={{realtime_jwt_secret}}
+      - SECRET_KEY_BASE={{realtime_secret_key_base}}
       - APP_NAME=realtime
 
       ## Database
@@ -322,7 +322,7 @@ services:
     environment:
     ## Configuração de JWT e Supabase
       - VERIFY_JWT="false"
-      - JWT_SECRET={{jwt_secret}}
+      - JWT_SECRET={{functions_jwt_secret}}
       - SUPABASE_URL=http://kong:8000
       - SUPABASE_ANON_KEY={{supabase_anon_key}}
       - SUPABASE_SERVICE_ROLE_KEY={{supabase_service_key}}
@@ -379,14 +379,14 @@ services:
       - log_min_messages=fatal
     
     volumes:
-      - /root/supabase/docker/volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
-      - /root/supabase/docker/volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
-      - /root/supabase/docker/volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:Z
-      - /root/supabase/docker/volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:Z
-      - /root/supabase/docker/volumes/db/data:/var/lib/postgresql/data:Z
-      - /root/supabase/docker/volumes/db/_supabase.sql:/docker-entrypoint-initdb.d/migrations/97-_supabase.sql:Z
-      - /root/supabase/docker/volumes/db/logs.sql:/docker-entrypoint-initdb.d/migrations/99-logs.sql:Z
-      - /root/supabase/docker/volumes/db/pooler.sql:/docker-entrypoint-initdb.d/migrations/99-pooler.sql:Z
+      - /opt/stackme/stacks/supabase/docker/volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
+      - /opt/stackme/stacks/supabase/docker/volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
+      - /opt/stackme/stacks/supabase/docker/volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:Z
+      - /opt/stackme/stacks/supabase/docker/volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:Z
+      - /opt/stackme/stacks/supabase/docker/volumes/db/data:/var/lib/postgresql/data:Z
+      - /opt/stackme/stacks/supabase/docker/volumes/db/_supabase.sql:/docker-entrypoint-initdb.d/migrations/97-_supabase.sql:Z
+      - /opt/stackme/stacks/supabase/docker/volumes/db/logs.sql:/docker-entrypoint-initdb.d/migrations/99-logs.sql:Z
+      - /opt/stackme/stacks/supabase/docker/volumes/db/pooler.sql:/docker-entrypoint-initdb.d/migrations/99-pooler.sql:Z
       - supabase_db_config:/etc/postgresql-custom
 
     networks:
@@ -419,7 +419,7 @@ services:
       - etc/vector/vector.yml
     
     volumes:
-    - /root/supabase/docker/volumes/logs/vector.yml:/etc/vector/vector.yml:ro
+    - /opt/stackme/stacks/supabase/docker/volumes/logs/vector.yml:/etc/vector/vector.yml:ro
     - /var/run/docker.sock:/var/run/docker.sock:ro
 
     networks:
@@ -443,9 +443,8 @@ services:
       - -c
       - /app/bin/migrate && /app/bin/supavisor eval "\$\$(cat /etc/pooler/pooler.exs)" && /app/bin/server
 
-
     volumes:
-      -  /root/supabase/docker/volumes/pooler/pooler.exs:/etc/pooler/pooler.exs:ro
+      -  /opt/stackme/stacks/supabase/docker/volumes/pooler/pooler.exs:/etc/pooler/pooler.exs:ro
 
     networks:
       - {{network_name}}
@@ -459,11 +458,11 @@ services:
       - CLUSTER_POSTGRES=true
 
       ## JWT
-      - API_JWT_SECRET={{jwt_secret}}
-      - METRICS_JWT_SECRET={{jwt_secret}}
+      - API_JWT_SECRET={{supabase_jwt_secret}}
+      - METRICS_JWT_SECRET={{supabase_jwt_secret}}
 
       ## Security
-      - SECRET_KEY_BASE={{secret_key_base}}
+      - SECRET_KEY_BASE={{supavisor_secret_key_base}}
       - VAULT_ENC_KEY=your-encryption-key-32-chars-min
 
       ## Region

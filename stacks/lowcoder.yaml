@@ -40,10 +40,10 @@ services:
       - LOWCODER_MAX_DEVELOPERS=50
 
       ## Dados SMTP
-      - LOWCODER_ADMIN_SMTP_HOST={{lowcoder_host_smtp}}
+      - LOWCODER_ADMIN_SMTP_HOST={{lowcoder_smtp_host}}
       - LOWCODER_ADMIN_SMTP_PORT={{lowcoder_smtp_port}}
       - LOWCODER_ADMIN_SMTP_USERNAME={{lowcoder_smtp_username}}
-      - LOWCODER_ADMIN_SMTP_PASSWORD={{lowcoder_smtp_senha}}
+      - LOWCODER_ADMIN_SMTP_PASSWORD={{lowcoder_smtp_password}}
       - LOWCODER_ADMIN_SMTP_AUTH=true
       - LOWCODER_ADMIN_SMTP_SSL_ENABLED={{lowcoder_smtp_secure}}
       - LOWCODER_ADMIN_SMTP_STARTTLS_ENABLED={{lowcoder_startls_smtp_secure}}

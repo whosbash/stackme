@@ -1724,42 +1724,42 @@ generate_machine_specs_table() {
     generate_table_row "Hostname" \
       "$(hostname)"
   )
-  machine_specs_rows+=$(
-    generate_table_row "Operating System" \
-      "$(safe_exec "lsb_release -d | cut -f2")"
-  )
-  machine_specs_rows+=$(
-    generate_table_row "Kernel Version" \
-      "$(safe_exec "uname -r")"
-  )
-  machine_specs_rows+=$(
-    generate_table_row "Processor Model" \
-      "$(safe_exec "lscpu | awk -F ':' '/Model name/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
-  )
-  machine_specs_rows+=$(
-    generate_table_row "Processor Cores" \
-      "$(safe_exec "lscpu | awk -F ':' '/^CPU\(s\):/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
-  )
-  machine_specs_rows+=$(
-    generate_table_row "Processor Threads" \
-      "$(safe_exec "lscpu | awk -F ':' '/^Thread\(s\) per core:/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
-  )
-  machine_specs_rows+=$(
-    generate_table_row "Clock Speed" \
-      "$(safe_exec "lscpu | grep 'Model name' | grep -o '@ [0-9.]\+GHz' || echo 'N/A'")"
-  )
-  machine_specs_rows+=$(
-    generate_table_row "Total Memory" \
-      "$(safe_exec "free -h | awk '/^Mem:/ {print \$2}'")"
-  )
-  machine_specs_rows+=$(
-    generate_table_row "GPU Details" \
-      "$(safe_exec "lspci | grep -i 'vga\|3d\|2d' || echo 'GPU information unavailable.'")"
-  )
-  machine_specs_rows+=$(
-    generate_table_row "Docker Version" \
-      "$(safe_exec "docker --version || echo 'Not installed'")"
-  )
+   machine_specs_rows+=$(
+     generate_table_row "Operating System" \
+       "$(safe_exec "lsb_release -d | cut -f2")"
+   )
+   machine_specs_rows+=$(
+     generate_table_row "Kernel Version" \
+       "$(safe_exec "uname -r")"
+   )
+   machine_specs_rows+=$(
+     generate_table_row "Processor Model" \
+       "$(safe_exec "lscpu | awk -F ':' '/Model name/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
+   )
+   machine_specs_rows+=$(
+     generate_table_row "Processor Cores" \
+       "$(safe_exec "lscpu | awk -F ':' '/^CPU\(s\):/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
+   )
+   machine_specs_rows+=$(
+     generate_table_row "Processor Threads" \
+       "$(safe_exec "lscpu | awk -F ':' '/^Thread\(s\) per core:/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
+   )
+   machine_specs_rows+=$(
+     generate_table_row "Clock Speed" \
+       "$(safe_exec "lscpu | grep 'Model name' | grep -o '@ [0-9.]\+GHz' || echo 'N/A'")"
+   )
+   machine_specs_rows+=$(
+     generate_table_row "Total Memory" \
+       "$(safe_exec "free -h | awk '/^Mem:/ {print \$2}'")"
+   )
+   machine_specs_rows+=$(
+     generate_table_row "GPU Details" \
+       "$(safe_exec "lspci | grep -i 'vga\|3d\|2d' || echo 'GPU information unavailable.'")"
+   )
+   machine_specs_rows+=$(
+     generate_table_row "Docker Version" \
+       "$(safe_exec "docker --version || echo 'Not installed'")"
+   )
 
   html_content+=$(create_table "Machine Specifications" "<th>Attribute</th><th>Details</th>" "$machine_specs_rows")
 
@@ -1805,7 +1805,6 @@ generate_machine_specs_table() {
   network_rows+=$(generate_table_row "Wi-Fi" "$wifi_info")
   html_content+=$(create_table "Network Information" "<th>Type</th><th>Details</th>" "$network_rows")
 
-    debug "$html_content"
 
   # Return the complete HTML content
   echo "$html_content"
@@ -1979,23 +1978,18 @@ sanitize_template() {
   echo "$template"
 }
 
-# Function to replace variables in a template
+# Function to replace mustache variables
 replace_mustache_variables() {
   local template="$1"
-  local -n vars_ref="$2" # Associative array passed by reference
-
-  # Iterate over the variables and replace each instance of {{KEY}} in the template
+  local -n vars_ref="$2"
+  
   for key in "${!vars_ref[@]}"; do
     value="${vars_ref[$key]}"
-
-    # Escape special characters in the value to make it safe for sed
-    safe_value=$(echo "$value" | sed -e 's/[\/&]/\\&/g')
-
-    # Use sed to replace instances of {{key}}, {{ key}}, and {{key }}
-    template=$(echo "$template" | sed -E "s/\{\{\s*${key}\s*\}\}/$safe_value/g")
+    # Escape special characters for awk and perform substitution
+    template=$(echo "$template" | awk -v key="$key" -v value="$value" \
+      '{gsub("{{ *" key " *}}", value); print}')
   done
 
-  # Output the substituted template
   echo "$template"
 }
 
@@ -2596,55 +2590,6 @@ create_error_item() {
     }'
 }
 
-# Function to create a collection item
-create_prompt_item() {
-  local name="$1"
-  local label="$2"
-  local description="$3"
-  local value="$4"
-  local required="$5"
-  local validate_fn="${6-validate_empty_value}"
-
-  # Check if the item is required and the value is empty
-  if [[ "$required" == "yes" && -z "$value" ]]; then
-    error_message="The value for '$name' is required but is empty."
-    error_obj=$(create_error_item "$name" "$error_message" "${FUNCNAME[0]}")
-    echo "$error_obj"
-    return 1
-  fi
-
-  # Validate the value using the provided validation function
-  validation_output=$(validate_value "$value" "$validate_fn" 2>&1)
-
-  # If validation failed, capture the validation message
-  if [[ $? -ne 0 ]]; then
-    # Validation failed, use the validation message captured in validation_output
-    error_obj=$(create_error_item "$name" "$validation_output" "$validate_fn")
-    echo "$error_obj"
-    return 1
-  fi
-
-  # Build the JSON object by echoing the data and piping it to jq for proper escaping
-  item_json=$(echo "
-    {
-        \"name\": \"$name\",
-        \"label\": \"$label\",
-        \"description\": \"$description\",
-        \"value\": \"$value\",
-        \"required\": \"$required\",
-        \"validate_fn\": \"$validate_fn\"
-    }" | jq .)
-
-  # Check if jq creation was successful
-  if [[ $? -ne 0 ]]; then
-    echo "Failed to create JSON object"
-    return 1 # Return an error code
-  fi
-
-  # Return the JSON object
-  echo "$item_json"
-}
-
 # Function to generate a JSON configuration for a service
 generate_schema_stack_config() {
   local required_fields="$1"
@@ -3129,6 +3074,13 @@ handle_exit() {
     error "Error Code: $exit_code"
   fi
   step "$current_step" "$total_steps" "$status_message" "$status"
+}
+
+# Function to escape special characters in a string
+escape_sed_special_chars() {
+  local input="$1"
+  # Escape &, /, and \ characters, and handle newlines
+  echo "$input" | sed -e 's/[\/&]/\\&/g' -e 's/\\/\\\\/g' | tr '\n' '\\n'
 }
 
 ####################################################################
@@ -5603,112 +5555,155 @@ BASE_TEMPLATE='<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{email_title}}</title>
   <style>
-    body { 
-      font-family: Arial, sans-serif; 
-      background-color: #f9f9fb; 
-      margin: 0; 
-      padding: 0; 
-      color: #333; 
-      line-height: 1.6; /* Improve readability */
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f9f9fb;
+      margin: 0;
+      padding: 0;
+      color: #333;
+      line-height: 1.6;
     }
-    .container { 
-      margin: 20px auto; 
-      padding: 20px; 
-      max-width: 600px; 
-      background-color: #ffffff; 
-      border-radius: 10px; 
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); 
+
+    /* Container Styles */
+    .container {
+      margin: 20px auto;
+      padding: 20px;
+      max-width: 600px;
+      background-color: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     }
-    .header { 
-      text-align: center; 
-      background-color: #4caf50; 
-      color: #ffffff; 
-      padding: 20px; 
-      border-radius: 10px 10px 0 0; 
+
+    /* Header Styles */
+    .header {
+      text-align: center;
+      background-color: #4caf50;
+      color: #ffffff;
+      padding: 20px;
+      border-radius: 10px 10px 0 0;
     }
-    .header img { 
-      max-width: 80px; 
-      margin-bottom: 10px; 
+    .header img {
+      max-width: 80px;
+      margin-bottom: 10px;
     }
-    .header h1 { 
-      font-size: 1.6em; /* Scalable font size */
-      margin: 0; 
+    .header h1 {
+      font-size: 1.6em;
+      margin: 0;
     }
-    .content { 
-      padding: 20px; 
-      font-size: 1em; /* Adjust for readability */
+
+    /* Content Styles */
+    .content {
+      padding: 20px;
+      font-size: 1em;
     }
-    .footer { 
-      text-align: center; 
-      padding: 20px 0; 
-      color: #aaaaaa; 
-      border-top: 1px solid #eeeeee; 
-      font-size: 0.9em; /* Slightly smaller font for footer */
+
+    /* Footer Styles */
+    .footer {
+      text-align: center;
+      padding: 20px 0;
+      color: #aaaaaa;
+      border-top: 1px solid #eeeeee;
+      font-size: 0.9em;
     }
-    .footer img { 
-      width: 24px; 
-      height: 24px; 
-      vertical-align: middle; 
+    .footer img {
+      width: 24px;
+      height: 24px;
+      vertical-align: middle;
     }
-    .footer a { 
-      text-decoration: none; 
-      color: #aaaaaa; 
+    .footer a {
+      text-decoration: none;
+      color: #aaaaaa;
     }
 
     /* Button Styling */
     .button {
-      display: inline-block; /* Inline-block to size button to its content */
-      margin: 20px auto; /* Center button horizontally */
+      display: inline-block;
+      margin: 20px auto;
       padding: 12px 25px;
-      background-color: #4caf50; /* Green background */
-      color: #ffffff; /* White text */
-      text-decoration: none; /* No underline */
-      font-size: 1em; /* Scalable font size */
+      background-color: #4caf50;
+      color: #ffffff;
+      text-decoration: none;
+      font-size: 1.1em;
       font-weight: bold;
       border-radius: 5px;
       text-align: center;
       cursor: pointer;
-      transition: background-color 0.3s ease; /* Smooth hover effect */
+      transition: background-color 0.3s ease, transform 0.2s ease;
     }
+
     .button:hover {
       background-color: #45a049;
+      transform: translateY(-2px);
     }
+
     .button:active {
-      background-color: #3e8e41; /* Click feedback */
+      background-color: #3e8e41;
+      transform: translateY(2px);
     }
+
     .button:focus {
-      outline: 3px solid #4caf50; /* Accessibility for keyboard navigation */
+      outline: 3px solid #4caf50;
       outline-offset: 2px;
     }
 
     /* Global Link Styling */
     a {
-      color: #4caf50; /* Green text */
-      font-weight: bold; /* Bold text */
-      text-decoration: none; /* No underline */
+      color: #4caf50;
+      font-weight: bold;
+      text-decoration: none;
     }
     a:hover {
-      text-decoration: underline; /* Underline on hover */
+      text-decoration: underline;
     }
     a:focus {
-      outline: 3px solid #4caf50; /* Accessibility for keyboard navigation */
+      outline: 3px solid #4caf50;
       outline-offset: 2px;
     }
-</style>
+
+    /* Responsive Styling */
+    @media only screen and (max-width: 600px) {
+      .container {
+        padding: 15px;
+        margin: 10px;
+      }
+      .header h1 {
+        font-size: 1.4em;
+      }
+      .content {
+        font-size: 0.9em;
+      }
+      .button {
+        padding: 10px 20px;
+        font-size: 1em;
+      }
+    }
+
+    /* Preheader (Hidden Text for Email Clients) */
+    .preheader {
+      display: none;
+      max-height: 0;
+      overflow: hidden;
+      mso-hide: all;
+      visibility: hidden;
+    }
+  </style>
 </head>
 <body>
+  <!-- Preheader Text -->
+  <div class="preheader">{{preheader_text}}</div>
+  
   <section class="container">
-    <header class="header">
+    <header class="header" role="banner">
       <img src="https://raw.githubusercontent.com/whosbash/stackme/main/images/stackme_tiny.png" alt="StackMe Logo">
       <h1>{{header_title}}</h1>
     </header>
     <section class="content">
       {{email_content}}
     </section>
-    <footer class="footer">
+    <footer class="footer" role="contentinfo">
       <p>Sent using a Shell Script and the Swaks tool.</p>
       <p>
-        <a href="https://github.com/whosbash/stackme" target="_blank">
+        <a href="https://github.com/whosbash/stackme" target="_blank" aria-label="Visit StackMe GitHub page">
           <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub Logo">
         </a>
       </p>
@@ -5761,49 +5756,15 @@ check_smtp_config() {
   fi
 }
 
-# Function to send a test email using swaks
-send_email() {
-  local from_email=$1
-  local to_email=$2
-  local server=$3
-  local port=$4
-  local user=$5
-  local pass=$6
-  local subject=$7
-  local body=$8
-
-  info "Sending test email..."
-
-  # Attempt to send the email using swaks and capture output and error details
-  local output
-  output=$(swaks \
-    --to "$to_email" \
-    --from "$from_email" \
-    --server "$server" \
-    --port "$port" \
-    --auth LOGIN --auth-user "$user" \
-    --auth-password "$pass" \
-    --tls \
-    --header "Subject: $subject" \
-    --header "Content-Type: text/html; charset=UTF-8" \
-    --data "Content-Type: text/html; charset=UTF-8\n\n$body" 2>&1)
-
-  # Capture the exit status of the swaks command
-  local status=$?
-
-  # Check if the email was sent successfully
-  if [ $status -eq 0 ]; then
-    success "Test email sent successfully to $to_email."
-  else
-    error "Failed to send test email. Details: $output"
-    exit $status
-  fi
-}
-
 # Function to generate HTML for an email
 generate_test_smtp_hmtl() {
   # Content for the email
-  local email_content='<p>Hi there,</p> <p>We are thrilled to have you onboard! Explore the amazing features of StackMe and elevate your workflow.</p> <a href="https://github.com/whosbash/stackme" class="button">Get Started</a> <p>If you have any questions, feel free to submit an issue to <a href="https://github.com/whosbash/stackme/issues" title="Visit our Issues page on GitHub">our repository</a>. We''re here to help!</p>'
+  local email_content='<p>Hi there,</p> \
+<p>We are thrilled to have you onboard! Explore the amazing features of StackMe and elevate your workflow.</p> \
+<a href="https://github.com/whosbash/stackme" class="button">Get Started</a> \
+<p>If you have any questions, feel free to submit an issue to \
+  <a href="https://github.com/whosbash/stackme/issues" title="Visit our Issues page on GitHub">our repository</a>. We''re here to help!</p>'
+
 
   # Generate the email
   generate_html "$BASE_TEMPLATE" "Welcome to StackMe" "Welcome to StackMe" "$email_content"
@@ -5989,6 +5950,8 @@ send_machine_specs_email() {
 
   subject="[StackMe] Machine Specifications"
   body="$(generate_machine_specs_html)"
+
+  debug "E-mail body: $body"
 
   # Send the machine specs email
   send_email \
@@ -6350,13 +6313,6 @@ initialize_server_info() {
 
 ############################# BEGIN OF STACK DEPLOYMENT UTILITARY FUNCTIONS #######################
 
-# Function to get the password from a JSON file
-get_postgres_password() {
-  local config_file=$1
-  password_postgres=$(jq -r '.password' $config_file)
-  echo "$password_postgres"
-}
-
 # Function to create a PostgreSQL database
 create_postgres_database() {
   local db_name="$1"
@@ -6422,101 +6378,6 @@ fetch_stack_compose(){
   fi
 }
 
-############################## END OF STACK DEPLOYMENT UTILITARY FUNCTIONS #########################
-
-
-#compose_file_kafka(){
-#  cat <<EOL
-#version: '3.9'
-#
-#services:
-#  zookeeper:
-#    image: confluentinc/cp-zookeeper:7.5.0
-#    ports:
-#      - "2181:2181"
-#    environment:
-#      ZOOKEEPER_CLIENT_PORT: 2181
-#      ZOOKEEPER_TICK_TIME: 2000
-#    deploy:
-#      replicas: 1
-#      placement:
-#        constraints:
-#          - node.role == manager
-#
-#  kafka:
-#    image: confluentinc/cp-kafka:7.5.0
-#    ports:
-#      - "9092:9092"
-#    environment:
-#      KAFKA_BROKER_ID: 1
-#      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-#      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://{{url_kafka_broker}}:9094
-#      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
-#      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
-#      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094
-#      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-#    deploy:
-#      replicas: 1
-#      placement:
-#        constraints:
-#          - node.role == worker
-#        labels:
-#          - traefik.enable=true
-#          - traefik.http.routers.kafka-broker.entrypoints=websecure
-#          - traefik.http.routers.kafka-broker.rule=Host(`{{url_kafka_broker}}`)
-#          - traefik.http.routers.kafka-broker.tls.certresolver=letsencryptresolver
-#          - traefik.http.services.kafka-broker.loadbalancer.server.port=9094
-#
-#    networks:
-#      - {{network_name}}
-#
-#  kafka-rest-proxy:
-#    image: confluentinc/cp-kafka-rest:7.5.0
-#    ports:
-#      - "8082:8082"
-#    environment:
-#      KAFKA_REST_HOST_NAME: kafka-rest-proxy
-#      KAFKA_REST_LISTENERS: http://0.0.0.0:8082
-#      KAFKA_REST_BOOTSTRAP_SERVERS: kafka:9092
-#    deploy:
-#      replicas: 1
-#      labels:
-#        - traefik.enable=true
-#        - traefik.http.routers.kafka-rest.entrypoints=websecure
-#        - traefik.http.routers.kafka-rest.rule=Host(\`{{url_kafka_rest}}\`)
-#        - traefik.http.routers.kafka-rest.tls.certresolver=letsencryptresolver
-#        - traefik.http.services.kafka-rest.loadbalancer.server.port=8082
-#    networks:
-#      - {{network_name}}
-#
-#  kafka-ui:
-#    image: provectuslabs/kafka-ui:latest
-#    ports:
-#      - "8080:8080"
-#    environment:
-#      KAFKA_CLUSTERS_0_NAME: local
-#      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
-#      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
-#    deploy:
-#      replicas: 1
-#      labels:
-#        - traefik.enable=true
-#        - traefik.http.routers.kafka-ui.entrypoints=websecure
-#        - traefik.http.routers.kafka-ui.rule=Host(\`{{url_kafka_ui}}\`)
-#        - traefik.http.routers.kafka-ui.tls.certresolver=letsencryptresolver
-#        - traefik.http.services.kafka-ui.loadbalancer.server.port=8080
-#    networks:
-#      - {{network_name}}
-#
-#networks:
-#  {{network_name}}:
-#    name: {{network_name}}
-#    external: true
-#EOL
-#}
-
-######################################## END OF COMPOSE FILES #####################################
-
 ############################# BEGIN OF STACK DEPLOYMENT UTILITARY FUNCTIONS #######################
 
 # Function to get the database password from a configuration
@@ -6526,7 +6387,7 @@ fetch_database_password() {
 
   # Read the database password from the config file
   local database_password
-  database_password=$(jq -r '.variables.db_password' "$config_file")
+  database_password=$(jq -r '.db_password' "$config_file")
 
   # Generate the output JSON
   jq -n \
@@ -6947,7 +6808,7 @@ generate_stack_config_generic_database() {
   local image_version="$2"
   local db_username="$3"
 
-  info "Generating use postgres password"
+  info "Generating used $stack_name password"
   local db_password="$(random_string)"
 
   info "Retrieving network name"
@@ -6989,7 +6850,7 @@ generate_stack_config_redis() {
 
   total_steps=1
 
-  step_message="Retrieving Redis image version"
+  step_message="Retrieving $stack_name image version"
   step_info 1 $total_steps "$step_message"
   local image_version="$(get_latest_stable_version "redis")"
   handle_exit "$?" 1 $total_steps "$step_message"
@@ -7025,6 +6886,14 @@ generate_stack_config_mysql() {
   generate_stack_config_generic_database "$stack_name" "$image_version"
 }
 
+# Function to generate MariaDB service configuration JSON
+generate_stack_config_mariadb() {
+  local stack_name='mariadb'
+  local image_version='latest'
+
+  generate_stack_config_generic_database "$stack_name" "$image_version"
+}
+
 # Function to generate MongoDB service configuration JSON
 generate_stack_config_mongodb() {
   local stack_name='mongodb'
@@ -7041,7 +6910,7 @@ generate_stack_config_whoami() {
   # Prompting step
   prompt_items='[
       {
-          "name": "url_whoami",
+          "name": "whoami_url",
           "label": "Whoami domain name",
           "description": "URL to access Whoami remotely",
           "required": "yes",
@@ -7049,11 +6918,11 @@ generate_stack_config_whoami() {
       }
   ]'
 
-  step_info 1 $total_steps "Prompting required WhoAmI information"
+  step_info 1 $total_steps "Prompting required $stack_name information"
   collected_items="$(run_collection_process "$prompt_items")"
 
   if [[ "$collected_items" == "[]" ]]; then
-    step_error 1 $total_steps "Unable to prompt Portainer configuration."
+    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
     return 1
   fi
 
@@ -7061,19 +6930,19 @@ generate_stack_config_whoami() {
   step_info 2 $total_steps "Retrieving network name"
   network_name="$(get_network_name)"
 
-  url_whoami="$(
+  whoami_url="$(
     get_variable_value_from_collection "$collected_items" "url_whoami"
   )"
 
   jq -n \
     --arg stack_name "$stack_name" \
-    --arg url_whoami "$url_whoami" \
+    --arg whoami_url "$whoami_url" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
           "target": "portainer",
           "variables": {
-              "url_whoami": $url_whoami,
+              "whoami_url": $whoami_url,
               "network_name": $network_name,
           },
           "dependencies": ["traefik", "portainer"],
@@ -7097,14 +6966,14 @@ generate_stack_config_airflow() {
   # Prompting step
   prompt_items='[
       {
-          "name": "url_airflow",
+          "name": "airflow_url",
           "label": "Airflow domain name",
           "description": "URL to access Airflow remotely",
           "required": "yes",
           "validate_fn": "validate_url_suffix" 
       },
       {
-          "name": "url_flower",
+          "name": "flower_url",
           "label": "Flower domain name",
           "description": "URL to access Flower remotely",
           "required": "yes",
@@ -7112,11 +6981,11 @@ generate_stack_config_airflow() {
       }
   ]'
 
-  step_info 1 $total_steps "Prompting required Airflow information"
+  step_info 1 $total_steps "Prompting required $stack_name information"
   collected_items="$(run_collection_process "$prompt_items")"
 
   if [[ "$collected_items" == "[]" ]]; then
-    step_error 1 $total_steps "Unable to prompt Portainer configuration."
+    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
     return 1
   fi
 
@@ -7183,11 +7052,11 @@ generate_stack_config_metabase() {
       }
   ]'
 
-  step_info 1 $total_steps "Prompting required Airflow information"
+  step_info 1 $total_steps "Prompting required $stack_name information"
   collected_items="$(run_collection_process "$prompt_items")"
 
   if [[ "$collected_items" == "[]" ]]; then
-    step_error 1 $total_steps "Unable to prompt Portainer configuration."
+    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
     return 1
   fi
 
@@ -7226,6 +7095,62 @@ generate_stack_config_metabase() {
                 "command": "create_postgres_database_metabase",
               }
             ],
+            "finalize": []
+          }
+      }' | jq . || {
+    error "Failed to generate JSON"
+    return 1
+  }
+}
+
+# Function to generate yourls service configuration JSON
+generate_stack_config_yourls() {
+  local stack_name='yourls'
+
+  total_steps=2
+
+  # Prompting step
+  prompt_items='[
+      {
+          "name": "url_yourls",
+          "label": "Yourls domain name",
+          "description": "URL to access Yourls remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      }
+  ]'
+
+  step_info 1 $total_steps "Prompting required $stack_name information"
+  collected_items="$(run_collection_process "$prompt_items")"
+
+  if [[ "$collected_items" == "[]" ]]; then
+    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
+    return 1
+  fi
+
+  processefd_items="$(process_prompt_items "$collected_items")"
+
+  url_yourls="$(echo "$processefd_items" | jq -r '.url_yourls')"
+
+  # Step 2: Retrieve network name
+  step_info 2 $total_steps "Retrieving network name"
+  network_name="$(get_network_name)"
+
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg url_yourls "$url_yourls" \
+    --arg network_name "$network_name" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "variables": {
+              "url_yourls": $url_yourls,
+              "network_name": $network_name,
+          },
+          "dependencies": ["traefik", "portainer"],
+          "actions": {
+            "refresh": [],
+            "prepare": [],
             "finalize": []
           }
       }' | jq . || {
@@ -7358,22 +7283,81 @@ generate_stack_config_n8n(){
     }
 }
 
+generate_stack_config_uptime_kuma() {
+  local stack_name="uptime"
+
+  total_steps=2
+
+  # Prompting step
+  prompt_items='[
+      {
+          "name": "url_metabase",
+          "label": "Metabase domain name",
+          "description": "URL to access Metabase remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      }
+  ]'
+
+  step_info 1 $total_steps "Prompting required $stack_name information"
+  collected_items="$(run_collection_process "$prompt_items")"
+
+  if [[ "$collected_items" == "[]" ]]; then
+    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
+    return 1
+  fi
+
+  processed_items="$(process_prompt_items "$collected_items")"
+
+  uptime_url="$(echo "$processed_items" | jq -r '.uptime_url')"
+
+  # Step 2: Retrieve network name
+  step_info 2 $total_steps "Retrieving network name"
+  network_name="$(get_network_name)"
+
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg network_name "$network_name" \
+    '{
+          "name": $stack_name,
+          "variables": {
+              "uptime_url": $uptime_url,
+              "network_name": $network_name
+          },
+          "dependencies": ["traefik", "portainer"],
+          "actions": {
+            "refresh": [],
+            "prepare": [],
+            "finalize": []
+          }
+      }' | jq . || {
+        error "Failed to generate JSON"
+        return 1
+    }
+
+}
+
+
 #################################### END OF STACK CONFIGURATION ###################################
 
 ################################ BEGIN OF STACK DEPLOYMENT FUNCTIONS ##############################
 
-# Function to deploy a traefik service
-deploy_stack_traefik() {
+deploy_stack_handler() {
+  local stack_name="$1"
+
   cleanup
   clean_screen
-  deploy_stack 'traefik'
+  deploy_stack "$stack_name"
+}
+
+# Function to deploy a traefik service
+deploy_stack_traefik() {
+  deploy_stack_handler 'traefik'
 }
 
 # Function to deploy a portainer service
 deploy_stack_portainer() {
-  cleanup
-  clean_screen
-  deploy_stack 'portainer'
+  deploy_stack_handler 'portainer'
 }
 
 deploy_stacks_startup() {
@@ -7398,72 +7382,67 @@ deploy_stacks_startup() {
 }
 
 deploy_stack_monitor() {
-  cleanup
-  clean_screen
-  deploy_stack 'monitor'
+  deploy_stack_handler 'monitor'
 }
 
 # Function to deploy a PostgreSQL stack
 deploy_stack_postgres() {
-  cleanup
-  clean_screen
-  deploy_stack 'postgres'
+  deploy_stack_handler 'postgres'
 }
 
 # Function to deploy a PostgreSQL stack
 deploy_stack_pgvector() {
-  cleanup
-  clean_screen
-  deploy_stack 'pgvector'
+  deploy_stack_handler 'pgvector'
 }
 
 # Function to deploy a Redis service
 deploy_stack_redis() {
-  cleanup
-  clean_screen
-  deploy_stack 'redis'
+  deploy_stack_handler 'redis'
 }
 
 # Function to deploy a MySQL service
 deploy_stack_mysql() {
-  cleanup
-  clean_screen
-  deploy_stack 'mysql'
+  deploy_stack_handler 'mysql'
+}
+
+# Function to deploy a MariaDB service
+deploy_stack_mariadb() {
+  deploy_stack_handler 'mariadb'
 }
 
 # Function to deploy a MongoDB service
 deploy_stack_mongodb() {
-  cleanup
-  clean_screen
-  deploy_stack 'mongodb'
+  deploy_stack_handler 'mongodb'
 }
 
 # Function to deploy a whoami service
 deploy_stack_whoami() {
-  cleanup
-  clean_screen
-  deploy_stack 'whoami'
+  deploy_stack_handler 'whoami'
 }
 
 # Function to deploy a airflow service
 deploy_stack_airflow() {
-  cleanup
-  clean_screen
-  deploy_stack 'airflow'
+  deploy_stack_handler 'airflow'
 }
 
 # Function to deploy a metabase service
 deploy_stack_metabase() {
-  cleanup
-  clean_screen
-  deploy_stack 'metabase'
+  deploy_stack_handler 'metabase'
 }
 
 # Function to deploy a n8n service
 deploy_stack_n8n() {
-  cleanup
-  clean_screen
-  deploy_stack 'n8n'
+  deploy_stack_handler 'n8n'
+}
+
+# Function to deploy a n8n service
+deploy_stack_uptime() {
+  deploy_stack_handler 'uptime'
+}
+
+# Function to deploy a yourls service
+deploy_stack_yourls(){
+  deploy_stack_handler 'yourls'
 }
 
 ################################# END OF STACK DEPLOYMENT FUNCTIONS ################################

@@ -24,7 +24,7 @@ services:
       - DATABASE_NAME=flowise
 
       ## Encryption Key
-      - FLOWISE_SECRETKEY_OVERWRITE={{encryption_key}}
+      - FLOWISE_SECRETKEY_OVERWRITE={{flowise_encryption_key}}
 
       ## API Keys
       - APIKEY_PATH=/root/.flowise

@@ -56,18 +56,18 @@ services:
       #- STORAGE_ENDPOINT=https://s3.DOMINIO.COM
       #- STORAGE_FORCE_PATH_STYLE=true
 
-      ## Dados do SMTP
-      - MAILER_SENDER_EMAIL=$email_admin_chatwoot <{{chatwoot_email}}> ## Email SMTP
-      - SMTP_DOMAIN={{chatwoot_smtp_domain}} ## Dominio do email
+      ## SMTP Config
+      - MAILER_SENDER_EMAIL={{chatwoot_admin_email}} <{{chatwoot_admin_email}}> ## Email SMTP
+      - SMTP_DOMAIN={{chatwoot_smtp_domain}} ## Email domain
       - SMTP_ADDRESS={{chatwoot_smtp_email}} ## Host SMTP
-      - SMTP_PORT={{chatwoot_smtp_port}} ## Porta SMTP
+      - SMTP_PORT={{chatwoot_smtp_port}} ## SMTP Port
       - SMTP_SSL={{chatwoot_smtp_secure}}
-      - SMTP_USERNAME={{chatwoot_smtp_username}} ## Usuario SMTP
-      - SMTP_PASSWORD={{chatwoot_smtp_password}} ## Senha do SMTP
+      - SMTP_USERNAME={{chatwoot_smtp_username}} ## SMTP Username
+      - SMTP_PASSWORD={{chatwoot_smtp_password}} ## SMTP Password
       - SMTP_AUTHENTICATION=login
       - SMTP_ENABLE_STARTTLS_AUTO=true
       - SMTP_OPENSSL_VERIFY_MODE=peer
-      - MAILER_INBOUND_EMAIL_DOMAIN={{chatwoot_admin_email}} ## Email SMTP
+      - MAILER_INBOUND_EMAIL_DOMAIN={{chatwoot_admin_email}} ## SMTP Email
 
       ## Improvements
       - SIDEKIQ_CONCURRENCY=10
@@ -149,7 +149,7 @@ services:
       - POSTGRES_HOST=postgres
       - POSTGRES_USERNAME=postgres
       - POSTGRES_PASSWORD={{postgres_password}}
-      - POSTGRES_DATABASE=chatwoot$
+      - POSTGRES_DATABASE=chatwoot
 
       ## Armazenamento
       - ACTIVE_STORAGE_SERVICE=local ## use s3_compatible para MinIO
@@ -161,8 +161,8 @@ services:
       #- STORAGE_FORCE_PATH_STYLE=true
 
       ## Dados do SMTP
-      - MAILER_SENDER_EMAIL=$chatwoot_admin_email <{{chatwoot_admin_email}}> ## Email SMTP
-      - SMTP_DOMAIN=$chatwoot_smtp_domain ## Email domain
+      - MAILER_SENDER_EMAIL={{chatwoot_admin_email}} <{{chatwoot_admin_email}}> ## Email SMTP
+      - SMTP_DOMAIN={{chatwoot_smtp_domain}} ## Email domain
       - SMTP_ADDRESS={{chatwoot_smtp_host}} ## SMTP Host
       - SMTP_PORT={{chatwoot_smtp_port}} ## SMTP Port
       - SMTP_SSL={{chatwoot_smtp_secure}}

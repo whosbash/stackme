@@ -21,11 +21,11 @@ services:
       - MOODLE_EMAIL={{moodle_email}}
 
       ## Dados SMTP
-      - MOODLE_SMTP_USER={{smtp_user}}
-      - MOODLE_SMTP_PASSWORD={{smtp_password}}
-      - MOODLE_SMTP_HOST={{smtp_host}}
-      - MOODLE_SMTP_PORT_NUMBER={{smtp_moodle_port}}
-      - MOODLE_SMTP_PROTOCOL=moodle_smtp_secure ## 587 = tls ou plain | 465 = ssl 
+      - MOODLE_SMTP_USER={{moodle_smtp_user}}
+      - MOODLE_SMTP_PASSWORD={{moodle_smtp_password}}
+      - MOODLE_SMTP_HOST={{moodle_smtp_host}}
+      - MOODLE_SMTP_PORT_NUMBER={{moodle_smtp_port}}
+      - MOODLE_SMTP_PROTOCOL={{moodle_smtp_secure}} ## 587 = tls ou plain | 465 = ssl 
 
       ## Idioma
       - MOODLE_LANG=pt

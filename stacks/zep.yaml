@@ -20,7 +20,7 @@ services:
       - /opt/stackme/stacks/zep/config.yaml:/app/config.yaml
 
     networks:
-      - $nome_rede_interna
+      - {{network_name}}
 
     environment:
       ## Postgres

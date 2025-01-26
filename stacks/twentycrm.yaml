@@ -50,8 +50,8 @@ services:
     environment:
       - PORT=3000
       - PG_DATABASE_URL=postgres://postgres:{{twentycrm_postgres_password}}@db:5432/default
-      - SERVER_URL=http://{{twentycrm_url}}
-      - FRONT_BASE_URL=http://{{twentycrm_url}}
+      - SERVER_URL=https://{{twentycrm_url}}
+      - FRONT_BASE_URL=https://{{twentycrm_url}}
       - REDIS_URL=redis://redis:6379  # Já configurado
       - ENABLE_DB_MIGRATIONS=true
       - SIGN_IN_PREFILLED=true

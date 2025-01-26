@@ -33,14 +33,14 @@ services:
       - WEBHOOK_TOKEN={{chatwoot_uno_token}}
 
       ## Dados do Minio/S3
-      - STORAGE_ENDPOINT=https://${{s3_url}}
+      - STORAGE_ENDPOINT=https://{{s3_url}}
       - STORAGE_ACCESS_KEY_ID={{s3_access_key}}
       - STORAGE_SECRET_ACCESS_KEY={{s3_secret_key}}
       - STORAGE_BUCKET_NAME=unoapi
       - STORAGE_FORCE_PATH_STYLE=true
 
       ## Dados do RabbitMQ
-      - AMQP_URL=amqp://{{rabbitmq_password}}:{{rabbitmq_password}}@rabbitmq:5672/unoapi
+      - AMQP_URL=amqp://{{rabbitmq_username}}:{{rabbitmq_password}}@rabbitmq:5672/unoapi
       
       ## Dados do Redis
       - REDIS_URL=redis://redis:6379
