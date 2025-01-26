@@ -48,7 +48,7 @@ volumes:
   wordpress_{{wordpress_site_name}}:
     external: true
     name: wordpress_{{wordpress_site_name}}
-  wordpress_${nome_site_wordpress}_php:
+  wordpress_{{wordpress_site_name}}_php:
     external: true
     name: wordpress_{{wordpress_site_name}}_php
 

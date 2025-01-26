@@ -443,7 +443,6 @@ services:
       - -c
       - /app/bin/migrate && /app/bin/supavisor eval "\$\$(cat /etc/pooler/pooler.exs)" && /app/bin/server
 
-
     volumes:
       -  /root/supabase/docker/volumes/pooler/pooler.exs:/etc/pooler/pooler.exs:ro
 

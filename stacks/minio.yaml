@@ -1,6 +1,6 @@
 version: "3.7"
 services:
-  minio$:
+  minio:
     image: quay.io/minio/minio:latest
     command: server /data --console-address ":9001"
 
@@ -8,14 +8,17 @@ services:
       - minio_data:/data
 
     networks:
-      - {{network_name}}
+      - {{network_name}}:
+        aliases:
+          - warehouse.minio
 
     environment:
       ## Access Key and Secret Key
-      - MINIO_ROOT_USER=$user_minio
+      - MINIO_ROOT_USER={{minio_username}}
       - MINIO_ROOT_PASSWORD={{minio_password}}
 
       ## Minio url 
+      - MINIO_DOMAIN={{url_minio}}
       - MINIO_BROWSER_REDIRECT_URL=https://{{url_minio}} ## Minio url
       - MINIO_SERVER_URL=https://{{url_s3}}
 
@@ -40,8 +43,44 @@ services:
         - traefik.http.services.minio_console.loadbalancer.passHostHeader=true
         - traefik.http.routers.minio_console.service=minio_console
 
+    mc:
+      image: minio/mc
+      container_name: mc
+      networks:
+        iceberg_net:
+      environment:
+        - AWS_ACCESS_KEY_ID=admin
+        - AWS_SECRET_ACCESS_KEY=password
+        - AWS_REGION=us-east-1
+      entrypoint: >
+        /bin/sh -c "
+        until (/usr/bin/mc config host add minio http://minio:9000 {{aws_access_key_id}} {{aws_secret_access_key}}) do echo '...waiting...' && sleep 1; done;
+        /usr/bin/mc rm -r --force minio/warehouse;
+        /usr/bin/mc mb minio/warehouse;
+        /usr/bin/mc policy set public minio/warehouse;
+        tail -f /dev/null
+        "
+      deploy:
+        replicas: 1
+        restart_policy:
+          condition: on-failure
+          delay: 5s
+          max_attempts: 3
+          window: 120s
+        placement:
+          constraints: [node.role == manager]
+        labels: 
+          - traefik.enable=true
+          - traefik.http.routers.mc.rule=Host(\`{{iceberg_url}}\`)
+          - traefik.http.routers.mc.entrypoints=websecure
+          - traefik.http.routers.mc.tls.certresolver=letsencryptresolver
+          - traefik.http.routers.mc.service=mc@internal
+          - traefik.http.routers.mc.middlewares=auth@file
+          - traefik.http.middlewares.auth.basicauth.users={{iceberg_credentials}}
+          - traefik.http.routers.mc.priority=1
+
 volumes:
-  minio$_data:
+  minio_data:
     external: true
     name: minio_data
 

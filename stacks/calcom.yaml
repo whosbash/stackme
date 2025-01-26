@@ -4,7 +4,7 @@ services:
     image: calcom/cal.com:v4.7.8
 
     networks:
-      - $nome_rede_interna
+      - {{network_name}}
 
     environment:
     ## Licences

@@ -29,7 +29,7 @@ services:
       - DB_PORT=3306
       - DB_DATABASE=krayin
       - DB_USERNAME=root
-      - DB_PASSWORD=$senha_mysql
+      - DB_PASSWORD={{mysql_password}}
       - DB_PREFIX=
 
       ## Configurações de e-mail

@@ -21,8 +21,8 @@ services:
       - DEFAULT_LANGUAGE=pt_BR
 
       ## Secrets Keys
-      - SECRET_KEY=$Key_aleatoria_outline_1
-      - UTILS_SECRET=$Key_aleatoria_outline_2
+      - SECRET_KEY={{outline_secret_key}}
+      - UTILS_SECRET={{outline_utils_secret}}
 
       ## Dados Postgres
       - DATABASE_URL=postgres://postgres:{{postgres_password}}@postgres:5432/outline
@@ -40,9 +40,9 @@ services:
       - FILE_STORAGE_WORKSPACE_IMPORT_MAX_SIZE=18874368
       
       # LOGIN COM O GOOGLE
-      - GOOGLE_CLIENT_ID=$id_google_outline
-      - GOOGLE_CLIENT_SECRET=$key_google_outline
-      - NEXT_PUBLIC_GOOGLE_API_KEY=$api_google_outline
+      - GOOGLE_CLIENT_ID={{outline_google_client_id}}
+      - GOOGLE_CLIENT_SECRET={{outline_google_client_secret}}
+      - NEXT_PUBLIC_GOOGLE_API_KEY={{outline_google_api_key}}
 
       ## SMTP
       #- SMTP_FROM_EMAIL=email@domain.com ## SMTP Email 

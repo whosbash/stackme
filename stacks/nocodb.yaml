@@ -8,14 +8,14 @@ services:
       - nocodb_data:/usr/app/data
 
     networks:
-      - $nome_rede_interna
+      - {{network_name}}
 
     environment: 
       ## Url do Nocobase
       - NC_PUBLIC_URL=https://{{nocodb_url}}
 
       ## Dados Postgres
-      - NC_DB=pg://postgres:5432?u=postgres&p=$senha_postgres&d=nocodb
+      - NC_DB=pg://postgres:5432?u=postgres&p={{postgres_password}}&d=nocodb
 
       ## Desativar Telemetria
       - NC_DISABLE_TELE=true  

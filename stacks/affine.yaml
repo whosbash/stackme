@@ -10,7 +10,7 @@ services:
       - affine_storage:/root/.affine/storage:rw
 
     networks:
-      - $nome_rede_interna
+    - {{network_name}}
 
     #ports:
     #  - 3010:3010

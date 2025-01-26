@@ -109,10 +109,10 @@ services:
       #- NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY=
 
       ## Minio/S3
-      - S3_ACCESS_KEY=$S3_ACCESS_KEY
-      - S3_SECRET_KEY=$S3_SECRET_KEY
-      - S3_BUCKET=typebot${1:+-$1}
-      - S3_ENDPOINT=$url_s3
+      - S3_ACCESS_KEY={{s3_access_key}}
+      - S3_SECRET_KEY={{s3_secret_key}}
+      - S3_BUCKET=typebot
+      - S3_ENDPOINT={{s3_url}}
 
     deploy:
       mode: replicated

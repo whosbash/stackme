@@ -22,9 +22,9 @@ services:
       - DATABASE_PASSWORD={{mysql_password}}
 
       ## Secret Keys
-      - JWT_SECRET={{jwt_secret}}
-      - ADMIN_JWT_SECRET={{admin_jwt_secret}}
-      - APP_KEYS=$app_key
+      - JWT_SECRET={{strapi_jwt_secret}}
+      - ADMIN_JWT_SECRET={{strapi_admin_jwt_secret}}
+      - APP_KEYS={{strapi_app_keys}}
 
       ## Outros dados
       - NODE_ENV=production
@@ -63,7 +63,7 @@ services:
       - {{network_name}}
 
     environment:
-      - MYSQL_ROOT_PASSWORD=$mysql_password
+      - MYSQL_ROOT_PASSWORD={{mysql_password}}
       - MYSQL_DATABASE=strapi
       - TZ=America/Sao_Paulo
 

@@ -28,7 +28,7 @@ services:
       ## Configuração do Banco de Dados
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://postgres:$senha_postgres@postgres:5432/evolution_lite
+      - DATABASE_CONNECTION_URI=postgresql://postgres{{postgres_password}}@postgres:5432/evolution_lite
       - DATABASE_CONNECTION_CLIENT_NAME=evolution_lite
       - DATABASE_SAVE_DATA_INSTANCE=true
       - DATABASE_SAVE_DATA_NEW_MESSAGE=true

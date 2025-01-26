@@ -39,7 +39,7 @@ services:
       - open_webui:/app/backend/data
 
     networks:
-      - $nome_rede_interna
+      - {{network_name}}
 
     #ports:
     #  - 8085:8080
