@@ -1720,10 +1720,11 @@ generate_machine_specs_table() {
 
   # Machine Specifications Table
   local machine_specs_rows=""
-  machine_specs_rows+=$(
-    generate_table_row "Hostname" \
-      "$(hostname)"
-  )
+   machine_specs_rows+=$("Hello")
+#  machine_specs_rows+=$(
+#    generate_table_row "Hostname" \
+#      "$(hostname)"
+#  )
 #   machine_specs_rows+=$(
 #     generate_table_row "Operating System" \
 #       "$(safe_exec "lsb_release -d | cut -f2")"
