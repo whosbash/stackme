@@ -1720,7 +1720,6 @@ generate_machine_specs_table() {
 
   # Machine Specifications Table
   local machine_specs_rows=""
-   machine_specs_rows+=$("Hello")
   machine_specs_rows+=$(
     generate_table_row "Hostname" \
       "$(hostname)"
@@ -1979,40 +1978,23 @@ sanitize_template() {
   echo "$template"
 }
 
-# Function 
+# Function to replace mustache variables
 replace_mustache_variables() {
   local template="$1"
   local -n vars_ref="$2"
 
-  # Build JSON manually from associative array
-  local json_vars="{"
+  # Loop through all variables and replace in the template
   for key in "${!vars_ref[@]}"; do
     value="${vars_ref[$key]}"
-    json_vars+="\"$key\":\"$value\","
+    # Escape special characters (like backslashes and quotes) in the value
+    escaped_value=$(printf '%s' "$value" | sed 's/[&/\]/\\&/g')
+
+    # Replace {{key}} with the corresponding escaped value
+    template=$(echo "$template" | sed "s|{{ *$key *}}|$escaped_value|g")
   done
-  json_vars="${json_vars%,}}" # Remove trailing comma and close JSON
 
-  # Pass the template and JSON variables to Python
-  python3 - <<EOF
-import json
-import re
-
-# Template from Bash
-template = """${template}"""
-
-# Variables from Bash (passed as JSON)
-vars = json.loads('''$json_vars''')
-
-# Replace {{variable}} in the template
-def replace_mustache(template, variables):
-    for key, value in variables.items():
-        # Match {{key}}, {{ key }}, {{key }} patterns
-        template = re.sub(r"\{\{\s*" + re.escape(key) + r"\s*\}\}", str(value), template)
-    return template
-
-# Output the result
-print(replace_mustache(template, vars))
-EOF
+  # Return the modified template
+  echo "$template"
 }
 
 # Function to find the next available port
