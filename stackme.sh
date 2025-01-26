@@ -1724,42 +1724,42 @@ generate_machine_specs_table() {
     generate_table_row "Hostname" \
       "$(hostname)"
   )
-  machine_specs_rows+=$(
-    generate_table_row "Operating System" \
-      "$(safe_exec "lsb_release -d | cut -f2")"
-  )
-  machine_specs_rows+=$(
-    generate_table_row "Kernel Version" \
-      "$(safe_exec "uname -r")"
-  )
-  machine_specs_rows+=$(
-    generate_table_row "Processor Model" \
-      "$(safe_exec "lscpu | awk -F ':' '/Model name/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
-  )
-  machine_specs_rows+=$(
-    generate_table_row "Processor Cores" \
-      "$(safe_exec "lscpu | awk -F ':' '/^CPU\(s\):/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
-  )
-  machine_specs_rows+=$(
-    generate_table_row "Processor Threads" \
-      "$(safe_exec "lscpu | awk -F ':' '/^Thread\(s\) per core:/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
-  )
-  machine_specs_rows+=$(
-    generate_table_row "Clock Speed" \
-      "$(safe_exec "lscpu | grep 'Model name' | grep -o '@ [0-9.]\+GHz' || echo 'N/A'")"
-  )
-  machine_specs_rows+=$(
-    generate_table_row "Total Memory" \
-      "$(safe_exec "free -h | awk '/^Mem:/ {print \$2}'")"
-  )
-  machine_specs_rows+=$(
-    generate_table_row "GPU Details" \
-      "$(safe_exec "lspci | grep -i 'vga\|3d\|2d' || echo 'GPU information unavailable.'")"
-  )
-  machine_specs_rows+=$(
-    generate_table_row "Docker Version" \
-      "$(safe_exec "docker --version || echo 'Not installed'")"
-  )
+#   machine_specs_rows+=$(
+#     generate_table_row "Operating System" \
+#       "$(safe_exec "lsb_release -d | cut -f2")"
+#   )
+#   machine_specs_rows+=$(
+#     generate_table_row "Kernel Version" \
+#       "$(safe_exec "uname -r")"
+#   )
+#   machine_specs_rows+=$(
+#     generate_table_row "Processor Model" \
+#       "$(safe_exec "lscpu | awk -F ':' '/Model name/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
+#   )
+#   machine_specs_rows+=$(
+#     generate_table_row "Processor Cores" \
+#       "$(safe_exec "lscpu | awk -F ':' '/^CPU\(s\):/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
+#   )
+#   machine_specs_rows+=$(
+#     generate_table_row "Processor Threads" \
+#       "$(safe_exec "lscpu | awk -F ':' '/^Thread\(s\) per core:/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
+#   )
+#   machine_specs_rows+=$(
+#     generate_table_row "Clock Speed" \
+#       "$(safe_exec "lscpu | grep 'Model name' | grep -o '@ [0-9.]\+GHz' || echo 'N/A'")"
+#   )
+#   machine_specs_rows+=$(
+#     generate_table_row "Total Memory" \
+#       "$(safe_exec "free -h | awk '/^Mem:/ {print \$2}'")"
+#   )
+#   machine_specs_rows+=$(
+#     generate_table_row "GPU Details" \
+#       "$(safe_exec "lspci | grep -i 'vga\|3d\|2d' || echo 'GPU information unavailable.'")"
+#   )
+#   machine_specs_rows+=$(
+#     generate_table_row "Docker Version" \
+#       "$(safe_exec "docker --version || echo 'Not installed'")"
+#   )
 
   html_content+=$(create_table "Machine Specifications" "<th>Attribute</th><th>Details</th>" "$machine_specs_rows")
 
