@@ -5563,6 +5563,8 @@ BASE_TEMPLATE='<!DOCTYPE html>
       color: #333; 
       line-height: 1.6; /* Improve readability */
     }
+
+    /* Container Styles */
     .container { 
       margin: 20px auto; 
       padding: 20px; 
@@ -5571,6 +5573,8 @@ BASE_TEMPLATE='<!DOCTYPE html>
       border-radius: 10px; 
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); 
     }
+
+    /* Header Styles */
     .header { 
       text-align: center; 
       background-color: #4caf50; 
@@ -5586,10 +5590,14 @@ BASE_TEMPLATE='<!DOCTYPE html>
       font-size: 1.6em; /* Scalable font size */
       margin: 0; 
     }
+
+    /* Content Styles */
     .content { 
       padding: 20px; 
       font-size: 1em; /* Adjust for readability */
     }
+
+    /* Footer Styles */
     .footer { 
       text-align: center; 
       padding: 20px 0; 
@@ -5615,27 +5623,23 @@ BASE_TEMPLATE='<!DOCTYPE html>
       background-color: #4caf50; /* Green background */
       color: #ffffff; /* White text */
       text-decoration: none; /* No underline */
-      font-size: 1em; /* Scalable font size */
+      font-size: 1.1em; /* Slightly larger font */
       font-weight: bold;
       border-radius: 5px;
       text-align: center;
       cursor: pointer;
-      transition: background-color 0.3s ease; /* Smooth hover effect */
+      transition: background-color 0.3s ease;
     }
-
     .button:hover {
       background-color: #45a049;
     }
-
     .button:active {
-      background-color: #3e8e41; /* Click feedback */
+      background-color: #3e8e41;
     }
-
     .button:focus {
-      outline: 3px solid #4caf50; /* Accessibility for keyboard navigation */
+      outline: 3px solid #4caf50;
       outline-offset: 2px;
     }
-
 
     /* Global Link Styling */
     a {
@@ -5650,7 +5654,25 @@ BASE_TEMPLATE='<!DOCTYPE html>
       outline: 3px solid #4caf50; /* Accessibility for keyboard navigation */
       outline-offset: 2px;
     }
-</style>
+
+    /* Responsive Styling */
+    @media only screen and (max-width: 600px) {
+      .container {
+        padding: 15px;
+        margin: 10px;
+      }
+      .header h1 {
+        font-size: 1.4em;
+      }
+      .content {
+        font-size: 0.9em;
+      }
+      .button {
+        padding: 10px 20px;
+        font-size: 1em;
+      }
+    }
+  </style>
 </head>
 <body>
   <section class="container">
@@ -5660,6 +5682,7 @@ BASE_TEMPLATE='<!DOCTYPE html>
     </header>
     <section class="content">
       {{email_content}}
+      <a href="{{cta_url}}" class="button">{{cta_text}}</a>
     </section>
     <footer class="footer">
       <p>Sent using a Shell Script and the Swaks tool.</p>
@@ -5671,7 +5694,8 @@ BASE_TEMPLATE='<!DOCTYPE html>
     </footer>
   </section>
 </body>
-</html>'
+</html>
+'
 
 # Function to generate email
 generate_html() {
