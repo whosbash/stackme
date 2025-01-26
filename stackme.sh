@@ -1760,53 +1760,52 @@ generate_machine_specs_table() {
 #     generate_table_row "Docker Version" \
 #       "$(safe_exec "docker --version || echo 'Not installed'")"
 #   )
-
-  html_content+=$(create_table "Machine Specifications" "<th>Attribute</th><th>Details</th>" "$machine_specs_rows")
-
-  # Disk Usage Table
-  local disk_usage_rows=$(
-    df -h --output=source,fstype,size,used,avail,pcent |
-      grep -E '^/dev' |
-      awk '{printf "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", $1, $2, $3, $4, $5, $6}'
-  )
-  html_content+=$(\
-    create_table "Disk Usage" \
-      "<th>Source</th><th>Filesystem Type</th><th>Total Size</th><th>Used</th><th>Available</th><th>Use%</th>" \
-      "$disk_usage_rows")
-
-  # Battery Status Table (only if upower is available)
-  if command -v upower &>/dev/null; then
-    local battery_rows=$(
-      upower -i $(upower -e | grep BAT) | grep -E 'state|to full|percentage' |
-        awk -F ':' '{gsub(/^[ \t]+|[ \t]+$/, "", $1); gsub(/^[ \t]+|[ \t]+$/, "", $2); print "<tr><td>" $1 "</td><td>" $2 "</td></tr>"}'
-    )
-    if [[ -n "$battery_rows" ]]; then
-      html_content+=$(\
-        create_table "Battery Status" \
-        "<th>Status</th><th>Details</th>" "$battery_rows"
-      )
-    else
-      html_content+=$(\
-        create_table "Battery Status" \
-        "<th>Status</th><th>Details</th>" "<tr><td colspan='2'>No battery information available.</td></tr>"
-      )
-    fi
-  fi
-
-  # Network Information Table (Ethernet and Wi-Fi)
-  local ethernet_info=$(\
-    safe_exec "ip -4 addr show | grep 'state UP' -A2 | grep inet | awk '{print \$2}' || echo 'No Ethernet connection.'"
-  )
-  local wifi_info=$(\
-    safe_exec "nmcli device status | grep wifi | awk '{print \$1, \$3, \$4}' || echo 'No Wi-Fi connection.'"\
-  )
-  local network_rows=""
-  network_rows+=$(generate_table_row "Ethernet" "$ethernet_info")
-  network_rows+=$(generate_table_row "Wi-Fi" "$wifi_info")
-  html_content+=$(create_table "Network Information" "<th>Type</th><th>Details</th>" "$network_rows")
-
-    debug "$html_content"
-
+#
+#  html_content+=$(create_table "Machine Specifications" "<th>Attribute</th><th>Details</th>" "$machine_specs_rows")
+#
+#  # Disk Usage Table
+#  local disk_usage_rows=$(
+#    df -h --output=source,fstype,size,used,avail,pcent |
+#      grep -E '^/dev' |
+#      awk '{printf "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", $1, $2, $3, $4, $5, $6}'
+#  )
+#  html_content+=$(\
+#    create_table "Disk Usage" \
+#      "<th>Source</th><th>Filesystem Type</th><th>Total Size</th><th>Used</th><th>Available</th><th>Use%</th>" \
+#      "$disk_usage_rows")
+#
+#  # Battery Status Table (only if upower is available)
+#  if command -v upower &>/dev/null; then
+#    local battery_rows=$(
+#      upower -i $(upower -e | grep BAT) | grep -E 'state|to full|percentage' |
+#        awk -F ':' '{gsub(/^[ \t]+|[ \t]+$/, "", $1); gsub(/^[ \t]+|[ \t]+$/, "", $2); print "<tr><td>" $1 "</td><td>" $2 "</td></tr>"}'
+#    )
+#    if [[ -n "$battery_rows" ]]; then
+#      html_content+=$(\
+#        create_table "Battery Status" \
+#        "<th>Status</th><th>Details</th>" "$battery_rows"
+#      )
+#    else
+#      html_content+=$(\
+#        create_table "Battery Status" \
+#        "<th>Status</th><th>Details</th>" "<tr><td colspan='2'>No battery information available.</td></tr>"
+#      )
+#    fi
+#  fi
+#
+#  # Network Information Table (Ethernet and Wi-Fi)
+#  local ethernet_info=$(\
+#    safe_exec "ip -4 addr show | grep 'state UP' -A2 | grep inet | awk '{print \$2}' || echo 'No Ethernet connection.'"
+#  )
+#  local wifi_info=$(\
+#    safe_exec "nmcli device status | grep wifi | awk '{print \$1, \$3, \$4}' || echo 'No Wi-Fi connection.'"\
+#  )
+#  local network_rows=""
+#  network_rows+=$(generate_table_row "Ethernet" "$ethernet_info")
+#  network_rows+=$(generate_table_row "Wi-Fi" "$wifi_info")
+#  html_content+=$(create_table "Network Information" "<th>Type</th><th>Details</th>" "$network_rows")
+#
+#
   # Return the complete HTML content
   echo "$html_content"
 }
