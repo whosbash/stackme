@@ -5609,7 +5609,7 @@ BASE_TEMPLATE='<!DOCTYPE html>
 
     /* Button Styling */
     .button {
-      display: inline-block; /* Inline-block to size button to its content */
+      display: block; /* Make the button a block element */
       margin: 20px auto; /* Center button horizontally */
       padding: 12px 25px;
       background-color: #4caf50; /* Green background */
@@ -5625,9 +5625,11 @@ BASE_TEMPLATE='<!DOCTYPE html>
     .button:hover {
       background-color: #45a049;
     }
+
     .button:active {
       background-color: #3e8e41; /* Click feedback */
     }
+
     .button:focus {
       outline: 3px solid #4caf50; /* Accessibility for keyboard navigation */
       outline-offset: 2px;
@@ -5682,17 +5684,6 @@ generate_html() {
     [header_title]="$header_title"
     [email_content]="$email_content"
   )
-
-  debug "On generate_html function"
-
-  debug "Echo title: $email_title"
-  debug "Echo header_title: $header_title"
-  debug "Echo email_content: $email_content"
-  debug "Variables: ${email_variables[@]}"
-
-  debug "Template before substitution: $base_template"
-  debug "Variables passed by reference: ${!email_variables[@]}"
-  debug "Template after substitution: $(replace_mustache_variables "$base_template" email_variables)"
 
   # Use the replace_mustache_variables function to substitute variables in the template
   local email_html=$(replace_mustache_variables "$base_template" email_variables)
@@ -6386,101 +6377,6 @@ fetch_stack_compose(){
     return 1
   fi
 }
-
-############################## END OF STACK DEPLOYMENT UTILITARY FUNCTIONS #########################
-
-
-#compose_file_kafka(){
-#  cat <<EOL
-#version: '3.9'
-#
-#services:
-#  zookeeper:
-#    image: confluentinc/cp-zookeeper:7.5.0
-#    ports:
-#      - "2181:2181"
-#    environment:
-#      ZOOKEEPER_CLIENT_PORT: 2181
-#      ZOOKEEPER_TICK_TIME: 2000
-#    deploy:
-#      replicas: 1
-#      placement:
-#        constraints:
-#          - node.role == manager
-#
-#  kafka:
-#    image: confluentinc/cp-kafka:7.5.0
-#    ports:
-#      - "9092:9092"
-#    environment:
-#      KAFKA_BROKER_ID: 1
-#      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-#      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://{{url_kafka_broker}}:9094
-#      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
-#      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
-#      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094
-#      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-#    deploy:
-#      replicas: 1
-#      placement:
-#        constraints:
-#          - node.role == worker
-#        labels:
-#          - traefik.enable=true
-#          - traefik.http.routers.kafka-broker.entrypoints=websecure
-#          - traefik.http.routers.kafka-broker.rule=Host(`{{url_kafka_broker}}`)
-#          - traefik.http.routers.kafka-broker.tls.certresolver=letsencryptresolver
-#          - traefik.http.services.kafka-broker.loadbalancer.server.port=9094
-#
-#    networks:
-#      - {{network_name}}
-#
-#  kafka-rest-proxy:
-#    image: confluentinc/cp-kafka-rest:7.5.0
-#    ports:
-#      - "8082:8082"
-#    environment:
-#      KAFKA_REST_HOST_NAME: kafka-rest-proxy
-#      KAFKA_REST_LISTENERS: http://0.0.0.0:8082
-#      KAFKA_REST_BOOTSTRAP_SERVERS: kafka:9092
-#    deploy:
-#      replicas: 1
-#      labels:
-#        - traefik.enable=true
-#        - traefik.http.routers.kafka-rest.entrypoints=websecure
-#        - traefik.http.routers.kafka-rest.rule=Host(\`{{url_kafka_rest}}\`)
-#        - traefik.http.routers.kafka-rest.tls.certresolver=letsencryptresolver
-#        - traefik.http.services.kafka-rest.loadbalancer.server.port=8082
-#    networks:
-#      - {{network_name}}
-#
-#  kafka-ui:
-#    image: provectuslabs/kafka-ui:latest
-#    ports:
-#      - "8080:8080"
-#    environment:
-#      KAFKA_CLUSTERS_0_NAME: local
-#      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
-#      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
-#    deploy:
-#      replicas: 1
-#      labels:
-#        - traefik.enable=true
-#        - traefik.http.routers.kafka-ui.entrypoints=websecure
-#        - traefik.http.routers.kafka-ui.rule=Host(\`{{url_kafka_ui}}\`)
-#        - traefik.http.routers.kafka-ui.tls.certresolver=letsencryptresolver
-#        - traefik.http.services.kafka-ui.loadbalancer.server.port=8080
-#    networks:
-#      - {{network_name}}
-#
-#networks:
-#  {{network_name}}:
-#    name: {{network_name}}
-#    external: true
-#EOL
-#}
-
-######################################## END OF COMPOSE FILES #####################################
 
 ############################# BEGIN OF STACK DEPLOYMENT UTILITARY FUNCTIONS #######################
 
