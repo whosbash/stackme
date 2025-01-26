@@ -1721,92 +1721,92 @@ generate_machine_specs_table() {
   # Machine Specifications Table
   local machine_specs_rows=""
    machine_specs_rows+=$("Hello")
-#  machine_specs_rows+=$(
-#    generate_table_row "Hostname" \
-#      "$(hostname)"
-#  )
-#   machine_specs_rows+=$(
-#     generate_table_row "Operating System" \
-#       "$(safe_exec "lsb_release -d | cut -f2")"
-#   )
-#   machine_specs_rows+=$(
-#     generate_table_row "Kernel Version" \
-#       "$(safe_exec "uname -r")"
-#   )
-#   machine_specs_rows+=$(
-#     generate_table_row "Processor Model" \
-#       "$(safe_exec "lscpu | awk -F ':' '/Model name/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
-#   )
-#   machine_specs_rows+=$(
-#     generate_table_row "Processor Cores" \
-#       "$(safe_exec "lscpu | awk -F ':' '/^CPU\(s\):/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
-#   )
-#   machine_specs_rows+=$(
-#     generate_table_row "Processor Threads" \
-#       "$(safe_exec "lscpu | awk -F ':' '/^Thread\(s\) per core:/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
-#   )
-#   machine_specs_rows+=$(
-#     generate_table_row "Clock Speed" \
-#       "$(safe_exec "lscpu | grep 'Model name' | grep -o '@ [0-9.]\+GHz' || echo 'N/A'")"
-#   )
-#   machine_specs_rows+=$(
-#     generate_table_row "Total Memory" \
-#       "$(safe_exec "free -h | awk '/^Mem:/ {print \$2}'")"
-#   )
-#   machine_specs_rows+=$(
-#     generate_table_row "GPU Details" \
-#       "$(safe_exec "lspci | grep -i 'vga\|3d\|2d' || echo 'GPU information unavailable.'")"
-#   )
-#   machine_specs_rows+=$(
-#     generate_table_row "Docker Version" \
-#       "$(safe_exec "docker --version || echo 'Not installed'")"
-#   )
-#
-#  html_content+=$(create_table "Machine Specifications" "<th>Attribute</th><th>Details</th>" "$machine_specs_rows")
-#
-#  # Disk Usage Table
-#  local disk_usage_rows=$(
-#    df -h --output=source,fstype,size,used,avail,pcent |
-#      grep -E '^/dev' |
-#      awk '{printf "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", $1, $2, $3, $4, $5, $6}'
-#  )
-#  html_content+=$(\
-#    create_table "Disk Usage" \
-#      "<th>Source</th><th>Filesystem Type</th><th>Total Size</th><th>Used</th><th>Available</th><th>Use%</th>" \
-#      "$disk_usage_rows")
-#
-#  # Battery Status Table (only if upower is available)
-#  if command -v upower &>/dev/null; then
-#    local battery_rows=$(
-#      upower -i $(upower -e | grep BAT) | grep -E 'state|to full|percentage' |
-#        awk -F ':' '{gsub(/^[ \t]+|[ \t]+$/, "", $1); gsub(/^[ \t]+|[ \t]+$/, "", $2); print "<tr><td>" $1 "</td><td>" $2 "</td></tr>"}'
-#    )
-#    if [[ -n "$battery_rows" ]]; then
-#      html_content+=$(\
-#        create_table "Battery Status" \
-#        "<th>Status</th><th>Details</th>" "$battery_rows"
-#      )
-#    else
-#      html_content+=$(\
-#        create_table "Battery Status" \
-#        "<th>Status</th><th>Details</th>" "<tr><td colspan='2'>No battery information available.</td></tr>"
-#      )
-#    fi
-#  fi
-#
-#  # Network Information Table (Ethernet and Wi-Fi)
-#  local ethernet_info=$(\
-#    safe_exec "ip -4 addr show | grep 'state UP' -A2 | grep inet | awk '{print \$2}' || echo 'No Ethernet connection.'"
-#  )
-#  local wifi_info=$(\
-#    safe_exec "nmcli device status | grep wifi | awk '{print \$1, \$3, \$4}' || echo 'No Wi-Fi connection.'"\
-#  )
-#  local network_rows=""
-#  network_rows+=$(generate_table_row "Ethernet" "$ethernet_info")
-#  network_rows+=$(generate_table_row "Wi-Fi" "$wifi_info")
-#  html_content+=$(create_table "Network Information" "<th>Type</th><th>Details</th>" "$network_rows")
-#
-#
+  machine_specs_rows+=$(
+    generate_table_row "Hostname" \
+      "$(hostname)"
+  )
+   machine_specs_rows+=$(
+     generate_table_row "Operating System" \
+       "$(safe_exec "lsb_release -d | cut -f2")"
+   )
+   machine_specs_rows+=$(
+     generate_table_row "Kernel Version" \
+       "$(safe_exec "uname -r")"
+   )
+   machine_specs_rows+=$(
+     generate_table_row "Processor Model" \
+       "$(safe_exec "lscpu | awk -F ':' '/Model name/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
+   )
+   machine_specs_rows+=$(
+     generate_table_row "Processor Cores" \
+       "$(safe_exec "lscpu | awk -F ':' '/^CPU\(s\):/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
+   )
+   machine_specs_rows+=$(
+     generate_table_row "Processor Threads" \
+       "$(safe_exec "lscpu | awk -F ':' '/^Thread\(s\) per core:/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
+   )
+   machine_specs_rows+=$(
+     generate_table_row "Clock Speed" \
+       "$(safe_exec "lscpu | grep 'Model name' | grep -o '@ [0-9.]\+GHz' || echo 'N/A'")"
+   )
+   machine_specs_rows+=$(
+     generate_table_row "Total Memory" \
+       "$(safe_exec "free -h | awk '/^Mem:/ {print \$2}'")"
+   )
+   machine_specs_rows+=$(
+     generate_table_row "GPU Details" \
+       "$(safe_exec "lspci | grep -i 'vga\|3d\|2d' || echo 'GPU information unavailable.'")"
+   )
+   machine_specs_rows+=$(
+     generate_table_row "Docker Version" \
+       "$(safe_exec "docker --version || echo 'Not installed'")"
+   )
+
+  html_content+=$(create_table "Machine Specifications" "<th>Attribute</th><th>Details</th>" "$machine_specs_rows")
+
+  # Disk Usage Table
+  local disk_usage_rows=$(
+    df -h --output=source,fstype,size,used,avail,pcent |
+      grep -E '^/dev' |
+      awk '{printf "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", $1, $2, $3, $4, $5, $6}'
+  )
+  html_content+=$(\
+    create_table "Disk Usage" \
+      "<th>Source</th><th>Filesystem Type</th><th>Total Size</th><th>Used</th><th>Available</th><th>Use%</th>" \
+      "$disk_usage_rows")
+
+  # Battery Status Table (only if upower is available)
+  if command -v upower &>/dev/null; then
+    local battery_rows=$(
+      upower -i $(upower -e | grep BAT) | grep -E 'state|to full|percentage' |
+        awk -F ':' '{gsub(/^[ \t]+|[ \t]+$/, "", $1); gsub(/^[ \t]+|[ \t]+$/, "", $2); print "<tr><td>" $1 "</td><td>" $2 "</td></tr>"}'
+    )
+    if [[ -n "$battery_rows" ]]; then
+      html_content+=$(\
+        create_table "Battery Status" \
+        "<th>Status</th><th>Details</th>" "$battery_rows"
+      )
+    else
+      html_content+=$(\
+        create_table "Battery Status" \
+        "<th>Status</th><th>Details</th>" "<tr><td colspan='2'>No battery information available.</td></tr>"
+      )
+    fi
+  fi
+
+  # Network Information Table (Ethernet and Wi-Fi)
+  local ethernet_info=$(\
+    safe_exec "ip -4 addr show | grep 'state UP' -A2 | grep inet | awk '{print \$2}' || echo 'No Ethernet connection.'"
+  )
+  local wifi_info=$(\
+    safe_exec "nmcli device status | grep wifi | awk '{print \$1, \$3, \$4}' || echo 'No Wi-Fi connection.'"\
+  )
+  local network_rows=""
+  network_rows+=$(generate_table_row "Ethernet" "$ethernet_info")
+  network_rows+=$(generate_table_row "Wi-Fi" "$wifi_info")
+  html_content+=$(create_table "Network Information" "<th>Type</th><th>Details</th>" "$network_rows")
+
+
   # Return the complete HTML content
   echo "$html_content"
 }
@@ -1979,27 +1979,40 @@ sanitize_template() {
   echo "$template"
 }
 
-# Function to replace variables in a template
+# Function 
 replace_mustache_variables() {
   local template="$1"
-  local -n vars_ref="$2" # Associative array passed by reference
+  local -n vars_ref="$2"
 
-  # Iterate over the variables and replace each instance of {{KEY}} in the template
+  # Build JSON manually from associative array
+  local json_vars="{"
   for key in "${!vars_ref[@]}"; do
     value="${vars_ref[$key]}"
-
-    # Escape special characters in the value to make it safe for sed
-    safe_value=$(escape_sed_special_chars "$value")
-
-    debug "Replacing {{${key}}} with $safe_value"
-
-    # Use sed to replace instances of {{key}}, {{ key}}, and {{key }}
-    pattern="s/\{\{\s*${key}\s*\}\}/$safe_value/g"
-    template=$(printf '%s' "$template" | sed -E "$pattern")
+    json_vars+="\"$key\":\"$value\","
   done
+  json_vars="${json_vars%,}}" # Remove trailing comma and close JSON
 
-  # Output the substituted template
-  echo "$template"
+  # Pass the template and JSON variables to Python
+  python3 - <<EOF
+import json
+import re
+
+# Template from Bash
+template = """${template}"""
+
+# Variables from Bash (passed as JSON)
+vars = json.loads('''$json_vars''')
+
+# Replace {{variable}} in the template
+def replace_mustache(template, variables):
+    for key, value in variables.items():
+        # Match {{key}}, {{ key }}, {{key }} patterns
+        template = re.sub(r"\{\{\s*" + re.escape(key) + r"\s*\}\}", str(value), template)
+    return template
+
+# Output the result
+print(replace_mustache(template, vars))
+EOF
 }
 
 # Function to find the next available port
