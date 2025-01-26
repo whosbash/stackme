@@ -1982,18 +1982,14 @@ sanitize_template() {
 replace_mustache_variables() {
   local template="$1"
   local -n vars_ref="$2"
-
-  # Loop through all variables and replace in the template
+  
   for key in "${!vars_ref[@]}"; do
     value="${vars_ref[$key]}"
-    # Escape special characters (like backslashes and quotes) in the value
-    escaped_value=$(printf '%s' "$value" | sed 's/[&/\]/\\&/g')
-
-    # Replace {{key}} with the corresponding escaped value
-    template=$(echo "$template" | sed "s|{{ *$key *}}|$escaped_value|g")
+    # Escape special characters for awk and perform substitution
+    template=$(echo "$template" | awk -v key="$key" -v value="$value" \
+      '{gsub("{{ *" key " *}}", value); print}')
   done
 
-  # Return the modified template
   echo "$template"
 }
 
