@@ -6024,7 +6024,7 @@ update_and_check_packages() {
       info "Upgradable packages detected."
 
       # Ask for confirmation
-      message="${yellow}Would you like to update and upgrade the packages? (Y/n)${normal}"
+      message="$(format "question" "Would you like to update and upgrade the packages? (Y/n)")"
       if handle_confirmation_prompt "$message" "y" 5; then
         echo ""
 
