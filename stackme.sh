@@ -2559,6 +2559,24 @@ validate_yn_response(){
 
 ############################### BEGIN OF GENERAL UTILITARY FUNCTIONS #############################
 
+# Function to display progress for a running command
+show_progress() {
+  local pid=$1
+  local message=$2
+  local spinner='|/-\'
+  local delay=0.1
+  echo -n "$message "
+  
+  while kill -0 $pid 2>/dev/null; do
+    for i in $(seq 0 3); do
+      echo -ne "\b${spinner:i:1}"
+      sleep $delay
+    done
+  done
+
+  echo -ne "\bDone!\n"
+}
+
 # Function to validate the input and return errors for invalid fields
 validate_value() {
   local value="$1"
@@ -6036,47 +6054,53 @@ install_all_packages() {
   done
 }
 
-# Function to prepare the environment
-update_and_install_packages() {
-  # Function constants
-  local total_steps=4
+# Function to update and check VPS packages
+update_and_check_packages() {
+  # Check for the package manager (apt)
+  if command -v apt &>/dev/null; then
+    # Check for upgradable packages
+    upgradable_packages=$(apt list --upgradable 2>/dev/null)
+    if [[ -z "$upgradable_packages" ]]; then
+      echo -e "${green}No upgradable packages.${normal}" >&2
+    else
+      echo -e "${yellow}Upgradable packages detected.${normal}" >&2
 
-  highlight "Preparing environment"
+      # Ask for confirmation
+      message="${yellow}Would you like to update and upgrade the packages? (Y/n)${normal}"
+      if handle_confirmation_prompt "$message" "y" 5; then
+        echo ""
 
-  # Step 1: Update the system
-  step_message="Updating system and upgrading packages"
-  step_progress 1 $total_steps "$step_message"
-  command "apt-get update -yq" 1 $total_steps "$step_message"
+        # Update packages with feedback
+        echo -e "${yellow}Updating package list...${normal}"
+        apt-get update -y >/dev/null 2>&1 &
+        show_progress $! "Updating package list"
 
-  # Step 3: Autoclean the system
-  step_message="Cleaning up package cache"
-  step_progress 2 $total_steps "$step_message"
-  command "apt-get autoclean -yq --allow-downgrades" 2 $total_steps "$step_message"
+        # Upgrade packages with feedback
+        echo -e "${yellow}Upgrading packages...${normal}"
+        apt-get upgrade -y >/dev/null 2>&1 &
+        show_progress $! "Upgrading packages"
 
-  # Check for apt locks on installation
-  wait_apt_lock 5 60
+        # Remove unused packages with feedback
+        echo -e "${yellow}Removing unused packages...${normal}"
+        apt-get autoremove -y >/dev/null 2>&1 &
+        show_progress $! "Removing unused packages"
 
-  # Install required apt packages quietly
-  apt_packages=(
-    "sudo" "apt-utils" "apparmor-utils" "apache2-utils" "jq" "python3"
-    "docker" "figlet" "swaks" "netcat" "vnstat" "network-manager" "upower"
-  )
-  step_message="Installing required apt-get packages"
-  step_progress 3 $total_steps "$step_message"
-  install_all_packages "apt-get -yq" "${apt_packages[@]}"
-  handle_exit $? 3 $total_steps "$step_message"
+        # Clean package cache with feedback
+        echo -e "${yellow}Cleaning up package cache...${normal}"
+        apt-get clean >/dev/null 2>&1 &
+        show_progress $! "Cleaning up package cache"
 
-  snap_packages=(
-    "yq"
-  )
-  step_message="Installing required snap packages"
-  step_progress 4 $total_steps "$step_message"
-  install_all_packages "snap" "${snap_packages[@]}"
-  handle_exit $? 4 $total_steps "$step_message"
+        # Notify update completion
+        echo -e "${green}Update complete!${normal}" >&2
+      else
+        echo -e "${red}Update aborted.${normal}" >&2
+      fi
+    fi
+  else
+    echo -e "${red}Package manager not supported.${normal}" >&2
+  fi
 
-  success "Packages installed successfully."
-
-  wait_for_input
+  echo ""
 }
 
 install_docker() {
