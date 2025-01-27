@@ -4371,13 +4371,7 @@ download_stack_compose_templates() {
             if ! curl -s --fail -o "$destination_file" "$url"; then
                 error_message=$(curl -s -w "%{http_code}" -o /dev/null "$url")
                 failed_downloads+=("$(date '+%Y-%m-%d %H:%M:%S') - $file_name - Error: HTTP $error_message")
-            fi
-
-            # Increment the completed files counter
-            completed_files=$((completed_files + 1))
-
-            # Show overall progress
-            show_total_progress "$total_files" "$completed_files"
+            fi            
         ) &
     done
 
