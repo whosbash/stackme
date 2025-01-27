@@ -1505,7 +1505,6 @@ run_ctop() {
     fi
 
     # Run ctop after ensuring installation
-    echo "Launching CTOP..."
     ctop
 }
 
@@ -4309,9 +4308,10 @@ wait_for_services() {
 
 
 # Function to download stack compose templates with progress bar
+# Function to download stack compose templates with progress indicator
 download_stack_compose_templates() {
     local destination_folder="$TEMPLATES_DIR"
-    
+
     # Ensure the destination folder is provided
     if [[ -z "$destination_folder" ]]; then
         error "Destination folder not specified."
@@ -4326,8 +4326,8 @@ download_stack_compose_templates() {
 
     info "Fetching file list from GitHub API..."
     # Fetch the file information from the API
-    file_urls=$(\
-        curl -s -H "Accept: application/vnd.github.v3+json" "$STACKS_TEMPLATE_URL" | \
+    file_urls=$(
+        curl -s -H "Accept: application/vnd.github.v3+json" "$STACKS_TEMPLATE_URL" |
         jq -r '.[] | select(.type == "file") | .download_url'
     )
 
@@ -4343,43 +4343,30 @@ download_stack_compose_templates() {
     # Prepare a variable to track failed downloads
     failed_downloads=()
 
-    # Initialize the progress bar
-    current=0
-
     # Prepare the failed download log file
     local failed_filename="$destination_folder/failed_downloads.txt"
-    
-    # Download all files in parallel with a progress bar
-    {
-        echo "$file_urls" | while read -r url; do
-            {
-                file_name=$(basename "$url")
-                destination_file="$destination_folder/$file_name"
 
-                # Current time in nanoseconds
-                local current_time=$(date +%s%N)
-                local elapsed_ns=$((current_time - start_time))
+    # Download all files with progress indicator
+    echo "$file_urls" | while read -r url; do
+        (
+            file_name=$(basename "$url")
+            destination_file="$destination_folder/$file_name"
 
-                # Download the file and handle errors
-                if curl -s --fail -o "$destination_file" "$url"; then
-                    # Print progress to stdout (append to the same line)
-                    printf "." > /dev/tty
-                else 
-                    # Print error to stdout (append to the same line)
-                    printf "x" > /dev/tty
-                    error_message=$(curl -s -w "%{http_code}" -o /dev/null "$url")
-                    failed_downloads+=("$(date '+%Y-%m-%d %H:%M:%S') - $file_name - Error: HTTP $error_message")
-                fi
-            } &
-        done
+            # Download the file
+            if curl -s --fail -o "$destination_file" "$url"; then
+                info "Downloaded: $file_name"
+            else
+                error_message=$(curl -s -w "%{http_code}" -o /dev/null "$url")
+                failed_downloads+=("$(date '+%Y-%m-%d %H:%M:%S') - $file_name - Error: HTTP $error_message")
+            fi
+        ) &
+        pid=$!
 
-        # Wait for all background processes to complete
-        wait
-        echo # Move to a new line after progress indicators
-    } > /dev/null 2>&1
+        # Show progress for the current download
+        show_progress "$pid" "Downloading $file_name..."
+    done
 
-
-    # Wait for all background jobs to finish
+    # Wait for all downloads to finish
     wait
 
     # Write failed downloads to the file
@@ -4388,9 +4375,10 @@ download_stack_compose_templates() {
             echo "$failed" >> "$failed_filename"
         done
         failure "Failed downloads logged in $failed_filename"
+    else
+        success "All files downloaded successfully."
     fi
 }
-
 
 # Function to list the services of a stack
 list_stack_services() {
