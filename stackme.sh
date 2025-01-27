@@ -6757,6 +6757,8 @@ generate_stack_config_traefik() {
     --arg stack_name "$stack_name" \
     --arg email_ssl "$email_ssl" \
     --arg traefik_url "$traefik_url" \
+    --arg dashboard_username "$dashboard_username" \
+    --arg dashboard_password "$dashboard_password" \
     --arg dashboard_credentials "$dashboard_credentials" \
     --arg network_name "$network_name" \
     '{
@@ -6765,6 +6767,8 @@ generate_stack_config_traefik() {
         "variables": {
           "email_ssl": $email_ssl,
           "traefik_url": $traefik_url,
+          "dashboard_username": $dashboard_username,
+          "dashboard_password": $dashboard_password,
           "dashboard_credentials": $dashboard_credentials,          
           "network_name": $network_name
         },
