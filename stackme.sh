@@ -354,6 +354,9 @@ display_text() {
 
   # Apply styling and display
   echo -e "${style}${final_text}${reset_color}"
+  echo # Newline
+
+  return 0
 }
 
 # Function to display success formatted messages
@@ -6075,6 +6078,49 @@ update_and_check_packages() {
   echo ""
 }
 
+# Function to prepare the environment
+prepare_environment() {
+  # Function constants
+  local total_steps=4
+
+  highlight "Preparing environment"
+
+  # Step 1: Update the system
+  step_message="Updating system and upgrading packages"
+  step_progress 1 $total_steps "$step_message"
+  command "apt-get update -yq" 1 $total_steps "$step_message"
+
+  # Step 3: Autoclean the system
+  step_message="Cleaning up package cache"
+  step_progress 2 $total_steps "$step_message"
+  command "apt-get autoclean -yq --allow-downgrades" 2 $total_steps "$step_message"
+
+  # Check for apt locks on installation
+  wait_apt_lock 5 60
+
+  # Install required apt packages quietly
+  apt_packages=(
+    "sudo" "apt-utils" "apparmor-utils" "apache2-utils" "jq" "python3"
+    "docker" "figlet" "swaks" "netcat" "vnstat" "network-manager" "upower"
+  )
+  step_message="Installing required apt-get packages"
+  step_progress 3 $total_steps "$step_message"
+  install_all_packages "apt-get -yq" "${apt_packages[@]}"
+  handle_exit $? 3 $total_steps "$step_message"
+
+  snap_packages=(
+    "yq"
+  )
+  step_message="Installing required snap packages"
+  step_progress 4 $total_steps "$step_message"
+  install_all_packages "snap" "${snap_packages[@]}"
+  handle_exit $? 4 $total_steps "$step_message"
+
+  success "Packages installed successfully."
+
+  wait_for_input
+}
+
 install_docker() {
   # Ensure the script is running with elevated privileges
   if [[ $EUID -ne 0 ]]; then
@@ -7937,45 +7983,55 @@ define_menu_health() {
   menu_key="main:health"
   menu_title="Health"
 
+  run_command(){
+    local title="$1"
+    local command="$2"
+
+    diplay_header "$title"
+
+    eval "$command"
+    wait_for_input
+  }
+
   item_1="$(
     build_menu_item "Machine specifications" "describe" \
-      "diplay_header 'Machine specifications' && generate_machine_specs && wait_for_input"
+      "run_command 'Machine specifications' 'generate_machine_specs'"
   )"
   item_2="$(
     build_menu_item "Awake Usage" "describe" \
-      "diplay_header 'Uptime' && uptime_usage && wait_for_input"
+      "run_command 'Uptime' 'uptime_usage'"
   )"
   item_3="$(
     build_menu_item "Memory Usage" "describe" \
-      "diplay_header 'Memory' && memory_usage && wait_for_input"
+      "run_command 'Memory' 'memory_usage'"
   )"
   item_4="$(
     build_menu_item "Disk Usage" "describe" \
-      "diplay_header 'Disk' && disk_usage && wait_for_input"
+      "run_command 'Disk' 'disk_usage'"
   )"
   item_5="$(
     build_menu_item "Network" "describe" \
-      "diplay_header 'Network' && network_usage && wait_for_input"
+      "run_command 'Network' 'network_usage'"
   )"
   item_6="$(
     build_menu_item "Top Processes" "list" \
-      "diplay_header 'Processes' && top_processes && wait_for_input"
+      "run_command'Processes' 'top_processes'"
   )"
   item_7="$(
     build_menu_item "Security" "diagnose" \
-      "diplay_header 'Security' && security_diagnostics && wait_for_input"
+      "run_command 'Security' 'security_diagnostics'"
   )"
   item_8="$(
     build_menu_item "Load Average" "describe" \
-      "diplay_header 'Load Average' && load_average && wait_for_input"
+      "run_command 'Load Average' 'load_average'"
   )"
   item_9="$(
     build_menu_item "Bandwidth" "describe" \
-      "diplay_header 'Bandwidth' && bandwidth_usage && wait_for_input"
+      "run_command 'Bandwidth' 'bandwidth_usage'"
   )"
   item_10="$(
     build_menu_item "Package Updates" "install" \
-      "diplay_header 'Package Updates' && update_and_check_packages && wait_for_input"
+      "run_command 'Package Updates' 'update_and_check_packages'"
   )"
   items=(
     "$item_1" "$item_2" "$item_3" "$item_4" "$item_5"
@@ -8052,7 +8108,7 @@ usage() {
 
 startup() {
   # Install required packages
-  update_and_install_packages
+  prepare_environment
   clear
 
   # Perform initialization
@@ -8137,3 +8193,4 @@ main() {
 
 # Call the main function
 main "$@"
+
