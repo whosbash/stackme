@@ -2270,7 +2270,7 @@ validate_port_availability() {
 }
 
 # Function to validate SMTP server connectivity
-validate_smtp_server() {
+validate_smtp_host() {
   local server=$1
   if ping -c 1 "$server" >/dev/null 2>&1; then
     echo "SMTP server $server is reachable."
@@ -5744,17 +5744,17 @@ generate_html() {
 }
 
 check_smtp_config() {
-  local smtp_server="$1"
-  local smtp_user="$2"
+  local smtp_host="$1"
+  local smtp_username="$2"
   local smtp_password="$3"
   local recipient="$4"
 
   # Run swaks to check authentication
   swaks --to "$recipient" \
-    --from "$smtp_user" \
-    --server "$smtp_server" \
+    --from "$smtp_username" \
+    --server "$smtp_host" \
     --auth LOGIN \
-    --auth-user "$smtp_user" \
+    --auth-user "$smtp_username" \
     --auth-password "$smtp_password" \
     --tls --quit-after=DATA > /dev/null 2>&1
 
@@ -5823,11 +5823,11 @@ generate_machine_specs_html() {
 request_smtp_information() {
   items='[
       {
-          "name": "smtp_server",
-          "label": "SMTP server",
+          "name": "smtp_host",
+          "label": "SMTP host",
           "description": "Server to receive SMTP requests",
           "required": "yes",
-          "validate_fn": "validate_smtp_server",
+          "validate_fn": "validate_smtp_host",
           "default_value": "smtp.gmail.com"
       },
       {
@@ -5839,14 +5839,14 @@ request_smtp_information() {
           "default_value": 587
       },
       {
-          "name": "username",
+          "name": "smtp_username",
           "label": "SMTP username",
           "description": "Username of SMTP server",
           "required": "yes",
           "validate_fn": "validate_email_value" 
       },
       {
-          "name": "password",
+          "name": "smtp_password",
           "label": "SMTP password",
           "description": "Password of SMTP server",
           "required": "yes",
@@ -5918,8 +5918,10 @@ load_smtp_information() {
   echo "$smtp_json"
 }
 
-# Function to send a test SMTP email
-send_smtp_test_email() {
+custom_send_email(){
+  local subject="$1"
+  local body="$2"
+
   # Retrieve SMTP configuration (load from file or request and save)
   smtp_json=$(get_smtp_configuration)
 
@@ -5928,42 +5930,31 @@ send_smtp_test_email() {
     return 1
   fi
 
-  smtp_server="$(echo "$smtp_json" | jq -r ".smtp_server")"
+  smtp_host="$(echo "$smtp_json" | jq -r ".smtp_host")"
   smtp_port="$(echo "$smtp_json" | jq -r ".smtp_port")"
-  username="$(echo "$smtp_json" | jq -r ".username")"
-  password="$(echo "$smtp_json" | jq -r ".password")"
-
-  subject="[StackMe] Test SMTP e-mail"
-  body="$(generate_test_smtp_hmtl)"
+  smtp_username="$(echo "$smtp_json" | jq -r ".smtp_username")"
+  smtp_password="$(echo "$smtp_json" | jq -r ".smtp_password")"
 
   # Send the test email
   send_email \
-    "$username" "$username" "$smtp_server" "$smtp_port" \
-    "$username" "$password" "$subject" "$body"
+    "$smtp_username" "$smtp_username" "$smtp_host" "$smtp_port" \
+    "$smtp_username" "$smtp_password" "$subject" "$body"
+}
+
+# Function to send a test SMTP email
+send_smtp_test_email() {
+  subject="[StackMe] Test SMTP e-mail"
+  body="$(generate_test_smtp_hmtl)"
+
+  custom_send_email "$subject" "$body"
 }
 
 # Function to send machine specs email
 send_machine_specs_email() {
-  # Retrieve SMTP configuration (load from file or request and save)
-  smtp_json=$(get_smtp_configuration)
-
-  if [[ $? -ne 0 ]]; then
-    error "Unable to retrieve SMTP configuration."
-    return 1
-  fi
-
-  smtp_server="$(echo "$smtp_json" | jq -r ".smtp_server")"
-  smtp_port="$(echo "$smtp_json" | jq -r ".smtp_port")"
-  username="$(echo "$smtp_json" | jq -r ".username")"
-  password="$(echo "$smtp_json" | jq -r ".password")"
-
   subject="[StackMe] Machine Specifications"
   body="$(generate_machine_specs_html)"
-
-  # Send the machine specs email
-  send_email \
-    "$username" "$username" "$smtp_server" "$smtp_port" \
-    "$username" "$password" "$subject" "$body"
+  
+  custom_send_email "$subject" "$body"
 }
 
 ######################################## END OF E-MAIL UTILS ######################################
