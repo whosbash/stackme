@@ -5603,8 +5603,7 @@ BASE_TEMPLATE='<!DOCTYPE html>
 
     /* Content Styles */
     .content {
-      padding: 20px;
-      font-size: 1em;
+        text-align: center; /* Centers inline-block elements like the button */ 
     }
 
     /* Footer Styles */
@@ -5625,35 +5624,30 @@ BASE_TEMPLATE='<!DOCTYPE html>
       color: #aaaaaa;
     }
 
-    /* Button Styling */
+    /* Button centeredStyling */
     .button {
-      display: inline-block;
-      margin: 20px auto;
-      padding: 12px 25px;
-      background-color: #4caf50;
-      color: #ffffff;
-      text-decoration: none;
-      font-size: 1.1em;
-      font-weight: bold;
-      border-radius: 5px;
-      text-align: center;
-      cursor: pointer;
-      transition: background-color 0.3s ease, transform 0.2s ease;
+        display: inline-block; /* Ensures it only takes as much space as needed */
+        margin: 20px auto; /* Adds spacing around the button */
+        padding: 12px 25px;
+        background-color: #4caf50;
+        color: #ffffff;
+        text-decoration: none;
+        font-size: 1.1em;
+        font-weight: bold;
+        border-radius: 5px;
+        text-align: center;
+        cursor: pointer;
+        transition: background-color 0.3s ease, transform 0.2s ease;
     }
 
     .button:hover {
-      background-color: #45a049;
-      transform: translateY(-2px);
+        background-color: #45a049;
+        transform: translateY(-2px);
     }
 
     .button:active {
-      background-color: #3e8e41;
-      transform: translateY(2px);
-    }
-
-    .button:focus {
-      outline: 3px solid #4caf50;
-      outline-offset: 2px;
+        background-color: #3e8e41;
+        transform: translateY(2px);
     }
 
     /* Global Link Styling */
