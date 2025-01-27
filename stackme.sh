@@ -7884,8 +7884,7 @@ define_menu_stacks() {
 
   item_1="$(
     build_menu_item "Startup" \
-      "Traefik & Portainer" \
-      "deploy_stacks_startup"
+      "Traefik & Portainer" "deploy_stacks_startup"
   )"
   item_2="$(
     build_menu_item "Monitor" \
@@ -7942,8 +7941,7 @@ define_menu_utilities_docker() {
   menu_title="Docker utilities"
 
   item_1="$(
-    build_menu_item "CTOP" \
-        "Run docker manager ctop on terminal" "run_ctop"
+    build_menu_item "CTOP" "Run docker manager ctop on terminal" "run_ctop"
   )"
 
   items=(
@@ -7961,12 +7959,10 @@ define_menu_utilities() {
   menu_title="Utilities"
 
   item_1="$(
-    build_menu_item "SMTP" \
-      "Test and tools" "navigate_menu 'main:utilities:smtp'"
+    build_menu_item "SMTP" "Test and tools" "navigate_menu 'main:utilities:smtp'"
   )"
   item_2="$(
-    build_menu_item "Docker" \
-        "Tools" "navigate_menu 'main:utilities:docker'"
+    build_menu_item "Docker" "Tools" "navigate_menu 'main:utilities:docker'"
   )"
 
   items=(
@@ -8114,7 +8110,6 @@ startup() {
   # Perform initialization
   initialize_server_info
   clear
-
 }
 
 # Parse command-line arguments
