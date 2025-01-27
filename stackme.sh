@@ -7671,17 +7671,17 @@ generate_stack_config_n8n(){
     }
 }
 
-generate_stack_config_uptime_kuma() {
-  local stack_name="uptime"
+generate_stack_config_uptimekuma() {
+  local stack_name="uptimekuma"
 
   total_steps=2
 
   # Prompting step
   prompt_items='[
       {
-          "name": "url_metabase",
-          "label": "Metabase domain name",
-          "description": "URL to access Metabase remotely",
+          "name": "uptimekuma_url",
+          "label": "Uptime kuma domain name",
+          "description": "URL to access Uptime kuma remotely",
           "required": "yes",
           "validate_fn": "validate_url_suffix" 
       }
@@ -7699,7 +7699,7 @@ generate_stack_config_uptime_kuma() {
 
   processed_items="$(process_prompt_items "$collected_items")"
 
-  uptime_url="$(echo "$processed_items" | jq -r '.uptime_url')"
+  uptimekuma_url="$(echo "$processed_items" | jq -r '.uptimekuma_url')"
 
   # Step 2: Retrieve network name
   step_info 2 $total_steps "Retrieving network name"
