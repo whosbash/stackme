@@ -4307,7 +4307,7 @@ wait_for_services() {
 }
 
 
-# Function to download stack compose templates with a progress bar using pv
+# Function to download stack compose templates with progress message
 download_stack_compose_templates() {
     local destination_folder="$TEMPLATES_DIR"
 
@@ -4348,7 +4348,7 @@ download_stack_compose_templates() {
     # Initialize a file counter for progress
     file_counter=0
 
-    # Download all files in parallel with a progress bar using pv
+    # Download all files in parallel with a progress message
     {
         echo "$file_urls" | while read -r url; do
             {
@@ -4360,8 +4360,8 @@ download_stack_compose_templates() {
                     # Increase file counter
                     file_counter=$((file_counter + 1))
 
-                    # Print progress using pv (displaying percentage completion)
-                    printf "%d/%d\n" "$file_counter" "$total_files" | pv -n -s "$total_files" > /dev/tty
+                    # Print progress to stdout in the format 'current/total'
+                    printf "%d/%d\n" "$file_counter" "$total_files" > /dev/tty
                 else
                     # Print error to stdout (append to the same line)
                     error_message=$(curl -s -w "%{http_code}" -o /dev/null "$url")
