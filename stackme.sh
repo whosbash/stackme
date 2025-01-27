@@ -4347,6 +4347,12 @@ download_stack_compose_templates() {
     # Initialize the progress tracker
     completed_files=0
 
+    # Function to update the progress
+    update_progress() {
+        completed_files=$((completed_files + 1))
+        echo -ne "\rDownloading... ($completed_files/$total_files)"
+    }
+
     # Download all files with progress indicator
     echo "$file_urls" | while read -r url; do
         (
@@ -4360,11 +4366,8 @@ download_stack_compose_templates() {
             fi            
 
             # Increment completed files after download
-            completed_files=$((completed_files + 1))
+            update_progress
         ) &
-
-        # Show progress for the current download
-        show_progress "$!" "Downloading... ($completed_files/$total_files)"
     done
 
     # Wait for all downloads to finish
