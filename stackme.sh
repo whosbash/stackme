@@ -2531,20 +2531,7 @@ show_progress() {
     done
   done
 
-  echo -ne "\bDone!\n"
-}
-
-# Function to show total progress for all downloads using show_progress
-show_total_progress() {
-    local total_files=$1
-    local completed_files=$2
-    local message="Downloading files..."
-
-    # Calculate the progress percentage
-    local progress=$(( (completed_files * 100) / total_files ))
-
-    # Display the progress
-    echo -ne "$message [$progress%] - $completed_files of $total_files files downloaded\r"
+  echo -ne "\b"
 }
 
 # Function to validate the input and return errors for invalid fields
@@ -4371,10 +4358,10 @@ download_stack_compose_templates() {
             if ! curl -s --fail -o "$destination_file" "$url"; then
                 error_message=$(curl -s -w "%{http_code}" -o /dev/null "$url")
                 failed_downloads+=("$(date '+%Y-%m-%d %H:%M:%S') - $file_name - Error: HTTP $error_message")
-            fi
-
-            show_progress            
+            fi            
         ) &
+    
+        show_progress
     done
 
     # Wait for all downloads to finish
