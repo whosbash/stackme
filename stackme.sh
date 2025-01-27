@@ -4153,6 +4153,8 @@ wait_for_services() {
     local interval=5
     local elapsed=0
 
+    timout_min="$(( timeout / 60 ))"
+
     # Get the list of service names from the docker-compose setup (in swarm mode)
     services=$(docker stack services --format '{{.Name}}' "$stack_name")
 
@@ -4171,7 +4173,7 @@ wait_for_services() {
             # If the service is not running or not in the "Running" state
             if [[ -z "$service_state" ]]; then
                 all_healthy=false
-                info "Service '$service' is not healthy yet. Waiting..."
+                info "Service '$service' is not healthy yet. Waiting... we will wait $timout_min minutes."
                 break
             fi
         done
@@ -4549,13 +4551,20 @@ signup_on_portainer() {
   url="$(get_api_url "$protocol" "$portainer_url" "$resource")"
 
   # Get the URL
-  info "Request call: curl -s -k -X POST $url -H $header -d $credentials"
+  info "Request call: curl -s -k -X POST '$url' -H '$header' -d '$credentials'"
+  
   response="$(curl -s -k -X POST "$url" -H "$header" -d "$credentials")"
   info "Response: $response" >&2
 
   # Check for existing administrator user in the response
   if [[ "$response" == *"An administrator user already exists"* ]]; then
     warning "An administrator user already exists."
+    return 1
+  fi
+
+  # Check if the response is a valid json
+  if ! echo "$response" | jq -e . >/dev/null 2>&1; then
+    error "The response is not a valid json." >&2
     return 1
   fi
 
@@ -6725,7 +6734,7 @@ generate_stack_config_traefik() {
   collected_object="$(process_prompt_items "$collected_items")"
 
   email_ssl="$(echo "$collected_object" | jq -r '.email_ssl')"
-  url_traefik="$(echo "$collected_object" | jq -r '.url_traefik')"
+  traefik_url="$(echo "$collected_object" | jq -r '.traefik_url')"
   dashboard_username="$(echo "$collected_object" | jq -r '.dashboard_username')"
   dashboard_password="$(echo "$collected_object" | jq -r '.dashboard_password')"
 
@@ -6747,7 +6756,7 @@ generate_stack_config_traefik() {
   jq -n \
     --arg stack_name "$stack_name" \
     --arg email_ssl "$email_ssl" \
-    --arg url_traefik "$url_traefik" \
+    --arg traefik_url "$traefik_url" \
     --arg dashboard_credentials "$dashboard_credentials" \
     --arg network_name "$network_name" \
     '{
@@ -6755,7 +6764,7 @@ generate_stack_config_traefik() {
         "target": "swarm",
         "variables": {
           "email_ssl": $email_ssl,
-          "url_traefik": $url_traefik,
+          "traefik_url": $traefik_url,
           "dashboard_credentials": $dashboard_credentials,          
           "network_name": $network_name
         },
