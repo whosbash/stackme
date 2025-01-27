@@ -2574,7 +2574,7 @@ show_progress() {
     done
   done
 
-  success "\bDone!\n"
+  display 'success' "\bDone!\n"
 }
 
 # Function to validate the input and return errors for invalid fields
