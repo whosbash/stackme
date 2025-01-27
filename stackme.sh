@@ -1921,48 +1921,6 @@ bandwidth_usage() {
   echo ""
 }
 
-# Function to update and check VPS packages
-update_and_check_packages() {
-  # Check for the package manager (apt)
-  if command -v apt &>/dev/null; then
-    # Check for upgradable packages
-    upgradable_packages=$(apt list --upgradable 2>/dev/null)
-    if [[ -z "$upgradable_packages" ]]; then
-      echo -e "${green}No upgradable packages.${normal}" >&2
-    else
-      echo -e "${yellow}Upgradable packages detected.${normal}" >&2
-
-      # Ask for confirmation
-      message="${yellow}Would you like to update and upgrade the packages? (Y/n)${normal}"
-      if handle_confirmation_prompt "$message" "y" 5; then
-        echo ""
-
-        # Update and upgrade without logging output
-        echo -e "${yellow}Updating packages...${normal}"
-        apt-get update -y >/dev/null 2>&1
-
-        echo -e "${yellow}Upgrading packages...${normal}"
-        apt-get upgrade -y >/dev/null 2>&1
-
-        echo -e "${yellow}Removing unused packages...${normal}"
-        apt-get autoremove -y >/dev/null 2>&1
-
-        echo -e "${yellow}Cleaning up package cache...${normal}"
-        apt-get clean >/dev/null 2>&1
-
-        # Notify update completion
-        echo -e "${green}Update complete!${normal}" >&2
-      else
-        echo -e "${red}Update aborted.${normal}" >&2
-      fi
-    fi
-  else
-    echo -e "${red}Package manager not supported.${normal}" >&2
-  fi
-
-  echo ""
-}
-
 #######################################################################################
 
 # Function to show help
@@ -2574,7 +2532,7 @@ show_progress() {
     done
   done
 
-  display 'success' "\bDone!\n"
+  echo -ne "\bDone!\n"
 }
 
 # Function to validate the input and return errors for invalid fields
@@ -6061,9 +6019,9 @@ update_and_check_packages() {
     # Check for upgradable packages
     upgradable_packages=$(apt list --upgradable 2>/dev/null)
     if [[ -z "$upgradable_packages" ]]; then
-      echo -e "${green}No upgradable packages.${normal}" >&2
+      warning "No upgradable packages."
     else
-      echo -e "${yellow}Upgradable packages detected.${normal}" >&2
+      info "Upgradable packages detected."
 
       # Ask for confirmation
       message="${yellow}Would you like to update and upgrade the packages? (Y/n)${normal}"
@@ -6071,33 +6029,33 @@ update_and_check_packages() {
         echo ""
 
         # Update packages with feedback
-        echo -e "${yellow}Updating package list...${normal}"
+        holdon "Updating package list..."
         apt-get update -y >/dev/null 2>&1 &
         show_progress $!
 
         # Upgrade packages with feedback
-        echo -e "${yellow}Upgrading packages...${normal}"
+        holdon "Upgrading packages..."
         apt-get upgrade -y >/dev/null 2>&1 &
         show_progress $!
 
         # Remove unused packages with feedback
-        echo -e "${yellow}Removing unused packages...${normal}"
+        holdon "Removing unused packages..."
         apt-get autoremove -y >/dev/null 2>&1 &
         show_progress $!
 
         # Clean package cache with feedback
-        echo -e "${yellow}Cleaning up package cache...${normal}"
+        holdon "Cleaning up package cache..."
         apt-get clean >/dev/null 2>&1 &
         show_progress $!
 
         # Notify update completion
-        echo -e "${green}Update complete!${normal}" >&2
+        success "Update complete!"
       else
-        echo -e "${red}Update aborted.${normal}" >&2
+        failure "Update aborted."
       fi
     fi
   else
-    echo -e "${red}Package manager not supported.${normal}" >&2
+    failure "Package manager not supported."
   fi
 
   echo ""
