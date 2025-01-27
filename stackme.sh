@@ -2534,6 +2534,19 @@ show_progress() {
   echo -ne "\bDone!\n"
 }
 
+# Function to show total progress for all downloads using show_progress
+show_total_progress() {
+    local total_files=$1
+    local completed_files=$2
+    local message="Downloading files..."
+
+    # Calculate the progress percentage
+    local progress=$(( (completed_files * 100) / total_files ))
+
+    # Display the progress
+    echo -ne "$message [$progress%] - $completed_files of $total_files files downloaded\r"
+}
+
 # Function to validate the input and return errors for invalid fields
 validate_value() {
   local value="$1"
@@ -4307,7 +4320,6 @@ wait_for_services() {
 }
 
 
-# Function to download stack compose templates with progress bar
 # Function to download stack compose templates with progress indicator
 download_stack_compose_templates() {
     local destination_folder="$TEMPLATES_DIR"
@@ -4346,6 +4358,9 @@ download_stack_compose_templates() {
     # Prepare the failed download log file
     local failed_filename="$destination_folder/failed_downloads.txt"
 
+    # Initialize the progress tracker
+    completed_files=0
+
     # Download all files with progress indicator
     echo "$file_urls" | while read -r url; do
         (
@@ -4357,13 +4372,14 @@ download_stack_compose_templates() {
                 error_message=$(curl -s -w "%{http_code}" -o /dev/null "$url")
                 failed_downloads+=("$(date '+%Y-%m-%d %H:%M:%S') - $file_name - Error: HTTP $error_message")
             fi
+
+            # Increment the completed files counter
+            completed_files=$((completed_files + 1))
+
+            # Show overall progress
+            show_total_progress "$total_files" "$completed_files"
         ) &
-        pid=$!
-
-        # Show progress for the current download
-        show_progress "$pid" "Downloading $file_name..."
     done
-
 
     # Wait for all downloads to finish
     wait
