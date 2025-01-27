@@ -2562,7 +2562,7 @@ validate_yn_response(){
 # Function to display progress for a running command
 show_progress() {
   local pid=$1
-  local message=$2
+  local message=${2:-""}
   local spinner='|/-\'
   local delay=0.1
   echo -n "$message "
@@ -6073,22 +6073,22 @@ update_and_check_packages() {
         # Update packages with feedback
         echo -e "${yellow}Updating package list...${normal}"
         apt-get update -y >/dev/null 2>&1 &
-        show_progress $! "Updating package list"
+        show_progress $!
 
         # Upgrade packages with feedback
         echo -e "${yellow}Upgrading packages...${normal}"
         apt-get upgrade -y >/dev/null 2>&1 &
-        show_progress $! "Upgrading packages"
+        show_progress $!
 
         # Remove unused packages with feedback
         echo -e "${yellow}Removing unused packages...${normal}"
         apt-get autoremove -y >/dev/null 2>&1 &
-        show_progress $! "Removing unused packages"
+        show_progress $!
 
         # Clean package cache with feedback
         echo -e "${yellow}Cleaning up package cache...${normal}"
         apt-get clean >/dev/null 2>&1 &
-        show_progress $! "Cleaning up package cache"
+        show_progress $!
 
         # Notify update completion
         echo -e "${green}Update complete!${normal}" >&2
