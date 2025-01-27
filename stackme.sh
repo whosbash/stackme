@@ -116,7 +116,6 @@ magenta="\033[35m"
 cyan="\033[35m"
 normal="\033[0m"
 
-
 # API URL
 STACKS_TEMPLATE_URL="https://api.github.com/repos/whosbash/stackme/contents/stacks"
 
@@ -954,7 +953,6 @@ add_json_objects() {
   echo "$merged"
 }
 
-
 filter_json_object_by_keys() {
   local json="$1"         # Input JSON string
   local keys=("${@:2}")   # Array of keys (after the first argument)
@@ -1172,6 +1170,30 @@ random_string() {
   echo "$word"
 }
 
+# Function to cast a port to the 'smtp_secure' variable
+cast_port_to_smtp_secure() {
+  local port="$1"
+  
+  # Determine smtp_secure value based on port
+  case "$port" in
+    465)
+      echo "true"  # Secure (implicit TLS)
+      ;;
+    587)
+      echo "false" # Not secure (requires STARTTLS to be secure)
+      ;;
+    25)
+      echo "false" # Default SMTP port, not secure
+      ;;
+    2525)
+      echo "false" # Alternative SMTP port, not secure
+      ;;
+    *)
+      echo "unknown" # For any undefined port
+      ;;
+  esac
+}
+
 # Function to strip ANSI escape sequences from a string
 strip_ansi() {
   pattern='s/\x1b\[[0-9;]*[mK]//g'
@@ -1295,13 +1317,10 @@ assert_domain_and_ip() {
     return 1
   fi
 
-  domain_url="$(
-    search_on_json_array "$collected_items" 'name' 'domain_url' | jq -r ".value"
-  )"
+  processed_items="$(process_collection_items "$collected_items")"
 
-  ip="$(
-    search_on_json_array "$collected_items" 'name' 'ip' | jq -r ".value"
-  )"
+  domain_url="$(echo "$processed_items" | jq -r '.domain_url')"
+  ip="$(echo "$processed_items" | jq -r '.ip')"
 
   check_domain_ip "$domain_url" "$ip"
 }
@@ -1668,7 +1687,6 @@ generate_machine_specs_table() {
   network_rows+=$(generate_table_row "Ethernet" "$ethernet_info")
   network_rows+=$(generate_table_row "Wi-Fi" "$wifi_info")
   html_content+=$(create_table "Network Information" "<th>Type</th><th>Details</th>" "$network_rows")
-
 
   # Return the complete HTML content
   echo "$html_content"
@@ -2175,6 +2193,18 @@ validate_email_value() {
   # Check if the value matches an email pattern
   if [[ ! "$value" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
     echo "The value '$value' is not a valid email address."
+    return 1
+  fi
+
+  return 0
+}
+
+validate_smtp_port(){
+  local port=$1
+
+  # Check valid smpt ports: 25, 587, 465
+  if [[ ! "$port" =~ ^(25|587|465)$ ]]; then
+    echo "The value '$port' is not a valid SMTP port. Valid ports are 25, 587, and 465."
     return 1
   fi
 
@@ -2923,7 +2953,7 @@ escape_sed_special_chars() {
   echo "$input" | sed -e 's/[\/&]/\\&/g' -e 's/\\/\\\\/g' | tr '\n' '\\n'
 }
 
-####################################################################
+####################################################################################################
 
 ######################################## BEGIN OF MENU UTILS #######################################
 
@@ -4155,7 +4185,6 @@ wait_for_services() {
     done
 }
 
-
 # Function to download stack compose templates with progress bar
 download_stack_compose_templates() {
     local destination_folder="$TEMPLATES_DIR"
@@ -4217,7 +4246,6 @@ download_stack_compose_templates() {
         wait
         echo # Move to a new line after progress indicators
     } > /dev/null 2>&1
-
 
     # Wait for all background jobs to finish
     wait
@@ -4337,7 +4365,6 @@ stack_url(){
   local path="refs/heads/main/stacks/$stack_name.yaml"
   echo "https://${host}/${organization}/${repository}/${path}"
 }
-
 
 # Function to list the required fields on a stack docker-compose
 list_stack_compose_required_fields() {
@@ -5228,10 +5255,8 @@ execute_refresh_actions() {
 
   # Iterate over the refresh actions
   for action in "${actions[@]}"; do
-    info "Processing refresh action: $action"
-    
-    local action_name
-    action_name=$(echo "$action" | jq -r '.name') || {
+    local name
+    name=$(echo "$action" | jq -r '.name') || {
       error "Missing 'name' field in refresh action."
       return 1
     }
@@ -5243,33 +5268,31 @@ execute_refresh_actions() {
     }
 
     # Execute the command and capture its output (must be a valid JSON)
-    info "Executing refresh action: $action_name"
     command_output=$(eval "$command") || {
-      error "Failed to execute refresh action: $action_name"
+      error "Failed to execute refresh action: $name"
       return 1
     }
 
     # Validate if the output is a valid JSON object
     echo "$command_output" | jq empty >/dev/null 2>&1 || {
-      error "Refresh action '$action_name' did not return a valid JSON."
+      error "Refresh action '$name' did not return a valid JSON."
       return 1
     }
+
+    # Build a json based on command_output
+    variable_to_update="$(echo "$command_output" | jq -c ". | {\"$name\": .}")"
 
     # Merge the command output with the existing stack variables using add_json_objects
-    updated_variables=$(add_json_objects "$updated_variables" "$command_output") || {
-      error "Failed to update stack variables after executing '$action_name'"
+    updated_variables=$(add_json_objects "$updated_variables" "$variable_to_update") || {
+      error "Failed to update stack variables after executing '$name'"
       return 1
     }
-
-    info "Updated stack variables after executing '$action_name': $(echo "$updated_variables" | jq -c '.')"
-
   done
 
-  debug "Final updated stack variables: $(echo "$updated_variables" | jq -c '.')"
+  info "Refreshed stakc variables: $(echo "$updated_variables" | jq -c '.')"
 
   echo "$updated_variables"
 }
-
 
 # Function to execute prepare actions
 execute_prepare_actions() {
@@ -5448,8 +5471,6 @@ deployment_pipeline() {
     failure "Failed to execute refresh actions"
     return 1
   }
-
-  debug "$stack_variables" >&2
 
   # Step 3: Execute prepare actions
   step_info 3 $total_steps "Executing prepare actions"
@@ -5750,7 +5771,6 @@ generate_test_smtp_hmtl() {
 <a href="https://github.com/whosbash/stackme" class="button">Get Started</a> \
 <p>If you have any questions, feel free to submit an issue to \
   <a href="https://github.com/whosbash/stackme/issues" title="Visit our Issues page on GitHub">our repository</a>. We''re here to help!</p>'
-
 
   # Generate the email
   generate_html "$BASE_TEMPLATE" "Welcome to StackMe" "Welcome to StackMe" "$email_content"
@@ -6379,11 +6399,7 @@ fetch_database_password() {
   local database_password
   database_password=$(jq -r '.db_password' "$config_file")
 
-  # Generate the output JSON
-  jq -n \
-    --arg stack_name "$stack_name" \
-    --arg database_password "$database_password" \
-    '{($stack_name + "_password"): $database_password}'
+  echo "$database_password"
 }
 
 # Function to create a PostgreSQL database
@@ -6447,6 +6463,8 @@ display_prompt_items() {
     highlight "\t$required $name: $description"
   done  
 }
+
+############################## END OF STACK DEPLOYMENT UTILITARY FUNCTIONS ########################
 
 #################################### BEGIN OF STACK CONFIGURATION #################################
 
@@ -7039,7 +7057,7 @@ generate_stack_config_airflow() {
           "actions": {
             "refresh": [
               {
-                "name": "fetch_postgres_password",
+                "name": "postgres_password",
                 "description": "Fetching postgres password",
                 "command": "fetch_database_password postgres",
               }
@@ -7103,7 +7121,7 @@ generate_stack_config_metabase() {
           "actions": {
             "refresh": [
               {
-                "name": "fetch_postgres_password",
+                "name": "postgres_password",
                 "description": "Fetching postgres password",
                 "command": "fetch_database_password postgres",
               }
@@ -7500,7 +7518,7 @@ generate_stack_config_n8n(){
           "label": "SMTP User",
           "description": "User to send SMTP notifications",
           "required": "yes",
-          "validate_fn": "validate_username" 
+          "validate_fn": "validate_email_value" 
       },
       {
           "name": "n8n_smtp_password",
@@ -7521,14 +7539,7 @@ generate_stack_config_n8n(){
           "label": "SMTP Port",
           "description": "Port to send SMTP notifications",
           "required": "yes",
-          "validate_fn": "validate_port" 
-      },
-      {
-          "name": "n8n_smtp_secure",
-          "label": "SMTP Secure",
-          "description": "Secure to send SMTP notifications",
-          "required": "yes",
-          "validate_fn": "validate_yn_response" 
+          "validate_fn": "validate_smtp_port" 
       }
   ]'
 
@@ -7552,8 +7563,9 @@ generate_stack_config_n8n(){
   n8n_smtp_user="$(echo "$collected_object" | jq -r '.smtp_user')"
   n8n_smtp_password="$(echo "$collected_object" | jq -r '.smtp_password')" 
   n8n_smtp_host="$(echo "$collected_object" | jq -r '.smtp_host')" 
-  n8n_smtp_port="$(echo "$collected_object" | jq -r '.smtp_port')" 
-  n8n_smtp_secure="$(echo "$collected_object" | jq -r '.smtp_secure')"
+  n8n_smtp_port="$(echo "$collected_object" | jq -r '.smtp_port')"
+
+  n8n_smtp_secure="$(cast_port_to_smtp_secure "$n8n_smtp_port")"
 
   step_message="Generating use N8N password"
   step_info 2 $total_steps "$step_message"
@@ -7593,7 +7605,7 @@ generate_stack_config_n8n(){
           "actions": {
             "refresh": [
               {
-                "name": "fetch_postgres_password",
+                "name": "postgres_password",
                 "description": "Fetching postgres password",
                 "command": "fetch_database_password postgres",
               }
