@@ -2531,7 +2531,7 @@ show_progress() {
     done
   done
 
-  echo -ne "\b"
+  echo -ne "\bDone!\n"
 }
 
 # Function to validate the input and return errors for invalid fields
@@ -4306,7 +4306,8 @@ wait_for_services() {
     done
 }
 
-# Function to download stack compose templates with progress indicator using pv
+
+# Function to download stack compose templates with a progress bar using pv
 download_stack_compose_templates() {
     local destination_folder="$TEMPLATES_DIR"
 
@@ -4343,39 +4344,38 @@ download_stack_compose_templates() {
 
     # Prepare the failed download log file
     local failed_filename="$destination_folder/failed_downloads.txt"
+    
+    # Initialize a file counter for progress
+    file_counter=0
 
-    # Initialize the progress tracker
-    completed_files=0
+    # Download all files in parallel with a progress bar using pv
+    {
+        echo "$file_urls" | while read -r url; do
+            {
+                file_name=$(basename "$url")
+                destination_file="$destination_folder/$file_name"
 
-    # Track progress using a counter
-    current_file=1
+                # Download the file
+                if curl -s --fail -o "$destination_file" "$url"; then
+                    # Increase file counter
+                    file_counter=$((file_counter + 1))
 
-    # Download all files with progress indicator
-    echo "$file_urls" | while read -r url; do
-        (
-            file_name=$(basename "$url")
-            destination_file="$destination_folder/$file_name"
+                    # Print progress using pv (displaying percentage completion)
+                    printf "%d/%d\n" "$file_counter" "$total_files" | pv -n -s "$total_files" > /dev/tty
+                else
+                    # Print error to stdout (append to the same line)
+                    error_message=$(curl -s -w "%{http_code}" -o /dev/null "$url")
+                    failed_downloads+=("$(date '+%Y-%m-%d %H:%M:%S') - $file_name - Error: HTTP $error_message")
+                fi
+            } &  # Background job for each download
+        done
 
-            # Download the file with progress using pv
-            echo "Downloading $file_name" | pv -n -s 100 > /dev/null  # Simulate a progress bar
+        # Wait for all background processes to complete
+        wait
+        echo # Move to a new line after progress indicators
+    } > /dev/null 2>&1
 
-            # Actually download the file
-            if ! curl -s --fail -o "$destination_file" "$url"; then
-                error_message=$(curl -s -w "%{http_code}" -o /dev/null "$url")
-                failed_downloads+=("$(date '+%Y-%m-%d %H:%M:%S') - $file_name - Error: HTTP $error_message")
-            else
-                echo -ne "\r$completed_files/$total_files files completed."
-            fi
-
-            # Increment the completed file count
-            ((completed_files++))
-
-            # Update progress for each file downloaded
-            echo -ne "\rDownload progress: $completed_files/$total_files files downloaded"
-        ) &
-    done
-
-    # Wait for all downloads to finish
+    # Wait for all background jobs to finish
     wait
 
     # Write failed downloads to the file
