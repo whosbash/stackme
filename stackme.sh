@@ -1457,17 +1457,8 @@ assert_domain_and_ip() {
   check_domain_ip "$domain_url" "$ip"
 }
 
-install_ctop() {
-    total_steps=2
-
-    # Check if ctop is already installed
-    if command -v ctop &> /dev/null; then
-        success "CTOP is already installed. Type 'ctop' in the terminal to use it."
-        wait_for_input
-        return 0
-    fi
-
-    step_info 1 $total_steps "Installing CTOP"
+install_ctop(){
+  step_info 1 $total_steps "Installing CTOP"
 
     # Download ctop binary
     wget https://github.com/bcicen/ctop/releases/download/v0.7.7/ctop-0.7.7-linux-amd64 -O /usr/local/bin/ctop
@@ -1491,6 +1482,31 @@ install_ctop() {
 
     success "CTOP was installed successfully. Type 'ctop' in the terminal at any moment from now."
     wait_for_input
+}
+
+run_ctop() {
+    total_steps=2
+
+    # Check if ctop is already installed
+    if command -v ctop &> /dev/null; then
+        exit_code=0
+        success "CTOP is already installed. Type 'ctop' in the terminal to use it."
+        wait_for_input 5
+    else
+      install_ctop    
+    
+      exit_code=$?
+      message="Failed to install CTOP"
+
+      handle_exit $exit_code 2 $total_steps "$message"     
+    fi
+
+    if [[ $exit_code -ne 0 ]]; then
+        ctop
+        return 0
+    else 
+        return 1
+    fi
 }
 
 # Function to generate a UUID
@@ -7893,7 +7909,7 @@ define_menu_utilities_docker() {
 
   item_1="$(
     build_menu_item "CTOP" \
-        "Install docker manager on terminal" "install_ctop"
+        "Run docker manager ctop on terminal" "run_ctop"
   )"
 
   items=(
