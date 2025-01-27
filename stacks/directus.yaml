@@ -17,17 +17,17 @@ services:
       - PUBLIC_URL=https://{{directus_url}}
 
       ## Dados SMTP
-      - EMAIL_SMTP_USER={{directus_smtp_email}}
-      - EMAIL_SMTP_PASSWORD={{directus_smtp_password}}
       - EMAIL_SMTP_HOST={{directus_smtp_host}}
       - EMAIL_SMTP_PORT={{directus_smtp_port}}
+      - EMAIL_SMTP_USER={{directus_smtp_username}}
+      - EMAIL_SMTP_PASSWORD={{directus_smtp_password}}
       - EMAIL_SMTP_SECURE={{directus_smtp_secure}}
 
       ## Minio
       - STORAGE_s3_KEY={{s3_access_key}}
       - STORAGE_s3_SECRET={{s3_secret_key}}
       - STORAGE_s3_BUCKET=directus
-      - STORAGE_s3_REGION=eu-south
+      - STORAGE_s3_REGION={{s3_region}}
       - STORAGE_s3_ENDPOINT={{s3_url}}
 
       ## Redis
@@ -38,7 +38,7 @@ services:
       - SECRET={{directus_secret}}
       - APP_ENV=production
 
-      ## Dados Postgres
+      ## Postgres
       - DB_CLIENT=postgres
       - DB_HOST=postgres
       - DB_PORT=5432

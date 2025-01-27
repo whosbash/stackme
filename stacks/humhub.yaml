@@ -22,22 +22,22 @@ services:
 
       ## Dados SMTP
       - HUMHUB_MAILER_TRANSPORT_TYPE=smtp
-      - HUMHUB_MAILER_SYSTEM_EMAIL_ADDRESS={{humhub_smtp_email}}
+      - HUMHUB_MAILER_HOSTNAME={{humhub_smtp_host}}
+      - HUMHUB_MAILER_PORT={{humhub_smtp_port}}
       - HUMHUB_MAILER_USERNAME={{humhub_smtp_username}}
       - HUMHUB_MAILER_PASSWORD={{humhub_smtp_password}}
+      - HUMHUB_MAILER_SYSTEM_EMAIL_ADDRESS={{humhub_smtp_from_email}}
       - HUMHUB_MAILER_SYSTEM_EMAIL_NAME=Helpdesk
-      - HUMHUB_MAILER_HOSTNAME={{humhub_hostname}}
-      - HUMHUB_MAILER_PORT={{humhub_smtp_port}}
-      - HUMHUB_MAILER_ALLOW_SELF_SIGNED_CERTS=1 ## 0 = TLS | 1 = SSL
+      - HUMHUB_MAILER_ALLOW_SELF_SIGNED_CERTS=1
       
-      ## Dados do MySQL
+      ## MySQL
       - HUMHUB_DB_HOST=mysql
       - HUMHUB_DB_USER=root
       - HUMHUB_DB_PASSWORD={{mysql_password}}
       - HUMHUB_DB_NAME=humhub
       - HUMHUB_AUTO_INSTALL=1
 
-      ## Dados Redis
+      ## Redis
       - HUMHUB_REDIS_HOSTNAME=redis
       - HUMHUB_REDIS_PORT=6379
       - HUMHUB_CACHE_EXPIRE_TIME=3600

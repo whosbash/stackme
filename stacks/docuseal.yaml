@@ -18,16 +18,16 @@ services:
       ## Secret Key
       - SECRET_KEY_BASE={{docuseal_key}}
 
-      ## Dados do Postgres
+      ## Postgres
       - DATABASE_URL=postgresql://postgres:{{postgres_password}}@postgres:5432/docuseal
 
-      ## Dados SMTP
+      ## SMTP
+      - SMTP_FROM={{docuseal_smtp_from_email}}
+      - SMTP_DOMAIN={{docuseal_smtp_host}}
       - SMTP_USERNAME={{docuseal_smtp_username}}
       - SMTP_PASSWORD={{docuseal_smtp_password}}
       - SMTP_ADDRESS={{docuseal_smtp_host}}
       - SMTP_PORT={{docuseal_smtp_port}}
-      - SMTP_FROM={{docuseal_smtp_from}}
-      - SMTP_DOMAIN={{docuseal_smtp_host}}
       - SMTP_AUTHENTICATION=login
 
       ## Dados do S3

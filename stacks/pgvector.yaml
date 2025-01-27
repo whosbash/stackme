@@ -5,7 +5,7 @@ services:
     image: pgvector/pgvector:{{image_version}}
 
     volumes:
-      - pgvector:/var/lib/postgresql/data
+      - pgvector_data:/var/lib/postgresql/data
 
     networks:
       - {{network_name}}
@@ -32,9 +32,9 @@ services:
           memory: 1024M
 
 volumes:
-  pgvector:
+  pgvector_data:
     external: true
-    name: pgvector
+    name: pgvector_data
 
 networks:
   {{network_name}}:

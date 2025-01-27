@@ -5,7 +5,7 @@ services:
     image: qdrant/qdrant:latest
 
     volumes:
-      - qdrant_data_0:/qdrant
+      - qdrant_data:/qdrant
 
     networks:
       - {{network_name}}
@@ -36,7 +36,9 @@ services:
     command: ./qdrant --uri 'http://qdrant_node:6335'
 
 volumes:
-  qdrant_data_0:
+  qdrant_data:
+    external: true
+    name: qdrant_data
 
 networks:
   {{network_name}}:
