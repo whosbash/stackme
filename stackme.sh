@@ -5951,8 +5951,6 @@ send_machine_specs_email() {
   subject="[StackMe] Machine Specifications"
   body="$(generate_machine_specs_html)"
 
-  debug "E-mail body: $body"
-
   # Send the machine specs email
   send_email \
     "$username" "$username" "$smtp_server" "$smtp_port" \
