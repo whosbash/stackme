@@ -1155,164 +1155,13 @@ load_json() {
 
 ############################# BEGIN OF GENERAL UTILITARY FUNCTIONS ##############################
 
-# Function to create Prometheus scrape_config
-create_scrape_config_object() {
-  # Input parameters
-  local job_name=""
-  local metrics_path="/metrics" # Default
-  local honor_timestamps="true" # Default
-  local honor_labels="false"    # Default
-  local scrape_interval="15s"   # Default
-  local targets=()
-
-  # Parse named parameters
-  while [[ "$#" -gt 0 ]]; do
-    case "$1" in
-    --job_name)
-      job_name="$2"
-      shift 2
-      ;;
-    --metrics_path)
-      metrics_path="$2"
-      shift 2
-      ;;
-    --honor_timestamps)
-      honor_timestamps="$2"
-      shift 2
-      ;;
-    --honor_labels)
-      honor_labels="$2"
-      shift 2
-      ;;
-    --scrape_interval)
-      scrape_interval="$2"
-      shift 2
-      ;;
-    --scheme)
-      scheme="$2"
-      shift 2
-      ;;
-    --targets)
-      # Split targets into an array
-      IFS=',' read -r -a targets <<<"$2"
-      shift 2
-      ;;
-    *)
-      echo "Error: Unknown parameter '$1'" >&2
-      return 1
-      ;;
-    esac
-  done
-
-  # Input validation
-  if [[ -z "$job_name" ]]; then
-    echo "Error: 'job_name' is required." >&2
-    return 1
-  fi
-  if [[ ${#targets[@]} -eq 0 ]]; then
-    echo "Error: At least one target must be provided using --targets." >&2
-    return 1
-  fi
-
-  # Use jq to create the JSON object
-  jq -n \
-    --arg job_name "$job_name" \
-    --arg metrics_path "$metrics_path" \
-    --argjson honor_timestamps "$honor_timestamps" \
-    --argjson honor_labels "$honor_labels" \
-    --arg scrape_interval "$scrape_interval" \
-    --argjson targets "$(printf '%s\n' "${targets[@]}" | jq -R . | jq -s .)" \
-    '{
-      job_name: $job_name,
-      metrics_path: $metrics_path,
-      honor_timestamps: $honor_timestamps,
-      honor_labels: $honor_labels,
-      scrape_interval: $scrape_interval,
-      static_configs: [
-        {
-          targets: $targets
-        }
-      ]
-    }'
-}
-
-# Function to add scrape_config to YAML file
-add_scrape_config_object() {
-  # Input parameters
-  local filename="$1"
-  local scrape_config="$2"
-
-  # Step 1: Check if the file exists
-  if [[ ! -f "$filename" ]]; then
-    # Step 1: Check if the file exists, and create the directory if necessary
-    if [[ ! -f "$filename" ]]; then
-      # Extract the directory from the filename
-      local dir
-      dir=$(dirname "$filename")
-
-      # Ensure the directory exists
-      if [[ ! -d "$dir" ]]; then
-        info "Directory $dir does not exist. Creating it."
-        mkdir -p "$dir"
-      fi
-    fi
-
-    info "File $filename does not exist. Initializing with default content."
-    cat <<EOF >"$filename"
-global:
-  scrape_interval: 15s
-  scrape_timeout: 10s
-  evaluation_interval: 15s
-alerting:
-  alertmanagers:
-    - static_configs:
-        - targets: []
-scrape_configs: 
-EOF
-  fi
-
-  # Step 2: Check if the job_name already exists
-  local job_name
-  job_name=$(echo "$scrape_config" | jq -r '.job_name')
-  check_existing_job_name "$filename" "$job_name"
-
-  if [[ $? -eq 0 ]]; then
-    warning "job_name '$job_name' already exists in $filename." >&2
-    return 1
-  fi
-
-  # Step 3: Add the scrape_config to the YAML file
-  yq eval -i ".scrape_configs += [$scrape_config]" "$filename"
-  success "Added scrape_config for job '$job_name' to $filename."
-}
-
-# Function to check if a job_name exists in the scrape_configs of a YAML file
-check_existing_job_name() {
-  # Input parameters
-  local filename="$1"
-  local job_name="$2"
-
-  # Validate inputs
-  if [[ -z "$filename" || -z "$job_name" ]]; then
-    error "Filename and job_name are required."
-    return 1
-  fi
-
-  # Gather all existing job_names into an array
-  local job_names
-  job_names=$(yq eval '.scrape_configs[].job_name' "$filename" 2>/dev/null)
-
-  # Check if the job_name exists in the array
-  if echo "$job_names" | grep -qx "$job_name"; then
-    return 0 # Key exists
-  else
-    return 1 # Key does not exist
-  fi
-}
-
 # Function to clean the terminal screen
 clean_screen() {
   echo -ne "\033[H\033[J" >&2
+}
+
+get_date(){
+  date '+%Y-%m-%d %H:%M:%S'
 }
 
 # Function to generate a random string
@@ -4307,10 +4156,10 @@ wait_for_services() {
 }
 
 
-# Function to download stack compose templates with progress message
+# Function to download stack compose templates with progress bar
 download_stack_compose_templates() {
     local destination_folder="$TEMPLATES_DIR"
-
+    
     # Ensure the destination folder is provided
     if [[ -z "$destination_folder" ]]; then
         error "Destination folder not specified."
@@ -4325,8 +4174,8 @@ download_stack_compose_templates() {
 
     info "Fetching file list from GitHub API..."
     # Fetch the file information from the API
-    file_urls=$(
-        curl -s -H "Accept: application/vnd.github.v3+json" "$STACKS_TEMPLATE_URL" |
+    file_urls=$(\
+        curl -s -H "Accept: application/vnd.github.v3+json" "$STACKS_TEMPLATE_URL" | \
         jq -r '.[] | select(.type == "file") | .download_url'
     )
 
@@ -4342,38 +4191,33 @@ download_stack_compose_templates() {
     # Prepare a variable to track failed downloads
     failed_downloads=()
 
+    # Initialize the progress bar
+    current=0
+
     # Prepare the failed download log file
     local failed_filename="$destination_folder/failed_downloads.txt"
     
-    # Initialize a file counter for progress
-    file_counter=0
-
-    # Download all files in parallel with a progress message
+    # Download all files in parallel with a progress bar
     {
         echo "$file_urls" | while read -r url; do
             {
                 file_name=$(basename "$url")
                 destination_file="$destination_folder/$file_name"
 
-                # Download the file
-                if curl -s --fail -o "$destination_file" "$url"; then
-                    # Increase file counter
-                    file_counter=$((file_counter + 1))
-
-                    # Print progress to stdout in the format 'current/total'
-                    printf "%d/%d\n" "$file_counter" "$total_files" > /dev/tty
-                else
-                    # Print error to stdout (append to the same line)
+                # Download the file and handle errors
+                if ! curl -s --fail -o "$destination_file" "$url"; then
+                    # Log the failed download with HTTP error message
                     error_message=$(curl -s -w "%{http_code}" -o /dev/null "$url")
                     failed_downloads+=("$(date '+%Y-%m-%d %H:%M:%S') - $file_name - Error: HTTP $error_message")
                 fi
-            } &  # Background job for each download
+            } &
         done
 
         # Wait for all background processes to complete
         wait
         echo # Move to a new line after progress indicators
     } > /dev/null 2>&1
+
 
     # Wait for all background jobs to finish
     wait
@@ -4384,11 +4228,8 @@ download_stack_compose_templates() {
             echo "$failed" >> "$failed_filename"
         done
         failure "Failed downloads logged in $failed_filename"
-    else
-        success "All files downloaded successfully."
     fi
 }
-
 
 # Function to list the services of a stack
 list_stack_services() {
@@ -5005,6 +4846,161 @@ deploy_success_message() {
   stack_name="$1"
   success "Successfully deployed stack $stack_name!"
   wait_for_input
+}
+
+# Function to create Prometheus scrape_config
+create_scrape_config_object() {
+  # Input parameters
+  local job_name=""
+  local metrics_path="/metrics" # Default
+  local honor_timestamps="true" # Default
+  local honor_labels="false"    # Default
+  local scrape_interval="15s"   # Default
+  local targets=()
+
+  # Parse named parameters
+  while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+    --job_name)
+      job_name="$2"
+      shift 2
+      ;;
+    --metrics_path)
+      metrics_path="$2"
+      shift 2
+      ;;
+    --honor_timestamps)
+      honor_timestamps="$2"
+      shift 2
+      ;;
+    --honor_labels)
+      honor_labels="$2"
+      shift 2
+      ;;
+    --scrape_interval)
+      scrape_interval="$2"
+      shift 2
+      ;;
+    --scheme)
+      scheme="$2"
+      shift 2
+      ;;
+    --targets)
+      # Split targets into an array
+      IFS=',' read -r -a targets <<<"$2"
+      shift 2
+      ;;
+    *)
+      echo "Error: Unknown parameter '$1'" >&2
+      return 1
+      ;;
+    esac
+  done
+
+  # Input validation
+  if [[ -z "$job_name" ]]; then
+    echo "Error: 'job_name' is required." >&2
+    return 1
+  fi
+  if [[ ${#targets[@]} -eq 0 ]]; then
+    echo "Error: At least one target must be provided using --targets." >&2
+    return 1
+  fi
+
+  # Use jq to create the JSON object
+  jq -n \
+    --arg job_name "$job_name" \
+    --arg metrics_path "$metrics_path" \
+    --argjson honor_timestamps "$honor_timestamps" \
+    --argjson honor_labels "$honor_labels" \
+    --arg scrape_interval "$scrape_interval" \
+    --argjson targets "$(printf '%s\n' "${targets[@]}" | jq -R . | jq -s .)" \
+    '{
+      job_name: $job_name,
+      metrics_path: $metrics_path,
+      honor_timestamps: $honor_timestamps,
+      honor_labels: $honor_labels,
+      scrape_interval: $scrape_interval,
+      static_configs: [
+        {
+          targets: $targets
+        }
+      ]
+    }'
+}
+
+# Function to add scrape_config to YAML file
+add_scrape_config_object() {
+  # Input parameters
+  local filename="$1"
+  local scrape_config="$2"
+
+  # Step 1: Check if the file exists
+  if [[ ! -f "$filename" ]]; then
+    # Step 1: Check if the file exists, and create the directory if necessary
+    if [[ ! -f "$filename" ]]; then
+      # Extract the directory from the filename
+      local dir
+      dir=$(dirname "$filename")
+
+      # Ensure the directory exists
+      if [[ ! -d "$dir" ]]; then
+        info "Directory $dir does not exist. Creating it."
+        mkdir -p "$dir"
+      fi
+    fi
+
+    info "File $filename does not exist. Initializing with default content."
+    cat <<EOF >"$filename"
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+scrape_configs: 
+EOF
+  fi
+
+  # Step 2: Check if the job_name already exists
+  local job_name
+  job_name=$(echo "$scrape_config" | jq -r '.job_name')
+  check_existing_job_name "$filename" "$job_name"
+
+  if [[ $? -eq 0 ]]; then
+    warning "job_name '$job_name' already exists in $filename." >&2
+    return 1
+  fi
+
+  # Step 3: Add the scrape_config to the YAML file
+  yq eval -i ".scrape_configs += [$scrape_config]" "$filename"
+  success "Added scrape_config for job '$job_name' to $filename."
+}
+
+# Function to check if a job_name exists in the scrape_configs of a YAML file
+check_existing_job_name() {
+  # Input parameters
+  local filename="$1"
+  local job_name="$2"
+
+  # Validate inputs
+  if [[ -z "$filename" || -z "$job_name" ]]; then
+    error "Filename and job_name are required."
+    return 1
+  fi
+
+  # Gather all existing job_names into an array
+  local job_names
+  job_names=$(yq eval '.scrape_configs[].job_name' "$filename" 2>/dev/null)
+
+  # Check if the job_name exists in the array
+  if echo "$job_names" | grep -qx "$job_name"; then
+    return 0 # Key exists
+  else
+    return 1 # Key does not exist
+  fi
 }
 
 # Function to remove a failed deployment
