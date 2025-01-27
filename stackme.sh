@@ -4306,7 +4306,7 @@ wait_for_services() {
     done
 }
 
-# Function to download stack compose templates with progress indicator
+# Function to download stack compose templates with progress indicator using pv
 download_stack_compose_templates() {
     local destination_folder="$TEMPLATES_DIR"
 
@@ -4347,11 +4347,8 @@ download_stack_compose_templates() {
     # Initialize the progress tracker
     completed_files=0
 
-    # Function to update the progress
-    update_progress() {
-        completed_files=$((completed_files + 1))
-        echo -ne "\rDownloading... ($completed_files/$total_files)"
-    }
+    # Track progress using a counter
+    current_file=1
 
     # Download all files with progress indicator
     echo "$file_urls" | while read -r url; do
@@ -4359,14 +4356,22 @@ download_stack_compose_templates() {
             file_name=$(basename "$url")
             destination_file="$destination_folder/$file_name"
 
-            # Download the file
+            # Download the file with progress using pv
+            echo "Downloading $file_name" | pv -n -s 100 > /dev/null  # Simulate a progress bar
+
+            # Actually download the file
             if ! curl -s --fail -o "$destination_file" "$url"; then
                 error_message=$(curl -s -w "%{http_code}" -o /dev/null "$url")
                 failed_downloads+=("$(date '+%Y-%m-%d %H:%M:%S') - $file_name - Error: HTTP $error_message")
-            fi            
+            else
+                echo -ne "\r$completed_files/$total_files files completed."
+            fi
 
-            # Increment completed files after download
-            update_progress
+            # Increment the completed file count
+            ((completed_files++))
+
+            # Update progress for each file downloaded
+            echo -ne "\rDownload progress: $completed_files/$total_files files downloaded"
         ) &
     done
 
@@ -4383,6 +4388,7 @@ download_stack_compose_templates() {
         success "All files downloaded successfully."
     fi
 }
+
 
 # Function to list the services of a stack
 list_stack_services() {
