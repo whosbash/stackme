@@ -1534,7 +1534,7 @@ generate_machine_specs() {
   print_spec "Kernel Version" "$(\
     safe_exec "uname -r")"
   print_spec "Processor Model" "$(\
-    safe_exec "lscpu | awk -F ':' '/Model name/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
+    safe_exec "lscpu | awk -F ':' '/^Model name/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
   print_spec "Processor Cores" "$(\
     safe_exec "lscpu | awk -F ':' '/^CPU\\(s\\):/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
   print_spec "Processor Threads" "$(\
@@ -8015,7 +8015,7 @@ define_menu_health() {
   )"
   item_6="$(
     build_menu_item "Top Processes" "list" \
-      "run_command'Processes' 'top_processes'"
+      "run_command 'Processes' 'top_processes'"
   )"
   item_7="$(
     build_menu_item "Security" "diagnose" \
