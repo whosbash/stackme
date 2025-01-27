@@ -1457,6 +1457,7 @@ assert_domain_and_ip() {
   check_domain_ip "$domain_url" "$ip"
 }
 
+# Function to install ctop
 install_ctop(){
   step_info 1 $total_steps "Installing CTOP"
 
@@ -1484,29 +1485,28 @@ install_ctop(){
     wait_for_input
 }
 
+# Function to run ctop 
 run_ctop() {
     total_steps=2
 
     # Check if ctop is already installed
     if command -v ctop &> /dev/null; then
-        exit_code=0
         success "CTOP is already installed. Type 'ctop' in the terminal to use it."
-        wait_for_input 5
     else
-      install_ctop    
-    
-      exit_code=$?
-      message="Failed to install CTOP"
+        # Install ctop if not already installed
+        install_ctop    
+        exit_code=$?
 
-      handle_exit $exit_code 2 $total_steps "$message"     
+        if [[ $exit_code -ne 0 ]]; then
+            message="Failed to install CTOP"
+            handle_exit $exit_code 2 $total_steps "$message"
+            return 1
+        fi
     fi
 
-    if [[ $exit_code -ne 0 ]]; then
-        ctop
-        return 0
-    else 
-        return 1
-    fi
+    # Run ctop after ensuring installation
+    echo "Launching CTOP..."
+    ctop
 }
 
 # Function to generate a UUID
