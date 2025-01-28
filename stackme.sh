@@ -5930,7 +5930,7 @@ generate_test_smtp_hmtl() {
   # Content for the email
   local email_content='<div style="text-align: left;">
   <p>Hi there,</p>
-  <p>We are thrilled to have you onboard! Explore the amazing features of {{tool_name}} and elevate your workflow.</p>
+  <p>We are thrilled to have you onboard! Explore the features of {{tool_name}} and elevate your workflow.</p>
   <div style="text-align: center;">
     <a href="{{tool_repository_url}}" class="button">Get Started</a>
   </div>
@@ -5940,8 +5940,6 @@ generate_test_smtp_hmtl() {
 </div>'
 
   email_content="$(replace_mustache_variables "$email_content" tool_variables)"
-
-  debug "$email_content"
 
   # Generate the email
   generate_html "$EMAIL_TEMPLATE" "Welcome to $TOOL_NAME" "Welcome to $TOOL_NAME" "$email_content"
@@ -6066,16 +6064,6 @@ get_smtp_configuration() {
       error "Unable to retrieve or save SMTP configuration."
       return 1
     fi
-    
-    smtp_host="$(echo "$smtp_json" | jq -r ".smtp_host")"
-    smtp_username="$(echo "$smtp_json" | jq -r ".smtp_username")"
-    smtp_password="$(echo "$smtp_json" | jq -r ".smtp_password")"
-    check_smtp_config "$smtp_host" "$smtp_username" "$smtp_password"
-
-    if [[ $? -ne 0 ]]; then
-      error "Invalid smtp credentials. Insert valid smtp credentials."
-      return 1
-    fi
   fi
 
   echo "$smtp_json"
@@ -6098,8 +6086,9 @@ load_smtp_information() {
 }
 
 custom_send_email(){
-  local subject="$1"
-  local body="$2"
+  local to_email="$1"
+  local subject="$2"
+  local body="$3"
 
   # Retrieve SMTP configuration (load from file or request and save)
   smtp_json=$(get_smtp_configuration)
@@ -6113,10 +6102,11 @@ custom_send_email(){
   smtp_port="$(echo "$smtp_json" | jq -r ".smtp_port")"
   smtp_username="$(echo "$smtp_json" | jq -r ".smtp_username")"
   smtp_password="$(echo "$smtp_json" | jq -r ".smtp_password")"
+  smtp_from_email="$(echo "$smtp_json" | jq -r ".smtp_from_email")"
 
   # Send the test email
   send_email \
-    "$smtp_username" "$smtp_username" "$smtp_host" "$smtp_port" \
+    "$smtp_from_email" "$to_email" "$smtp_host" "$smtp_port" \
     "$smtp_username" "$smtp_password" "$subject" "$body"
 }
 
@@ -6125,15 +6115,35 @@ send_smtp_test_email() {
   subject="[$TOOL_NAME] Test SMTP e-mail"
   body="$(generate_test_smtp_hmtl)"
 
-  custom_send_email "$subject" "$body"
+  # Retrieve SMTP configuration (load from file or request and save)
+  smtp_json=$(get_smtp_configuration)
+
+  if [[ $? -ne 0 ]]; then
+    error "Unable to retrieve SMTP configuration."
+    return 1
+  fi
+
+  smtp_username="$(echo "$smtp_json" | jq -r ".smtp_username")"
+
+  custom_send_email "$smtp_username" "$subject" "$body"
 }
 
 # Function to send machine specs email
 send_machine_specs_email() {
   subject="[$TOOL_NAME] Machine Specifications"
   body="$(generate_machine_specs_html)"
+
+  # Retrieve SMTP configuration (load from file or request and save)
+  smtp_json=$(get_smtp_configuration)
+
+  if [[ $? -ne 0 ]]; then
+    error "Unable to retrieve SMTP configuration."
+    return 1
+  fi
+
+  smtp_username="$(echo "$smtp_json" | jq -r ".smtp_username")"
   
-  custom_send_email "$subject" "$body"
+  custom_send_email "$smtp_username" "$subject" "$body"
 }
 
 ######################################## END OF E-MAIL UTILS ######################################
