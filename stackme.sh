@@ -6511,7 +6511,7 @@ display_prompt_items() {
       required=""
     fi
 
-    highlight "\t$required $name: $description"
+    highlight "\t$name$required: $description"
   done  
 }
 
@@ -7261,7 +7261,13 @@ generate_stack_config_yourls() {
           },
           "dependencies": ["traefik", "portainer", "mysql"],
           "actions": {
-            "refresh": [],
+            "refresh": [
+              {
+                "name": "mysql_password",
+                "description": "Fetching mysql password",
+                "command": "fetch_database_password mysql",
+              }
+            ],
             "prepare": [],
             "finalize": []
           }
