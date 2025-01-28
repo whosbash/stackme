@@ -4481,11 +4481,13 @@ is_portainer_credentials_correct() {
   fi
 }
 
-# Function to signup on portainer
+# Function to signup on portainer with retry mechanism
 signup_on_portainer() {
   local portainer_url="$1"
   local username="$2"
   local password="$3"
+  local max_retries=5    # Maximum number of retry attempts
+  local retry_delay=5    # Delay (in seconds) between retries
 
   # Credentials (raw, not indented)
   credentials="{\"username\": \"$username\",\"password\": \"$password\"}"
@@ -4496,47 +4498,49 @@ signup_on_portainer() {
   local resource='users/admin/init'
   local header="Content-Type: $content_type"
 
-  info "Signing up on portainer..."
-
   # Get the URL
   url="$(get_api_url "$protocol" "$portainer_url" "$resource")"
 
-  # Get the URL
-  info "Request call: curl -s -k -X POST '$url' -H '$header' -d '$credentials'"
-  
-  response="$(curl -s -k -X POST "$url" -H "$header" -d "$credentials")"
-  info "Response: $response" >&2
+  for attempt in $(seq 1 $max_retries); do
+    info "Attempt $attempt/$max_retries: Signing up on portainer..."
 
-  # Check for existing administrator user in the response
-  if [[ "$response" == *"An administrator user already exists"* ]]; then
-    warning "An administrator user already exists."
-    return 1
-  fi
+    # Perform the request
+    response="$(curl -s -k -X POST "$url" -H "$header" -d "$credentials")"
+    info "Response: $response" >&2
 
-  # Check if the response is a valid json
-  if ! echo "$response" | jq -e . >/dev/null 2>&1; then
-    error "The response is not a valid json." >&2
-    return 1
-  fi
+    # Check for existing administrator user
+    if [[ "$response" == *"An administrator user already exists"* ]]; then
+      warning "An administrator user already exists. Stopping further attempts."
+      return 1
+    fi
 
-  # Parse the response and check if it contains the expected fields
-  user_info=$(
-    echo "$response" | jq -c 'select(.Id and .Username and .Password and .Role)'
-  )
-  if [ $? -ne 0 ]; then
-    error "The response does not contain the expected fields." >&2
-    return 1
-  fi
+    # Check if the response is a valid JSON
+    if echo "$response" | jq -e . >/dev/null 2>&1; then
+      # Parse the response and check if it contains the expected fields
+      user_info=$(echo "$response" | jq -c 'select(.Id and .Username and .Password and .Role)')
+      if [ $? -eq 0 ]; then
+        # Ensure the password is hashed correctly
+        password_hash=$(echo "$response" | jq -r '.Password')
+        if [[ "$password_hash" =~ ^\$2a\$10\$ ]]; then
+          info "Administrator user created successfully on attempt $attempt."
+          return 0
+        else
+          error "Password hashing failed or response is incorrect."
+        fi
+      else
+        error "The response does not contain the expected fields."
+      fi
+    else
+      error "The response is not a valid JSON."
+    fi
 
-  # Ensure the password is correctly hashed (checking the format of the password)
-  password_hash=$(echo "$response" | jq -r '.Password')
-  if [[ "$password_hash" =~ ^\$2a\$10\$ ]]; then
-    info "Administrator user created successfully."
-    return 0
-  else
-    error "Password hashing failed or response is incorrect."
-    return 1
-  fi
+    # If we've reached here, the attempt has failed
+    warning "Signup failed on attempt $attempt. Retrying in $retry_delay seconds..."
+    sleep "$retry_delay"
+  done
+
+  error "Failed to create an administrator user after $max_retries attempts."
+  return 1
 }
 
 # Function to retrieve a Portainer authentication token
@@ -7006,13 +7010,13 @@ generate_stack_config_whoami() {
     return 1
   fi
 
+  processed_items="$(process_prompt_items "$collected_items")"
+
   # Step 2: Retrieve network name
   step_info 2 $total_steps "Retrieving network name"
   network_name="$(get_network_name)"
 
-  whoami_url="$(
-    get_variable_value_from_collection "$collected_items" "url_whoami"
-  )"
+  whoami_url="$(echo "$processed_items" | jq -r '.whoami_url')"
 
   jq -n \
     --arg stack_name "$stack_name" \
@@ -7071,12 +7075,10 @@ generate_stack_config_airflow() {
     return 1
   fi
 
-  url_airflow="$(
-    get_variable_value_from_collection "$collected_items" "url_airflow"
-  )"
-  url_flower="$(
-    get_variable_value_from_collection "$collected_items" "url_flower"
-  )"
+  processed_items="$(process_prompt_items "$collected_items")"
+
+  airflow_url="$(echo "$processed_items" | jq -r '.airflow_url')"
+  flower_url="$(echo "$processed_items" | jq -r '.flower_url')"
 
   # Step 2: Create Airflow folders
   step_info 2 $total_steps "Creating Airflow folders"
@@ -7088,15 +7090,15 @@ generate_stack_config_airflow() {
 
   jq -n \
     --arg stack_name "$stack_name" \
-    --arg url_airflow "$url_airflow" \
-    --arg url_flower "$url_flower" \
+    --arg airflow_url "$airflow_url" \
+    --arg flower_url "$flower_url" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
           "target": "portainer",
           "variables": {
-              "url_airflow": $url_airflow,
-              "url_flower": $url_flower,
+              "airflow_url": $airflow_url,
+              "flower_url": $flower_url,
               "network_name": $network_name,
           },
           "dependencies": ["traefik", "portainer", "postgres", "redis"],
@@ -7126,7 +7128,7 @@ generate_stack_config_metabase() {
   # Prompting step
   prompt_items='[
       {
-          "name": "url_metabase",
+          "name": "metabase_url",
           "label": "Metabase domain name",
           "description": "URL to access Metabase remotely",
           "required": "yes",
@@ -7144,23 +7146,23 @@ generate_stack_config_metabase() {
     return 1
   fi
 
+  processed_items="$(process_prompt_items "$collected_items")"
+
+  metabase_url="$(echo "$processed_items" | jq -r '.metabase_url')"
+
   # Step 2: Retrieve network name
   step_info 2 $total_steps "Retrieving network name"
   network_name="$(get_network_name)"
 
-  url_metabase="$(
-    get_variable_value_from_collection "$collected_items" "url_metabase"
-  )"
-
   jq -n \
     --arg stack_name "$stack_name" \
-    --arg url_metabase "$url_metabase" \
+    --arg metabase_url "$metabase_url" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
           "target": "portainer",
           "variables": {
-              "url_metabase": $url_metabase,
+              "metabase_url": $metabase_url,
               "network_name": $network_name,
           },
           "dependencies": ["traefik", "portainer", "postgres", "redis"],

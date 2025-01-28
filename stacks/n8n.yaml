@@ -23,7 +23,7 @@ services:
       ## Url do N8N
       - N8N_HOST={{url_editor}}
       - N8N_EDITOR_BASE_URL=https://{{n8n_editor_url}}/ 
-      - WEBHOOK_URL=https://{{n8n__webhook_url}}/
+      - WEBHOOK_URL=https://{{n8n_webhook_url}}/
       - N8N_PROTOCOL=https
 
       ## Node mode
@@ -38,11 +38,11 @@ services:
       - N8N_NODE_PATH=/home/node/.n8n/nodes
 
       ## SMTP
-      - N8N_SMTP_SENDER={{n8n_smtp_email}}
-      - N8N_SMTP_USER={{n8n_smtp_user}}
-      - N8N_SMTP_PASS={{n8n_smtp_password}}
+      - N8N_SMTP_SENDER={{n8n_smtp_from_email}}
       - N8N_SMTP_HOST={{n8n_smtp_host}}
       - N8N_SMTP_PORT={{n8n_smtp_port}}
+      - N8N_SMTP_USER={{n8n_smtp_username}}
+      - N8N_SMTP_PASS={{n8n_smtp_password}}
       - N8N_SMTP_SSL={{n8n_smtp_secure}}
 
       ## Redis
@@ -98,8 +98,8 @@ services:
 
       ## Url do N8N
       - N8N_HOST={{url_editor}}
-      - N8N_EDITOR_BASE_URL=https://{{url_editor}}/
-      - WEBHOOK_URL=https://{{url_webhook}}/
+      - N8N_EDITOR_BASE_URL=https://{{n8n_editor_url}}/
+      - WEBHOOK_URL=https://{{n8n_webhook_url}}/
       - N8N_PROTOCOL=https
 
       ## Node Mode
@@ -114,12 +114,12 @@ services:
       - N8N_NODE_PATH=/home/node/.n8n/nodes
 
       ## SMTP
-      - N8N_SMTP_SENDER={{smtp_email}}
-      - N8N_SMTP_USER={{smtp_user}}
-      - N8N_SMTP_PASS={{smtp_password}}
-      - N8N_SMTP_HOST={{smtp_host}}
-      - N8N_SMTP_PORT={{smtp_port}}
-      - N8N_SMTP_SSL={{smtp_secure}}
+      - N8N_SMTP_SENDER={{n8n_smtp_from_email}}
+      - N8N_SMTP_HOST={{n8n_smtp_host}}
+      - N8N_SMTP_PORT={{n8n_smtp_port}}
+      - N8N_SMTP_USER={{n8n_smtp_username}}
+      - N8N_SMTP_PASS={{n8n_smtp_password}}
+      - N8N_SMTP_SSL={{n8n_smtp_secure}}
 
       ## Redis
       - QUEUE_BULL_REDIS_HOST=redis
@@ -145,7 +145,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.n8n_webhook.rule=(Host(`{{url_webhook}}`))
+        - traefik.http.routers.n8n_webhook.rule=(Host(`{{n8n_webhook_url}}`))
         - traefik.http.routers.n8n_webhook.entrypoints=websecure
         - traefik.http.routers.n8n_webhook.priority=1
         - traefik.http.routers.n8n_webhook.tls.certresolver=letsencryptresolver
@@ -174,8 +174,8 @@ services:
 
       ## N8N Url
       - N8N_HOST={{url_editor}}
-      - N8N_EDITOR_BASE_URL=https://{{url_editor}}/
-      - WEBHOOK_URL=https://{{url_webhook}}/
+      - N8N_EDITOR_BASE_URL=https://{{n8n_editor_url}}/
+      - WEBHOOK_URL=https://{{n8n_webhook_url}}/
       - N8N_PROTOCOL=https
 
       ## Node mode
@@ -190,12 +190,12 @@ services:
       - N8N_NODE_PATH=/home/node/.n8n/nodes
 
       ## SMTP
-      - N8N_SMTP_SENDER={{smtp_email}}
-      - N8N_SMTP_USER={{smtp_user}}
-      - N8N_SMTP_PASS={{smtp_password}}
-      - N8N_SMTP_HOST={{smtp_host}}
-      - N8N_SMTP_PORT={{smtp_port}}
-      - N8N_SMTP_SSL={{smtp_secure}}
+      - N8N_SMTP_SENDER={{n8n_smtp_from_email}}
+      - N8N_SMTP_HOST={{n8n_smtp_host}}
+      - N8N_SMTP_PORT={{n8n_smtp_port}}
+      - N8N_SMTP_USER={{n8n_smtp_username}}
+      - N8N_SMTP_PASS={{n8n_smtp_password}}
+      - N8N_SMTP_SSL={{n8n_smtp_secure}}
 
       ## Redis
       - QUEUE_BULL_REDIS_HOST=redis
