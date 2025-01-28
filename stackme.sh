@@ -8366,7 +8366,5 @@ main() {
   clean_screen
 }
 
-# # Call the main function
-# main "$@"
-
-generate_test_smtp_hmtl > test.html
+# Call the main function
+main "$@"
