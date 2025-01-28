@@ -1407,9 +1407,6 @@ install_ctop(){
     if [[ $exit_code -ne 0 ]]; then
         return 1
     fi
-
-    success "CTOP was installed successfully. Type 'ctop' in the terminal at any moment from now."
-    wait_for_input
 }
 
 # Function to run ctop 
