@@ -2298,18 +2298,6 @@ validate_smtp_host() {
   fi
 }
 
-# Function to validate SMTP port
-validate_smtp_port() {
-  local server=$1
-  local port=$2
-  if nc -z "$server" "$port" >/dev/null 2>&1; then
-    echo "SMTP port $port is open on $server."
-  else
-    echo "SMTP port $port is not reachable on $server. Please check the port."
-    exit 1
-  fi
-}
-
 # Function to validate username
 validate_username() {
   local value="$1"
@@ -4165,6 +4153,8 @@ wait_for_services() {
     local interval=5
     local elapsed=0
 
+    timout_min="$(( timeout / 60 ))"
+
     # Get the list of service names from the docker-compose setup (in swarm mode)
     services=$(docker stack services --format '{{.Name}}' "$stack_name")
 
@@ -4183,7 +4173,7 @@ wait_for_services() {
             # If the service is not running or not in the "Running" state
             if [[ -z "$service_state" ]]; then
                 all_healthy=false
-                info "Service '$service' is not healthy yet. Waiting..."
+                info "Service '$service' is not healthy yet. Waiting... we will wait $timout_min minutes."
                 break
             fi
         done
@@ -4215,6 +4205,9 @@ download_stack_compose_templates() {
         error "Destination folder not specified."
         return 1
     fi
+
+    # Remove the destination folder if it already exists
+    rm -rf "$destination_folder"
 
     # Create the destination folder if it doesn't exist
     mkdir -p "$destination_folder" || {
@@ -4540,11 +4533,13 @@ is_portainer_credentials_correct() {
   fi
 }
 
-# Function to signup on portainer
+# Function to signup on portainer with retry mechanism
 signup_on_portainer() {
   local portainer_url="$1"
   local username="$2"
   local password="$3"
+  local max_retries=5    # Maximum number of retry attempts
+  local retry_delay=5    # Delay (in seconds) between retries
 
   # Credentials (raw, not indented)
   credentials="{\"username\": \"$username\",\"password\": \"$password\"}"
@@ -4555,40 +4550,49 @@ signup_on_portainer() {
   local resource='users/admin/init'
   local header="Content-Type: $content_type"
 
-  info "Signing up on portainer..."
-
   # Get the URL
   url="$(get_api_url "$protocol" "$portainer_url" "$resource")"
 
-  # Get the URL
-  info "Request call: curl -s -k -X POST $url -H $header -d $credentials"
-  response="$(curl -s -k -X POST "$url" -H "$header" -d "$credentials")"
-  info "Response: $response" >&2
+  for attempt in $(seq 1 $max_retries); do
+    info "Attempt $attempt/$max_retries: Signing up on portainer..."
 
-  # Check for existing administrator user in the response
-  if [[ "$response" == *"An administrator user already exists"* ]]; then
-    warning "An administrator user already exists."
-    return 1
-  fi
+    # Perform the request
+    response="$(curl -s -k -X POST "$url" -H "$header" -d "$credentials")"
+    info "Response: $response" >&2
 
-  # Parse the response and check if it contains the expected fields
-  user_info=$(
-    echo "$response" | jq -c 'select(.Id and .Username and .Password and .Role)'
-  )
-  if [ $? -ne 0 ]; then
-    error "The response does not contain the expected fields." >&2
-    return 1
-  fi
+    # Check for existing administrator user
+    if [[ "$response" == *"An administrator user already exists"* ]]; then
+      warning "An administrator user already exists. Stopping further attempts."
+      return 1
+    fi
 
-  # Ensure the password is correctly hashed (checking the format of the password)
-  password_hash=$(echo "$response" | jq -r '.Password')
-  if [[ "$password_hash" =~ ^\$2a\$10\$ ]]; then
-    info "Administrator user created successfully."
-    return 0
-  else
-    error "Password hashing failed or response is incorrect."
-    return 1
-  fi
+    # Check if the response is a valid JSON
+    if echo "$response" | jq -e . >/dev/null 2>&1; then
+      # Parse the response and check if it contains the expected fields
+      user_info=$(echo "$response" | jq -c 'select(.Id and .Username and .Password and .Role)')
+      if [ $? -eq 0 ]; then
+        # Ensure the password is hashed correctly
+        password_hash=$(echo "$response" | jq -r '.Password')
+        if [[ "$password_hash" =~ ^\$2a\$10\$ ]]; then
+          info "Administrator user created successfully on attempt $attempt."
+          return 0
+        else
+          error "Password hashing failed or response is incorrect."
+        fi
+      else
+        error "The response does not contain the expected fields."
+      fi
+    else
+      error "The response is not a valid JSON."
+    fi
+
+    # If we've reached here, the attempt has failed
+    warning "Signup failed on attempt $attempt. Retrying in $retry_delay seconds..."
+    sleep "$retry_delay"
+  done
+
+  error "Failed to create an administrator user after $max_retries attempts."
+  return 1
 }
 
 # Function to retrieve a Portainer authentication token
@@ -4803,15 +4807,29 @@ upload_stack_on_portainer() {
   content_type="application/json"
   url="$(get_api_url "https" "$portainer_url" "$resource")"
 
-  curl -s -k -X POST \
+  reponse=$(
+    curl -s -k -X POST \
     -H "Authorization: Bearer $token" \
     -F "Name=$stack_name" \
     -F "file=@$compose_file" \
     -F "SwarmID=$swarm_id" \
     -F "endpointId=$endpoint_id" \
     "$url" &&
-    success "Stack '$stack_name' uploaded successfully." ||
+    success "Stack '$stack_name' uploaded successfully."
+  )
+  
+  if [[ -z "$reponse" ]]; then
     error "Failed to upload stack '$stack_name'."
+    return 1
+  fi
+
+  # Error present on respose (test for case insensitive)
+  if [[ "$reponse" == *"error"* ]]; then
+    error "Failed to upload stack '$stack_name'."
+    return 1
+  fi
+
+  return 0
 }
 
 # Function to deploy a stack
@@ -6616,7 +6634,7 @@ display_prompt_items() {
       required=""
     fi
 
-    highlight "\t$required $name: $description"
+    highlight "\t$name$required: $description"
   done  
 }
 
@@ -6692,7 +6710,7 @@ generate_stack_config_traefik() {
   collected_object="$(process_prompt_items "$collected_items")"
 
   email_ssl="$(echo "$collected_object" | jq -r '.email_ssl')"
-  url_traefik="$(echo "$collected_object" | jq -r '.url_traefik')"
+  traefik_url="$(echo "$collected_object" | jq -r '.traefik_url')"
   dashboard_username="$(echo "$collected_object" | jq -r '.dashboard_username')"
   dashboard_password="$(echo "$collected_object" | jq -r '.dashboard_password')"
 
@@ -6714,7 +6732,9 @@ generate_stack_config_traefik() {
   jq -n \
     --arg stack_name "$stack_name" \
     --arg email_ssl "$email_ssl" \
-    --arg url_traefik "$url_traefik" \
+    --arg traefik_url "$traefik_url" \
+    --arg dashboard_username "$dashboard_username" \
+    --arg dashboard_password "$dashboard_password" \
     --arg dashboard_credentials "$dashboard_credentials" \
     --arg network_name "$network_name" \
     '{
@@ -6722,7 +6742,9 @@ generate_stack_config_traefik() {
         "target": "swarm",
         "variables": {
           "email_ssl": $email_ssl,
-          "url_traefik": $url_traefik,
+          "traefik_url": $traefik_url,
+          "dashboard_username": $dashboard_username,
+          "dashboard_password": $dashboard_password,
           "dashboard_credentials": $dashboard_credentials,          
           "network_name": $network_name
         },
@@ -7116,13 +7138,13 @@ generate_stack_config_whoami() {
     return 1
   fi
 
+  processed_items="$(process_prompt_items "$collected_items")"
+
   # Step 2: Retrieve network name
   step_info 2 $total_steps "Retrieving network name"
   network_name="$(get_network_name)"
 
-  whoami_url="$(
-    get_variable_value_from_collection "$collected_items" "url_whoami"
-  )"
+  whoami_url="$(echo "$processed_items" | jq -r '.whoami_url')"
 
   jq -n \
     --arg stack_name "$stack_name" \
@@ -7181,12 +7203,10 @@ generate_stack_config_airflow() {
     return 1
   fi
 
-  url_airflow="$(
-    get_variable_value_from_collection "$collected_items" "url_airflow"
-  )"
-  url_flower="$(
-    get_variable_value_from_collection "$collected_items" "url_flower"
-  )"
+  processed_items="$(process_prompt_items "$collected_items")"
+
+  airflow_url="$(echo "$processed_items" | jq -r '.airflow_url')"
+  flower_url="$(echo "$processed_items" | jq -r '.flower_url')"
 
   # Step 2: Create Airflow folders
   step_info 2 $total_steps "Creating Airflow folders"
@@ -7198,15 +7218,15 @@ generate_stack_config_airflow() {
 
   jq -n \
     --arg stack_name "$stack_name" \
-    --arg url_airflow "$url_airflow" \
-    --arg url_flower "$url_flower" \
+    --arg airflow_url "$airflow_url" \
+    --arg flower_url "$flower_url" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
           "target": "portainer",
           "variables": {
-              "url_airflow": $url_airflow,
-              "url_flower": $url_flower,
+              "airflow_url": $airflow_url,
+              "flower_url": $flower_url,
               "network_name": $network_name,
           },
           "dependencies": ["postgres", "redis"],
@@ -7236,7 +7256,7 @@ generate_stack_config_metabase() {
   # Prompting step
   prompt_items='[
       {
-          "name": "url_metabase",
+          "name": "metabase_url",
           "label": "Metabase domain name",
           "description": "URL to access Metabase remotely",
           "required": "yes",
@@ -7254,23 +7274,23 @@ generate_stack_config_metabase() {
     return 1
   fi
 
+  processed_items="$(process_prompt_items "$collected_items")"
+
+  metabase_url="$(echo "$processed_items" | jq -r '.metabase_url')"
+
   # Step 2: Retrieve network name
   step_info 2 $total_steps "Retrieving network name"
   network_name="$(get_network_name)"
 
-  url_metabase="$(
-    get_variable_value_from_collection "$collected_items" "url_metabase"
-  )"
-
   jq -n \
     --arg stack_name "$stack_name" \
-    --arg url_metabase "$url_metabase" \
+    --arg metabase_url "$metabase_url" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
           "target": "portainer",
           "variables": {
-              "url_metabase": $url_metabase,
+              "metabase_url": $metabase_url,
               "network_name": $network_name,
           },
           "dependencies": ["postgres", "redis"],
@@ -7311,6 +7331,20 @@ generate_stack_config_yourls() {
           "description": "URL to access Yourls remotely",
           "required": "yes",
           "validate_fn": "validate_url_suffix" 
+      },
+      {
+          "name": "yourls_username",
+          "label": "Yourls username",
+          "description": "Yourls username",
+          "required": "no",
+          "validate_fn": "validate_empty_value" 
+      },
+      {
+          "name": "yourls_password",
+          "label": "Yourls password",
+          "description": "Yourls password",
+          "required": "no",
+          "validate_fn": "validate_empty_value" 
       }
   ]'
 
@@ -7326,6 +7360,8 @@ generate_stack_config_yourls() {
   processed_items="$(process_prompt_items "$collected_items")"
 
   yourls_url="$(echo "$processed_items" | jq -r '.yourls_url')"
+  yourls_username="$(echo "$processed_items" | jq -r '.yourls_username')"
+  yourls_password="$(echo "$processed_items" | jq -r '.yourls_password')"
 
   # Step 2: Retrieve network name
   step_info 2 $total_steps "Retrieving network name"
@@ -7334,17 +7370,27 @@ generate_stack_config_yourls() {
   jq -n \
     --arg stack_name "$stack_name" \
     --arg yourls_url "$yourls_url" \
+    --arg yourls_username "$yourls_username" \
+    --arg yourls_password "$yourls_password" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
           "target": "portainer",
           "variables": {
-              "url_yourls": $url_yourls,
+              "yourls_url": $yourls_url,
+              "yourls_username": $yourls_username,
+              "yourls_password": $yourls_password,
               "network_name": $network_name,
           },
           "dependencies": [],
           "actions": {
-            "refresh": [],
+            "refresh": [
+              {
+                "name": "mysql_password",
+                "description": "Fetching mysql password",
+                "command": "fetch_database_password mysql",
+              }
+            ],
             "prepare": [],
             "finalize": []
           }
@@ -7663,14 +7709,14 @@ generate_stack_config_n8n(){
           "validate_fn": "validate_url_suffix" 
       },
       {
-          "name": "n8n_smtp_email",
+          "name": "n8n_smtp_from_email",
           "label": "SMTP E-mail",
           "description": "E-mail to send SMTP notifications",
           "required": "yes",
           "validate_fn": "validate_email_value" 
       },
       {
-          "name": "n8n_smtp_user",
+          "name": "n8n_smtp_username",
           "label": "SMTP User",
           "description": "User to send SMTP notifications",
           "required": "yes",
@@ -7713,14 +7759,14 @@ generate_stack_config_n8n(){
 
   collected_object="$(process_prompt_items "$collected_items")"
 
-  n8n_editor_url="$(echo "$collected_object" | jq -r '.url_editor')"
-  n8n_webhook_url="$(echo "$collected_object" | jq -r '.url_webhook')"
-  n8n_smtp_email="$(echo "$collected_object" | jq -r '.smtp_email')"
-  n8n_smtp_user="$(echo "$collected_object" | jq -r '.smtp_user')"
-  n8n_smtp_password="$(echo "$collected_object" | jq -r '.smtp_password')" 
-  n8n_smtp_host="$(echo "$collected_object" | jq -r '.smtp_host')" 
-  n8n_smtp_port="$(echo "$collected_object" | jq -r '.smtp_port')"
-
+  n8n_editor_url="$(echo "$collected_object" | jq -r '.n8n_editor_url')"
+  n8n_webhook_url="$(echo "$collected_object" | jq -r '.n8n_webhook_url')"
+  n8n_smtp_from_email="$(echo "$collected_object" | jq -r '.n8n_smtp_from_email')"
+  n8n_smtp_host="$(echo "$collected_object" | jq -r '.n8n_smtp_host')" 
+  n8n_smtp_port="$(echo "$collected_object" | jq -r '.n8n_smtp_port')"
+  n8n_smtp_username="$(echo "$collected_object" | jq -r '.n8n_smtp_username')"
+  n8n_smtp_password="$(echo "$collected_object" | jq -r '.n8n_smtp_password')" 
+  
   n8n_smtp_secure="$(cast_port_to_smtp_secure "$n8n_smtp_port")"
 
   step_message="Generating use N8N password"
@@ -7746,14 +7792,14 @@ generate_stack_config_n8n(){
     '{
           "name": $stack_name,
           "variables": {
-              "n8n_editor_url": $url_editor,
-              "n8n_webhook_url": $url_webhook,
-              "n8n_smtp_email": $smtp_email,
-              "n8n_smtp_user": $smtp_user, 
-              "n8n_smtp_password": $smtp_password,
-              "n8n_smtp_host": $smtp_host,
-              "n8n_smtp_port": $smtp_port,
-              "n8n_smtp_secure": $smtp_secure,
+              "n8n_editor_url": $n8n_editor_url,
+              "n8n_webhook_url": $n8n_webhook_url,
+              "n8n_smtp_from_email": $n8n_smtp_from_email,
+              "n8n_smtp_username": $n8n_smtp_username, 
+              "n8n_smtp_password": $n8n_smtp_password,
+              "n8n_smtp_host": $n8n_smtp_host,
+              "n8n_smtp_port": $n8n_smtp_port,
+              "n8n_smtp_secure": $n8n_smtp_secure,
               "n8n_encryption_key": $n8n_encryption_key, 
               "network_name": $network_name
           },
@@ -7817,11 +7863,12 @@ generate_stack_config_uptimekuma() {
 
   jq -n \
     --arg stack_name "$stack_name" \
+    --arg uptimekuma_url "$uptimekuma_url" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
           "variables": {
-              "uptime_url": $uptime_url,
+              "uptimekuma_url": $uptimekuma_url,
               "network_name": $network_name
           },
           "dependencies": [],
@@ -7921,9 +7968,31 @@ define_menu_stacks_miscelaneous() {
   item_3="$(
     build_menu_item "n8n" "Deploy" "deploy_stack_handler n8n"
   )"
+  item_4="$(
+    build_menu_item "uptimekuma" "Deploy" "deploy_stack_handler uptimekuma"
+  )"
+  item_5="$(
+    build_menu_item "yourls" "Deploy" "deploy_stack_handler yourls"
+  )"
+  item_6="$(
+    build_menu_item "appsmith" "Deploy" "deploy_stack_handler appsmith"
+  )"
+  item_7="$(
+    build_menu_item "focalboard" "Deploy" "deploy_stack_handler focalboard"
+  )"
+  item_8="$(
+    build_menu_item "qdrant" "Deploy" "deploy_stack_handler qdrant"
+  )"
+  item_9="$(
+    build_menu_item "excalidraw" "Deploy" "deploy_stack_handler excalidraw"
+  )"
+  item_10="$(
+    build_menu_item "airflow" "Deploy" "deploy_stack_handler glpi"
+  )"
 
   items=(
-    "$item_1" "$item_2" "$item_3"
+    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" 
+    "$item_6" "$item_7" "$item_8" "$item_9" "$item_10"
   )
 
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
@@ -7972,7 +8041,7 @@ define_menu_utilities_smtp() {
   menu_title="SMTP utilities"
 
   item_1="$(
-    build_menu_item "Test SMPT e-mail" \
+    build_menu_item "Test e-mail" \
       "Send" "send_smtp_test_email"
   )"
   item_2="$(

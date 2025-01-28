@@ -12,7 +12,7 @@ services:
       - {{network_name}}
 
     environment:
-      - MB_SITE_URL=https://{{url_metabase}}
+      - MB_SITE_URL=https://{{metabase_url}}
       - MB_REDIRECT_ALL_REQUESTS_TO_HTTPS=true
       - MB_JETTY_PORT=3000
       - MB_JETTY_HOST=0.0.0.0

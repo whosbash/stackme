@@ -24,7 +24,7 @@ services:
           - node.role == manager
       resources:
         limits:
-          cpus: "2"
+          cpus: "1"
           memory: 2048M
       labels:
         - traefik.enable=true
