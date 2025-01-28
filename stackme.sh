@@ -5679,6 +5679,8 @@ deployment_pipeline() {
 deploy_stack() {
   local stack_name="$1"
 
+  debug "Deploying stack '$stack_name'..."
+
   # Check if Traefik and Portainer stacks exist
   traefik_and_portainer_exist
 
@@ -6415,7 +6417,7 @@ get_server_info() {
     ]'
 
   collected_items="$(run_collection_process "$items")"
-  if [[ "$server_array" == "[]" ]]; then
+  if [[ "$collected_items" == "[]" ]]; then
     error "Unable to retrieve server and network names."
     exit 1
   fi
