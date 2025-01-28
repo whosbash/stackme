@@ -6426,6 +6426,12 @@ fetch_and_save_server_info() {
     else
       error "Content on file $server_filename is invalid. Reinitializing..."
       server_info_json=$(get_server_info)
+
+      if [[ -z "$server_info_json" ]]; then
+        error "Unable to retrieve server and network names."
+        wait_for_input
+        exit 1
+      fi
       
       # Save the server information to a JSON file
       echo "$server_info_json" >"$server_filename"
