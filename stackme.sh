@@ -134,15 +134,20 @@ HAS_TIMESTAMP=true
 HEADER_LENGTH=120
 
 # Default arrow
-STACKME_DIR="/opt/stackme"
-STACKS_DIR="$STACKME_DIR/stacks"
-TEMPLATES_DIR="$STACKME_DIR/templates"
-
-# Default arrow
-DEFAULT_ARROW_OPTION='angle'
 USER_DEFINED_ARROW=""
+DEFAULT_ARROW_OPTION='angle'
 
+# Default page size
 DEFAULT_PAGE_SIZE=5
+
+# Tools constants
+TOOL_NAME="StackMe"
+TOOL_LOGO_URL="https://raw.githubusercontent.com/whosbash/stackme/main/images/stackme_tiny.png"
+TOOL_REPOSITORY_URL='https://github.com/whosbash/stackme'
+
+TOOL_BASE_DIR="/opt/stackme"
+TOOL_STACKS_DIR="$TOOL_BASE_DIR/stacks"
+TOOL_TEMPLATES_DIR="$TOOL_BASE_DIR/templates"
 
 ############################# BEGIN OF DISPLAY-RELATED FUNCTIONS #############################
 
@@ -1127,29 +1132,42 @@ write_json() {
 
 # Function to load JSON from a file
 load_json() {
-  local config_file="$1"
-  local config_output
+  local filepath="$1"
+  local json_object
 
   # Check if configuration file exists first
-  if [[ -f "$config_file" ]]; then
-    config_output=$(cat "$config_file")
+  if [[ -f "$filepath" ]]; then
+    json_object=$(cat "$filepath")
   else
     # If file doesn't exist, handle as needed (e.g., return empty JSON or an error)
-    warning "Configuration file '$config_file' not found. Returning empty JSON."
-    config_output="{}"
+    warning "Json object '$filepath' not found. Returning empty JSON."
+    json_object="{}"
     return 1
   fi
 
   # Ensure valid JSON by passing it through jq
-  if ! echo "$config_output" | jq . >/dev/null 2>&1; then
-    warning "Invalid JSON in the configuration file '$config_file'. Returning empty JSON."
+  if ! echo "$json_object" | jq . >/dev/null 2>&1; then
+    warning "Invalid JSON in the file path '$filepath'. Returning empty JSON."
     echo "{}"
     return 1
   else
     # Return the valid JSON
-    echo "$config_output"
+    echo "$json_object"
     return 0
   fi
+}
+
+# Function to customize JSON keys with a given identifier
+custom_json_keys_with_identifier() {
+  local identifier="$1"
+  local json_object="$2"
+
+  # Iterate through JSON keys and build a new JSON object with updated keys
+  local modified_json
+  modified_json=$(echo "$json_object" | jq --arg id "$identifier" 'with_entries(.key |= "\($id)_\(.)")')
+
+  # Print the modified JSON
+  echo "$modified_json"
 }
 
 ################################## END OF JSON-RELATED FUNCTIONS ################################
@@ -3415,7 +3433,7 @@ cleanup() {
 farewell_message() {
   farewell_messages=(
     ""
-    "🌟 Thank you for using the Deployment Tool Stackme! 🌟"
+    "🌟 Thank you for using the Deployment Tool $TOOL_NAME! 🌟"
     ""
     "Your journey doesn't end here: it's just a new beginning."
     "Remember: Success is the sum of small efforts, repeated day in and day out. 🚀"
@@ -4190,7 +4208,7 @@ wait_for_services() {
 
 # Function to download stack compose templates with progress bar
 download_stack_compose_templates() {
-    local destination_folder="$TEMPLATES_DIR"
+    local destination_folder="$TOOL_TEMPLATES_DIR"
     
     # Ensure the destination folder is provided
     if [[ -z "$destination_folder" ]]; then
@@ -4359,6 +4377,49 @@ stack_exists() {
   fi
 }
 
+# Function to check if all stacks in an array exist
+stacks_exist() {
+  local stacks=("$@") # Array of stack names passed as arguments
+  local all_exist=true
+
+  for stack_name in "${stacks[@]}"; do
+    if ! stack_exists "$stack_name"; then
+      all_exist=false
+      break
+    fi
+  done
+
+  if [ "$all_exist" = true ]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# Function to check if all stacks in an array exist
+check_stacks_exist() {
+  local stacks=("$@") # Array of stack names passed as arguments
+  local all_exist=true
+
+  for stack_name in "${stacks[@]}"; do
+    # Replace the command below with the appropriate check for existence
+    if ! docker stack ls | awk '{print $1}' | grep -qw "$stack_name"; then
+      echo "❌ Stack '$stack_name' does not exist."
+      all_exist=false
+    else
+      echo "✅ Stack '$stack_name' exists."
+    fi
+  done
+
+  if [ "$all_exist" = true ]; then
+    echo "🎉 All stacks exist."
+    return 0
+  else
+    echo "⚠️  Some stacks are missing."
+    return 1
+  fi
+}
+
 # Function to get the URL of a stack
 stack_url(){
   local stack_name="$1"
@@ -4372,7 +4433,7 @@ stack_url(){
 # Function to list the required fields on a stack docker-compose
 list_stack_compose_required_fields() {
   local stack_name="$1"
-  stack_template="${TEMPLATES_DIR}/${stack_name}.yaml"
+  stack_template="${TOOL_TEMPLATES_DIR}/${stack_name}.yaml"
   cat "$stack_template" | grep -oP '\{\{\K[^}]+(?=\}\})' | sort -u
 
   if [[ $? -ne 0 ]]; then
@@ -4837,7 +4898,7 @@ delete_stack_on_portainer() {
 load_portainer_url_and_credentials(){
   local portainer_config_json
   portainer_config_json=$(
-    load_json "$STACKS_DIR/portainer/stack_config.json"
+    load_json "$TOOL_STACKS_DIR/portainer/stack_config.json"
   )
 
   portainer_info="$(
@@ -4858,6 +4919,17 @@ load_portainer_url_and_credentials(){
     --arg portainer_url "$portainer_url" \
     --argjson portainer_credentials "$portainer_credentials" \
     '{"portainer_url": $portainer_url, "portainer_credentials": $portainer_credentials}'
+}
+
+traefik_and_portainer_exist(){
+  stack_names=("traefik" "portainer")
+  
+  if ! stacks_exist "${stack_names[@]}"; then
+    error "Traefik and Portainer stacks do not exist. Deploy them manually before any other stack."
+    return 1
+  fi
+
+  return 0
 }
 
 ################################# END OF PORTAINER DEPLOYMENT UTILS ###############################
@@ -5060,8 +5132,8 @@ build_stack_info() {
   local json_output
   json_output=$(
     jq -n \
-      --arg config_path "${STACKS_DIR}/${stack_name}/stack_config.json" \
-      --arg compose_path "${STACKS_DIR}/${stack_name}/docker-compose.yaml" \
+      --arg config_path "${TOOL_STACKS_DIR}/${stack_name}/stack_config.json" \
+      --arg compose_path "${TOOL_STACKS_DIR}/${stack_name}/docker-compose.yaml" \
       --arg compose_func "compose_file_${stack_name}" \
       '{
       config_path: $config_path,
@@ -5258,23 +5330,38 @@ execute_refresh_actions() {
 
   # Iterate over the refresh actions
   for action in "${actions[@]}"; do
-    local name
-    name=$(echo "$action" | jq -r '.name') || {
-      error "Missing 'name' field in refresh action."
-      return 1
-    }
-
     local command
     command=$(echo "$action" | jq -r '.command') || {
       error "Missing 'command' field in refresh action."
       return 1
     }
 
+    # Variable name or empty name
+    local name
+    name="$(jq -r --arg key "name" '.[$key] // empty' <<< "$action")"
+
     # Execute the command and capture its output (must be a valid JSON)
     command_output=$(eval "$command") || {
       error "Failed to execute refresh action: $name"
       return 1
     }
+
+    # If variable 'name' is empty, check if it is a json object
+    if [ -z "$name" ]; then
+      # Validate if the output is a valid JSON object
+      echo "$command_output" | jq empty >/dev/null 2>&1 || {
+        error "Refresh action command must be a valid JSON when property 'name' is empty or not provided. "
+        return 1
+      }
+
+      # Merge the command output with the existing stack variables using add_json_objects
+      updated_variables=$(add_json_objects "$updated_variables" "$command_output") || {
+        error "Failed to update stack variables after executing refresh action."
+        return 1
+      }
+
+      continue
+    fi
 
     # Validate if the output is a valid JSON object
     echo "$command_output" | jq empty >/dev/null 2>&1 || {
@@ -5283,16 +5370,20 @@ execute_refresh_actions() {
     }
 
     # Build a json based on command_output
-    variable_to_update="$(echo "$command_output" | jq -c ". | {\"$name\": .}")"
+    variable_to_update="$(\
+      echo "$command_output" | jq -c ". | {\"$name\": .}"\
+    )"
 
     # Merge the command output with the existing stack variables using add_json_objects
-    updated_variables=$(add_json_objects "$updated_variables" "$variable_to_update") || {
-      error "Failed to update stack variables after executing '$name'"
+    updated_variables=$(\
+      add_json_objects "$updated_variables" "$variable_to_update"
+    ) || {
+      error "Failed to update stack variables after executing variable '$name'"
       return 1
     }
   done
 
-  info "Refreshed stakc variables: $(echo "$updated_variables" | jq -c '.')"
+  info "Refreshed stack variables: $(echo "$updated_variables" | jq -c '.')"
 
   echo "$updated_variables"
 }
@@ -5332,9 +5423,10 @@ build_compose_file() {
   stack_info=$(build_stack_info "$stack_name")
 
   # Extract paths and function for template generation
-  local stack_dir="${STACKS_DIR}/${stack_name}"
+  local stack_dir="${TOOL_STACKS_DIR}/${stack_name}"
+  local stack_compose_template_path="${TOOL_TEMPLATES_DIR}/${stack_name}.yaml"
+  
   local config_path="${stack_dir}/stack_config.json"
-  local compose_template_path="${TEMPLATES_DIR}/${stack_name}.yaml"
   local compose_path="${stack_dir}/docker-compose.yaml"
   local compose_url="$(stack_url "$stack_name")"
 
@@ -5358,7 +5450,9 @@ build_compose_file() {
 
   # Generate the substituted template
   local substituted_template
-  substituted_template=$(replace_mustache_variables "$(cat "$compose_template_path")" stack_variables)
+  substituted_template=$(\
+    replace_mustache_variables "$(cat "$stack_compose_template_path")" stack_variables
+  )
 
   # Write the template to the compose file
   echo "$substituted_template" >"$compose_path"
@@ -5432,7 +5526,7 @@ save_stack_configuration() {
   local stack_config_json="$2"
 
   local stack_config_path
-  stack_config_path="$STACKS_DIR/$stack_name/stack_config.json"
+  stack_config_path="$TOOL_STACKS_DIR/$stack_name/stack_config.json"
   echo "$stack_config_json" | jq '.' >"$stack_config_path"
   if [ $? -ne 0 ]; then
     error "Failed to save stack configuration for stack '$stack_name'"
@@ -5527,6 +5621,14 @@ deployment_pipeline() {
 deploy_stack() {
   local stack_name="$1"
 
+  # Check if Traefik and Portainer stacks exist
+  traefik_and_portainer_exist
+
+  if [ $? -ne 0 ]; then
+    return 1
+  fi
+
+  # Check if the stack should be removed
   should_remove_stack "$stack_name"
 
   # Check if the stack exists
@@ -5558,7 +5660,7 @@ deploy_stack() {
 
 ####################################### BEGIN OF E-MAIL UTILS #####################################
 
-BASE_TEMPLATE='<!DOCTYPE html>
+EMAIL_TEMPLATE='<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -5698,7 +5800,7 @@ BASE_TEMPLATE='<!DOCTYPE html>
   
   <section class="container">
     <header class="header" role="banner">
-      <img src="https://raw.githubusercontent.com/whosbash/stackme/main/images/stackme_tiny.png" alt="StackMe Logo">
+      <img src="{{tool_logo_url}}" alt="{{tool_name}} Logo">
       <h1>{{header_title}}</h1>
     </header>
     <section class="content">
@@ -5707,7 +5809,7 @@ BASE_TEMPLATE='<!DOCTYPE html>
     <footer class="footer" role="contentinfo">
       <p>Sent using a Shell Script and the Swaks tool.</p>
       <p>
-        <a href="https://github.com/whosbash/stackme" target="_blank" aria-label="Visit StackMe GitHub page">
+        <a href="{{tool_repository_url}}" target="_blank" aria-label="Visit {{tool_name}} GitHub page">
           <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub Logo">
         </a>
       </p>
@@ -5715,6 +5817,15 @@ BASE_TEMPLATE='<!DOCTYPE html>
   </section>
 </body>
 </html>'
+
+declare -A tool_variables=(
+  [tool_name]="$TOOL_NAME"
+  [tool_repository_url]="$TOOL_REPOSITORY_URL"
+  [tool_logo_url]="$TOOL_LOGO_URL"
+)
+EMAIL_TEMPLATE=$(\
+  replace_mustache_variables "$EMAIL_TEMPLATE" tool_variables
+)
 
 # Function to generate email
 generate_html() {
@@ -5741,10 +5852,9 @@ check_smtp_config() {
   local smtp_host="$1"
   local smtp_username="$2"
   local smtp_password="$3"
-  local recipient="$4"
 
   # Run swaks to check authentication
-  swaks --to "$recipient" \
+  swaks --to "$smtp_username" \
     --from "$smtp_username" \
     --server "$smtp_host" \
     --auth LOGIN \
@@ -5764,13 +5874,15 @@ check_smtp_config() {
 generate_test_smtp_hmtl() {
   # Content for the email
   local email_content='<p>Hi there,</p> \
-<p>We are thrilled to have you onboard! Explore the amazing features of StackMe and elevate your workflow.</p> \
-<a href="https://github.com/whosbash/stackme" class="button">Get Started</a> \
+<p>We are thrilled to have you onboard! Explore the amazing features of {{tool_name}} and elevate your workflow.</p> \
+<a href="{{tool_repository_url}}" class="button">Get Started</a> \
 <p>If you have any questions, feel free to submit an issue to \
-  <a href="https://github.com/whosbash/stackme/issues" title="Visit our Issues page on GitHub">our repository</a>. We''re here to help!</p>'
+  <a href="{{tool_repository_url}}/issues" title="Visit our Issues page on GitHub">our repository</a>. We''re here to help!</p>'
+
+  email_template="$(replace_mustache_variables "$email_template" tool_variables)"
 
   # Generate the email
-  generate_html "$BASE_TEMPLATE" "Welcome to StackMe" "Welcome to StackMe" "$email_content"
+  generate_html "$EMAIL_TEMPLATE" "Welcome to $TOOL_NAME" "Welcome to $TOOL_NAME" "$email_content"
 }
 
 # Function to generate HTML table row
@@ -5810,11 +5922,11 @@ format_disk_usage() {
 generate_machine_specs_html() {
   # Example usage
   email_content=$(generate_machine_specs_table)
-  generate_html "$BASE_TEMPLATE" "VPS Status" "Machine Specifications" "$email_content"
+  generate_html "$EMAIL_TEMPLATE" "VPS Status" "Machine Specifications" "$email_content"
 }
 
 # Function to request SMTP information
-request_smtp_information() {
+prompt_smtp_information() {
   items='[
       {
           "name": "smtp_host",
@@ -5845,6 +5957,13 @@ request_smtp_information() {
           "description": "Password of SMTP server",
           "required": "yes",
           "validate_fn": "validate_empty_value" 
+      },
+      {
+          "name": "smtp_from_email",
+          "label": "SMTP e-mail sender",
+          "description": "SMTP e-mail sender",
+          "required": "yes",
+          "validate_fn": "validate_empty_value" 
       }
   ]'
 
@@ -5854,9 +5973,10 @@ request_smtp_information() {
 }
 
 # Function to save SMTP information
-save_smtp_information() {
-  collected_items="$(request_smtp_information)"
-  filename="$STACKME_DIR/smtp_info.json"
+prompt_and_save_smtp_information() {
+  filename="$TOOL_BASE_DIR/smtp_info.json"
+
+  collected_items="$(prompt_smtp_information)"
 
   if [[ "$collected_items" == "[]" ]]; then
     error "Unable to retrieve SMTP configuration."
@@ -5878,29 +5998,32 @@ get_smtp_configuration() {
 
   # If loading fails, request the configuration and save it
   if [[ $? -ne 0 ]]; then
-    smtp_json="$(save_smtp_information)"
+    smtp_json="$(prompt_and_save_smtp_information)"
 
     if [[ $? -ne 0 ]]; then
       error "Unable to retrieve or save SMTP configuration."
       return 1
     fi
+    
+    smtp_host="$(echo "$smtp_json" | jq -r ".smtp_host")"
+    smtp_username="$(echo "$smtp_json" | jq -r ".smtp_username")"
+    smtp_password="$(echo "$smtp_json" | jq -r ".smtp_password")"
+    check_smtp_config "$smtp_host" "$smtp_username" "$smtp_password"
+
+    if [[ $? -ne 0 ]]; then
+      error "Invalid smtp credentials. Insert valid smtp credentials."
+      return 1
+    fi
   fi
 
   echo "$smtp_json"
-}
-
-read_json() {
-  local filename="$1"
-
-  if [[ -f "$filename" ]]; then
-    cat "$filename"
-  fi
+  return 0
 }
 
 # Function to load SMTP configuration from file
 load_smtp_information() {
-  filename="$STACKME_DIR/smtp_info.json"
-  smtp_json=$(read_json "$filename")
+  filename="$TOOL_BASE_DIR/smtp_info.json"
+  smtp_json=$(load_json "$filename")
 
   if [[ -z "$smtp_json" ]]; then
     error "Unable to retrieve SMTP configuration from file $filename."
@@ -5937,7 +6060,7 @@ custom_send_email(){
 
 # Function to send a test SMTP email
 send_smtp_test_email() {
-  subject="[StackMe] Test SMTP e-mail"
+  subject="[$TOOL_NAME] Test SMTP e-mail"
   body="$(generate_test_smtp_hmtl)"
 
   custom_send_email "$subject" "$body"
@@ -5945,7 +6068,7 @@ send_smtp_test_email() {
 
 # Function to send machine specs email
 send_machine_specs_email() {
-  subject="[StackMe] Machine Specifications"
+  subject="[$TOOL_NAME] Machine Specifications"
   body="$(generate_machine_specs_html)"
   
   custom_send_email "$subject" "$body"
@@ -6232,7 +6355,7 @@ get_server_info() {
 }
 
 fetch_and_save_server_info() {
-  server_filename="$STACKME_DIR/server_info.json"
+  server_filename="$TOOL_BASE_DIR/server_info.json"
   if [[ -f "$server_filename" ]]; then
     server_info_json=$(cat "$server_filename" 2>/dev/null)
     if jq -e . >/dev/null 2>&1 <<<"$server_info_json"; then
@@ -6280,7 +6403,7 @@ initialize_server_info() {
 
   step_message="Create stackme folder"
   step_progress 2 $total_steps "$step_message"
-  mkdir -p "$STACKME_DIR"
+  mkdir -p "$TOOL_BASE_DIR"
 
   handle_exit $? 2 $total_steps "$step_message"
 
@@ -6395,7 +6518,7 @@ create_postgres_database() {
 }
 
 get_network_name(){
-  server_info_filename="${STACKME_DIR}/server_info.json"
+  server_info_filename="${TOOL_BASE_DIR}/server_info.json"
   
   if [[ ! -f "$server_info_filename" ]]; then
     error "File $server_info_filename not found."
@@ -6421,12 +6544,14 @@ fetch_stack_compose(){
   fi
 }
 
+# Function  
+
 ############################# BEGIN OF STACK DEPLOYMENT UTILITARY FUNCTIONS #######################
 
 # Function to get the database password from a configuration
 fetch_database_password() {
   local stack_name="$1"
-  local config_file="$STACKS_DIR/$stack_name/stack_config.json"
+  local config_file="$TOOL_STACKS_DIR/$stack_name/stack_config.json"
 
   # Read the database password from the config file
   local database_password
@@ -6705,7 +6830,7 @@ generate_stack_config_portainer() {
             "portainer_credentials": $portainer_credentials,
             "network_name": $network_name
         },
-        "dependencies": ["traefik"],
+        "dependencies": [],
         "actions": {
             "refresh": [],
             "prepare": [],
@@ -6804,7 +6929,7 @@ generate_stack_config_monitor() {
   step_info 3 $total_steps "Add scrape_configs to prometheus.yml"
 
   # Ensure everything is quoted correctly
-  prometheus_config_path="${STACKME_DIR}/prometheus/prometheus.yml"
+  prometheus_config_path="${TOOL_BASE_DIR}/prometheus/prometheus.yml"
   manage_prometheus_config_file "$prometheus_config_path" \
     "$prometheus_url" "$jaeger_url" "$node_exporter_url" "$cadvisor_url"
 
@@ -6813,9 +6938,9 @@ generate_stack_config_monitor() {
   message="Creating file datasource.yml"
   step_info 4 $total_steps "$message"
 
-  mkdir -p "${STACKME_DIR}/prometheus"
+  mkdir -p "${TOOL_BASE_DIR}/prometheus"
 
-  cat >"${STACKME_DIR}/prometheus/datasource.yml" <<EOL
+  cat >"${TOOL_BASE_DIR}/prometheus/datasource.yml" <<EOL
 apiVersion: 1
 datasources:
 - name: Prometheus
@@ -6850,7 +6975,7 @@ EOL
           "kibana_url": $kibana_url,
           "network_name": $network_name
         },
-        "dependencies": ["traefik", "portainer"],
+        "dependencies": [],
         "actions": {
           "refresh": [],
           "prepare": [],
@@ -6895,7 +7020,7 @@ generate_stack_config_generic_database() {
               "db_password": $db_password,
               "network_name": $network_name
           },
-          "dependencies": ["traefik", "portainer"],
+          "dependencies": [],
           "actions": {
             "refresh": [],
             "prepare": [],
@@ -7012,7 +7137,7 @@ generate_stack_config_whoami() {
               "whoami_url": $whoami_url,
               "network_name": $network_name,
           },
-          "dependencies": ["traefik", "portainer"],
+          "dependencies": [],
           "actions": {
             "refresh": [],
             "prepare": [],
@@ -7067,7 +7192,7 @@ generate_stack_config_airflow() {
 
   # Step 2: Create Airflow folders
   step_info 2 $total_steps "Creating Airflow folders"
-  mkdir -p "$STACKS_DIR/airflow/"{config,logs,dags,plugins}
+  mkdir -p "$TOOL_STACKS_DIR/airflow/"{config,logs,dags,plugins}
 
   # Step 3: Retrieve network name
   step_info 3 $total_steps "Retrieving network name"
@@ -7086,7 +7211,7 @@ generate_stack_config_airflow() {
               "url_flower": $url_flower,
               "network_name": $network_name,
           },
-          "dependencies": ["traefik", "portainer", "postgres", "redis"],
+          "dependencies": ["postgres", "redis"],
           "actions": {
             "refresh": [
               {
@@ -7150,7 +7275,7 @@ generate_stack_config_metabase() {
               "url_metabase": $url_metabase,
               "network_name": $network_name,
           },
-          "dependencies": ["traefik", "portainer", "postgres", "redis"],
+          "dependencies": ["postgres", "redis"],
           "actions": {
             "refresh": [
               {
@@ -7219,7 +7344,7 @@ generate_stack_config_yourls() {
               "url_yourls": $url_yourls,
               "network_name": $network_name,
           },
-          "dependencies": ["traefik", "portainer"],
+          "dependencies": [],
           "actions": {
             "refresh": [],
             "prepare": [],
@@ -7277,7 +7402,7 @@ generate_stack_config_appsmith() {
               "appsmith_url": $appsmith_url,
               "network_name": $network_name,
           },
-          "dependencies": ["traefik", "portainer"],
+          "dependencies": [],
           "actions": {
             "refresh": [],
             "prepare": [],
@@ -7335,7 +7460,7 @@ generate_stack_config_focalboard() {
               "focalboard_url": $focalboard_url,
               "network_name": $network_name,
           },
-          "dependencies": ["traefik", "portainer"],
+          "dependencies": [],
           "actions": {
             "refresh": [],
             "prepare": [],
@@ -7393,7 +7518,7 @@ generate_stack_config_excalidraw() {
               "excalidraw_url": $excalidraw_url,
               "network_name": $network_name,
           },
-          "dependencies": ["traefik", "portainer"],
+          "dependencies": [],
           "actions": {
             "refresh": [],
             "prepare": [],
@@ -7451,7 +7576,7 @@ generate_stack_config_glpi() {
               "glpi_url": $glpi_url,
               "network_name": $network_name,
           },
-          "dependencies": ["traefik", "portainer"],
+          "dependencies": [],
           "actions": {
             "refresh": [],
             "prepare": [],
@@ -7509,7 +7634,7 @@ generate_stack_config_qdrant() {
               "qdrant_url": $qdrant_url,
               "network_name": $network_name,
           },
-          "dependencies": ["traefik", "portainer"],
+          "dependencies": [],
           "actions": {
             "refresh": [],
             "prepare": [],
@@ -7634,7 +7759,7 @@ generate_stack_config_n8n(){
               "n8n_encryption_key": $n8n_encryption_key, 
               "network_name": $network_name
           },
-          "dependencies": ["traefik", "portainer", "postgres", "redis"],
+          "dependencies": ["postgres", "redis"],
           "actions": {
             "refresh": [
               {
@@ -7701,7 +7826,7 @@ generate_stack_config_uptimekuma() {
               "uptime_url": $uptime_url,
               "network_name": $network_name
           },
-          "dependencies": ["traefik", "portainer"],
+          "dependencies": [],
           "actions": {
             "refresh": [],
             "prepare": [],
@@ -7726,18 +7851,8 @@ deploy_stack_handler() {
   deploy_stack "$stack_name"
 }
 
-# Function to deploy a traefik service
-deploy_stack_traefik() {
-  deploy_stack_handler 'traefik'
-}
-
-# Function to deploy a portainer service
-deploy_stack_portainer() {
-  deploy_stack_handler 'portainer'
-}
-
 deploy_stacks_startup() {
-  deploy_stack_traefik
+  deploy_stack_handler 'traefik'
 
   if [[ $? -ne 0 ]]; then
     failure "Portainer deployment failed. Rolling back..."
@@ -7746,7 +7861,7 @@ deploy_stacks_startup() {
     return 1
   fi
 
-  deploy_stack_portainer
+  deploy_stack_handler 'portainer'
 
   if [[ $? -ne 0 ]]; then
     failure "Portainer deployment failed. Rolling back..."
@@ -7755,52 +7870,6 @@ deploy_stacks_startup() {
     rollback_stack "portainer"
     return 1
   fi
-}
-
-deploy_stack_monitor() {
-  deploy_stack_handler 'monitor'
-}
-
-# Function to deploy a whoami service
-deploy_stack_whoami() {
-  deploy_stack_handler 'whoami'
-}
-
-# Function to deploy a airflow service
-deploy_stack_airflow() {
-  deploy_stack_handler 'airflow'
-}
-
-# Function to deploy a n8n service
-deploy_stack_n8n() {
-  deploy_stack_handler 'n8n'
-}
-
-# Function to deploy a n8n service
-deploy_stack_uptime() {
-  deploy_stack_handler 'uptime'
-}
-
-# Function to deploy a yourls service
-deploy_stack_yourls(){
-  deploy_stack_handler 'yourls'
-}
-
-# Function to deploy a appsmith service
-deploy_stack_appsmith() {
-  deploy_stack_handler 'appsmith'
-}
-
-deploy_stack_focalboard() {
-  deploy_stack_handler 'focalboard'
-}
-
-deploy_stack_qdrant() {
-  deploy_stack_handler 'qdrant'
-}
-
-deploy_stack_excalidraw() {
-  deploy_stack_handler 'excalidraw'
 }
 
 ################################# END OF STACK DEPLOYMENT FUNCTIONS ################################
@@ -8175,4 +8244,3 @@ main() {
 
 # Call the main function
 main "$@"
-
