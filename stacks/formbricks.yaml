@@ -28,10 +28,10 @@ services:
       - CRON_SECRET={{formbricks_cron_key}}
 
       ## SMTP
-      - MAIL_FROM={{formbricks_email}}
-      - SMTP_HOST={{formbricks_host}}
-      - SMTP_PORT={{formbricks_port}}
-      - SMTP_SECURE_ENABLED={{formbricks_ssl}}
+      - MAIL_FROM={{formbricks_smtp_from_email}}
+      - SMTP_HOST={{formbricks_smtp_host}}
+      - SMTP_PORT={{formbricks_smtp_port}}
+      - SMTP_SECURE_ENABLED={{formbricks_smtp_secure}}
       - SMTP_USER={{formbricks_smtp_username}}
       - SMTP_PASSWORD={{formbricks_smtp_password}}
 

@@ -13,7 +13,7 @@ services:
       - chatwoot_nestor_mailers:/app/app/views/mailers
 
     networks:
-      - {{ nome_rede_interna }}
+      - {{network_name}}
     
     environment:
       ## Any Url with # at the end
@@ -23,7 +23,7 @@ services:
       - INSTALLATION_NAME={{chatwoot_company_name}}
 
       ## Secret key
-      - SECRET_KEY_BASE={{encryption_key}}
+      - SECRET_KEY_BASE={{chatwoot_encryption_key}}
 
       ## Chatwoot Url
       - FRONTEND_URL=https://{{chatwoot_url}}
@@ -57,17 +57,17 @@ services:
       #- STORAGE_FORCE_PATH_STYLE=true
 
       ## Dados do SMTP
-      - MAILER_SENDER_EMAIL={{chatwoot_admin_email}} <{{chatwoot_admin_email}}>
-      - SMTP_DOMAIN={{chatwoot_smtp_domain}}
-      - SMTP_ADDRESS={{chatwoot_smtp_email}}
+      - MAILER_SENDER_EMAIL={{chatwoot_smtp_from_email}} <{{chatwoot_smtp_from_email}}>
+      - SMTP_DOMAIN={{chatwoot_smtp_host}}
+      - SMTP_ADDRESS={{chatwoot_smtp_host}}
       - SMTP_PORT={{chatwoot_smtp_port}}
       - SMTP_SSL={{chatwoot_smtp_secure}}
       - SMTP_USERNAME={{chatwoot_smtp_username}}
-      - SMTP_PASSWORD={{chatwoot_email_password}}
+      - SMTP_PASSWORD={{chatwoot_smtp_password}}
       - SMTP_AUTHENTICATION=login
       - SMTP_ENABLE_STARTTLS_AUTO=true
       - SMTP_OPENSSL_VERIFY_MODE=peer
-      - MAILER_INBOUND_EMAIL_DOMAIN={{chatwoot_admin_email}}
+      - MAILER_INBOUND_EMAIL_DOMAIN={{chatwoot_smtp_from_email}}
 
       ## Melhorias
       - SIDEKIQ_CONCURRENCY=10
@@ -127,7 +127,7 @@ services:
       - INSTALLATION_NAME={{chatwoot_company_name}}
 
       ## Secret key
-      - SECRET_KEY_BASE={{encryption_key}}
+      - SECRET_KEY_BASE={{chatwoot_encryption_key}}
 
       ## Url Chatwoot
       - FRONTEND_URL=https://{{chatwoot_url}}
@@ -161,17 +161,17 @@ services:
       #- STORAGE_FORCE_PATH_STYLE=true
 
       ## SMTP
-      - MAILER_SENDER_EMAIL={{chatwoot_admin_email}} <{{chatwoot_admin_email}}> ## Email SMTP
-      - SMTP_DOMAIN={{chatwoot_smtp_domain}} ## Dominio do email
-      - SMTP_ADDRESS={{chatwoot_smtp_email}} ## Host SMTP
-      - SMTP_PORT={{chatwoot_smtp_port}} ## Porta SMTP
-      - SMTP_SSL={{chatwoot_smtp_secure}} ## Se a porta for 465 = true | Se a porta for 587 = false
-      - SMTP_USERNAME={{chatwoot_smtp_username}} ## Usuario SMTP
-      - SMTP_PASSWORD={{chatwoot_email_password}} ## Senha do SMTP
+      - MAILER_SENDER_EMAIL={{chatwoot_smtp_from_email}} <{{chatwoot_smtp_from_email}}> ## Email SMTP
+      - SMTP_DOMAIN={{chatwoot_smtp_domain}} ## Email domain
+      - SMTP_ADDRESS={{chatwoot_smtp_host}} ## SMTP host
+      - SMTP_PORT={{chatwoot_smtp_port}} ## SMTP port
+      - SMTP_SSL={{chatwoot_smtp_secure}} ## If port is 465 = true | if port is 587 = false
+      - SMTP_USERNAME={{chatwoot_smtp_username}} ## SMTP username
+      - SMTP_PASSWORD={{chatwoot_smtp_password}} ## SMTP password
       - SMTP_AUTHENTICATION=login
       - SMTP_ENABLE_STARTTLS_AUTO=true
       - SMTP_OPENSSL_VERIFY_MODE=peer
-      - MAILER_INBOUND_EMAIL_DOMAIN={{chatwoot_admin_email}} ## Email SMTP
+      - MAILER_INBOUND_EMAIL_DOMAIN={{chatwoot_admin_email}} ## SMTP email
 
       ## Improvements
       - SIDEKIQ_CONCURRENCY=10

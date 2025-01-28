@@ -16,7 +16,7 @@ services:
       - {{network_name}}
     
     environment:
-      ## Qualquer Url com # no final
+      ## Any URL with # at the end
       - CHATWOOT_HUB_URL=https://example.com/#
 
       ## Company name
@@ -25,11 +25,11 @@ services:
       ## Secret key
       - SECRET_KEY_BASE={{chatwoot_encryption_key}}
 
-      ## Url Chatwoot
+      ## Chatwoot URL
       - FRONTEND_URL=https://{{chatwoot_url}}
       - FORCE_SSL=true
 
-      ## Idioma/Localização padrão
+      ## Language
       - DEFAULT_LOCALE=pt_BR
       - TZ=America/Brasil
 
@@ -47,8 +47,8 @@ services:
       - POSTGRES_PASSWORD={{postgres_password}}
       - POSTGRES_DATABASE=chatwoot
 
-      ## Armazenamento
-      - ACTIVE_STORAGE_SERVICE=local ## use s3_compatible para MinIO
+      ## Storage
+      - ACTIVE_STORAGE_SERVICE=local ## use s3_compatible for MinIO
       #- STORAGE_BUCKET_NAME=chatwoot
       #- STORAGE_ACCESS_KEY_ID=ACCESS_KEY_MINIO
       #- STORAGE_SECRET_ACCESS_KEY=SECRET_KEY_MINIO
@@ -57,9 +57,9 @@ services:
       #- STORAGE_FORCE_PATH_STYLE=true
 
       ## SMTP Config
-      - MAILER_SENDER_EMAIL={{chatwoot_admin_email}} <{{chatwoot_admin_email}}> ## Email SMTP
-      - SMTP_DOMAIN={{chatwoot_smtp_domain}} ## Email domain
-      - SMTP_ADDRESS={{chatwoot_smtp_email}} ## Host SMTP
+      - MAILER_SENDER_EMAIL={{chatwoot_smtp_from_email}} <{{chatwoot_smtp_from_email}}> ## Email SMTP
+      - SMTP_DOMAIN={{chatwoot_smtp_host}} ## Email domain
+      - SMTP_ADDRESS={{chatwoot_smtp_host}} ## Host SMTP
       - SMTP_PORT={{chatwoot_smtp_port}} ## SMTP Port
       - SMTP_SSL={{chatwoot_smtp_secure}}
       - SMTP_USERNAME={{chatwoot_smtp_username}} ## SMTP Username
@@ -67,7 +67,7 @@ services:
       - SMTP_AUTHENTICATION=login
       - SMTP_ENABLE_STARTTLS_AUTO=true
       - SMTP_OPENSSL_VERIFY_MODE=peer
-      - MAILER_INBOUND_EMAIL_DOMAIN={{chatwoot_admin_email}} ## SMTP Email
+      - MAILER_INBOUND_EMAIL_DOMAIN={{chatwoot_smtp_from_email}} ## SMTP Email
 
       ## Improvements
       - SIDEKIQ_CONCURRENCY=10
@@ -120,20 +120,20 @@ services:
       - {{network_name}}
 
     environment:
-      ## Qualquer Url com # no final
+      ## Any URL with # at the end
       - CHATWOOT_HUB_URL=https://example.com/#
 
-      ## Nome da Empresa
+      ## Company name
       - INSTALLATION_NAME={{chatwoot_name}}
 
       ## Secret key
       - SECRET_KEY_BASE={{chatwoot_encryption_key}}
 
-      ## Url Chatwoot
+      ## Chatwoot
       - FRONTEND_URL=https://{{chatwoot_url}}
       - FORCE_SSL=true
 
-      ## Idioma/Localização padrão
+      ## Language
       - DEFAULT_LOCALE=pt_BR
       - TZ=America/Brasil
 
@@ -142,16 +142,16 @@ services:
       #- GOOGLE_OAUTH_CLIENT_SECRET=ABCDEF-GHijklmnoPqrstuvwX-yz1234567
       #- GOOGLE_OAUTH_CALLBACK_URL=https://<your-server-domain>/omniauth/google_oauth2/callback
 
-      ## Dados do Redis
+      ## Redis
       - REDIS_URL=redis://redis:6379
 
-      ## Dados do Postgres
+      ## Postgres
       - POSTGRES_HOST=postgres
       - POSTGRES_USERNAME=postgres
       - POSTGRES_PASSWORD={{postgres_password}}
       - POSTGRES_DATABASE=chatwoot
 
-      ## Armazenamento
+      ## Storage
       - ACTIVE_STORAGE_SERVICE=local ## use s3_compatible para MinIO
       #- STORAGE_BUCKET_NAME=chatwoot
       #- STORAGE_ACCESS_KEY_ID=ACCESS_KEY_MINIO
@@ -160,27 +160,27 @@ services:
       #- STORAGE_ENDPOINT=https://s3.DOMINIO.COM
       #- STORAGE_FORCE_PATH_STYLE=true
 
-      ## Dados do SMTP
-      - MAILER_SENDER_EMAIL={{chatwoot_admin_email}} <{{chatwoot_admin_email}}> ## Email SMTP
-      - SMTP_DOMAIN={{chatwoot_smtp_domain}} ## Email domain
+      ## SMTP
+      - MAILER_SENDER_EMAIL={{chatwoot_smtp_from_email}} <{{chatwoot_smtp_from_email}}> ## Email SMTP
+      - SMTP_DOMAIN={{chatwoot_smtp_host}} ## Email domain
       - SMTP_ADDRESS={{chatwoot_smtp_host}} ## SMTP Host
       - SMTP_PORT={{chatwoot_smtp_port}} ## SMTP Port
       - SMTP_SSL={{chatwoot_smtp_secure}}
-      - SMTP_USERNAME={{chatwoot_smtp_username}} ## SMTP User
-      - SMTP_PASSWORD={{chatwoot_smtp_password}} ## Senha do SMTP
+      - SMTP_USERNAME={{chatwoot_smtp_username}} ## SMTP username
+      - SMTP_PASSWORD={{chatwoot_smtp_password}} ## SMTP password
       - SMTP_AUTHENTICATION=login
       - SMTP_ENABLE_STARTTLS_AUTO=true
       - SMTP_OPENSSL_VERIFY_MODE=peer
-      - MAILER_INBOUND_EMAIL_DOMAIN={{chatwoot_admin_email}} ## Email SMTP
+      - MAILER_INBOUND_EMAIL_DOMAIN={{chatwoot_smtp_from_email}} ## SMTP email
 
-      ## Melhorias
+      ## improvements
       - SIDEKIQ_CONCURRENCY=10
       - RACK_TIMEOUT_SERVICE_TIMEOUT=0
       - RAILS_MAX_THREADS=5
       - WEB_CONCURRENCY=2
       - ENABLE_RACK_ATTACK=false
 
-      ## Outras configurações
+      ## Settings
       - NODE_ENV=production
       - RAILS_ENV=production
       - INSTALLATION_ENV=docker

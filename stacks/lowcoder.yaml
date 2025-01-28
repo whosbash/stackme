@@ -46,9 +46,9 @@ services:
       - LOWCODER_ADMIN_SMTP_PASSWORD={{lowcoder_smtp_password}}
       - LOWCODER_ADMIN_SMTP_AUTH=true
       - LOWCODER_ADMIN_SMTP_SSL_ENABLED={{lowcoder_smtp_secure}}
-      - LOWCODER_ADMIN_SMTP_STARTTLS_ENABLED={{lowcoder_startls_smtp_secure}}
-      - LOWCODER_ADMIN_SMTP_STARTTLS_REQUIRED={{lowcoder_startls_smtp_secure}}
-      - LOWCODER_EMAIL_NOTIFICATIONS_SENDER={{lowcoder_smtp_email}}
+      - LOWCODER_ADMIN_SMTP_STARTTLS_ENABLED={{lowcoder_smtp_secure}}
+      - LOWCODER_ADMIN_SMTP_STARTTLS_REQUIRED={{lowcoder_smtp_secure}}
+      - LOWCODER_EMAIL_NOTIFICATIONS_SENDER={{lowcoder_smtp_from_email}}
     
     deploy:
       mode: replicated

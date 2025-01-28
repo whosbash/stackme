@@ -42,7 +42,7 @@ services:
       - REDIS_PORT=6379
 
       ## SMTP Settings
-      - DEFAULT_FROM_EMAIL={{tooljet_smtp_email}}
+      - DEFAULT_FROM_EMAIL={{tooljet_smtp_from_email}}
       - SMTP_USERNAME={{tooljet_smtp_username}}
       - SMTP_PASSWORD={{tooljet_smtp_password}}
       - SMTP_DOMAIN={{tooljet_smtp_host}}

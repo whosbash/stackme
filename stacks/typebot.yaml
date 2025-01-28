@@ -18,18 +18,18 @@ services:
 
       ## Typebot Urls 
       - NEXTAUTH_URL=https://{{typebot_url}} ## URL Builder
-      - NEXT_PUBLIC_VIEWER_URL=https://{{viewer_url}} ## URL Viewer
+      - NEXT_PUBLIC_VIEWER_URL=https://{{typebot_viewer_url}} ## URL Viewer
       - NEXTAUTH_URL_INTERNAL=http://localhost:3000
 
       ## Enable/unable new signups
       - DISABLE_SIGNUP=false
 
       ## SMTP
-      - ADMIN_EMAIL={{typebot_email_username}}
-      - NEXT_PUBLIC_SMTP_FROM='Helpdesk' <{{typebot_email}}>
+      - ADMIN_EMAIL={{typebot_smtp_username}}
+      - NEXT_PUBLIC_SMTP_FROM='Helpdesk' <{{typebot_smtp_from_email}}>
       - SMTP_AUTH_DISABLED=false
-      - SMTP_USERNAME={{typebot_email_username}}
-      - SMTP_PASSWORD={{typebot_email_password}}
+      - SMTP_USERNAME={{typebot_smtp_username}}
+      - SMTP_PASSWORD={{typebot_smtp_password}}
       - SMTP_HOST={{typebot_smtp_host}}
       - SMTP_PORT={{typebot_smtp_port}}
       - SMTP_SECURE={{typebot_smtp_secure}}
