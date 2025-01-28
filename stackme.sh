@@ -1164,10 +1164,48 @@ custom_json_keys_with_identifier() {
 
   # Iterate through JSON keys and build a new JSON object with updated keys
   local modified_json
-  modified_json=$(echo "$json_object" | jq --arg id "$identifier" 'with_entries(.key |= "\($id)_\(.)")')
+  modified_json=$(\
+    echo "$json_object" | \
+    jq --arg id "$identifier" 'with_entries(.key |= "\($id)_\(.)")'
+  )
 
   # Print the modified JSON
   echo "$modified_json"
+}
+
+# Function 
+is_valid_json() {
+  local input="$1"
+
+  if jq empty <<< "$input" 2>/dev/null; then
+    return 0 # Valid JSON
+  else
+    return 1 # Invalid JSON
+  fi
+}
+
+
+# Function to check if a json object has fields  
+has_fields() {
+  local json_data="$1"
+  shift
+  local required_fields=("$@")
+
+  # Check if JSON object is valid
+  if ! is_valid_json "$json_data"; then
+    error "Invalid JSON data"
+    return 1
+  fi
+
+  # Check if all required fields exist
+  for key in "${required_fields[@]}"; do
+    if ! jq -e --arg key "$key" 'has($key)' <<< "$json_data" > /dev/null; then
+      return 1
+    fi
+  done
+
+  # All fields are present
+  return 0
 }
 
 ################################## END OF JSON-RELATED FUNCTIONS ################################
@@ -6421,25 +6459,26 @@ fetch_and_save_server_info() {
   server_filename="$TOOL_BASE_DIR/server_info.json"
   if [[ -f "$server_filename" ]]; then
     server_info_json=$(cat "$server_filename" 2>/dev/null)
+
     if jq -e . >/dev/null 2>&1 <<<"$server_info_json"; then
       info "Valid $server_filename found. Using existing information."
     else
       error "Content on file $server_filename is invalid. Reinitializing..."
       server_info_json=$(get_server_info)
 
-      if [[ -z "$server_info_json" ]]; then
+      if ! has_fields "$server_info_json" "server_name" "network_name"; then
         error "Unable to retrieve server and network names."
         wait_for_input
         exit 1
       fi
-      
+
       # Save the server information to a JSON file
       echo "$server_info_json" >"$server_filename"
     fi
   else
     server_info_json=$(get_server_info)
 
-    if [[ -z "$server_info_json" ]]; then
+    if ! has_fields "$server_info_json" "server_name" "network_name"; then
       error "Unable to retrieve server and network names."
       wait_for_input
       exit 1
