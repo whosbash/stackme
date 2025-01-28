@@ -94,7 +94,7 @@ services:
       - DB_POSTGRESDB_PASSWORD={{postgres_password}}
 
       ## Encryption Key
-      - N8N_ENCRYPTION_KEY={{encryption_key}}
+      - N8N_ENCRYPTION_KEY={{n8n_encryption_key}}
 
       ## Url do N8N
       - N8N_HOST={{url_editor}}
@@ -170,7 +170,7 @@ services:
       - DB_POSTGRESDB_PASSWORD={{postgres_password}}
 
       ## Encryption Key
-      - N8N_ENCRYPTION_KEY={{encryption_key}}
+      - N8N_ENCRYPTION_KEY={{n8n_encryption_key}}
 
       ## N8N Url
       - N8N_HOST={{url_editor}}
