@@ -5700,10 +5700,11 @@ deployment_pipeline() {
 deploy_stack() {
   local stack_name="$1"
 
-  # Check if Traefik and Portainer stacks exist
   traefik_and_portainer_exist
-
-  if [ $? -ne 0 ]; then
+  exit_code=$?
+  
+  # If Traefik or Portainer do not exist AND the stack is not one of them, return 1
+  if [[ $exit_code -ne 0 && "$stack_name" != "traefik" && "$stack_name" != "portainer" ]]; then
     return 1
   fi
 
