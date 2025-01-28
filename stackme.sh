@@ -6370,8 +6370,6 @@ fetch_and_save_server_info() {
   else
     server_info_json=$(get_server_info)
 
-    debug "$server_info_json"
-
     # Save the server information to a JSON file
     echo "$server_info_json" > "$server_filename"
   fi
