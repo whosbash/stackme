@@ -4200,6 +4200,9 @@ download_stack_compose_templates() {
         return 1
     fi
 
+    # Remove the destination folder if it already exists
+    rm -rf "$destination_folder"
+
     # Create the destination folder if it doesn't exist
     mkdir -p "$destination_folder" || {
         error "Failed to create destination folder $destination_folder."
@@ -7231,7 +7234,7 @@ generate_stack_config_yourls() {
           "name": $stack_name,
           "target": "portainer",
           "variables": {
-              "url_yourls": $url_yourls,
+              "yourls_url": $yourls_url,
               "network_name": $network_name,
           },
           "dependencies": ["traefik", "portainer"],
