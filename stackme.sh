@@ -5897,10 +5897,7 @@ EMAIL_TEMPLATE='<!DOCTYPE html>
     }
   </style>
 </head>
-<body>
-  <!-- Preheader Text -->
-  <div class="preheader">{{preheader_text}}</div>
-  
+<body>  
   <section class="container">
     <header class="header" role="banner">
       <img src="{{tool_logo_url}}" alt="{{tool_name}} Logo">
@@ -5976,13 +5973,20 @@ check_smtp_config() {
 # Function to generate HTML for an email
 generate_test_smtp_hmtl() {
   # Content for the email
-  local email_content='<p>Hi there,</p> \
-<p>We are thrilled to have you onboard! Explore the amazing features of {{tool_name}} and elevate your workflow.</p> \
-<a href="{{tool_repository_url}}" class="button">Get Started</a> \
-<p>If you have any questions, feel free to submit an issue to \
-  <a href="{{tool_repository_url}}/issues" title="Visit our Issues page on GitHub">our repository</a>. We''re here to help!</p>'
+  local email_content='<div style="text-align: left;">
+  <p>Hi there,</p>
+  <p>We are thrilled to have you onboard! Explore the amazing features of {{tool_name}} and elevate your workflow.</p>
+  <div style="text-align: center;">
+    <a href="{{tool_repository_url}}" class="button">Get Started</a>
+  </div>
+  <p>If you have any questions, feel free to submit an issue to
+    <a href="{{tool_repository_url}}/issues" title="Visit our Issues page on GitHub">our repository</a>. We''re here to help!
+  </p>
+</div>'
 
-  email_template="$(replace_mustache_variables "$email_content" tool_variables)"
+  email_content="$(replace_mustache_variables "$email_content" tool_variables)"
+
+  debug "$email_content"
 
   # Generate the email
   generate_html "$EMAIL_TEMPLATE" "Welcome to $TOOL_NAME" "Welcome to $TOOL_NAME" "$email_content"
@@ -8517,11 +8521,4 @@ main() {
 # # Call the main function
 # main "$@"
 
-email_content='<p>Hi there,</p> \
-<p>We are thrilled to have you onboard! Explore the amazing features of {{tool_name}} and elevate your workflow.</p> \
-<a href="{{tool_repository_url}}" class="button">Get Started</a> \
-<p>If you have any questions, feel free to submit an issue to \
-  <a href="{{tool_repository_url}}/issues" title="Visit our Issues page on GitHub">our repository</a>. We''re here to help!</p>'
-
-echo "$(replace_mustache_variables "$email_content" tool_variables)"
-
+generate_test_smtp_hmtl > test.html
