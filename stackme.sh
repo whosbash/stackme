@@ -6161,7 +6161,7 @@ send_smtp_test_email() {
   body="$(generate_test_smtp_hmtl)"
 
   # Retrieve SMTP configuration (load from file or request and save)
-  smtp_json=$(get_smtp_configuration)
+  smtp_json=$(get_smtp_configuration) >/dev/null 2>&1
 
   if [[ $? -ne 0 ]]; then
     error "Unable to retrieve SMTP configuration."
@@ -6179,7 +6179,7 @@ send_machine_specs_email() {
   body="$(generate_machine_specs_html)"
 
   # Retrieve SMTP configuration (load from file or request and save)
-  smtp_json=$(get_smtp_configuration)
+  smtp_json="$(get_smtp_configuration)" >/dev/null 2>&1
 
   if [[ $? -ne 0 ]]; then
     error "Unable to retrieve SMTP configuration."
