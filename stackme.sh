@@ -2280,18 +2280,6 @@ validate_smtp_host() {
   fi
 }
 
-# Function to validate SMTP port
-validate_smtp_port() {
-  local server=$1
-  local port=$2
-  if nc -z "$server" "$port" >/dev/null 2>&1; then
-    echo "SMTP port $port is open on $server."
-  else
-    echo "SMTP port $port is not reachable on $server. Please check the port."
-    exit 1
-  fi
-}
-
 # Function to validate username
 validate_username() {
   local value="$1"
