@@ -7613,7 +7613,6 @@ generate_stack_config_n8n(){
   n8n_smtp_username="$(echo "$collected_object" | jq -r '.n8n_smtp_username')"
   n8n_smtp_password="$(echo "$collected_object" | jq -r '.n8n_smtp_password')" 
   
-
   n8n_smtp_secure="$(cast_port_to_smtp_secure "$n8n_smtp_port")"
 
   step_message="Generating use N8N password"
@@ -7710,11 +7709,12 @@ generate_stack_config_uptimekuma() {
 
   jq -n \
     --arg stack_name "$stack_name" \
+    --arg uptimekuma_url "$uptimekuma_url" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
           "variables": {
-              "uptime_url": $uptime_url,
+              "uptimekuma_url": $uptimekuma_url,
               "network_name": $network_name
           },
           "dependencies": ["traefik", "portainer"],
@@ -7882,17 +7882,19 @@ define_menu_stacks_miscelaneous() {
   item_7="$(
     build_menu_item "focalboard" "Deploy" "deploy_stack_handler focalboard"
   )"
-
   item_8="$(
     build_menu_item "qdrant" "Deploy" "deploy_stack_handler qdrant"
   )"
   item_9="$(
     build_menu_item "excalidraw" "Deploy" "deploy_stack_handler excalidraw"
   )"
+  item_10="$(
+    build_menu_item "airflow" "Deploy" "deploy_stack_handler glpi"
+  )"
 
   items=(
     "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" 
-    "$item_6" "$item_7" "$item_8" "$item_9"
+    "$item_6" "$item_7" "$item_8" "$item_9" "$item_10"
   )
 
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
@@ -7941,7 +7943,7 @@ define_menu_utilities_smtp() {
   menu_title="SMTP utilities"
 
   item_1="$(
-    build_menu_item "Test SMPT e-mail" \
+    build_menu_item "Test e-mail" \
       "Send" "send_smtp_test_email"
   )"
   item_2="$(
