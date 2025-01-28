@@ -4963,8 +4963,6 @@ traefik_and_portainer_exist(){
     return 1
   fi
 
-  debug "Checkpoint for existence of traefik and portainer"
-
   return 0
 }
 
