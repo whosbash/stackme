@@ -1881,12 +1881,14 @@ sanitize_template() {
 replace_mustache_variables() {
   local template="$1"
   local -n vars_ref="$2"
-  
+
   for key in "${!vars_ref[@]}"; do
     value="${vars_ref[$key]}"
+
     # Escape special characters for awk and perform substitution
     template=$(echo "$template" | awk -v key="$key" -v value="$value" \
       '{gsub("{{ *" key " *}}", value); print}')
+
   done
 
   echo "$template"
@@ -5980,7 +5982,7 @@ generate_test_smtp_hmtl() {
 <p>If you have any questions, feel free to submit an issue to \
   <a href="{{tool_repository_url}}/issues" title="Visit our Issues page on GitHub">our repository</a>. We''re here to help!</p>'
 
-  email_template="$(replace_mustache_variables "$email_template" tool_variables)"
+  email_template="$(replace_mustache_variables "$email_content" tool_variables)"
 
   # Generate the email
   generate_html "$EMAIL_TEMPLATE" "Welcome to $TOOL_NAME" "Welcome to $TOOL_NAME" "$email_content"
@@ -8512,5 +8514,14 @@ main() {
   clean_screen
 }
 
-# Call the main function
-main "$@"
+# # Call the main function
+# main "$@"
+
+email_content='<p>Hi there,</p> \
+<p>We are thrilled to have you onboard! Explore the amazing features of {{tool_name}} and elevate your workflow.</p> \
+<a href="{{tool_repository_url}}" class="button">Get Started</a> \
+<p>If you have any questions, feel free to submit an issue to \
+  <a href="{{tool_repository_url}}/issues" title="Visit our Issues page on GitHub">our repository</a>. We''re here to help!</p>'
+
+echo "$(replace_mustache_variables "$email_content" tool_variables)"
+
