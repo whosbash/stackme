@@ -3837,15 +3837,18 @@ go_to_specific_page() {
 
   num_options=${#menu_options[@]}
 
-  echo -ne "${faded_color}Enter the page number: ${reset_color}" >&2
-  read -e -r page_number # Input with no echo
+  # Input page number
+  while true; do
+    echo -ne "${faded_color}Enter the page number: ${reset_color}" >&2
+    read -r page_number
 
-  # Validate page number
-  validate_page_number "$page_number" "$(((num_options - 1) / page_size + 1))"
-
-  if [[ $? -ne 0 ]]; then
-    return 1
-  fi
+    # Validate page number
+    if validate_page_number "$page_number" "$(((num_options - 1) / page_size + 1))"; then
+      break
+    else
+      echo -e "${error_color}Invalid page number! Please try again.${reset_color}" >&2
+    fi
+  done
 
   # Update current index to new page
   current_idx=$((page_number * page_size))
