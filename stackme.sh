@@ -4746,15 +4746,29 @@ upload_stack_on_portainer() {
   content_type="application/json"
   url="$(get_api_url "https" "$portainer_url" "$resource")"
 
-  curl -s -k -X POST \
+  reponse=$(
+    curl -s -k -X POST \
     -H "Authorization: Bearer $token" \
     -F "Name=$stack_name" \
     -F "file=@$compose_file" \
     -F "SwarmID=$swarm_id" \
     -F "endpointId=$endpoint_id" \
     "$url" &&
-    success "Stack '$stack_name' uploaded successfully." ||
+    success "Stack '$stack_name' uploaded successfully."
+  )
+  
+  if [[ -z "$reponse" ]]; then
     error "Failed to upload stack '$stack_name'."
+    return 1
+  fi
+
+  # Error present on respose (test for case insensitive)
+  if [[ "$reponse" == *"error"* ]]; then
+    error "Failed to upload stack '$stack_name'."
+    return 1
+  fi
+
+  return 0
 }
 
 # Function to deploy a stack
@@ -7194,6 +7208,20 @@ generate_stack_config_yourls() {
           "description": "URL to access Yourls remotely",
           "required": "yes",
           "validate_fn": "validate_url_suffix" 
+      },
+      {
+          "name": "yourls_username",
+          "label": "Yourls username",
+          "description": "Yourls username",
+          "required": "no",
+          "validate_fn": "validate_empty_value" 
+      },
+      {
+          "name": "yourls_password",
+          "label": "Yourls password",
+          "description": "Yourls password",
+          "required": "no",
+          "validate_fn": "validate_empty_value" 
       }
   ]'
 
@@ -7209,6 +7237,8 @@ generate_stack_config_yourls() {
   processed_items="$(process_prompt_items "$collected_items")"
 
   yourls_url="$(echo "$processed_items" | jq -r '.yourls_url')"
+  yourls_username="$(echo "$processed_items" | jq -r '.yourls_username')"
+  yourls_password="$(echo "$processed_items" | jq -r '.yourls_password')"
 
   # Step 2: Retrieve network name
   step_info 2 $total_steps "Retrieving network name"
@@ -7217,15 +7247,19 @@ generate_stack_config_yourls() {
   jq -n \
     --arg stack_name "$stack_name" \
     --arg yourls_url "$yourls_url" \
+    --arg yourls_username "$yourls_username" \
+    --arg yourls_password "$yourls_password" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
           "target": "portainer",
           "variables": {
               "yourls_url": $yourls_url,
+              "yourls_username": $yourls_username,
+              "yourls_password": $yourls_password,
               "network_name": $network_name,
           },
-          "dependencies": ["traefik", "portainer"],
+          "dependencies": ["traefik", "portainer", "mysql"],
           "actions": {
             "refresh": [],
             "prepare": [],
