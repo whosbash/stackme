@@ -22,8 +22,9 @@ services:
       - QDRANT__LOG_LEVEL=debug,raft=info
 
     deploy:
+      mode: replicated
+      replicas: 5
       resources:
-        replicas: 5
         limits:
           cpus: "0.3"
       labels:
