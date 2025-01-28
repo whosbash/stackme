@@ -5702,17 +5702,12 @@ deployment_pipeline() {
 deploy_stack() {
   local stack_name="$1"
 
-
   # Check if Traefik and Portainer stacks exist
-  debug "Before function traefik_and_portainer_exist: '$stack_name'..."
   traefik_and_portainer_exist
-  debug "Before function traefik_and_portainer_exist: '$stack_name'..."
 
   if [ $? -ne 0 ]; then
     return 1
   fi
-
-  debug "Deploying stack '$stack_name'..."
 
   # Check if the stack should be removed
   should_remove_stack "$stack_name"
