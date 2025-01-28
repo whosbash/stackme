@@ -4413,6 +4413,7 @@ stack_exists() {
 stacks_exist() {
   local stacks=("$@") # Array of stack names passed as arguments
   local all_exist=true
+  local stack_name 
 
   for stack_name in "${stacks[@]}"; do
     if ! stack_exists "$stack_name"; then
@@ -5701,10 +5702,11 @@ deployment_pipeline() {
 deploy_stack() {
   local stack_name="$1"
 
-  debug "Deploying stack '$stack_name'..."
 
   # Check if Traefik and Portainer stacks exist
+  debug "Before function traefik_and_portainer_exist: '$stack_name'..."
   traefik_and_portainer_exist
+  debug "Before function traefik_and_portainer_exist: '$stack_name'..."
 
   if [ $? -ne 0 ]; then
     return 1
