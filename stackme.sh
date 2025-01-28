@@ -3025,7 +3025,6 @@ get_menu_item_action() {
 }
 
 # Function to display a message, move the cursor, and read user input with an optional timeout
-# Function to display a message, read user input, and handle a timeout
 request_input() {
   local message="$1"
   local variable_name="$2"
@@ -4429,30 +4428,6 @@ stacks_exist() {
   fi
 }
 
-# Function to check if all stacks in an array exist
-check_stacks_exist() {
-  local stacks=("$@") # Array of stack names passed as arguments
-  local all_exist=true
-
-  for stack_name in "${stacks[@]}"; do
-    # Replace the command below with the appropriate check for existence
-    if ! docker stack ls | awk '{print $1}' | grep -qw "$stack_name"; then
-      echo "❌ Stack '$stack_name' does not exist."
-      all_exist=false
-    else
-      echo "✅ Stack '$stack_name' exists."
-    fi
-  done
-
-  if [ "$all_exist" = true ]; then
-    echo "🎉 All stacks exist."
-    return 0
-  else
-    echo "⚠️  Some stacks are missing."
-    return 1
-  fi
-}
-
 # Function to get the URL of a stack
 stack_url(){
   local stack_name="$1"
@@ -5207,6 +5182,8 @@ build_stack_info() {
 # Function to request permission for stack removal
 should_remove_stack() {
   local stack_name="$1"
+
+  debug "Checking if stack '$stack_name' exists."
 
   if stack_exists "$stack_name"; then
     local prompt_message="${yellow}Stack '$stack_name' exists. Would you like to remove it? (Y/n)${normal}"
