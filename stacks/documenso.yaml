@@ -38,12 +38,12 @@ services:
 
       ## Dados de SMTP
       - NEXT_PRIVATE_SMTP_TRANSPORT=smtp-auth
-      - NEXT_PRIVATE_SMTP_FROM_ADDRESS={{documenso_email}}
-      - NEXT_PRIVATE_SMTP_USERNAME={{documenso_email_username}}
-      - NEXT_PRIVATE_SMTP_PASSWORD={{documenso_email_password}}
+      - NEXT_PRIVATE_SMTP_USERNAME={{documenso_smtp_username}}
+      - NEXT_PRIVATE_SMTP_PASSWORD={{documenso_smtp_password}}
       - NEXT_PRIVATE_SMTP_HOST={{documento_smtp_host}}
       - NEXT_PRIVATE_SMTP_PORT={{documenso_smtp_port}}
       - NEXT_PRIVATE_SMTP_SECURE={{documenso_smtp_secure}}
+      - NEXT_PRIVATE_SMTP_FROM_ADDRESS={{documenso_smtp_from_email}}
       - NEXT_PRIVATE_SMTP_FROM_NAME=Helpdesk
 
       ## Settings

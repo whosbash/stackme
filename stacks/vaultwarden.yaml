@@ -14,19 +14,19 @@ services:
     #  - 1973:80
 
     environment:
-      ## Dominio do Dashboard
+      ## Dashboard URL
       - DOMAIN=https://{{vaultwarden_url}}
 
-      ## Permitir novos registros
+      ## Allow new signups
       - SIGNUPS_ALLOWED=true
 
-      ## Dados do SMTP
-      - SMTP_FROM={{vaultwarden_email}}
-      - SMTP_USERNAME={{vaultwarden_smtp_username}}
-      - SMTP_PASSWORD={{vaultwarden_smtp_password}}
+      ## SMTP
       - SMTP_HOST={{vaultwarden_smtp_host}}
       - SMTP_PORT={{vaultwarden_smtp_port}}
+      - SMTP_USERNAME={{vaultwarden_smtp_username}}
+      - SMTP_PASSWORD={{vaultwarden_smtp_password}}
       - SMTP_SECURITY={{vaultwarden_smtp_secure}}
+      - SMTP_FROM={{vaultwarden_smtp_from_email}}
 
       ## Configuração do Websocket
       - WEBSOCKET_ENABLED=true

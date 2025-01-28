@@ -23,7 +23,7 @@ services:
       - APP_CURRENCY=BRL
       - SANCTUM_STATEFUL_DOMAINS=https://{{krayincrm_url}}/public
 
-      ## Configuração do Banco de Dados
+      ## Mysql
       - DB_CONNECTION=mysql
       - DB_HOST=mysql
       - DB_PORT=3306
@@ -34,11 +34,11 @@ services:
 
       ## Configurações de e-mail
       - MAIL_MAILER=smtp
-      - MAIL_FROM_ADDRESS={{krayincrm_email}}
-      - MAIL_USERNAME={{krayincrm_email_username}}
-      - MAIL_PASSWORD={{krayincrm_email_password}}
-      - MAIL_HOST={{krayincrm_smtp_email}}
+      - MAIL_USERNAME={{krayincrm_smtp_username}}
+      - MAIL_PASSWORD={{krayincrm_smtp_password}}
+      - MAIL_HOST={{krayincrm_smtp_host}}
       - MAIL_PORT={{krayincrm_smtp_port}}
+      - MAIL_FROM_ADDRESS={{krayincrm_smtp_from_email}}
       - MAIL_ENCRYPTION={{krayincrm_smtp_secure}}
       - MAIL_FROM_NAME="Helpdesk"
 

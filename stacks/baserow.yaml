@@ -18,12 +18,12 @@ services:
 
       ## Dados SMTP
       - EMAIL_SMTP=true ## Unable/enable SMTP 
-      - FROM_EMAIL={{baserow_email}} ## Email
-      - EMAIL_SMTP_USER={{baserow_username}} ## Username
-      - EMAIL_SMTP_PASSWORD={{baserow_password}} ## SMTP Password
+      - FROM_EMAIL={{baserow_smtp_from_email}} ## Email
+      - EMAIL_SMTP_USER={{baserow_smtp_username}} ## Username
+      - EMAIL_SMTP_PASSWORD={{baserow_smtp_password}} ## SMTP Password
       - EMAIL_SMTP_HOST={{baserow_smtp_host}} ## SMTP Host
-      - EMAIL_SMTP_PORT={{baserow_port}} ## SMTP port
-      - EMAIL_SMTP_USE_SSL=true"
+      - EMAIL_SMTP_PORT={{baserow_smtp_port}} ## SMTP port
+      - EMAIL_SMTP_USE_SSL={{baserow_smtp_secure}}
 
       ## Dados Redis
       - REDIS_URL=redis://redis:6379/11

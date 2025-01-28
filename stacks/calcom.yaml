@@ -31,8 +31,8 @@ services:
       - CALENDSO_ENCRYPTION_KEY=postgresql://postgres:{{postgres_password}}@postgres:5432/calcom
 
     ## Email and SMTP
-      - EMAIL_FROM={{calcom_email}}
-      - EMAIL_SERVER_HOST={{calcom_smtp_email}}
+      - EMAIL_FROM={{calcom_smtp_from_email}}
+      - EMAIL_SERVER_HOST={{calcom_smtp_host}}
       - EMAIL_SERVER_PORT={{calcom_smtp_port}}
       - EMAIL_SERVER_USER={{calcom_smtp_username}}
       - EMAIL_SERVER_PASSWORD={{calcom_smtp_password}}

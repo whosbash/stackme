@@ -4,7 +4,7 @@ services:
     image: louislam/uptime-kuma:latest
 
     volumes:
-      - uptimekuma:/app/data
+      - uptimekuma_data:/app/data
 
     networks:
       - {{network_name}}
@@ -28,9 +28,9 @@ services:
         - traefik.http.routers.uptimekuma.service=uptimekuma
 
 volumes:
-  uptimekuma:
+  uptimekuma_data:
     external: true
-    name: uptimekuma
+    name: uptimekuma_data
 
 networks:
   {{network_name}}:

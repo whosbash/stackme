@@ -20,7 +20,8 @@ services:
 
       ## Qdrant
       - VECTOR_DB=qdrant
-      - QDRANT_ENDPOINT={{qdrant_anythingllm}}
+      - QDRANT_ENDPOINT={{qdrant_url}}
+      - QDRANT_API_KEY={{qdrant_api_key}}
 
     deploy:
       mode: replicated

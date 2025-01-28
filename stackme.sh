@@ -116,7 +116,6 @@ magenta="\033[35m"
 cyan="\033[35m"
 normal="\033[0m"
 
-
 # API URL
 STACKS_TEMPLATE_URL="https://api.github.com/repos/whosbash/stackme/contents/stacks"
 
@@ -355,6 +354,9 @@ display_text() {
 
   # Apply styling and display
   echo -e "${style}${final_text}${reset_color}"
+  echo # Newline
+
+  return 0
 }
 
 # Function to display success formatted messages
@@ -954,7 +956,6 @@ add_json_objects() {
   echo "$merged"
 }
 
-
 filter_json_object_by_keys() {
   local json="$1"         # Input JSON string
   local keys=("${@:2}")   # Array of keys (after the first argument)
@@ -1155,164 +1156,13 @@ load_json() {
 
 ############################# BEGIN OF GENERAL UTILITARY FUNCTIONS ##############################
 
-# Function to create Prometheus scrape_config
-create_scrape_config_object() {
-  # Input parameters
-  local job_name=""
-  local metrics_path="/metrics" # Default
-  local honor_timestamps="true" # Default
-  local honor_labels="false"    # Default
-  local scrape_interval="15s"   # Default
-  local targets=()
-
-  # Parse named parameters
-  while [[ "$#" -gt 0 ]]; do
-    case "$1" in
-    --job_name)
-      job_name="$2"
-      shift 2
-      ;;
-    --metrics_path)
-      metrics_path="$2"
-      shift 2
-      ;;
-    --honor_timestamps)
-      honor_timestamps="$2"
-      shift 2
-      ;;
-    --honor_labels)
-      honor_labels="$2"
-      shift 2
-      ;;
-    --scrape_interval)
-      scrape_interval="$2"
-      shift 2
-      ;;
-    --scheme)
-      scheme="$2"
-      shift 2
-      ;;
-    --targets)
-      # Split targets into an array
-      IFS=',' read -r -a targets <<<"$2"
-      shift 2
-      ;;
-    *)
-      echo "Error: Unknown parameter '$1'" >&2
-      return 1
-      ;;
-    esac
-  done
-
-  # Input validation
-  if [[ -z "$job_name" ]]; then
-    echo "Error: 'job_name' is required." >&2
-    return 1
-  fi
-  if [[ ${#targets[@]} -eq 0 ]]; then
-    echo "Error: At least one target must be provided using --targets." >&2
-    return 1
-  fi
-
-  # Use jq to create the JSON object
-  jq -n \
-    --arg job_name "$job_name" \
-    --arg metrics_path "$metrics_path" \
-    --argjson honor_timestamps "$honor_timestamps" \
-    --argjson honor_labels "$honor_labels" \
-    --arg scrape_interval "$scrape_interval" \
-    --argjson targets "$(printf '%s\n' "${targets[@]}" | jq -R . | jq -s .)" \
-    '{
-      job_name: $job_name,
-      metrics_path: $metrics_path,
-      honor_timestamps: $honor_timestamps,
-      honor_labels: $honor_labels,
-      scrape_interval: $scrape_interval,
-      static_configs: [
-        {
-          targets: $targets
-        }
-      ]
-    }'
-}
-
-# Function to add scrape_config to YAML file
-add_scrape_config_object() {
-  # Input parameters
-  local filename="$1"
-  local scrape_config="$2"
-
-  # Step 1: Check if the file exists
-  if [[ ! -f "$filename" ]]; then
-    # Step 1: Check if the file exists, and create the directory if necessary
-    if [[ ! -f "$filename" ]]; then
-      # Extract the directory from the filename
-      local dir
-      dir=$(dirname "$filename")
-
-      # Ensure the directory exists
-      if [[ ! -d "$dir" ]]; then
-        info "Directory $dir does not exist. Creating it."
-        mkdir -p "$dir"
-      fi
-    fi
-
-    info "File $filename does not exist. Initializing with default content."
-    cat <<EOF >"$filename"
-global:
-  scrape_interval: 15s
-  scrape_timeout: 10s
-  evaluation_interval: 15s
-alerting:
-  alertmanagers:
-    - static_configs:
-        - targets: []
-scrape_configs: 
-EOF
-  fi
-
-  # Step 2: Check if the job_name already exists
-  local job_name
-  job_name=$(echo "$scrape_config" | jq -r '.job_name')
-  check_existing_job_name "$filename" "$job_name"
-
-  if [[ $? -eq 0 ]]; then
-    warning "job_name '$job_name' already exists in $filename." >&2
-    return 1
-  fi
-
-  # Step 3: Add the scrape_config to the YAML file
-  yq eval -i ".scrape_configs += [$scrape_config]" "$filename"
-  success "Added scrape_config for job '$job_name' to $filename."
-}
-
-# Function to check if a job_name exists in the scrape_configs of a YAML file
-check_existing_job_name() {
-  # Input parameters
-  local filename="$1"
-  local job_name="$2"
-
-  # Validate inputs
-  if [[ -z "$filename" || -z "$job_name" ]]; then
-    error "Filename and job_name are required."
-    return 1
-  fi
-
-  # Gather all existing job_names into an array
-  local job_names
-  job_names=$(yq eval '.scrape_configs[].job_name' "$filename" 2>/dev/null)
-
-  # Check if the job_name exists in the array
-  if echo "$job_names" | grep -qx "$job_name"; then
-    return 0 # Key exists
-  else
-    return 1 # Key does not exist
-  fi
-}
-
 # Function to clean the terminal screen
 clean_screen() {
   echo -ne "\033[H\033[J" >&2
+}
+
+get_date(){
+  date '+%Y-%m-%d %H:%M:%S'
 }
 
 # Function to generate a random string
@@ -1321,6 +1171,30 @@ random_string() {
 
   local word="$(openssl rand -hex $length)"
   echo "$word"
+}
+
+# Function to cast a port to the 'smtp_secure' variable
+cast_port_to_smtp_secure() {
+  local port="$1"
+  
+  # Determine smtp_secure value based on port
+  case "$port" in
+    465)
+      echo "true"  # Secure (implicit TLS)
+      ;;
+    587)
+      echo "false" # Not secure (requires STARTTLS to be secure)
+      ;;
+    25)
+      echo "false" # Default SMTP port, not secure
+      ;;
+    2525)
+      echo "false" # Alternative SMTP port, not secure
+      ;;
+    *)
+      echo "unknown" # For any undefined port
+      ;;
+  esac
 }
 
 # Function to strip ANSI escape sequences from a string
@@ -1446,28 +1320,17 @@ assert_domain_and_ip() {
     return 1
   fi
 
-  domain_url="$(
-    search_on_json_array "$collected_items" 'name' 'domain_url' | jq -r ".value"
-  )"
+  processed_items="$(process_collection_items "$collected_items")"
 
-  ip="$(
-    search_on_json_array "$collected_items" 'name' 'ip' | jq -r ".value"
-  )"
+  domain_url="$(echo "$processed_items" | jq -r '.domain_url')"
+  ip="$(echo "$processed_items" | jq -r '.ip')"
 
   check_domain_ip "$domain_url" "$ip"
 }
 
-install_ctop() {
-    total_steps=2
-
-    # Check if ctop is already installed
-    if command -v ctop &> /dev/null; then
-        success "CTOP is already installed. Type 'ctop' in the terminal to use it."
-        wait_for_input
-        return 0
-    fi
-
-    step_info 1 $total_steps "Installing CTOP"
+# Function to install ctop
+install_ctop(){
+  step_info 1 $total_steps "Installing CTOP"
 
     # Download ctop binary
     wget https://github.com/bcicen/ctop/releases/download/v0.7.7/ctop-0.7.7-linux-amd64 -O /usr/local/bin/ctop
@@ -1491,6 +1354,29 @@ install_ctop() {
 
     success "CTOP was installed successfully. Type 'ctop' in the terminal at any moment from now."
     wait_for_input
+}
+
+# Function to run ctop 
+run_ctop() {
+    total_steps=2
+
+    # Check if ctop is already installed
+    if command -v ctop &> /dev/null; then
+        success "CTOP is already installed. Type 'ctop' in the terminal to use it."
+    else
+        # Install ctop if not already installed
+        install_ctop    
+        exit_code=$?
+
+        if [[ $exit_code -ne 0 ]]; then
+            message="Failed to install CTOP"
+            handle_exit $exit_code 2 $total_steps "$message"
+            return 1
+        fi
+    fi
+
+    # Run ctop after ensuring installation
+    ctop
 }
 
 # Function to generate a UUID
@@ -1648,7 +1534,7 @@ generate_machine_specs() {
   print_spec "Kernel Version" "$(\
     safe_exec "uname -r")"
   print_spec "Processor Model" "$(\
-    safe_exec "lscpu | awk -F ':' '/Model name/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
+    safe_exec "lscpu | awk -F ':' '/^Model name/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
   print_spec "Processor Cores" "$(\
     safe_exec "lscpu | awk -F ':' '/^CPU\\(s\\):/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
   print_spec "Processor Threads" "$(\
@@ -1805,7 +1691,6 @@ generate_machine_specs_table() {
   network_rows+=$(generate_table_row "Wi-Fi" "$wifi_info")
   html_content+=$(create_table "Network Information" "<th>Type</th><th>Details</th>" "$network_rows")
 
-
   # Return the complete HTML content
   echo "$html_content"
 }
@@ -1902,48 +1787,6 @@ bandwidth_usage() {
   else
     echo -e "${red}vnstat is not installed. Please install it to monitor bandwidth.${normal}"
   fi
-  echo ""
-}
-
-# Function to update and check VPS packages
-update_and_check_packages() {
-  # Check for the package manager (apt)
-  if command -v apt &>/dev/null; then
-    # Check for upgradable packages
-    upgradable_packages=$(apt list --upgradable 2>/dev/null)
-    if [[ -z "$upgradable_packages" ]]; then
-      echo -e "${green}No upgradable packages.${normal}" >&2
-    else
-      echo -e "${yellow}Upgradable packages detected.${normal}" >&2
-
-      # Ask for confirmation
-      message="${yellow}Would you like to update and upgrade the packages? (Y/n)${normal}"
-      if handle_confirmation_prompt "$message" "y" 5; then
-        echo ""
-
-        # Update and upgrade without logging output
-        echo -e "${yellow}Updating packages...${normal}"
-        apt-get update -y >/dev/null 2>&1
-
-        echo -e "${yellow}Upgrading packages...${normal}"
-        apt-get upgrade -y >/dev/null 2>&1
-
-        echo -e "${yellow}Removing unused packages...${normal}"
-        apt-get autoremove -y >/dev/null 2>&1
-
-        echo -e "${yellow}Cleaning up package cache...${normal}"
-        apt-get clean >/dev/null 2>&1
-
-        # Notify update completion
-        echo -e "${green}Update complete!${normal}" >&2
-      else
-        echo -e "${red}Update aborted.${normal}" >&2
-      fi
-    fi
-  else
-    echo -e "${red}Package manager not supported.${normal}" >&2
-  fi
-
   echo ""
 }
 
@@ -2359,6 +2202,18 @@ validate_email_value() {
   return 0
 }
 
+validate_smtp_port(){
+  local port=$1
+
+  # Check valid smpt ports: 25, 587, 465
+  if [[ ! "$port" =~ ^(25|587|465)$ ]]; then
+    echo "The value '$port' is not a valid SMTP port. Valid ports are 25, 587, and 465."
+    return 1
+  fi
+
+  return 0
+}
+
 # Function to validate url suffix
 validate_url_suffix() {
   local value="$1"
@@ -2415,7 +2270,7 @@ validate_port_availability() {
 }
 
 # Function to validate SMTP server connectivity
-validate_smtp_server() {
+validate_smtp_host() {
   local server=$1
   if ping -c 1 "$server" >/dev/null 2>&1; then
     echo "SMTP server $server is reachable."
@@ -2542,6 +2397,24 @@ validate_yn_response(){
 ################################# END OF VALIDATION-RELATED FUNCTION ##############################
 
 ############################### BEGIN OF GENERAL UTILITARY FUNCTIONS #############################
+
+# Function to display progress for a running command
+show_progress() {
+  local pid=$1
+  local message=${2:-""}
+  local spinner='|/-\'
+  local delay=0.1
+  echo -n "$message "
+  
+  while kill -0 $pid 2>/dev/null; do
+    for i in $(seq 0 3); do
+      echo -ne "\b${spinner:i:1}"
+      sleep $delay
+    done
+  done
+
+  echo -ne "\bDone!\n"
+}
 
 # Function to validate the input and return errors for invalid fields
 validate_value() {
@@ -3083,7 +2956,7 @@ escape_sed_special_chars() {
   echo "$input" | sed -e 's/[\/&]/\\&/g' -e 's/\\/\\\\/g' | tr '\n' '\\n'
 }
 
-####################################################################
+####################################################################################################
 
 ######################################## BEGIN OF MENU UTILS #######################################
 
@@ -4274,6 +4147,8 @@ wait_for_services() {
     local interval=5
     local elapsed=0
 
+    timout_min="$(( timeout / 60 ))"
+
     # Get the list of service names from the docker-compose setup (in swarm mode)
     services=$(docker stack services --format '{{.Name}}' "$stack_name")
 
@@ -4292,7 +4167,7 @@ wait_for_services() {
             # If the service is not running or not in the "Running" state
             if [[ -z "$service_state" ]]; then
                 all_healthy=false
-                info "Service '$service' is not healthy yet. Waiting..."
+                info "Service '$service' is not healthy yet. Waiting... we will wait $timout_min minutes."
                 break
             fi
         done
@@ -4314,7 +4189,6 @@ wait_for_services() {
         elapsed=$((elapsed + interval))
     done
 }
-
 
 # Function to download stack compose templates with progress bar
 download_stack_compose_templates() {
@@ -4364,17 +4238,9 @@ download_stack_compose_templates() {
                 file_name=$(basename "$url")
                 destination_file="$destination_folder/$file_name"
 
-                # Current time in nanoseconds
-                local current_time=$(date +%s%N)
-                local elapsed_ns=$((current_time - start_time))
-
                 # Download the file and handle errors
-                if curl -s --fail -o "$destination_file" "$url"; then
-                    # Print progress to stdout (append to the same line)
-                    printf "." > /dev/tty
-                else 
-                    # Print error to stdout (append to the same line)
-                    printf "x" > /dev/tty
+                if ! curl -s --fail -o "$destination_file" "$url"; then
+                    # Log the failed download with HTTP error message
                     error_message=$(curl -s -w "%{http_code}" -o /dev/null "$url")
                     failed_downloads+=("$(date '+%Y-%m-%d %H:%M:%S') - $file_name - Error: HTTP $error_message")
                 fi
@@ -4385,7 +4251,6 @@ download_stack_compose_templates() {
         wait
         echo # Move to a new line after progress indicators
     } > /dev/null 2>&1
-
 
     # Wait for all background jobs to finish
     wait
@@ -4398,7 +4263,6 @@ download_stack_compose_templates() {
         failure "Failed downloads logged in $failed_filename"
     fi
 }
-
 
 # Function to list the services of a stack
 list_stack_services() {
@@ -4506,7 +4370,6 @@ stack_url(){
   local path="refs/heads/main/stacks/$stack_name.yaml"
   echo "https://${host}/${organization}/${repository}/${path}"
 }
-
 
 # Function to list the required fields on a stack docker-compose
 list_stack_compose_required_fields() {
@@ -4618,11 +4481,13 @@ is_portainer_credentials_correct() {
   fi
 }
 
-# Function to signup on portainer
+# Function to signup on portainer with retry mechanism
 signup_on_portainer() {
   local portainer_url="$1"
   local username="$2"
   local password="$3"
+  local max_retries=5    # Maximum number of retry attempts
+  local retry_delay=5    # Delay (in seconds) between retries
 
   # Credentials (raw, not indented)
   credentials="{\"username\": \"$username\",\"password\": \"$password\"}"
@@ -4633,40 +4498,49 @@ signup_on_portainer() {
   local resource='users/admin/init'
   local header="Content-Type: $content_type"
 
-  info "Signing up on portainer..."
-
   # Get the URL
   url="$(get_api_url "$protocol" "$portainer_url" "$resource")"
 
-  # Get the URL
-  info "Request call: curl -s -k -X POST $url -H $header -d $credentials"
-  response="$(curl -s -k -X POST "$url" -H "$header" -d "$credentials")"
-  info "Response: $response" >&2
+  for attempt in $(seq 1 $max_retries); do
+    info "Attempt $attempt/$max_retries: Signing up on portainer..."
 
-  # Check for existing administrator user in the response
-  if [[ "$response" == *"An administrator user already exists"* ]]; then
-    warning "An administrator user already exists."
-    return 1
-  fi
+    # Perform the request
+    response="$(curl -s -k -X POST "$url" -H "$header" -d "$credentials")"
+    info "Response: $response" >&2
 
-  # Parse the response and check if it contains the expected fields
-  user_info=$(
-    echo "$response" | jq -c 'select(.Id and .Username and .Password and .Role)'
-  )
-  if [ $? -ne 0 ]; then
-    error "The response does not contain the expected fields." >&2
-    return 1
-  fi
+    # Check for existing administrator user
+    if [[ "$response" == *"An administrator user already exists"* ]]; then
+      warning "An administrator user already exists. Stopping further attempts."
+      return 1
+    fi
 
-  # Ensure the password is correctly hashed (checking the format of the password)
-  password_hash=$(echo "$response" | jq -r '.Password')
-  if [[ "$password_hash" =~ ^\$2a\$10\$ ]]; then
-    info "Administrator user created successfully."
-    return 0
-  else
-    error "Password hashing failed or response is incorrect."
-    return 1
-  fi
+    # Check if the response is a valid JSON
+    if echo "$response" | jq -e . >/dev/null 2>&1; then
+      # Parse the response and check if it contains the expected fields
+      user_info=$(echo "$response" | jq -c 'select(.Id and .Username and .Password and .Role)')
+      if [ $? -eq 0 ]; then
+        # Ensure the password is hashed correctly
+        password_hash=$(echo "$response" | jq -r '.Password')
+        if [[ "$password_hash" =~ ^\$2a\$10\$ ]]; then
+          info "Administrator user created successfully on attempt $attempt."
+          return 0
+        else
+          error "Password hashing failed or response is incorrect."
+        fi
+      else
+        error "The response does not contain the expected fields."
+      fi
+    else
+      error "The response is not a valid JSON."
+    fi
+
+    # If we've reached here, the attempt has failed
+    warning "Signup failed on attempt $attempt. Retrying in $retry_delay seconds..."
+    sleep "$retry_delay"
+  done
+
+  error "Failed to create an administrator user after $max_retries attempts."
+  return 1
 }
 
 # Function to retrieve a Portainer authentication token
@@ -5017,6 +4891,161 @@ deploy_success_message() {
   wait_for_input
 }
 
+# Function to create Prometheus scrape_config
+create_scrape_config_object() {
+  # Input parameters
+  local job_name=""
+  local metrics_path="/metrics" # Default
+  local honor_timestamps="true" # Default
+  local honor_labels="false"    # Default
+  local scrape_interval="15s"   # Default
+  local targets=()
+
+  # Parse named parameters
+  while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+    --job_name)
+      job_name="$2"
+      shift 2
+      ;;
+    --metrics_path)
+      metrics_path="$2"
+      shift 2
+      ;;
+    --honor_timestamps)
+      honor_timestamps="$2"
+      shift 2
+      ;;
+    --honor_labels)
+      honor_labels="$2"
+      shift 2
+      ;;
+    --scrape_interval)
+      scrape_interval="$2"
+      shift 2
+      ;;
+    --scheme)
+      scheme="$2"
+      shift 2
+      ;;
+    --targets)
+      # Split targets into an array
+      IFS=',' read -r -a targets <<<"$2"
+      shift 2
+      ;;
+    *)
+      echo "Error: Unknown parameter '$1'" >&2
+      return 1
+      ;;
+    esac
+  done
+
+  # Input validation
+  if [[ -z "$job_name" ]]; then
+    echo "Error: 'job_name' is required." >&2
+    return 1
+  fi
+  if [[ ${#targets[@]} -eq 0 ]]; then
+    echo "Error: At least one target must be provided using --targets." >&2
+    return 1
+  fi
+
+  # Use jq to create the JSON object
+  jq -n \
+    --arg job_name "$job_name" \
+    --arg metrics_path "$metrics_path" \
+    --argjson honor_timestamps "$honor_timestamps" \
+    --argjson honor_labels "$honor_labels" \
+    --arg scrape_interval "$scrape_interval" \
+    --argjson targets "$(printf '%s\n' "${targets[@]}" | jq -R . | jq -s .)" \
+    '{
+      job_name: $job_name,
+      metrics_path: $metrics_path,
+      honor_timestamps: $honor_timestamps,
+      honor_labels: $honor_labels,
+      scrape_interval: $scrape_interval,
+      static_configs: [
+        {
+          targets: $targets
+        }
+      ]
+    }'
+}
+
+# Function to add scrape_config to YAML file
+add_scrape_config_object() {
+  # Input parameters
+  local filename="$1"
+  local scrape_config="$2"
+
+  # Step 1: Check if the file exists
+  if [[ ! -f "$filename" ]]; then
+    # Step 1: Check if the file exists, and create the directory if necessary
+    if [[ ! -f "$filename" ]]; then
+      # Extract the directory from the filename
+      local dir
+      dir=$(dirname "$filename")
+
+      # Ensure the directory exists
+      if [[ ! -d "$dir" ]]; then
+        info "Directory $dir does not exist. Creating it."
+        mkdir -p "$dir"
+      fi
+    fi
+
+    info "File $filename does not exist. Initializing with default content."
+    cat <<EOF >"$filename"
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+scrape_configs: 
+EOF
+  fi
+
+  # Step 2: Check if the job_name already exists
+  local job_name
+  job_name=$(echo "$scrape_config" | jq -r '.job_name')
+  check_existing_job_name "$filename" "$job_name"
+
+  if [[ $? -eq 0 ]]; then
+    warning "job_name '$job_name' already exists in $filename." >&2
+    return 1
+  fi
+
+  # Step 3: Add the scrape_config to the YAML file
+  yq eval -i ".scrape_configs += [$scrape_config]" "$filename"
+  success "Added scrape_config for job '$job_name' to $filename."
+}
+
+# Function to check if a job_name exists in the scrape_configs of a YAML file
+check_existing_job_name() {
+  # Input parameters
+  local filename="$1"
+  local job_name="$2"
+
+  # Validate inputs
+  if [[ -z "$filename" || -z "$job_name" ]]; then
+    error "Filename and job_name are required."
+    return 1
+  fi
+
+  # Gather all existing job_names into an array
+  local job_names
+  job_names=$(yq eval '.scrape_configs[].job_name' "$filename" 2>/dev/null)
+
+  # Check if the job_name exists in the array
+  if echo "$job_names" | grep -qx "$job_name"; then
+    return 0 # Key exists
+  else
+    return 1 # Key does not exist
+  fi
+}
+
 # Function to remove a failed deployment
 remove_compose_if_failed_deployment() {
   local compose_path="$1"
@@ -5242,10 +5271,8 @@ execute_refresh_actions() {
 
   # Iterate over the refresh actions
   for action in "${actions[@]}"; do
-    info "Processing refresh action: $action"
-    
-    local action_name
-    action_name=$(echo "$action" | jq -r '.name') || {
+    local name
+    name=$(echo "$action" | jq -r '.name') || {
       error "Missing 'name' field in refresh action."
       return 1
     }
@@ -5257,33 +5284,31 @@ execute_refresh_actions() {
     }
 
     # Execute the command and capture its output (must be a valid JSON)
-    info "Executing refresh action: $action_name"
     command_output=$(eval "$command") || {
-      error "Failed to execute refresh action: $action_name"
+      error "Failed to execute refresh action: $name"
       return 1
     }
 
     # Validate if the output is a valid JSON object
     echo "$command_output" | jq empty >/dev/null 2>&1 || {
-      error "Refresh action '$action_name' did not return a valid JSON."
+      error "Refresh action '$name' did not return a valid JSON."
       return 1
     }
+
+    # Build a json based on command_output
+    variable_to_update="$(echo "$command_output" | jq -c ". | {\"$name\": .}")"
 
     # Merge the command output with the existing stack variables using add_json_objects
-    updated_variables=$(add_json_objects "$updated_variables" "$command_output") || {
-      error "Failed to update stack variables after executing '$action_name'"
+    updated_variables=$(add_json_objects "$updated_variables" "$variable_to_update") || {
+      error "Failed to update stack variables after executing '$name'"
       return 1
     }
-
-    info "Updated stack variables after executing '$action_name': $(echo "$updated_variables" | jq -c '.')"
-
   done
 
-  debug "Final updated stack variables: $(echo "$updated_variables" | jq -c '.')"
+  info "Refreshed stakc variables: $(echo "$updated_variables" | jq -c '.')"
 
   echo "$updated_variables"
 }
-
 
 # Function to execute prepare actions
 execute_prepare_actions() {
@@ -5463,8 +5488,6 @@ deployment_pipeline() {
     return 1
   }
 
-  debug "$stack_variables" >&2
-
   # Step 3: Execute prepare actions
   step_info 3 $total_steps "Executing prepare actions"
   local prepare_actions
@@ -5593,8 +5616,7 @@ BASE_TEMPLATE='<!DOCTYPE html>
 
     /* Content Styles */
     .content {
-      padding: 20px;
-      font-size: 1em;
+        text-align: center; /* Centers inline-block elements like the button */ 
     }
 
     /* Footer Styles */
@@ -5615,35 +5637,30 @@ BASE_TEMPLATE='<!DOCTYPE html>
       color: #aaaaaa;
     }
 
-    /* Button Styling */
+    /* Button centeredStyling */
     .button {
-      display: inline-block;
-      margin: 20px auto;
-      padding: 12px 25px;
-      background-color: #4caf50;
-      color: #ffffff;
-      text-decoration: none;
-      font-size: 1.1em;
-      font-weight: bold;
-      border-radius: 5px;
-      text-align: center;
-      cursor: pointer;
-      transition: background-color 0.3s ease, transform 0.2s ease;
+        display: inline-block; /* Ensures it only takes as much space as needed */
+        margin: 20px auto; /* Adds spacing around the button */
+        padding: 12px 25px;
+        background-color: #4caf50;
+        color: #ffffff;
+        text-decoration: none;
+        font-size: 1.1em;
+        font-weight: bold;
+        border-radius: 5px;
+        text-align: center;
+        cursor: pointer;
+        transition: background-color 0.3s ease, transform 0.2s ease;
     }
 
     .button:hover {
-      background-color: #45a049;
-      transform: translateY(-2px);
+        background-color: #45a049;
+        transform: translateY(-2px);
     }
 
     .button:active {
-      background-color: #3e8e41;
-      transform: translateY(2px);
-    }
-
-    .button:focus {
-      outline: 3px solid #4caf50;
-      outline-offset: 2px;
+        background-color: #3e8e41;
+        transform: translateY(2px);
     }
 
     /* Global Link Styling */
@@ -5734,17 +5751,17 @@ generate_html() {
 }
 
 check_smtp_config() {
-  local smtp_server="$1"
-  local smtp_user="$2"
+  local smtp_host="$1"
+  local smtp_username="$2"
   local smtp_password="$3"
   local recipient="$4"
 
   # Run swaks to check authentication
   swaks --to "$recipient" \
-    --from "$smtp_user" \
-    --server "$smtp_server" \
+    --from "$smtp_username" \
+    --server "$smtp_host" \
     --auth LOGIN \
-    --auth-user "$smtp_user" \
+    --auth-user "$smtp_username" \
     --auth-password "$smtp_password" \
     --tls --quit-after=DATA > /dev/null 2>&1
 
@@ -5764,7 +5781,6 @@ generate_test_smtp_hmtl() {
 <a href="https://github.com/whosbash/stackme" class="button">Get Started</a> \
 <p>If you have any questions, feel free to submit an issue to \
   <a href="https://github.com/whosbash/stackme/issues" title="Visit our Issues page on GitHub">our repository</a>. We''re here to help!</p>'
-
 
   # Generate the email
   generate_html "$BASE_TEMPLATE" "Welcome to StackMe" "Welcome to StackMe" "$email_content"
@@ -5814,11 +5830,11 @@ generate_machine_specs_html() {
 request_smtp_information() {
   items='[
       {
-          "name": "smtp_server",
-          "label": "SMTP server",
+          "name": "smtp_host",
+          "label": "SMTP host",
           "description": "Server to receive SMTP requests",
           "required": "yes",
-          "validate_fn": "validate_smtp_server",
+          "validate_fn": "validate_smtp_host",
           "default_value": "smtp.gmail.com"
       },
       {
@@ -5830,14 +5846,14 @@ request_smtp_information() {
           "default_value": 587
       },
       {
-          "name": "username",
+          "name": "smtp_username",
           "label": "SMTP username",
           "description": "Username of SMTP server",
           "required": "yes",
           "validate_fn": "validate_email_value" 
       },
       {
-          "name": "password",
+          "name": "smtp_password",
           "label": "SMTP password",
           "description": "Password of SMTP server",
           "required": "yes",
@@ -5909,8 +5925,10 @@ load_smtp_information() {
   echo "$smtp_json"
 }
 
-# Function to send a test SMTP email
-send_smtp_test_email() {
+custom_send_email(){
+  local subject="$1"
+  local body="$2"
+
   # Retrieve SMTP configuration (load from file or request and save)
   smtp_json=$(get_smtp_configuration)
 
@@ -5919,44 +5937,31 @@ send_smtp_test_email() {
     return 1
   fi
 
-  smtp_server="$(echo "$smtp_json" | jq -r ".smtp_server")"
+  smtp_host="$(echo "$smtp_json" | jq -r ".smtp_host")"
   smtp_port="$(echo "$smtp_json" | jq -r ".smtp_port")"
-  username="$(echo "$smtp_json" | jq -r ".username")"
-  password="$(echo "$smtp_json" | jq -r ".password")"
-
-  subject="[StackMe] Test SMTP e-mail"
-  body="$(generate_test_smtp_hmtl)"
+  smtp_username="$(echo "$smtp_json" | jq -r ".smtp_username")"
+  smtp_password="$(echo "$smtp_json" | jq -r ".smtp_password")"
 
   # Send the test email
   send_email \
-    "$username" "$username" "$smtp_server" "$smtp_port" \
-    "$username" "$password" "$subject" "$body"
+    "$smtp_username" "$smtp_username" "$smtp_host" "$smtp_port" \
+    "$smtp_username" "$smtp_password" "$subject" "$body"
+}
+
+# Function to send a test SMTP email
+send_smtp_test_email() {
+  subject="[StackMe] Test SMTP e-mail"
+  body="$(generate_test_smtp_hmtl)"
+
+  custom_send_email "$subject" "$body"
 }
 
 # Function to send machine specs email
 send_machine_specs_email() {
-  # Retrieve SMTP configuration (load from file or request and save)
-  smtp_json=$(get_smtp_configuration)
-
-  if [[ $? -ne 0 ]]; then
-    error "Unable to retrieve SMTP configuration."
-    return 1
-  fi
-
-  smtp_server="$(echo "$smtp_json" | jq -r ".smtp_server")"
-  smtp_port="$(echo "$smtp_json" | jq -r ".smtp_port")"
-  username="$(echo "$smtp_json" | jq -r ".username")"
-  password="$(echo "$smtp_json" | jq -r ".password")"
-
   subject="[StackMe] Machine Specifications"
   body="$(generate_machine_specs_html)"
-
-  debug "E-mail body: $body"
-
-  # Send the machine specs email
-  send_email \
-    "$username" "$username" "$smtp_server" "$smtp_port" \
-    "$username" "$password" "$subject" "$body"
+  
+  custom_send_email "$subject" "$body"
 }
 
 ######################################## END OF E-MAIL UTILS ######################################
@@ -6022,8 +6027,57 @@ install_all_packages() {
   done
 }
 
+# Function to update and check VPS packages
+update_and_check_packages() {
+  # Check for the package manager (apt)
+  if command -v apt &>/dev/null; then
+    # Check for upgradable packages
+    upgradable_packages=$(apt list --upgradable 2>/dev/null)
+    if [[ -z "$upgradable_packages" ]]; then
+      warning "No upgradable packages."
+    else
+      info "Upgradable packages detected."
+
+      # Ask for confirmation
+      message="$(format "question" "Would you like to update and upgrade the packages? (Y/n)")"
+      if handle_confirmation_prompt "$message" "y" 5; then
+        echo ""
+
+        # Update packages with feedback
+        holdon "Updating package list..."
+        apt-get update -y >/dev/null 2>&1 &
+        show_progress $!
+
+        # Upgrade packages with feedback
+        holdon "Upgrading packages..."
+        apt-get upgrade -y >/dev/null 2>&1 &
+        show_progress $!
+
+        # Remove unused packages with feedback
+        holdon "Removing unused packages..."
+        apt-get autoremove -y >/dev/null 2>&1 &
+        show_progress $!
+
+        # Clean package cache with feedback
+        holdon "Cleaning up package cache..."
+        apt-get clean >/dev/null 2>&1 &
+        show_progress $!
+
+        # Notify update completion
+        success "Update complete!"
+      else
+        failure "Update aborted."
+      fi
+    fi
+  else
+    failure "Package manager not supported."
+  fi
+
+  echo ""
+}
+
 # Function to prepare the environment
-update_and_install_packages() {
+prepare_environment() {
   # Function constants
   local total_steps=4
 
@@ -6206,8 +6260,10 @@ fetch_and_save_server_info() {
   else
     server_info_json=$(get_server_info)
 
+    debug "$server_info_json"
+
     # Save the server information to a JSON file
-    echo "$server_info_json" >"$server_filename"
+    echo "$server_info_json" > "$server_filename"
   fi
 
   echo "$server_info_json"
@@ -6389,26 +6445,7 @@ fetch_database_password() {
   local database_password
   database_password=$(jq -r '.db_password' "$config_file")
 
-  # Generate the output JSON
-  jq -n \
-    --arg stack_name "$stack_name" \
-    --arg database_password "$database_password" \
-    '{($stack_name + "_password"): $database_password}'
-}
-
-# Function to get the postgres password from a configuration
-fetch_postgres_password() {
-  fetch_database_password "postgres"
-}
-
-# Function to get the mysql password from a configuration
-fetch_mysql_password() {
-  fetch_database_password "mysql"
-}
-
-# Function to get the mongodb password from a configuration
-sfetch_mongodb_password() {
-  fetch_database_password "mongodb"
+  echo "$database_password"
 }
 
 # Function to create a PostgreSQL database
@@ -6449,13 +6486,31 @@ create_database_postgres() {
   fi
 }
 
-create_postgres_database_metabase(){
-  create_database_postgres 'metabase'
+# Function to display prompt items
+display_prompt_items() {
+  local prompt_items="$1"
+
+  # Display requested variables to the user
+  highlight "We will request the following variables:"
+  
+  # Iterate along json array
+  for item in $(echo "$prompt_items" | jq -r '.[] | @base64'); do
+    item=$(echo "$item" | base64 --decode)
+    name=$(echo "$item" | jq -r '.name')
+    description=$(echo "$item" | jq -r '.description')
+    required=$(echo "$item" | jq -r '.required')
+
+    if [[ "$required" == "yes" ]]; then
+      required="*"
+    else
+      required=""
+    fi
+
+    highlight "\t$required $name: $description"
+  done  
 }
 
-create_postgres_database_n8n(){
-  create_database_postgres 'n8n'
-}
+############################## END OF STACK DEPLOYMENT UTILITARY FUNCTIONS ########################
 
 #################################### BEGIN OF STACK CONFIGURATION #################################
 
@@ -6480,7 +6535,9 @@ manage_prometheus_config_file() {
 generate_stack_config_traefik() {
   local stack_name="traefik"
 
-  highlight "Gathering $stack_name configuration"
+  total_steps=2
+
+  step_info 1 $total_steps "Gathering $stack_name configuration"
 
   prompt_items='[
       {
@@ -6513,6 +6570,8 @@ generate_stack_config_traefik() {
       }
   ]'
 
+  display_prompt_items "$prompt_items"
+  
   collected_items="$(run_collection_process "$prompt_items")"
 
   if [[ "$collected_items" == "[]" ]]; then
@@ -6523,7 +6582,7 @@ generate_stack_config_traefik() {
   collected_object="$(process_prompt_items "$collected_items")"
 
   email_ssl="$(echo "$collected_object" | jq -r '.email_ssl')"
-  url_traefik="$(echo "$collected_object" | jq -r '.url_traefik')"
+  traefik_url="$(echo "$collected_object" | jq -r '.traefik_url')"
   dashboard_username="$(echo "$collected_object" | jq -r '.dashboard_username')"
   dashboard_password="$(echo "$collected_object" | jq -r '.dashboard_password')"
 
@@ -6532,6 +6591,7 @@ generate_stack_config_traefik() {
       sed -e 's/\$/\$\$/g' -e 's/\\\//\//g'
   )"
 
+  step_info 2 $total_steps "Gathering network name"
   local network_name="$(get_network_name)"
 
   if [[ -z "$network_name" ]]; then
@@ -6544,7 +6604,9 @@ generate_stack_config_traefik() {
   jq -n \
     --arg stack_name "$stack_name" \
     --arg email_ssl "$email_ssl" \
-    --arg url_traefik "$url_traefik" \
+    --arg traefik_url "$traefik_url" \
+    --arg dashboard_username "$dashboard_username" \
+    --arg dashboard_password "$dashboard_password" \
     --arg dashboard_credentials "$dashboard_credentials" \
     --arg network_name "$network_name" \
     '{
@@ -6552,7 +6614,9 @@ generate_stack_config_traefik() {
         "target": "swarm",
         "variables": {
           "email_ssl": $email_ssl,
-          "url_traefik": $url_traefik,
+          "traefik_url": $traefik_url,
+          "dashboard_username": $dashboard_username,
+          "dashboard_password": $dashboard_password,
           "dashboard_credentials": $dashboard_credentials,          
           "network_name": $network_name
         },
@@ -6573,15 +6637,13 @@ generate_stack_config_portainer() {
 
   highlight "Gathering $stack_name configuration"
 
-  step_info 1 $total_steps "Retrieving Portainer agent version"
+  step_message="Retrieving Portainer versions"
+  step_info 1 $total_steps "$step_message"
   local portainer_agent_version="$(get_latest_stable_version "portainer/agent")"
   info "Portainer agent version: $portainer_agent_version"
-  step_success 1 $total_steps "Retrieving Portainer agent version succeeded"
-
-  step_info 2 $total_steps "Retrieving Portainer ce version"
   local portainer_ce_version="$(get_latest_stable_version "portainer/portainer-ce")"
   info "Portainer ce version: $portainer_ce_version"
-  step_success 2 $total_steps "Retrieving Portainer ce version succeeded"
+  step_success 1 $total_steps "$step_message"
 
   # Prompting step
   prompt_items='[
@@ -6608,11 +6670,14 @@ generate_stack_config_portainer() {
       }
   ]'
 
-  step_info 3 $total_steps "Prompting required Portainer information"
+  display_prompt_items "$prompt_items"
+
+  step_message="Prompting required Portainer information"
+  step_info 2 $total_steps "$step_message" 
   collected_items="$(run_collection_process "$prompt_items")"
 
   if [[ "$collected_items" == "[]" ]]; then
-    step_error 3 $total_steps "Unable to prompt Portainer configuration."
+    step_error 2 $total_steps "Unable to prompt Portainer configuration."
     return 1
   fi
 
@@ -6629,7 +6694,14 @@ generate_stack_config_portainer() {
       '{"username": $username, "password": $password}'
   )"
 
+  step_info 3 $total_steps "Gathering network name"
   local network_name="$(get_network_name)"
+
+  if [[ -z "$network_name" ]]; then
+    reason="Either stackme was not initialized properly or server_info.json file is corrupted."
+    error "Unable to retrieve network name. $reason"
+    return 1
+  fi
 
   jq -n \
     --arg stack_name "$stack_name" \
@@ -6673,9 +6745,10 @@ generate_stack_config_monitor() {
 
   total_steps=4
 
+  step_info 1 $total_steps "Prompting required Monitor information"
   prompt_items='[
       {
-          "name": "prometheus_url_",
+          "name": "prometheus_url",
           "label": "Prometheus Domain Name",
           "description": "Domain name for logs and metrics",
           "required": "yes",
@@ -6718,7 +6791,8 @@ generate_stack_config_monitor() {
       }
   ]'
 
-  step_info 1 $total_steps "Prompting required Monitor information"
+  display_prompt_items "$prompt_items"
+
   collected_items="$(run_collection_process "$prompt_items")"
 
   if [[ "$collected_items" == "[]" ]]; then
@@ -6740,7 +6814,7 @@ generate_stack_config_monitor() {
 
   if [[ -z "$network_name" ]]; then
     reason="Either stackme was not initialized properly or server_info.json file is corrupted."
-    error "Unable to retrieve network name. $reason"
+    step_error 2 $total_steps "Unable to retrieve network name. $reason"
     return 1
   fi
 
@@ -6808,11 +6882,19 @@ generate_stack_config_generic_database() {
   local image_version="$2"
   local db_username="$3"
 
-  info "Generating used $stack_name password"
+  total_steps=2
+
+  step_info 1 $total_steps "Generating used $stack_name password"
   local db_password="$(random_string)"
 
-  info "Retrieving network name"
+  step_info 2 $total_steps "Retrieving network name"
   local network_name="$(get_network_name)"
+
+  if [[ -z "$network_name" ]]; then
+    reason="Either stackme was not initialized properly or server_info.json file is corrupted."
+    step_error 2 $total_steps "Unable to retrieve network name. $reason"
+    return 1
+  fi
 
   # Ensure everything is quoted correctly
   jq -n \
@@ -6919,6 +7001,8 @@ generate_stack_config_whoami() {
   ]'
 
   step_info 1 $total_steps "Prompting required $stack_name information"
+  display_prompt_items "$prompt_items"
+
   collected_items="$(run_collection_process "$prompt_items")"
 
   if [[ "$collected_items" == "[]" ]]; then
@@ -6926,13 +7010,13 @@ generate_stack_config_whoami() {
     return 1
   fi
 
+  processed_items="$(process_prompt_items "$collected_items")"
+
   # Step 2: Retrieve network name
   step_info 2 $total_steps "Retrieving network name"
   network_name="$(get_network_name)"
 
-  whoami_url="$(
-    get_variable_value_from_collection "$collected_items" "url_whoami"
-  )"
+  whoami_url="$(echo "$processed_items" | jq -r '.whoami_url')"
 
   jq -n \
     --arg stack_name "$stack_name" \
@@ -6982,6 +7066,8 @@ generate_stack_config_airflow() {
   ]'
 
   step_info 1 $total_steps "Prompting required $stack_name information"
+  display_prompt_items "$prompt_items"
+
   collected_items="$(run_collection_process "$prompt_items")"
 
   if [[ "$collected_items" == "[]" ]]; then
@@ -6989,12 +7075,10 @@ generate_stack_config_airflow() {
     return 1
   fi
 
-  url_airflow="$(
-    get_variable_value_from_collection "$collected_items" "url_airflow"
-  )"
-  url_flower="$(
-    get_variable_value_from_collection "$collected_items" "url_flower"
-  )"
+  processed_items="$(process_prompt_items "$collected_items")"
+
+  airflow_url="$(echo "$processed_items" | jq -r '.airflow_url')"
+  flower_url="$(echo "$processed_items" | jq -r '.flower_url')"
 
   # Step 2: Create Airflow folders
   step_info 2 $total_steps "Creating Airflow folders"
@@ -7006,24 +7090,24 @@ generate_stack_config_airflow() {
 
   jq -n \
     --arg stack_name "$stack_name" \
-    --arg url_airflow "$url_airflow" \
-    --arg url_flower "$url_flower" \
+    --arg airflow_url "$airflow_url" \
+    --arg flower_url "$flower_url" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
           "target": "portainer",
           "variables": {
-              "url_airflow": $url_airflow,
-              "url_flower": $url_flower,
+              "airflow_url": $airflow_url,
+              "flower_url": $flower_url,
               "network_name": $network_name,
           },
           "dependencies": ["traefik", "portainer", "postgres", "redis"],
           "actions": {
             "refresh": [
               {
-                "name": "fetch_postgres_password",
+                "name": "postgres_password",
                 "description": "Fetching postgres password",
-                "command": "fetch_postgres_password",
+                "command": "fetch_database_password postgres",
               }
             ],
             "prepare": [],
@@ -7044,7 +7128,7 @@ generate_stack_config_metabase() {
   # Prompting step
   prompt_items='[
       {
-          "name": "url_metabase",
+          "name": "metabase_url",
           "label": "Metabase domain name",
           "description": "URL to access Metabase remotely",
           "required": "yes",
@@ -7053,6 +7137,8 @@ generate_stack_config_metabase() {
   ]'
 
   step_info 1 $total_steps "Prompting required $stack_name information"
+  display_prompt_items "$prompt_items"
+
   collected_items="$(run_collection_process "$prompt_items")"
 
   if [[ "$collected_items" == "[]" ]]; then
@@ -7060,39 +7146,39 @@ generate_stack_config_metabase() {
     return 1
   fi
 
+  processed_items="$(process_prompt_items "$collected_items")"
+
+  metabase_url="$(echo "$processed_items" | jq -r '.metabase_url')"
+
   # Step 2: Retrieve network name
   step_info 2 $total_steps "Retrieving network name"
   network_name="$(get_network_name)"
 
-  url_metabase="$(
-    get_variable_value_from_collection "$collected_items" "url_metabase"
-  )"
-
   jq -n \
     --arg stack_name "$stack_name" \
-    --arg url_metabase "$url_metabase" \
+    --arg metabase_url "$metabase_url" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
           "target": "portainer",
           "variables": {
-              "url_metabase": $url_metabase,
+              "metabase_url": $metabase_url,
               "network_name": $network_name,
           },
           "dependencies": ["traefik", "portainer", "postgres", "redis"],
           "actions": {
             "refresh": [
               {
-                "name": "fetch_postgres_password",
+                "name": "postgres_password",
                 "description": "Fetching postgres password",
-                "command": "fetch_postgres_password",
+                "command": "fetch_database_password postgres",
               }
             ],
             "prepare": [
               {
                 "name": "create_postgres_database_metabase",
                 "description": "Creating Metabase database",
-                "command": "create_postgres_database_metabase",
+                "command": "create_database_postgres metabase",
               }
             ],
             "finalize": []
@@ -7112,7 +7198,7 @@ generate_stack_config_yourls() {
   # Prompting step
   prompt_items='[
       {
-          "name": "url_yourls",
+          "name": "yourls_url",
           "label": "Yourls domain name",
           "description": "URL to access Yourls remotely",
           "required": "yes",
@@ -7121,6 +7207,7 @@ generate_stack_config_yourls() {
   ]'
 
   step_info 1 $total_steps "Prompting required $stack_name information"
+  display_prompt_items "$prompt_items"
   collected_items="$(run_collection_process "$prompt_items")"
 
   if [[ "$collected_items" == "[]" ]]; then
@@ -7128,9 +7215,9 @@ generate_stack_config_yourls() {
     return 1
   fi
 
-  processefd_items="$(process_prompt_items "$collected_items")"
+  processed_items="$(process_prompt_items "$collected_items")"
 
-  url_yourls="$(echo "$processefd_items" | jq -r '.url_yourls')"
+  yourls_url="$(echo "$processed_items" | jq -r '.yourls_url')"
 
   # Step 2: Retrieve network name
   step_info 2 $total_steps "Retrieving network name"
@@ -7138,7 +7225,7 @@ generate_stack_config_yourls() {
 
   jq -n \
     --arg stack_name "$stack_name" \
-    --arg url_yourls "$url_yourls" \
+    --arg yourls_url "$yourls_url" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
@@ -7159,120 +7246,423 @@ generate_stack_config_yourls() {
   }
 }
 
+# Function to generate appsmith service configuration JSON
+generate_stack_config_appsmith() {
+  local stack_name='appsmith'
+
+  total_steps=2
+
+  # Prompting step
+  prompt_items='[
+      {
+          "name": "appsmith_url",
+          "label": "Appsmith domain name",
+          "description": "URL to access appsmith remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      }
+  ]'
+
+  step_info 1 $total_steps "Prompting required $stack_name information"
+  display_prompt_items "$prompt_items"
+
+  collected_items="$(run_collection_process "$prompt_items")"
+
+  if [[ "$collected_items" == "[]" ]]; then
+    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
+    return 1
+  fi
+
+  processed_items="$(process_prompt_items "$collected_items")"
+
+  appsmith_url="$(echo "$processed_items" | jq -r '.appsmith_url')"
+
+  # Step 2: Retrieve network name
+  step_info 2 $total_steps "Retrieving network name"
+  network_name="$(get_network_name)"
+
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg appsmith_url "$appsmith_url" \
+    --arg network_name "$network_name" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "variables": {
+              "appsmith_url": $appsmith_url,
+              "network_name": $network_name,
+          },
+          "dependencies": ["traefik", "portainer"],
+          "actions": {
+            "refresh": [],
+            "prepare": [],
+            "finalize": []
+          }
+      }' | jq . || {
+    error "Failed to generate JSON"
+    return 1
+  }
+}
+
+# Function to generate focalboard service configuration JSON
+generate_stack_config_focalboard() {
+  local stack_name='focalboard'
+
+  total_steps=2
+
+  # Prompting step
+  prompt_items='[
+      {
+          "name": "focalboard_url",
+          "label": "Focalboard domain name",
+          "description": "URL to access focalboard remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      }
+  ]'
+
+  step_info 1 $total_steps "Prompting required $stack_name information"
+  display_prompt_items "$prompt_items"
+
+  collected_items="$(run_collection_process "$prompt_items")"
+
+  if [[ "$collected_items" == "[]" ]]; then
+    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
+    return 1
+  fi
+
+  processed_items="$(process_prompt_items "$collected_items")"
+
+  focalboard_url="$(echo "$processed_items" | jq -r '.focalboard_url')"
+
+  # Step 2: Retrieve network name
+  step_info 2 $total_steps "Retrieving network name"
+  network_name="$(get_network_name)"
+
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg focalboard_url "$focalboard_url" \
+    --arg network_name "$network_name" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "variables": {
+              "focalboard_url": $focalboard_url,
+              "network_name": $network_name,
+          },
+          "dependencies": ["traefik", "portainer"],
+          "actions": {
+            "refresh": [],
+            "prepare": [],
+            "finalize": []
+          }
+      }' | jq . || {
+    error "Failed to generate JSON"
+    return 1
+  }
+}
+
+# Function to generate excalidraw service configuration JSON
+generate_stack_config_excalidraw() {
+  local stack_name='excalidraw'
+
+  total_steps=2
+
+  # Prompting step
+  prompt_items='[
+      {
+          "name": "excalidraw_url",
+          "label": "Excalidraw domain name",
+          "description": "URL to access excalidraw remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      }
+  ]'
+
+  step_info 1 $total_steps "Prompting required $stack_name information"
+  display_prompt_items "$prompt_items"
+
+  collected_items="$(run_collection_process "$prompt_items")"
+
+  if [[ "$collected_items" == "[]" ]]; then
+    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
+    return 1
+  fi
+
+  processed_items="$(process_prompt_items "$collected_items")"
+
+  excalidraw_url="$(echo "$processed_items" | jq -r '.excalidraw_url')"
+
+  # Step 2: Retrieve network name
+  step_info 2 $total_steps "Retrieving network name"
+  network_name="$(get_network_name)"
+
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg excalidraw_url "$excalidraw_url" \
+    --arg network_name "$network_name" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "variables": {
+              "excalidraw_url": $excalidraw_url,
+              "network_name": $network_name,
+          },
+          "dependencies": ["traefik", "portainer"],
+          "actions": {
+            "refresh": [],
+            "prepare": [],
+            "finalize": []
+          }
+      }' | jq . || {
+    error "Failed to generate JSON"
+    return 1
+  }
+}
+
+# Function to generate glpi service configuration JSON
+generate_stack_config_glpi() {
+  local stack_name='glpi'
+
+  total_steps=2
+
+  # Prompting step
+  prompt_items='[
+      {
+          "name": "glpi_url",
+          "label": "GLPI domain name",
+          "description": "URL to access GLPI remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      }
+  ]'
+
+  step_info 1 $total_steps "Prompting required $stack_name information"
+  display_prompt_items "$prompt_items"
+
+  collected_items="$(run_collection_process "$prompt_items")"
+
+  if [[ "$collected_items" == "[]" ]]; then
+    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
+    return 1
+  fi
+
+  processed_items="$(process_prompt_items "$collected_items")"
+
+  glpi_url="$(echo "$processed_items" | jq -r '.glpi_url')"
+
+  # Step 2: Retrieve network name
+  step_info 2 $total_steps "Retrieving network name"
+  network_name="$(get_network_name)"
+
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg glpi_url "$glpi_url" \
+    --arg network_name "$network_name" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "variables": {
+              "glpi_url": $glpi_url,
+              "network_name": $network_name,
+          },
+          "dependencies": ["traefik", "portainer"],
+          "actions": {
+            "refresh": [],
+            "prepare": [],
+            "finalize": []
+          }
+      }' | jq . || {
+    error "Failed to generate JSON"
+    return 1
+  }
+}
+
+# Function to generate qdrant service configuration JSON
+generate_stack_config_qdrant() {
+  local stack_name='qdrant'
+
+  total_steps=2
+
+  # Prompting step
+  prompt_items='[
+      {
+          "name": "qdrant_url",
+          "label": "Qdrant domain name",
+          "description": "URL to access Qdrant remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      }
+  ]'
+
+  step_info 1 $total_steps "Prompting required $stack_name information"
+  display_prompt_items "$prompt_items"
+
+  collected_items="$(run_collection_process "$prompt_items")"
+
+  if [[ "$collected_items" == "[]" ]]; then
+    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
+    return 1
+  fi
+
+  processed_items="$(process_prompt_items "$collected_items")"
+
+  qdrant_url="$(echo "$processed_items" | jq -r '.qdrant_url')"
+
+  # Step 2: Retrieve network name
+  step_info 2 $total_steps "Retrieving network name"
+  network_name="$(get_network_name)"
+
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg qdrant_url "$qdrant_url" \
+    --arg network_name "$network_name" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "variables": {
+              "qdrant_url": $qdrant_url,
+              "network_name": $network_name,
+          },
+          "dependencies": ["traefik", "portainer"],
+          "actions": {
+            "refresh": [],
+            "prepare": [],
+            "finalize": []
+          }
+      }' | jq . || {
+    error "Failed to generate JSON"
+    return 1
+  }
+}
+
 generate_stack_config_n8n(){
   local stack_name='n8n'
 
   prompt_items='[
       {
-          "name": "url_editor",
+          "name": "n8n_editor_url",
           "label": "Editor domain name",
           "description": "URL to access Editor remotely",
           "required": "yes",
           "validate_fn": "validate_url_suffix" 
       },
       {
-          "name": "url_webhook",
+          "name": "n8n_webhook_url",
           "label": "Webhook domain name",
           "description": "URL to access Webhook remotely",
           "required": "yes",
           "validate_fn": "validate_url_suffix" 
       },
       {
-          "name": "smtp_email",
+          "name": "n8n_smtp_from_email",
           "label": "SMTP E-mail",
           "description": "E-mail to send SMTP notifications",
           "required": "yes",
           "validate_fn": "validate_email_value" 
       },
       {
-          "name": "smtp_user",
+          "name": "n8n_smtp_username",
           "label": "SMTP User",
           "description": "User to send SMTP notifications",
           "required": "yes",
-          "validate_fn": "validate_username" 
+          "validate_fn": "validate_email_value" 
       },
       {
-          "name": "smtp_password",
+          "name": "n8n_smtp_password",
           "label": "SMTP Password",
           "description": "Password to send SMTP notifications",
           "required": "yes",
           "validate_fn": "validate_empty_value" 
       },
       {
-          "name": "smtp_host",
+          "name": "n8n_smtp_host",
           "label": "SMTP Host",
           "description": "Host to send SMTP notifications",
           "required": "yes",
           "validate_fn": "validate_url_suffix" 
       },
       {
-          "name": "smtp_port",
+          "name": "n8n_smtp_port",
           "label": "SMTP Port",
           "description": "Port to send SMTP notifications",
           "required": "yes",
-          "validate_fn": "validate_port" 
-      },
-      {
-          "name": "smtp_secure",
-          "label": "SMTP Secure",
-          "description": "Secure to send SMTP notifications",
-          "required": "yes",
-          "validate_fn": "validate_yn_response" 
+          "validate_fn": "validate_smtp_port" 
       }
   ]'
+
+  step_message="Retrieving $stack_name configuration"
+  step_info 1 $total_steps "$step_message"
+
+  display_prompt_items "$prompt_items"
 
   collected_items="$(run_collection_process "$prompt_items")"
 
   if [[ "$collected_items" == "[]" ]]; then
-    error "Unable to retrieve N8N configuration."
+    error "Unable to retrieve $stack_name configuration."
     return 1
   fi
 
   collected_object="$(process_prompt_items "$collected_items")"
 
-  url_editor="$(echo "$collected_object" | jq -r '.url_editor')"
-  url_webhook="$(echo "$collected_object" | jq -r '.url_webhook')"
-  smtp_email="$(echo "$collected_object" | jq -r '.smtp_email')"
-  smtp_user="$(echo "$collected_object" | jq -r '.smtp_user')"
-  smtp_password="$(echo "$collected_object" | jq -r '.smtp_password')" 
-  smtp_host="$(echo "$collected_object" | jq -r '.smtp_host')" 
-  smtp_port="$(echo "$collected_object" | jq -r '.smtp_port')" 
-  smtp_secure="$(echo "$collected_object" | jq -r '.smtp_secure')"
+  n8n_editor_url="$(echo "$collected_object" | jq -r '.n8n_editor_url')"
+  n8n_webhook_url="$(echo "$collected_object" | jq -r '.n8n_webhook_url')"
+  n8n_smtp_from_email="$(echo "$collected_object" | jq -r '.n8n_smtp_from_email')"
+  n8n_smtp_host="$(echo "$collected_object" | jq -r '.n8n_smtp_host')" 
+  n8n_smtp_port="$(echo "$collected_object" | jq -r '.n8n_smtp_port')"
+  n8n_smtp_username="$(echo "$collected_object" | jq -r '.n8n_smtp_username')"
+  n8n_smtp_password="$(echo "$collected_object" | jq -r '.n8n_smtp_password')" 
+  
+  n8n_smtp_secure="$(cast_port_to_smtp_secure "$n8n_smtp_port")"
 
   step_message="Generating use N8N password"
-  step_info 1 $total_steps "$step_message"
+  step_info 2 $total_steps "$step_message"
   local network_name="$(get_network_name)"
+
+  step_message="Create encryption key"
+  step_info 3 $total_steps "$step_message"
+  local encryption_key="$(random_string)"
 
   jq -n \
     --arg stack_name "$stack_name" \
+    --arg n8n_url_editor "$n8n_editor_url" \
+    --arg n8n_url_webhook "$n8n_webhook_url" \
+    --arg n8n_smtp_email "$n8n_smtp_email" \
+    --arg n8n_smtp_user "$n8n_smtp_user" \
+    --arg n8n_smtp_password "$n8n_smtp_password" \
+    --arg n8n_smtp_host "$n8n_smtp_host" \
+    --arg n8n_smtp_port "$n8n_smtp_port" \
+    --arg n8n_smtp_secure "$n8n_smtp_secure" \
+    --arg n8n_encryption_key "$encryption_key" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
           "variables": {
-              "url_editor": $url_editor,
-              "url_webhook": $url_webhook,
-              "smtp_email": $smtp_email,
-              "smtp_user": $smtp_user, 
-              "smtp_password": $smtp_password,
-              "smtp_host": $smtp_host,
-              "smtp_port": $smtp_port,
-              "smtp_secure": $smtp_secure, 
+              "n8n_editor_url": $n8n_editor_url,
+              "n8n_webhook_url": $n8n_webhook_url,
+              "n8n_smtp_from_email": $n8n_smtp_from_email,
+              "n8n_smtp_username": $n8n_smtp_username, 
+              "n8n_smtp_password": $n8n_smtp_password,
+              "n8n_smtp_host": $n8n_smtp_host,
+              "n8n_smtp_port": $n8n_smtp_port,
+              "n8n_smtp_secure": $n8n_smtp_secure,
+              "n8n_encryption_key": $n8n_encryption_key, 
               "network_name": $network_name
           },
           "dependencies": ["traefik", "portainer", "postgres", "redis"],
           "actions": {
             "refresh": [
               {
-                "name": "fetch_postgres_password",
+                "name": "postgres_password",
                 "description": "Fetching postgres password",
-                "command": "fetch_postgres_password",
+                "command": "fetch_database_password postgres",
               }
             ],
             "prepare": [
               {
                 "name": "create_postgres_database_n8n",
                 "description": "Creating N8N database",
-                "command": "create_postgres_database_n8n",
+                "command": "create_database_postgres n8n",
               }
             ],
             "finalize": []
@@ -7283,23 +7673,25 @@ generate_stack_config_n8n(){
     }
 }
 
-generate_stack_config_uptime_kuma() {
-  local stack_name="uptime"
+generate_stack_config_uptimekuma() {
+  local stack_name="uptimekuma"
 
   total_steps=2
 
   # Prompting step
   prompt_items='[
       {
-          "name": "url_metabase",
-          "label": "Metabase domain name",
-          "description": "URL to access Metabase remotely",
+          "name": "uptimekuma_url",
+          "label": "Uptime kuma domain name",
+          "description": "URL to access Uptime kuma remotely",
           "required": "yes",
           "validate_fn": "validate_url_suffix" 
       }
   ]'
 
   step_info 1 $total_steps "Prompting required $stack_name information"
+  display_prompt_items "$prompt_items"
+
   collected_items="$(run_collection_process "$prompt_items")"
 
   if [[ "$collected_items" == "[]" ]]; then
@@ -7309,7 +7701,7 @@ generate_stack_config_uptime_kuma() {
 
   processed_items="$(process_prompt_items "$collected_items")"
 
-  uptime_url="$(echo "$processed_items" | jq -r '.uptime_url')"
+  uptimekuma_url="$(echo "$processed_items" | jq -r '.uptimekuma_url')"
 
   # Step 2: Retrieve network name
   step_info 2 $total_steps "Retrieving network name"
@@ -7317,11 +7709,12 @@ generate_stack_config_uptime_kuma() {
 
   jq -n \
     --arg stack_name "$stack_name" \
+    --arg uptimekuma_url "$uptimekuma_url" \
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
           "variables": {
-              "uptime_url": $uptime_url,
+              "uptimekuma_url": $uptimekuma_url,
               "network_name": $network_name
           },
           "dependencies": ["traefik", "portainer"],
@@ -7336,7 +7729,6 @@ generate_stack_config_uptime_kuma() {
     }
 
 }
-
 
 #################################### END OF STACK CONFIGURATION ###################################
 
@@ -7385,36 +7777,6 @@ deploy_stack_monitor() {
   deploy_stack_handler 'monitor'
 }
 
-# Function to deploy a PostgreSQL stack
-deploy_stack_postgres() {
-  deploy_stack_handler 'postgres'
-}
-
-# Function to deploy a PostgreSQL stack
-deploy_stack_pgvector() {
-  deploy_stack_handler 'pgvector'
-}
-
-# Function to deploy a Redis service
-deploy_stack_redis() {
-  deploy_stack_handler 'redis'
-}
-
-# Function to deploy a MySQL service
-deploy_stack_mysql() {
-  deploy_stack_handler 'mysql'
-}
-
-# Function to deploy a MariaDB service
-deploy_stack_mariadb() {
-  deploy_stack_handler 'mariadb'
-}
-
-# Function to deploy a MongoDB service
-deploy_stack_mongodb() {
-  deploy_stack_handler 'mongodb'
-}
-
 # Function to deploy a whoami service
 deploy_stack_whoami() {
   deploy_stack_handler 'whoami'
@@ -7425,24 +7787,36 @@ deploy_stack_airflow() {
   deploy_stack_handler 'airflow'
 }
 
-# Function to deploy a metabase service
-deploy_stack_metabase() {
-  deploy_stack_handler 'metabase'
-}
-
 # Function to deploy a n8n service
 deploy_stack_n8n() {
   deploy_stack_handler 'n8n'
 }
 
 # Function to deploy a n8n service
-deploy_stack_uptime() {
-  deploy_stack_handler 'uptime'
+deploy_stack_uptimekuma() {
+  deploy_stack_handler 'uptimekuma'
 }
 
 # Function to deploy a yourls service
 deploy_stack_yourls(){
   deploy_stack_handler 'yourls'
+}
+
+# Function to deploy a appsmith service
+deploy_stack_appsmith() {
+  deploy_stack_handler 'appsmith'
+}
+
+deploy_stack_focalboard() {
+  deploy_stack_handler 'focalboard'
+}
+
+deploy_stack_qdrant() {
+  deploy_stack_handler 'qdrant'
+}
+
+deploy_stack_excalidraw() {
+  deploy_stack_handler 'excalidraw'
 }
 
 ################################# END OF STACK DEPLOYMENT FUNCTIONS ################################
@@ -7455,23 +7829,26 @@ define_menu_stacks_databases() {
   menu_title="Database stacks"
 
   item_1="$(
-    build_menu_item "postgres" "Deploy" "deploy_stack_postgres"
+    build_menu_item "postgres" "Deploy" "deploy_stack_handler postgres"
   )"
   item_2="$(
-    build_menu_item "pgvector" "Deploy" "deploy_stack_pgvector"
+    build_menu_item "pgvector" "Deploy" "deploy_stack_handler pgvector"
   )"
   item_3="$(
-    build_menu_item "redis" "Deploy" "deploy_stack_redis"
+    build_menu_item "redis" "Deploy" "deploy_stack_handler redis"
   )"
   item_4="$(
-    build_menu_item "mysql" "Deploy" "deploy_stack_mysql"
+    build_menu_item "mysql" "Deploy" "deploy_stack_handler mysql"
   )"
   item_5="$(
-    build_menu_item "mongodb" "Deploy" "deploy_stack_mongodb"
+    build_menu_item "mongodb" "Deploy" "deploy_stack_handler mongodb"
+  )"
+  item_6="$(
+    build_menu_item "mariadb" "Deploy" "deploy_stack_handler mariadb"
   )"
 
   items=(
-    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5"
+    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" "$item_6"
   )
 
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
@@ -7485,20 +7862,39 @@ define_menu_stacks_miscelaneous() {
   menu_title="Miscelaneous stacks"
 
   item_1="$(
-    build_menu_item "whoami" "Deploy" "deploy_stack_whoami"
+    build_menu_item "whoami" "Deploy" "deploy_stack_handler whoami"
   )"
   item_2="$(
-    build_menu_item "metabase" "Deploy" "deploy_stack_metabase"
+    build_menu_item "metabase" "Deploy" "deploy_stack_handler metabase"
   )"
   item_3="$(
-    build_menu_item "n8n" "Deploy" "deploy_stack_n8n"
+    build_menu_item "n8n" "Deploy" "deploy_stack_handler n8n"
   )"
   item_4="$(
-    build_menu_item "airflow" "Deploy" "deploy_stack_airflow"
+    build_menu_item "uptimekuma" "Deploy" "deploy_stack_handler uptimekuma"
+  )"
+  item_5="$(
+    build_menu_item "yourls" "Deploy" "deploy_stack_handler yourls"
+  )"
+  item_6="$(
+    build_menu_item "appsmith" "Deploy" "deploy_stack_handler appsmith"
+  )"
+  item_7="$(
+    build_menu_item "focalboard" "Deploy" "deploy_stack_handler focalboard"
+  )"
+  item_8="$(
+    build_menu_item "qdrant" "Deploy" "deploy_stack_handler qdrant"
+  )"
+  item_9="$(
+    build_menu_item "excalidraw" "Deploy" "deploy_stack_handler excalidraw"
+  )"
+  item_10="$(
+    build_menu_item "airflow" "Deploy" "deploy_stack_handler glpi"
   )"
 
   items=(
-    "$item_1" "$item_2" "$item_3" "$item_4"
+    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" 
+    "$item_6" "$item_7" "$item_8" "$item_9" "$item_10"
   )
 
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
@@ -7513,13 +7909,12 @@ define_menu_stacks() {
 
   item_1="$(
     build_menu_item "Startup" \
-      "Traefik & Portainer" \
-      "deploy_stacks_startup"
+      "Traefik & Portainer" "deploy_stacks_startup"
   )"
   item_2="$(
     build_menu_item "Monitor" \
       "Jaeger & Prometheus & Node Exporter & Grafana & Kibana & " \
-      "deploy_stack_monitor"
+      "deploy_stack_handler monitor"
   )"
   item_3="$(
     build_menu_item "Databases" \
@@ -7548,7 +7943,7 @@ define_menu_utilities_smtp() {
   menu_title="SMTP utilities"
 
   item_1="$(
-    build_menu_item "Test SMPT e-mail" \
+    build_menu_item "Test e-mail" \
       "Send" "send_smtp_test_email"
   )"
   item_2="$(
@@ -7571,8 +7966,7 @@ define_menu_utilities_docker() {
   menu_title="Docker utilities"
 
   item_1="$(
-    build_menu_item "CTOP" \
-        "Install docker manager on terminal" "install_ctop"
+    build_menu_item "CTOP" "Run docker manager ctop on terminal" "run_ctop"
   )"
 
   items=(
@@ -7590,12 +7984,10 @@ define_menu_utilities() {
   menu_title="Utilities"
 
   item_1="$(
-    build_menu_item "SMTP" \
-      "Test and tools" "navigate_menu 'main:utilities:smtp'"
+    build_menu_item "SMTP" "Test and tools" "navigate_menu 'main:utilities:smtp'"
   )"
   item_2="$(
-    build_menu_item "Docker" \
-        "Tools" "navigate_menu 'main:utilities:docker'"
+    build_menu_item "Docker" "Tools" "navigate_menu 'main:utilities:docker'"
   )"
 
   items=(
@@ -7612,45 +8004,55 @@ define_menu_health() {
   menu_key="main:health"
   menu_title="Health"
 
+  run_command(){
+    local title="$1"
+    local command="$2"
+
+    diplay_header "$title"
+
+    eval "$command"
+    wait_for_input
+  }
+
   item_1="$(
     build_menu_item "Machine specifications" "describe" \
-      "diplay_header 'Machine specifications' && generate_machine_specs && wait_for_input"
+      "run_command 'Machine specifications' 'generate_machine_specs'"
   )"
   item_2="$(
     build_menu_item "Awake Usage" "describe" \
-      "diplay_header 'Uptime' && uptime_usage && wait_for_input"
+      "run_command 'Uptime' 'uptime_usage'"
   )"
   item_3="$(
     build_menu_item "Memory Usage" "describe" \
-      "diplay_header 'Memory' && memory_usage && wait_for_input"
+      "run_command 'Memory' 'memory_usage'"
   )"
   item_4="$(
     build_menu_item "Disk Usage" "describe" \
-      "diplay_header 'Disk' && disk_usage && wait_for_input"
+      "run_command 'Disk' 'disk_usage'"
   )"
   item_5="$(
     build_menu_item "Network" "describe" \
-      "diplay_header 'Network' && network_usage && wait_for_input"
+      "run_command 'Network' 'network_usage'"
   )"
   item_6="$(
     build_menu_item "Top Processes" "list" \
-      "diplay_header 'Processes' && top_processes && wait_for_input"
+      "run_command 'Processes' 'top_processes'"
   )"
   item_7="$(
     build_menu_item "Security" "diagnose" \
-      "diplay_header 'Security' && security_diagnostics && wait_for_input"
+      "run_command 'Security' 'security_diagnostics'"
   )"
   item_8="$(
     build_menu_item "Load Average" "describe" \
-      "diplay_header 'Load Average' && load_average && wait_for_input"
+      "run_command 'Load Average' 'load_average'"
   )"
   item_9="$(
     build_menu_item "Bandwidth" "describe" \
-      "diplay_header 'Bandwidth' && bandwidth_usage && wait_for_input"
+      "run_command 'Bandwidth' 'bandwidth_usage'"
   )"
   item_10="$(
     build_menu_item "Package Updates" "install" \
-      "diplay_header 'Package Updates' && update_and_check_packages && wait_for_input"
+      "run_command 'Package Updates' 'update_and_check_packages'"
   )"
   items=(
     "$item_1" "$item_2" "$item_3" "$item_4" "$item_5"
@@ -7727,13 +8129,12 @@ usage() {
 
 startup() {
   # Install required packages
-  update_and_install_packages
+  prepare_environment
   clear
 
   # Perform initialization
   initialize_server_info
   clear
-
 }
 
 # Parse command-line arguments
@@ -7812,3 +8213,4 @@ main() {
 
 # Call the main function
 main "$@"
+

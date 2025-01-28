@@ -30,10 +30,10 @@ services:
       - AFFINE_CONFIG_PATH=/root/.affine/config
 
       ## SMTP
-      - MAILER_USER={{affine_smtp_email}}
-      - MAILER_PASSWORD={{affine_smtp_password}}
       - MAILER_HOST={{affine_smtp_host}}
       - MAILER_PORT={{affine_smtp_port}}
+      - MAILER_USER={{affine_smtp_username}}
+      - MAILER_PASSWORD={{affine_smtp_password}}
 
       ## Postgres
       - POSTGRES_USER=postgres
