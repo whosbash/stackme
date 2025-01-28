@@ -4962,6 +4962,8 @@ traefik_and_portainer_exist(){
     return 1
   fi
 
+  debug "Checkpoint for existence of traefik and portainer"
+
   return 0
 }
 
@@ -5182,8 +5184,6 @@ build_stack_info() {
 # Function to request permission for stack removal
 should_remove_stack() {
   local stack_name="$1"
-
-  debug "Checking if stack '$stack_name' exists."
 
   if stack_exists "$stack_name"; then
     local prompt_message="${yellow}Stack '$stack_name' exists. Would you like to remove it? (Y/n)${normal}"
@@ -5664,6 +5664,8 @@ deploy_stack() {
   if [ $? -ne 0 ]; then
     return 1
   fi
+
+  debug "Deploying stack '$stack_name'..."
 
   # Check if the stack should be removed
   should_remove_stack "$stack_name"
