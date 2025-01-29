@@ -6715,6 +6715,49 @@ create_database_postgres() {
   fi
 }
 
+# Function to create a PostgreSQL user
+create_user_postgres() {
+  local user_name="$1"
+  local user_password="$2"
+  local db_user="postgres"
+
+  local container_id
+  local user_exists
+
+  # Display a message about the user creation attempt
+  info "Creating PostgreSQL user: $user_name in Postgres container"
+
+  # Check if the container is running
+  container_id=$(docker ps -q --filter "name=^postgres")
+  if [ -z "$container_id" ]; then
+    error "Container 'postgres' is not running. Cannot create user."
+    return 1
+  fi
+
+  # Check if the user already exists
+  user_exists=$(\
+    docker exec "$container_id" \
+    psql -U "$db_user" -tAc "SELECT 1 FROM pg_roles WHERE rolname='$user_name';"\
+  )
+
+  if [ "$user_exists" == "1" ]; then
+    info "User '$user_name' already exists. Skipping creation."
+    return 0
+  fi
+
+  # Create the user if it doesn't exist
+  info "Creating user '$user_name'..."
+  if docker exec "$container_id" \
+    psql -U "$db_user" -c "CREATE USER \"$user_name\" WITH PASSWORD '$user_password';" >/dev/null 2>&1; then
+    success "User '$user_name' created successfully."
+    return 0
+  else
+    error "Failed to create user '$user_name'. Please check the logs for details."
+    return 1
+  fi
+}
+
+
 # Function to display prompt items
 display_prompt_items() {
   local prompt_items="$1"
@@ -8035,14 +8078,14 @@ generate_stack_config_odoo() {
           },
           "dependencies": [],
           "actions": {
-            "refresh": [
+            "refresh": [],
+            "prepare": [
               {
-                "name": "postgres_password",
-                "description": "Fetching postgres password",
-                "command": "fetch_database_password postgres",
+                "name": "create_user odoo",
+                "description": "Creating odoo user",
+                "command": "create_user_postgres metabase",
               }
             ],
-            "prepare": [],
             "finalize": []
           }
       }' | jq . || {
