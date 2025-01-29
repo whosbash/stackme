@@ -5733,8 +5733,6 @@ deploy_stack() {
   local stack_config
   stack_config=$(eval "generate_stack_config_$stack_name")
 
-  debug "$stack_config"
-
   if [ -z "$stack_config" ]; then
     return 1
   fi
@@ -8090,6 +8088,8 @@ generate_stack_config_botpress() {
       error "Failed to generate JSON"
       return 1
   }
+
+  debug "$config_instructions"
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
