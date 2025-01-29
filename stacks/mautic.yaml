@@ -24,7 +24,7 @@ services:
       
       ## Acess data
       - MAUTIC_ADMIN_EMAIL={{mautic_email}}
-      - MAUTIC_ADMIN_USERNAME={{mautic_user}}
+      - MAUTIC_ADMIN_USERNAME={{mautic_username}}
       - MAUTIC_ADMIN_PASSWORD={{mautic_password}}
       - MAUTIC_URL=https://{{mautic_url}}
 

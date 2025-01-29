@@ -15,7 +15,7 @@ services:
       - NEXT_PUBLIC_WEBAPP_URL=https://{{documenso_url}}
 
       ## Secret Keys
-      - NEXTAUTH_SECRET={{documenso_secret}}
+      - NEXTAUTH_SECRET={{documenso_secret_key}}
       - NEXT_PRIVATE_ENCRYPTION_KEY={{documenso_secret}}
       - NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY={{documenso_secret}}
 

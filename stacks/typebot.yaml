@@ -85,7 +85,7 @@ services:
 
       ## Urls do typebot
       - NEXTAUTH_URL=https://{{typebot_url}} ## Builder URL 
-      - NEXT_PUBLIC_VIEWER_URL=https://{{viewer_url}} ## Viewer URL 
+      - NEXT_PUBLIC_VIEWER_URL=https://{{typebot_viewer_url}} ## Viewer URL 
       - NEXTAUTH_URL_INTERNAL=http://localhost:3000
 
       ## Unable/enable new signups
@@ -127,7 +127,7 @@ services:
       labels:
         - io.portainer.accesscontrol.users=admin
         - traefik.enable=true
-        - traefik.http.routers.typebot_viewer.rule=Host(`{{viewer_url}}`)
+        - traefik.http.routers.typebot_viewer.rule=Host(`{{typebot_viewer_url}}`)
         - traefik.http.routers.typebot_viewer.entrypoints=websecure
         - traefik.http.routers.typebot_viewer.tls.certresolver=letsencryptresolver
         - traefik.http.services.typebot_viewer.loadbalancer.server.port=3000

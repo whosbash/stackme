@@ -16,7 +16,7 @@ services:
       - FORCE_SSL=true
 
       ## Secret Key
-      - SECRET_KEY_BASE={{docuseal_key}}
+      - SECRET_KEY_BASE={{docuseal_secret_key}}
 
       ## Postgres
       - DATABASE_URL=postgresql://postgres:{{postgres_password}}@postgres:5432/docuseal

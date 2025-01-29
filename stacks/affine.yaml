@@ -24,7 +24,7 @@ services:
 
     environment:
       ## Affine
-      - AFFINE_ADMIN_EMAIL={{affine_smtp_email}}
+      - AFFINE_ADMIN_EMAIL={{affine_email}}
       - AFFINE_ADMIN_PASSWORD={{affine_password}}
       - AFFINE_SERVER_HOST={{affine_url}}
       - AFFINE_CONFIG_PATH=/root/.affine/config

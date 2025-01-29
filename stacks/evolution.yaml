@@ -10,7 +10,7 @@ services:
       - {{network_name}}
 
     environment:
-      ## Configurações Gerais
+      ## Settings
       - SERVER_URL=https://{{evolution_url}}
       - AUTHENTICATION_API_KEY={{evolution_api_key}}
       - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
