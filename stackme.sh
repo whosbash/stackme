@@ -8011,6 +8011,7 @@ generate_stack_config_odoo() {
   jq -n \
     --arg stack_name "$stack_name" \
     --arg network_name "$network_name" \
+    --arg odoo_url "$odoo_url"
     '{
           "name": $stack_name,
           "variables": {
@@ -8075,9 +8076,7 @@ generate_stack_config_botpress() {
       return 1
   }
 
-  echo "$config_instructions" | jq .  # Debug output
-
-  generate_stack_config_pipeline 
+  generate_stack_config_pipeline "$config_instructions"
 }
 
 #################################### END OF STACK CONFIGURATION ###################################
