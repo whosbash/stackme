@@ -28,10 +28,10 @@ services:
       - ZEP_STORE_POSTGRES_DSN=postgres://postgres:{{pgvector_password}}@pgvector:5432/zep?sslmode=disable
 
       ## Auth
-      - ZEP_AUTH_SECRET={{zep_apikey}}
+      - ZEP_AUTH_SECRET={{zep_api_key}}
 
       ## OpenAI
-      - ZEP_OPENAI_API_KEY={{zep_apikey_openai}}
+      - ZEP_OPENAI_API_KEY={{zep_openai_api_key}}
 
       ## NLP
       - ZEP_NLP_SERVER_URL=http://zep_nlp:5557

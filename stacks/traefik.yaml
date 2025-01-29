@@ -19,7 +19,7 @@ services:
       - "--certificatesresolvers.letsencryptresolver.acme.httpchallenge=true"
       - "--certificatesresolvers.letsencryptresolver.acme.httpchallenge.entrypoint=web"
       - "--certificatesresolvers.letsencryptresolver.acme.storage=/etc/traefik/letsencrypt/acme.json"
-      - "--certificatesresolvers.letsencryptresolver.acme.email={{email_ssl}}"
+      - "--certificatesresolvers.letsencryptresolver.acme.email={{traefik_email_ssl}}"
       - "--certificatesresolvers.letsencryptresolver.acme.dnschallenge=true"
       - "--log.level=DEBUG"
       - "--log.format=common"
@@ -63,7 +63,7 @@ services:
         - "traefik.http.routers.dashboard.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.dummy-svc.loadbalancer.server.port=9999"
         - "traefik.http.routers.dashboard.middlewares=myauth"
-        - "traefik.http.middlewares.myauth.basicauth.users={{dashboard_credentials}}"
+        - "traefik.http.middlewares.myauth.basicauth.users={{traefik_credentials}}"
 
 volumes:
   vol_shared:

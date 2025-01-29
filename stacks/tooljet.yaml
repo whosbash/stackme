@@ -20,7 +20,7 @@ services:
       - ENABLE_ONBOARDING_QUESTIONS_FOR_ALL_SIGN_UPS=true
 
       ## Security settings
-      - LOCKBOX_MASTER_KEY={{lockbox_secret_key}}
+      - LOCKBOX_MASTER_KEY={{tooljet_lockbox_secret_key}}
       - SECRET_KEY_BASE={{tooljet_secret_key}}
 
       ## Database settings

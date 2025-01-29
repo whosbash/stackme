@@ -28,14 +28,14 @@ services:
       - SEND_CONNECTION_STATUS={{unoapi_send_connection_status}}
 
       ## Sobre Webhook
-      - WEBHOOK_URL=https://{{chatwoot_uno_url}}/webhooks/whatsapp
+      - WEBHOOK_URL=https://{{unoapi_url}}/webhooks/whatsapp
       - WEBHOOK_HEADER=api_access_token
-      - WEBHOOK_TOKEN={{chatwoot_uno_token}}
+      - WEBHOOK_TOKEN={{unoapi_token}}
 
       ## Dados do Minio/S3
-      - STORAGE_ENDPOINT=https://{{s3_url}}
-      - STORAGE_ACCESS_KEY_ID={{s3_access_key}}
-      - STORAGE_SECRET_ACCESS_KEY={{s3_secret_key}}
+      - STORAGE_ENDPOINT=https://{{unoapi_s3_url}}
+      - STORAGE_ACCESS_KEY_ID={{unoapi_s3_access_key}}
+      - STORAGE_SECRET_ACCESS_KEY={{unoapi_s3_secret_key}}
       - STORAGE_BUCKET_NAME=unoapi
       - STORAGE_FORCE_PATH_STYLE=true
 

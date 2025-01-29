@@ -8,23 +8,23 @@ services:
       - {{network_name}}
 
     environment:
-      ## Configurações de acesso
+      ## Credentials
       - MANAGER_USER={{transcrevezap_username}}
       - MANAGER_PASSWORD={{transcrevezap_password}}
 
-      ## Configurações Globais
-      - API_DOMAIN={{transcrevezap_api}}
+      ## Settings
+      - API_DOMAIN={{transcrevezap_api_url}}
       - UVICORN_PORT=8005
       - UVICORN_HOST=0.0.0.0
       - UVICORN_RELOAD=true
       - UVICORN_WORKERS=1
 
-      ## Configurações do Redis
-      - REDIS_HOST=redis_transcrevezap
-      - REDIS_PORT=6380
+      ## Redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
 
-      ## Configurações de Debug
-      - DEBUG_MODE=false
+      ## Debug
+      - DEBUG_MODE=true
       - LOG_LEVEL=INFO
 
     deploy:
@@ -48,27 +48,6 @@ services:
         - traefik.http.routers.transcrevezap_manager.tls.certresolver=letsencryptresolver
         - traefik.http.routers.transcrevezap_manager.service=transcrevezap_manager
         - traefik.http.services.transcrevezap_manager.loadbalancer.server.port=8501
-
-  redis_transcrevezap:
-    image: redis:6
-    command: [
-        "redis-server",
-        "--appendonly",
-        "yes",
-        "--port",
-        "6380"
-      ]
-
-    volumes:
-      - redis_transcrevezap_data:/data
-
-    networks:
-      - {{network_name}}
-
-volumes:
-  redis_transcrevezap_data:
-    external: true
-    name: redis_transcrevezap_data
 
 networks:
   {{network_name}}:

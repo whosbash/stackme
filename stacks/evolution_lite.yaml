@@ -153,7 +153,7 @@ services:
         - node.role == manager
       labels:
       - traefik.enable=1
-      - traefik.http.routers.evolution_lite.rule=Host(`{{url_evolution}}`) ## Url da Evolution API
+      - traefik.http.routers.evolution_lite.rule=Host(`{{evolution_url}}`)
       - traefik.http.routers.evolution_lite.entrypoints=websecure
       - traefik.http.routers.evolution_lite.priority=1
       - traefik.http.routers.evolution_lite.tls.certresolver=letsencryptresolver

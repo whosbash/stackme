@@ -20,7 +20,7 @@ services:
 
       ## Secret Key
       ## Gere em: https://www.uuidgenerator.net/api/version1
-      - LANGFLOW_SECRET_KEY={{langflow_key}}
+      - LANGFLOW_SECRET_KEY={{langflow_secret_key}}
 
       ## Signup Settings
       - LANGFLOW_NEW_USER_IS_ACTIVE=false
