@@ -5401,8 +5401,9 @@ execute_refresh_actions() {
       continue
     fi
 
+    # Build a json based on command_output
     variable_to_update="$(\
-      echo "$command_output" | jq -c --arg key "$name" '{($key): .}'\
+      echo "$command_output" | jq -c ". | {\"$name\": .}"\
     )" || {
       error "Failed to create JSON object for variable '$name'"
       return 1
