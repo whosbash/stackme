@@ -4197,7 +4197,6 @@ wait_for_services() {
     # Get the list of service names from the docker-compose setup (in swarm mode)
     services=$(docker stack services --format '{{.Name}}' "$stack_name")
 
-    # Loop until all services are healthy or timeout occurs
     start_time=$(date +%s)  # Record the start time
     while true; do
         all_healthy=true
@@ -4214,8 +4213,8 @@ wait_for_services() {
             if [[ -z "$service_state" ]]; then
                 all_healthy=false
                 current_time=$(date +%s)
-                elapsed=$(( (current_time - start_time) / 60 )) # Convert elapsed time to minutes
-                time_info="elapsed time: ${elapsed} minutes (timeout: $timeout_min minutes)."
+                elapsed=$(( (current_time - start_time) / 60 )) # Convert to minutes
+                time_info="elapsed time: ${elapsed} minutes (timeout: ${timeout_min} minutes)."
                 info "Service '$service' is not healthy yet. Waiting... $time_info"
                 break
             fi
@@ -4238,7 +4237,6 @@ wait_for_services() {
         # Sleep for the interval before checking again
         sleep "$interval"
     done
-
 }
 
 # Function to download stack compose templates with progress bar
@@ -8170,22 +8168,22 @@ define_menu_stacks_miscelaneous() {
   menu_title="Miscelaneous stacks"
 
   item_1="$(
-    build_menu_item "whoami" "Deploy" "deploy_stack_handler whoami"
+    build_menu_item "whoami" "Deploy (working)" "deploy_stack_handler whoami"
   )"
   item_2="$(
-    build_menu_item "metabase" "Deploy" "deploy_stack_handler metabase"
+    build_menu_item "metabase (wip)" "Deploy" "deploy_stack_handler metabase"
   )"
   item_3="$(
-    build_menu_item "n8n" "Deploy" "deploy_stack_handler n8n"
+    build_menu_item "n8n (wip)" "Deploy" "deploy_stack_handler n8n"
   )"
   item_4="$(
-    build_menu_item "uptimekuma" "Deploy" "deploy_stack_handler uptimekuma"
+    build_menu_item "uptimekuma (working)" "Deploy" "deploy_stack_handler uptimekuma"
   )"
   item_5="$(
     build_menu_item "yourls" "Deploy" "deploy_stack_handler yourls"
   )"
   item_6="$(
-    build_menu_item "appsmith" "Deploy" "deploy_stack_handler appsmith"
+    build_menu_item "appsmith (working)" "Deploy" "deploy_stack_handler appsmith"
   )"
   item_7="$(
     build_menu_item "focalboard" "Deploy" "deploy_stack_handler focalboard"
@@ -8194,16 +8192,16 @@ define_menu_stacks_miscelaneous() {
     build_menu_item "qdrant" "Deploy" "deploy_stack_handler qdrant"
   )"
   item_9="$(
-    build_menu_item "excalidraw" "Deploy" "deploy_stack_handler excalidraw"
+    build_menu_item "excalidraw (working)" "Deploy" "deploy_stack_handler excalidraw"
   )"
   item_10="$(
-    build_menu_item "airflow" "Deploy" "deploy_stack_handler glpi"
+    build_menu_item "airflow (wip)" "Deploy" "deploy_stack_handler glpi"
   )"
   item_11="$(
-    build_menu_item "odoo" "Deploy" "deploy_stack_handler odoo"
+    build_menu_item "odoo (wip)" "Deploy" "deploy_stack_handler odoo"
   )"
   item_12="$(
-    build_menu_item "botpress" "Deploy" "deploy_stack_handler botpress"
+    build_menu_item "botpress (wip)" "Deploy" "deploy_stack_handler botpress"
   )"
 
   items=(
