@@ -17,7 +17,7 @@ services:
 
     environment:
       ## Dados de acesso
-      - MONGO_INITDB_ROOT_USERNAME={{db_username}}
+      - MONGO_INITDB_ROOT_USERNAME=mongo
       - MONGO_INITDB_ROOT_PASSWORD={{db_password}}
       - PUID=1000
       - PGID=1000
