@@ -5382,6 +5382,8 @@ execute_refresh_actions() {
       return 1
     }
 
+    debug "$name: $command_output"
+
     # If variable 'name' is empty, check if it is a json object
     if [ -z "$name" ]; then
       # Validate if the output is a valid JSON object
@@ -5398,12 +5400,6 @@ execute_refresh_actions() {
 
       continue
     fi
-
-    # Validate if the output is a valid JSON object
-    echo "$command_output" | jq empty >/dev/null 2>&1 || {
-      error "Refresh action '$name' did not return a valid JSON."
-      return 1
-    }
 
     # Build a json based on command_output
     variable_to_update="$(\
@@ -5621,7 +5617,7 @@ generate_stack_config_pipeline() {
 
   jq -n \
     --arg stack_name "$stack_name" \
-    --arg target "$target" \
+    --arg target "$target" \ 
     --argjson variables "$variables" \
     --argjson dependencies "$dependencies" \
     --argjson actions "$actions" \
@@ -8098,8 +8094,6 @@ generate_stack_config_botpress() {
       error "Failed to generate JSON"
       return 1
   }
-
-  debug "$config_instructions"
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"

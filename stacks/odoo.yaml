@@ -13,7 +13,7 @@ services:
 
     environment:
       ## Postgres
-      - HOST=odoo_db
+      - HOST=postgres
       - USER=odoo
       - PASSWORD={{postgres_password}}
 
