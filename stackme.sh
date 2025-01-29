@@ -7712,14 +7712,14 @@ generate_stack_config_n8n(){
           "validate_fn": "validate_url_suffix" 
       },
       {
-          "name": "n8n_smtp_email",
+          "name": "n8n_smtp_from_email",
           "label": "SMTP E-mail",
           "description": "E-mail to send SMTP notifications",
           "required": "yes",
           "validate_fn": "validate_email_value" 
       },
       {
-          "name": "n8n_smtp_user",
+          "name": "n8n_smtp_username",
           "label": "SMTP User",
           "description": "User to send SMTP notifications",
           "required": "yes",
@@ -7762,13 +7762,14 @@ generate_stack_config_n8n(){
 
   collected_object="$(process_prompt_items "$collected_items")"
 
-  n8n_editor_url="$(echo "$collected_object" | jq -r '.url_editor')"
-  n8n_webhook_url="$(echo "$collected_object" | jq -r '.url_webhook')"
-  n8n_smtp_email="$(echo "$collected_object" | jq -r '.smtp_email')"
-  n8n_smtp_user="$(echo "$collected_object" | jq -r '.smtp_user')"
-  n8n_smtp_password="$(echo "$collected_object" | jq -r '.smtp_password')" 
-  n8n_smtp_host="$(echo "$collected_object" | jq -r '.smtp_host')" 
-  n8n_smtp_port="$(echo "$collected_object" | jq -r '.smtp_port')"
+  n8n_editor_url="$(echo "$collected_object" | jq -r '.n8n_editor_url')"
+  n8n_webhook_url="$(echo "$collected_object" | jq -r '.n8n_webhook_url')"
+  n8n_smtp_from_email="$(echo "$collected_object" | jq -r '.n8n_smtp_from_email')"
+  n8n_smtp_host="$(echo "$collected_object" | jq -r '.n8n_smtp_host')" 
+  n8n_smtp_port="$(echo "$collected_object" | jq -r '.n8n_smtp_port')"
+  n8n_smtp_username="$(echo "$collected_object" | jq -r '.n8n_smtp_username')"
+  n8n_smtp_password="$(echo "$collected_object" | jq -r '.n8n_smtp_password')" 
+  
 
   n8n_smtp_secure="$(cast_port_to_smtp_secure "$n8n_smtp_port")"
 
@@ -7795,14 +7796,14 @@ generate_stack_config_n8n(){
     '{
           "name": $stack_name,
           "variables": {
-              "n8n_editor_url": $url_editor,
-              "n8n_webhook_url": $url_webhook,
-              "n8n_smtp_email": $smtp_email,
-              "n8n_smtp_user": $smtp_user, 
-              "n8n_smtp_password": $smtp_password,
-              "n8n_smtp_host": $smtp_host,
-              "n8n_smtp_port": $smtp_port,
-              "n8n_smtp_secure": $smtp_secure,
+              "n8n_editor_url": $n8n_editor_url,
+              "n8n_webhook_url": $n8n_webhook_url,
+              "n8n_smtp_from_email": $n8n_smtp_from_email,
+              "n8n_smtp_username": $n8n_smtp_username, 
+              "n8n_smtp_password": $n8n_smtp_password,
+              "n8n_smtp_host": $n8n_smtp_host,
+              "n8n_smtp_port": $n8n_smtp_port,
+              "n8n_smtp_secure": $n8n_smtp_secure,
               "n8n_encryption_key": $n8n_encryption_key, 
               "network_name": $network_name
           },
@@ -8076,9 +8077,29 @@ define_menu_stacks_miscelaneous() {
   item_3="$(
     build_menu_item "n8n" "Deploy" "deploy_stack_handler n8n"
   )"
+  item_4="$(
+    build_menu_item "uptimekuma" "Deploy" "deploy_stack_handler uptimekuma"
+  )"
+  item_5="$(
+    build_menu_item "yourls" "Deploy" "deploy_stack_handler yourls"
+  )"
+  item_6="$(
+    build_menu_item "appsmith" "Deploy" "deploy_stack_handler appsmith"
+  )"
+  item_7="$(
+    build_menu_item "focalboard" "Deploy" "deploy_stack_handler focalboard"
+  )"
+
+  item_8="$(
+    build_menu_item "qdrant" "Deploy" "deploy_stack_handler qdrant"
+  )"
+  item_9="$(
+    build_menu_item "excalidraw" "Deploy" "deploy_stack_handler excalidraw"
+  )"
 
   items=(
-    "$item_1" "$item_2" "$item_3"
+    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" 
+    "$item_6" "$item_7" "$item_8" "$item_9"
   )
 
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
