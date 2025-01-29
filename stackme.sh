@@ -5522,6 +5522,51 @@ save_stack_configuration() {
   fi
 }
 
+generate_stack_config_pipeline() {
+  local stack_name="$1"
+  local config_instructions="$2"
+
+  total_steps=2
+
+  # Prompting step
+  prompt_items="$(echo "$config_instructions" | jq -c '.prompt')"
+
+  step_info 1 $total_steps "Prompting required $stack_name information"
+  display_prompt_items "$prompt_items"
+
+  collected_items="$(run_collection_process "$prompt_items")"
+
+  if [[ "$collected_items" == "[]" ]]; then
+    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
+    return 1
+  fi
+
+  variables="$(process_prompt_items "$collected_items")"
+
+  # Step 2: Retrieve network name
+  step_info 2 $total_steps "Retrieving network name"
+  network_name="$(get_network_name)"
+
+  variables="$(\
+    echo "$variables" | \
+    jq --arg network_name "$network_name" '. + { "network_name": $network_name }'\
+  )"
+
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg network_name "$network_name" \
+    --argjson variables "$variables" \
+    '{
+          "name": $stack_name,
+          "variables": $variables,
+          "dependencies": $dependencies,
+          "actions": $actions
+      }' | jq . || {
+        error "Failed to generate JSON"
+        return 1
+    }
+}
+
 # Function to deploy a stack
 deployment_pipeline() {
   local config_json="$1"
@@ -7632,6 +7677,7 @@ generate_stack_config_qdrant() {
   }
 }
 
+# Function to generate n8n service configuration JSON
 generate_stack_config_n8n(){
   local stack_name='n8n'
 
@@ -7769,6 +7815,7 @@ generate_stack_config_n8n(){
     }
 }
 
+# Function to generate stack configuration for uptimekuma
 generate_stack_config_uptimekuma() {
   local stack_name="uptimekuma"
 
@@ -7822,7 +7869,112 @@ generate_stack_config_uptimekuma() {
         error "Failed to generate JSON"
         return 1
     }
+}
 
+generate_stack_config_odoo() {
+  local stack_name="odoo"
+
+  total_steps=2
+
+  # Prompting step
+  prompt_items='[
+      {
+          "name": "odoo_url",
+          "label": "Odoo domain name",
+          "description": "URL to access Odoo remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      }
+  ]'
+
+  step_info 1 $total_steps "Prompting required $stack_name information"
+  display_prompt_items "$prompt_items"
+
+  collected_items="$(run_collection_process "$prompt_items")"
+
+  if [[ "$collected_items" == "[]" ]]; then
+    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
+    return 1
+  fi
+
+  processed_items="$(process_prompt_items "$collected_items")"
+
+  odoo_url="$(echo "$processed_items" | jq -r '.odoo_url')"
+
+  # Step 2: Retrieve network name
+  step_info 2 $total_steps "Retrieving network name"
+  network_name="$(get_network_name)"
+
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg network_name "$network_name" \
+    '{
+          "name": $stack_name,
+          "variables": {
+              "odoo_url": $odoo_url,
+              "network_name": $network_name
+          },
+          "dependencies": [],
+          "actions": {
+            "refresh": [
+              {
+                "name": "postgres_password",
+                "description": "Fetching postgres password",
+                "command": "fetch_database_password postgres",
+              }
+            ],
+            "prepare": [],
+            "finalize": []
+          }
+      }' | jq . || {
+        error "Failed to generate JSON"
+        return 1
+    }
+}
+
+# Function to generate stack configuration for botpress
+generate_stack_config_botpress() {
+  local stack_name="botpress"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "botpress_url",
+          "label": "Botpress domain name",
+          "description": "URL to access Botpress remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  config_instructions="$(
+    jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "prompt": $prompt_items,
+          "dependencies": [],
+          "actions": {
+            "refresh": [
+              {
+                "name": "postgres_password",
+                "description": "Fetching postgres password",
+                "command": "fetch_database_password postgres"
+              }
+            ],
+            "prepare": [],
+            "finalize": []
+          }
+      }'
+  )" | jq . || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  echo "$config_instructions" | jq .  # Debug output
+
+  generate_stack_config_pipeline 
 }
 
 #################################### END OF STACK CONFIGURATION ###################################
