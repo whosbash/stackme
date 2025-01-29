@@ -8192,10 +8192,17 @@ define_menu_stacks_miscelaneous() {
   item_10="$(
     build_menu_item "airflow" "Deploy" "deploy_stack_handler glpi"
   )"
+  item_11="$(
+    build_menu_item "odoo" "Deploy" "deploy_stack_handler odoo"
+  )"
+  item_12="$(
+    build_menu_item "botpress" "Deploy" "deploy_stack_handler botpress"
+  )"
 
   items=(
     "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" 
     "$item_6" "$item_7" "$item_8" "$item_9" "$item_10"
+    "$item_11" "$item_12"
   )
 
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
