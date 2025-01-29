@@ -4844,13 +4844,6 @@ upload_stack_on_portainer() {
     error "Failed to upload stack '$stack_name'."
     return 1
   fi
-
-  # Error present on respose (test for case insensitive)
-  if [[ "$reponse" == *"error"* ]]; then
-    error "Failed to upload stack '$stack_name'."
-    return 1
-  fi
-
   return 0
 }
 
@@ -4965,7 +4958,7 @@ traefik_and_portainer_exist(){
   stack_names=("traefik" "portainer")
   
   if ! stacks_exist "${stack_names[@]}"; then
-    error "Traefik and Portainer stacks do not exist. Choose the first option on Stacks manu."
+    error "Traefik and Portainer stacks do not exist. Choose the first option on Stacks menu."
     wait_for_input
     return 1
   fi
@@ -5404,15 +5397,8 @@ execute_refresh_actions() {
       continue
     fi
 
-    # Validate if the output is a valid JSON object
-    echo "$command_output" | jq empty >/dev/null 2>&1 || {
-      error "Refresh action '$name' did not return a valid JSON."
-      return 1
-    }
-
-    # Build a json based on command_output
     variable_to_update="$(\
-      echo "$command_output" | jq -c ". | {\"$name\": .}"\
+      echo "\"$command_output\"" | jq -c --arg key "$name" '{($key): .}'\
     )"
 
     # Merge the command output with the existing stack variables using add_json_objects
@@ -5573,6 +5559,72 @@ save_stack_configuration() {
     error "Failed to save stack configuration for stack '$stack_name'"
     return 1
   fi
+}
+
+generate_stack_config_pipeline() {
+  local config_instructions="$1"
+
+  total_steps=2
+
+  stack_name="$(echo "$config_instructions" | jq -r '.name')"
+
+  # Set target to 'swarm' if variable 'stack_name' is either 'traefik' or 'portainer'.
+  # Otherwise, set target to 'portainer'.
+  local target
+  if [ "$stack_name" == "traefik" ] || [ "$stack_name" == "portainer" ]; then
+    target="swarm"
+  else
+    target="portainer"
+  fi
+
+  # Prompting step
+  prompt_items="$(echo "$config_instructions" | jq -c '.prompt')"
+
+  step_info 1 $total_steps "Prompting required $stack_name information"
+  display_prompt_items "$prompt_items"
+
+  collected_items="$(run_collection_process "$prompt_items")"
+
+  if [[ "$collected_items" == "[]" ]]; then
+    step_error 1 $total_steps "Unable to prompt configuration."
+    return 1
+  fi
+
+  variables="$(process_prompt_items "$collected_items")"
+
+  dependencies="$(echo "$config_instructions" | jq -c '.dependencies // []')"
+
+  actions="$(echo "$config_instructions" | jq -c '.actions // {}')"
+
+  # Step 2: Retrieve network name
+  step_info 2 $total_steps "Retrieving network name"
+  network_name="$(get_network_name)"
+
+  if [ -z "$network_name" ]; then
+    step_error 2 $total_steps "Unable to retrieve network name."
+    return 1
+  fi
+
+  variables="$(\
+    echo "$variables" | \
+    jq --arg network_name "$network_name" '. + { "network_name": $network_name }'\
+  )"
+
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg target "$target" \ 
+    --argjson variables "$variables" \
+    --argjson dependencies "$dependencies" \
+    --argjson actions "$actions" \
+    '{
+          "name": $stack_name,
+          "variables": $variables,
+          "dependencies": $dependencies,
+          "actions": $actions
+      }' | jq . || {
+        error "Failed to generate JSON"
+        return 1
+    }
 }
 
 # Function to deploy a stack
@@ -6622,7 +6674,7 @@ fetch_database_password() {
 
   # Read the database password from the config file
   local database_password
-  database_password=$(jq -r '.db_password' "$config_file")
+  database_password=$(jq -r '.variables.db_password' "$config_file")
 
   echo "$database_password"
 }
@@ -7741,6 +7793,7 @@ generate_stack_config_qdrant() {
   }
 }
 
+# Function to generate n8n service configuration JSON
 generate_stack_config_n8n(){
   local stack_name='n8n'
 
@@ -7842,6 +7895,7 @@ generate_stack_config_n8n(){
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
+          "target": "portainer",
           "variables": {
               "n8n_editor_url": $n8n_editor_url,
               "n8n_webhook_url": $n8n_webhook_url,
@@ -7878,6 +7932,7 @@ generate_stack_config_n8n(){
     }
 }
 
+# Function to generate stack configuration for uptimekuma
 generate_stack_config_uptimekuma() {
   local stack_name="uptimekuma"
 
@@ -7918,6 +7973,7 @@ generate_stack_config_uptimekuma() {
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
+          "target": "portainer",
           "variables": {
               "uptimekuma_url": $uptimekuma_url,
               "network_name": $network_name
@@ -7932,7 +7988,110 @@ generate_stack_config_uptimekuma() {
         error "Failed to generate JSON"
         return 1
     }
+}
 
+generate_stack_config_odoo() {
+  local stack_name="odoo"
+
+  total_steps=2
+
+  # Prompting step
+  prompt_items='[
+      {
+          "name": "odoo_url",
+          "label": "Odoo domain name",
+          "description": "URL to access Odoo remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      }
+  ]'
+
+  step_info 1 $total_steps "Prompting required $stack_name information"
+  display_prompt_items "$prompt_items"
+
+  collected_items="$(run_collection_process "$prompt_items")"
+
+  if [[ "$collected_items" == "[]" ]]; then
+    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
+    return 1
+  fi
+
+  processed_items="$(process_prompt_items "$collected_items")"
+
+  odoo_url="$(echo "$processed_items" | jq -r '.odoo_url')"
+
+  # Step 2: Retrieve network name
+  step_info 2 $total_steps "Retrieving network name"
+  network_name="$(get_network_name)"
+
+  jq -n \
+    --arg stack_name "$stack_name" \
+    --arg network_name "$network_name" \
+    --arg odoo_url "$odoo_url" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "variables": {
+              "odoo_url": $odoo_url,
+              "network_name": $network_name
+          },
+          "dependencies": [],
+          "actions": {
+            "refresh": [
+              {
+                "name": "postgres_password",
+                "description": "Fetching postgres password",
+                "command": "fetch_database_password postgres",
+              }
+            ],
+            "prepare": [],
+            "finalize": []
+          }
+      }' | jq . || {
+        error "Failed to generate JSON"
+        return 1
+    }
+}
+
+generate_stack_config_botpress() {
+  local stack_name="botpress"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "botpress_url",
+          "label": "Botpress domain name",
+          "description": "URL to access Botpress remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "prompt": $prompt_items,
+          "actions": {
+            "refresh": [
+              {
+                "name": "postgres_password",
+                "description": "Fetching postgres password",
+                "command": "fetch_database_password postgres"
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
 }
 
 #################################### END OF STACK CONFIGURATION ###################################
@@ -8040,10 +8199,17 @@ define_menu_stacks_miscelaneous() {
   item_10="$(
     build_menu_item "airflow" "Deploy" "deploy_stack_handler glpi"
   )"
+  item_11="$(
+    build_menu_item "odoo" "Deploy" "deploy_stack_handler odoo"
+  )"
+  item_12="$(
+    build_menu_item "botpress" "Deploy" "deploy_stack_handler botpress"
+  )"
 
   items=(
     "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" 
     "$item_6" "$item_7" "$item_8" "$item_9" "$item_10"
+    "$item_11" "$item_12"
   )
 
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"

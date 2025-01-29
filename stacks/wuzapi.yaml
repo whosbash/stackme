@@ -12,8 +12,8 @@ services:
   
     environment:
       ## Credencial
-      - WUZAPI_ADMIN_TOKEN={{wuzapi_apikey}}
-      - SECRET_KEY={{wuzapi_secretkey}}
+      - WUZAPI_ADMIN_TOKEN={{wuzapi_api_key}}
+      - SECRET_KEY={{wuzapi_secret_key}}
   
       ## Postgres
       - DB_HOST=postgres

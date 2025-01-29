@@ -1,7 +1,7 @@
 version: "3.7"
 services:
   typebot_builder:
-    image: baptistearno/typebot-builder:{{typebot_version}}
+    image: baptistearno/typebot-builder:{{typebot_image_version}}
 
     networks:
       - {{network_name}}
@@ -11,9 +11,9 @@ services:
       - DATABASE_URL=postgresql://postgres:{{postgres_password}}@postgres:5432/typebot
 
       ## Encryption key
-      - ENCRYPTION_SECRET={{typebot_key}}
+      - ENCRYPTION_SECRET={{typebot_secret_key}}
 
-      ## Default Plan (for new accounts)
+      ## Standard Plan (for new accounts)
       - DEFAULT_WORKSPACE_PLAN=UNLIMITED
 
       ## Typebot Urls 
@@ -34,18 +34,18 @@ services:
       - SMTP_PORT={{typebot_smtp_port}}
       - SMTP_SECURE={{typebot_smtp_secure}}
 
-      ## Dados Google Cloud
+      ## Google Cloud
       #- GOOGLE_AUTH_CLIENT_ID=
       #- GOOGLE_SHEETS_CLIENT_ID=
       #- GOOGLE_AUTH_CLIENT_SECRET=
       #- GOOGLE_SHEETS_CLIENT_SECRET=
       #- NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY=
 
-      ## Dados do Minio/S3
-      - S3_ACCESS_KEY={{s3_access_key}}
-      - S3_SECRET_KEY={{s3_secret_key}}
+      ## Minio/S3
+      - S3_ENDPOINT={{typebot_s3_url}}
+      - S3_ACCESS_KEY={{typebot_s3_access_key}}
+      - S3_SECRET_KEY={{typebot_s3_secret_key}}
       - S3_BUCKET=typebot
-      - S3_ENDPOINT={{s3_url}}
 
     deploy:
       mode: replicated
@@ -68,22 +68,22 @@ services:
         - traefik.http.routers.typebot_builder.service=typebot_builder
 
   typebot_viewer:
-    image: baptistearno/typebot-viewer:{{typebot_version}}
+    image: baptistearno/typebot-viewer:{{typebot_image_version}}
 
     networks:
       - {{network_name}}
 
     environment:
-      ## Dados do Postgres
+      ## Postgres
       - DATABASE_URL=postgresql://postgres:{{postgres_password}}@postgres:5432/typebot
 
       ## Encryption key
-      - ENCRYPTION_SECRET={{typebot_key}}
+      - ENCRYPTION_SECRET={{typebot_secret_key}}
 
-      ## Plano Padrão (das novas contas)
+      ## Standard plan
       - DEFAULT_WORKSPACE_PLAN=UNLIMITED
 
-      ## Urls do typebot
+      ## Typebot URLs
       - NEXTAUTH_URL=https://{{typebot_url}} ## Builder URL 
       - NEXT_PUBLIC_VIEWER_URL=https://{{typebot_viewer_url}} ## Viewer URL 
       - NEXTAUTH_URL_INTERNAL=http://localhost:3000
@@ -109,10 +109,10 @@ services:
       #- NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY=
 
       ## Minio/S3
-      - S3_ACCESS_KEY={{s3_access_key}}
-      - S3_SECRET_KEY={{s3_secret_key}}
+      - S3_ACCESS_KEY={{typebot_s3_access_key}}
+      - S3_SECRET_KEY={{typebot_s3_secret_key}}
       - S3_BUCKET=typebot
-      - S3_ENDPOINT={{s3_url}}
+      - S3_ENDPOINT={{typebot_s3_url}}
 
     deploy:
       mode: replicated

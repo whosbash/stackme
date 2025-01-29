@@ -24,11 +24,11 @@ services:
       - EMAIL_SMTP_SECURE={{directus_smtp_secure}}
 
       ## Minio
-      - STORAGE_s3_KEY={{s3_access_key}}
-      - STORAGE_s3_SECRET={{s3_secret_key}}
+      - STORAGE_s3_KEY={{directus_s3_access_key}}
+      - STORAGE_s3_SECRET={{directus_s3_secret_key}}
       - STORAGE_s3_BUCKET=directus
-      - STORAGE_s3_REGION={{s3_region}}
-      - STORAGE_s3_ENDPOINT={{s3_url}}
+      - STORAGE_s3_REGION={{directus_s3_region}}
+      - STORAGE_s3_ENDPOINT={{directus_s3_url}}
 
       ## Redis
       - REDIS=redis://redis:6379/4

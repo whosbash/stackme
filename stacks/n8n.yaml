@@ -9,7 +9,7 @@ services:
       - {{network_name}}
 
     environment:
-      ## Dados do postgres
+      ## Postgres
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_DATABASE=n8n_queue
       - DB_POSTGRESDB_HOST=postgres
@@ -20,8 +20,8 @@ services:
       ## Encryption Key
       - N8N_ENCRYPTION_KEY={{n8n_encryption_key}}
 
-      ## Url do N8N
-      - N8N_HOST={{url_editor}}
+      ## N8N
+      - N8N_HOST={{n8n_editor_url}}
       - N8N_EDITOR_BASE_URL=https://{{n8n_editor_url}}/ 
       - WEBHOOK_URL=https://{{n8n_webhook_url}}/
       - N8N_PROTOCOL=https
@@ -78,7 +78,7 @@ services:
         - traefik.http.services.n8n_editor.loadbalancer.passHostHeader=1
 
   n8n_webhook:
-    image: n8nio/n8n:latest ## Versão do N8N
+    image: n8nio/n8n:latest
     command: webhook
 
     networks:
@@ -173,7 +173,7 @@ services:
       - N8N_ENCRYPTION_KEY={{n8n_encryption_key}}
 
       ## N8N Url
-      - N8N_HOST={{url_editor}}
+      - N8N_HOST={{n8n_editor_url}}
       - N8N_EDITOR_BASE_URL=https://{{n8n_editor_url}}/
       - WEBHOOK_URL=https://{{n8n_webhook_url}}/
       - N8N_PROTOCOL=https

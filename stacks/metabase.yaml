@@ -40,7 +40,7 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.http.routers.metabase.rule=Host(`{{url_metabase}}`)
+        - traefik.http.routers.metabase.rule=Host(`{{metabase_url}}`)
         - traefik.http.services.metabase.loadbalancer.server.port=3000
         - traefik.http.routers.metabase.service=metabase
         - traefik.http.routers.metabase.entrypoints=websecure

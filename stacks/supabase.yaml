@@ -117,7 +117,7 @@ services:
       - GOTRUE_URI_ALLOW_LIST=
       - GOTRUE_DISABLE_SIGNUP=false
 
-    ## Configurações de JWT
+    ## JWT settings
       - GOTRUE_JWT_ADMIN_ROLES=service_role
       - GOTRUE_JWT_AUD=authenticated
       - GOTRUE_JWT_DEFAULT_GROUP_NAME=authenticated
@@ -127,21 +127,21 @@ services:
     ## Email
       - GOTRUE_EXTERNAL_EMAIL_ENABLED=false
       - GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED=false
-      #- GOTRUE_MAILER_AUTOCONFIRM=true # Envia emails automaticamente para confirmar cadastros
-      #- GOTRUE_SMTP_ADMIN_EMAIL=email@dominio.com # Email administrador SMTP
-      #- GOTRUE_SMTP_HOST=smtp.dominio.com # Host SMTP
-      #- GOTRUE_SMTP_PORT=587 # Porta SMTP
-      #- GOTRUE_SMTP_USER=email@dominio.com # Usuário SMTP
-      #- GOTRUE_SMTP_PASS=senha # Senha SMTP
-      #- GOTRUE_SMTP_SENDER_NAME=email@dominio.com # Nome do remetente SMTP
+      - GOTRUE_MAILER_AUTOCONFIRM=true
+      - GOTRUE_SMTP_ADMIN_EMAIL={{supabase_smtp_from_email}}
+      - GOTRUE_SMTP_HOST={{supabase_smtp_host}}
+      - GOTRUE_SMTP_PORT={{supabase_smtp_port}}
+      - GOTRUE_SMTP_USER={{supabase_smtp_username}}
+      - GOTRUE_SMTP_PASS={{supabase_smtp_password}}
+      - GOTRUE_SMTP_SENDER_NAME={{supabase_smtp_from_email}}
 
-    ## Configurações de URL para Emails
+    ## URL settings for Emails
       - GOTRUE_MAILER_URLPATHS_INVITE=/auth/v1/verify
       - GOTRUE_MAILER_URLPATHS_CONFIRMATION=/auth/v1/verify
       - GOTRUE_MAILER_URLPATHS_RECOVERY=/auth/v1/verify
       - GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE=/auth/v1/verify
 
-    ## Configurações de SMS
+    ## SMS Settings
       - GOTRUE_EXTERNAL_PHONE_ENABLED=false
       - GOTRUE_SMS_AUTOCONFIRM=false
     
@@ -160,17 +160,17 @@ services:
       - {{network_name}}
 
     environment:
-    ## Configuração do Banco de Dados
+    ## Database settings
       - PGRST_DB_URI=postgres://authenticator:{{postgres_password}}@db:5432/postgres
       - PGRST_DB_SCHEMAS=public,storage,graphql_public
       - PGRST_DB_ANON_ROLE=anon
 
-    ## JWT (JSON Web Tokens)
-      - PGRST_JWT_SECRET={{pgrst_jwt_key}}
-      - PGRST_APP_SETTINGS_JWT_SECRET={{pgrst_jwt_key}}
+    ## JWT settings
+      - PGRST_JWT_SECRET={{postgrest_jwt_key}}
+      - PGRST_APP_SETTINGS_JWT_SECRET={{postgrest_jwt_key}}
       - PGRST_APP_SETTINGS_JWT_EXP=31536000
 
-    ## Outras Configurações
+    ## Others settings
       - PGRST_DB_USE_LEGACY_GUCS="false"
     
     deploy:
@@ -231,18 +231,18 @@ services:
       - ANON_KEY={{supabase_anon_key}}
       - SERVICE_KEY={{supabase_service_key}}
       - POSTGREST_URL=http://rest:3000
-      - PGRST_JWT_SECRET={{jwt_key}}
+      - PGRST_JWT_SECRET={{postgrest_jwt_secret_key}}
       - DATABASE_URL=postgres://supabase_storage_admin:{{postgres_password}}@db:5432/postgres
 
     ## Storage on MinIO
       - FILE_SIZE_LIMIT=52428800
       - STORAGE_BACKEND=s3
       - GLOBAL_S3_BUCKET=supabase
-      - GLOBAL_S3_ENDPOINT=https://{{s3_url}}
+      - GLOBAL_S3_ENDPOINT=https://{{supabase_s3_url}}
       - GLOBAL_S3_PROTOCOL=https
       - GLOBAL_S3_FORCE_PATH_STYLE=true
-      - AWS_ACCESS_KEY_ID={{s3_access_key}} 
-      - AWS_SECRET_ACCESS_KEY={{s3_access_key}}
+      - AWS_ACCESS_KEY_ID={{supabase_s3_access_key}} 
+      - AWS_SECRET_ACCESS_KEY={{supabase_s3_access_key}}
       - AWS_DEFAULT_REGION=eu-south
       - FILE_STORAGE_BACKEND_PATH=/var/lib/storage
 
@@ -320,9 +320,9 @@ services:
       - {{network_name}}
 
     environment:
-    ## Configuração de JWT e Supabase
+    ## JWT and Supabase Settings
       - VERIFY_JWT="false"
-      - JWT_SECRET={{functions_jwt_secret}}
+      - JWT_SECRET={{supabase_functions_jwt_secret}}
       - SUPABASE_URL=http://kong:8000
       - SUPABASE_ANON_KEY={{supabase_anon_key}}
       - SUPABASE_SERVICE_ROLE_KEY={{supabase_service_key}}
@@ -350,13 +350,13 @@ services:
       - DB_PASSWORD={{postgres_password}}
       - DB_SCHEMA=_analytics
     
-    ## Postgres Backend
+      ## Postgres Backend
       - POSTGRES_BACKEND_URL=postgresql://supabase_admin:{{postgres_password}}@db:5432/_supabase
       - POSTGRES_BACKEND_SCHEMA=_analytics
     
       ## Logflare
       - LOGFLARE_NODE_HOST=127.0.0.1
-      - LOGFLARE_API_KEY={{logflare_key}}
+      - LOGFLARE_API_KEY={{supabase_logflare_key}}
       - LOGFLARE_SINGLE_TENANT=true
       - LOGFLARE_SUPABASE_MODE=true
       - LOGFLARE_MIN_CLUSTER_SIZE=1
@@ -427,7 +427,7 @@ services:
 
     environment:
       ## Logflare
-      - LOGFLARE_API_KEY={{logflare_key}}
+      - LOGFLARE_API_KEY={{logflare_api_key}}
     
     deploy:
       mode: replicated
@@ -458,8 +458,8 @@ services:
       - CLUSTER_POSTGRES=true
 
       ## JWT
-      - API_JWT_SECRET={{supabase_jwt_secret}}
-      - METRICS_JWT_SECRET={{supabase_jwt_secret}}
+      - API_JWT_SECRET={{supabase_jwt_secret_key}}
+      - METRICS_JWT_SECRET={{supabase_jwt_secret_key}}
 
       ## Security
       - SECRET_KEY_BASE={{supavisor_secret_key_base}}
