@@ -39,10 +39,10 @@ services:
 
       ## SMTP
       - N8N_SMTP_SENDER={{n8n_smtp_from_email}}
-      - N8N_SMTP_USER={{n8n_smtp_username}}
-      - N8N_SMTP_PASS={{n8n_smtp_password}}
       - N8N_SMTP_HOST={{n8n_smtp_host}}
       - N8N_SMTP_PORT={{n8n_smtp_port}}
+      - N8N_SMTP_USER={{n8n_smtp_username}}
+      - N8N_SMTP_PASS={{n8n_smtp_password}}
       - N8N_SMTP_SSL={{n8n_smtp_secure}}
 
       ## Redis
@@ -115,10 +115,10 @@ services:
 
       ## SMTP
       - N8N_SMTP_SENDER={{n8n_smtp_from_email}}
-      - N8N_SMTP_USER={{n8n_smtp_username}}
-      - N8N_SMTP_PASS={{n8n_smtp_password}}
       - N8N_SMTP_HOST={{n8n_smtp_host}}
       - N8N_SMTP_PORT={{n8n_smtp_port}}
+      - N8N_SMTP_USER={{n8n_smtp_username}}
+      - N8N_SMTP_PASS={{n8n_smtp_password}}
       - N8N_SMTP_SSL={{n8n_smtp_secure}}
 
       ## Redis
