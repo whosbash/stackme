@@ -2562,8 +2562,6 @@ validate_stack_config() {
   # Get the stack name
   stack_name="$(echo $stack_config | jq -r '.name')"
 
-  debug "$stack_name"
-
   # Get required fields from the stack template
   required_fields=$(list_stack_compose_required_fields "$stack_name")
 
@@ -5382,8 +5380,6 @@ execute_refresh_actions() {
       return 1
     }
 
-    debug "$name: $command_output"
-
     # If variable 'name' is empty, check if it is a json object
     if [ -z "$name" ]; then
       # Validate if the output is a valid JSON object
@@ -5401,13 +5397,11 @@ execute_refresh_actions() {
       continue
     fi
 
-    # Build a json based on command_output
+    debug "$name: $command_output"
+    
     variable_to_update="$(\
-      echo "$command_output" | jq -c ". | {\"$name\": .}"\
-    )" || {
-      error "Failed to create JSON object for variable '$name'"
-      return 1
-    }
+      echo "$command_output" | jq -c --arg key "$name" '{($key): .}'\
+    )"
 
     # Merge the command output with the existing stack variables using add_json_objects
     updated_variables=$(\
