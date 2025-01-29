@@ -5569,10 +5569,11 @@ save_stack_configuration() {
 }
 
 generate_stack_config_pipeline() {
-  local stack_name="$1"
-  local config_instructions="$2"
+  local config_instructions="$1"
 
   total_steps=2
+
+  stack_name="$(echo "$config_instructions" | jq -c '.stack_name')"
 
   # Prompting step
   prompt_items="$(echo "$config_instructions" | jq -c '.prompt')"
@@ -8039,7 +8040,6 @@ generate_stack_config_odoo() {
     }
 }
 
-# Function to generate stack configuration for botpress
 generate_stack_config_botpress() {
   local stack_name="botpress"
 
@@ -8054,8 +8054,8 @@ generate_stack_config_botpress() {
       }
   ]')
 
-  config_instructions="$(
-    jq -n \
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
     --arg stack_name "$stack_name" \
     --argjson prompt_items "$prompt_items" \
     '{
@@ -8075,11 +8075,12 @@ generate_stack_config_botpress() {
             "finalize": []
           }
       }'
-  )" | jq . || {
+  ) || {
       error "Failed to generate JSON"
       return 1
   }
 
+  # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
 }
 
