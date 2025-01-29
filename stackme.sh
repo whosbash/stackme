@@ -6683,6 +6683,8 @@ fetch_database_password() {
   local database_password
   database_password=$(jq -r '.db_password' "$config_file")
 
+  debug "$database_password"
+
   echo "$database_password"
 }
 
