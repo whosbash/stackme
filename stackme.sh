@@ -5573,7 +5573,7 @@ generate_stack_config_pipeline() {
 
   total_steps=2
 
-  stack_name="$(echo "$config_instructions" | jq -c '.stack_name')"
+  stack_name="$(echo "$config_instructions" | jq -c '.name')"
 
   # Prompting step
   prompt_items="$(echo "$config_instructions" | jq -c '.prompt')"
@@ -5584,7 +5584,7 @@ generate_stack_config_pipeline() {
   collected_items="$(run_collection_process "$prompt_items")"
 
   if [[ "$collected_items" == "[]" ]]; then
-    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
+    step_error 1 $total_steps "Unable to prompt configuration."
     return 1
   fi
 
@@ -5610,7 +5610,6 @@ generate_stack_config_pipeline() {
 
   jq -n \
     --arg stack_name "$stack_name" \
-    --arg network_name "$network_name" \
     --argjson variables "$variables" \
     --argjson dependencies "$dependencies" \
     --argjson actions "$actions" \
@@ -8524,7 +8523,5 @@ main() {
   clean_screen
 }
 
-# # Call the main function
-# main "$@"
-
-generate_stack_config_botpress
+# Call the main function
+main "$@"
