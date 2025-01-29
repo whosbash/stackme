@@ -7807,19 +7807,6 @@ generate_stack_config_n8n(){
     error "Unable to retrieve $stack_name configuration."
     return 1
   fi
-💡 [2025-01-29 00:41:45] [2/8] Generating use N8N password
-💡 [2025-01-29 00:41:45] [3/8] Create encryption key
-jq: error: $n8n_editor_url is not defined at <top-level>, line 4:
-              "n8n_editor_url": $n8n_editor_url,
-jq: error: $n8n_webhook_url is not defined at <top-level>, line 5:
-              "n8n_webhook_url": $n8n_webhook_url,
-jq: error: $n8n_smtp_from_email is not defined at <top-level>, line 6:
-              "n8n_smtp_from_email": $n8n_smtp_from_email,
-jq: error: $n8n_smtp_username is not defined at <top-level>, line 7:
-              "n8n_smtp_username": $n8n_smtp_username,
-jq: 4 compile errors
-
-Operation interrupted. Exiting script...
 
   collected_object="$(process_prompt_items "$collected_items")"
 
