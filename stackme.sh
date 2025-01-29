@@ -2562,6 +2562,8 @@ validate_stack_config() {
   # Get the stack name
   stack_name="$(echo $stack_config | jq -r '.name')"
 
+  debug "$stack_name"
+
   # Get required fields from the stack template
   required_fields=$(list_stack_compose_required_fields "$stack_name")
 
@@ -4958,7 +4960,7 @@ traefik_and_portainer_exist(){
   stack_names=("traefik" "portainer")
   
   if ! stacks_exist "${stack_names[@]}"; then
-    error "Traefik and Portainer stacks do not exist. Choose the first option on Stacks manu."
+    error "Traefik and Portainer stacks do not exist. Choose the first option on Stacks menu."
     wait_for_input
     return 1
   fi
@@ -5730,6 +5732,8 @@ deploy_stack() {
   # Generate the stack JSON configuration
   local stack_config
   stack_config=$(eval "generate_stack_config_$stack_name")
+
+  debug "$stack_config"
 
   if [ -z "$stack_config" ]; then
     return 1
