@@ -69,7 +69,7 @@ services:
           memory: 1024M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.n8n_editor.rule=Host(`{{url_editor}}`) ## Url do Editor do N8N
+        - traefik.http.routers.n8n_editor.rule=Host(`{{n8n_editor_url}}`) ## Url do Editor do N8N
         - traefik.http.routers.n8n_editor.entrypoints=websecure
         - traefik.http.routers.n8n_editor.priority=1
         - traefik.http.routers.n8n_editor.tls.certresolver=letsencryptresolver
