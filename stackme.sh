@@ -5401,10 +5401,12 @@ execute_refresh_actions() {
       continue
     fi
 
-    # Build a json based on command_output
     variable_to_update="$(\
-      echo "$command_output" | jq -c ". | {\"$name\": .}"\
-    )"
+      echo "$command_output" | jq -c --arg key "$name" '{($key): .}'\
+    )" || {
+      error "Failed to create JSON object for variable '$name'"
+      return 1
+    }
 
     # Merge the command output with the existing stack variables using add_json_objects
     updated_variables=$(\
