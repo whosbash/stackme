@@ -8011,7 +8011,7 @@ generate_stack_config_odoo() {
   jq -n \
     --arg stack_name "$stack_name" \
     --arg network_name "$network_name" \
-    --arg odoo_url "$odoo_url"
+    --arg odoo_url "$odoo_url" \
     '{
           "name": $stack_name,
           "variables": {
