@@ -7962,7 +7962,7 @@ generate_stack_config_n8n(){
               {
                 "name": "create_postgres_database_n8n",
                 "description": "Creating N8N database",
-                "command": "create_database_postgres n8n",
+                "command": "create_database_postgres n8n_queue",
               }
             ],
             "finalize": []
