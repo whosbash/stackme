@@ -4844,13 +4844,6 @@ upload_stack_on_portainer() {
     error "Failed to upload stack '$stack_name'."
     return 1
   fi
-
-  # Error present on respose (test for case insensitive)
-  if [[ "$reponse" == *"error"* ]]; then
-    error "Failed to upload stack '$stack_name'."
-    return 1
-  fi
-
   return 0
 }
 
