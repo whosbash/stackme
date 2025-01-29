@@ -7526,7 +7526,7 @@ generate_stack_config_yourls() {
               "yourls_password": $yourls_password,
               "network_name": $network_name,
           },
-          "dependencies": [],
+          "dependencies": ["mysql"],
           "actions": {
             "refresh": [
               {
