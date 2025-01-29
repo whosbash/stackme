@@ -4191,7 +4191,7 @@ wait_for_services() {
     local timeout=300
     local interval=5
     local elapsed=0
-
+    
     timout_min="$(( timeout / 60 ))"
 
     # Get the list of service names from the docker-compose setup (in swarm mode)
@@ -5681,6 +5681,7 @@ deployment_pipeline() {
   step_info 5 $total_steps "Deploying stack on target"
   local target
   target=$(echo "$config_json" | jq -r '.target // "swarm"')
+  debug "$target"
   deploy_stack_on_target "$stack_name" "$compose_path" "$target" || {
     failure "Failed to deploy stack on target: $target"
     return 1
@@ -8214,31 +8215,31 @@ define_menu_stacks_miscelaneous() {
     build_menu_item "whoami" "Deploy (working)" "deploy_stack_handler whoami"
   )"
   item_2="$(
-    build_menu_item "metabase (wip)" "Deploy" "deploy_stack_handler metabase"
-  )"
-  item_3="$(
-    build_menu_item "n8n (wip)" "Deploy" "deploy_stack_handler n8n"
-  )"
-  item_4="$(
     build_menu_item "uptimekuma (working)" "Deploy" "deploy_stack_handler uptimekuma"
   )"
-  item_5="$(
-    build_menu_item "yourls" "Deploy" "deploy_stack_handler yourls"
-  )"
-  item_6="$(
+  item_3="$(
     build_menu_item "appsmith (working)" "Deploy" "deploy_stack_handler appsmith"
   )"
-  item_7="$(
-    build_menu_item "focalboard" "Deploy" "deploy_stack_handler focalboard"
+  item_4="$(
+    build_menu_item "focalboard (working)" "Deploy" "deploy_stack_handler focalboard"
   )"
-  item_8="$(
-    build_menu_item "qdrant" "Deploy" "deploy_stack_handler qdrant"
-  )"
-  item_9="$(
+  item_5="$(
     build_menu_item "excalidraw (working)" "Deploy" "deploy_stack_handler excalidraw"
   )"
+  item_6="$(
+    build_menu_item "metabase (wip)" "Deploy" "deploy_stack_handler metabase"
+  )"
+  item_7="$(
+    build_menu_item "n8n (wip)" "Deploy" "deploy_stack_handler n8n"
+  )"
+  item_8="$(
+    build_menu_item "yourls (wip)" "Deploy" "deploy_stack_handler yourls"
+  )"
+  item_9="$(
+    build_menu_item "qdrant (wip)" "Deploy" "deploy_stack_handler qdrant"
+  )"
   item_10="$(
-    build_menu_item "airflow (wip)" "Deploy" "deploy_stack_handler glpi"
+    build_menu_item "glpi (wip)" "Deploy" "deploy_stack_handler glpi"
   )"
   item_11="$(
     build_menu_item "odoo (wip)" "Deploy" "deploy_stack_handler odoo"
