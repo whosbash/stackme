@@ -5590,9 +5590,18 @@ generate_stack_config_pipeline() {
 
   variables="$(process_prompt_items "$collected_items")"
 
+  dependencies="$(echo "$config_instructions" | jq -c '.dependencies // []')"
+
+  actions="$(echo "$config_instructions" | jq -c '.actions // {}')"
+
   # Step 2: Retrieve network name
   step_info 2 $total_steps "Retrieving network name"
   network_name="$(get_network_name)"
+
+  if [ -z "$network_name" ]; then
+    step_error 2 $total_steps "Unable to retrieve network name."
+    return 1
+  fi
 
   variables="$(\
     echo "$variables" | \
@@ -5603,6 +5612,8 @@ generate_stack_config_pipeline() {
     --arg stack_name "$stack_name" \
     --arg network_name "$network_name" \
     --argjson variables "$variables" \
+    --argjson dependencies "$dependencies" \
+    --argjson actions "$actions" \
     '{
           "name": $stack_name,
           "variables": $variables,
@@ -8062,7 +8073,6 @@ generate_stack_config_botpress() {
           "name": $stack_name,
           "target": "portainer",
           "prompt": $prompt_items,
-          "dependencies": [],
           "actions": {
             "refresh": [
               {
@@ -8070,9 +8080,7 @@ generate_stack_config_botpress() {
                 "description": "Fetching postgres password",
                 "command": "fetch_database_password postgres"
               }
-            ],
-            "prepare": [],
-            "finalize": []
+            ]
           }
       }'
   ) || {
@@ -8516,5 +8524,7 @@ main() {
   clean_screen
 }
 
-# Call the main function
-main "$@"
+# # Call the main function
+# main "$@"
+
+generate_stack_config_botpress
