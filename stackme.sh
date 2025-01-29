@@ -5397,10 +5397,8 @@ execute_refresh_actions() {
       continue
     fi
 
-    debug "$name: $command_output"
-    
     variable_to_update="$(\
-      echo "$command_output" | jq -c --arg key "$name" '{($key): .}'\
+      echo "\"$command_output\"" | jq -c --arg key "$name" '{($key): .}'\
     )"
 
     # Merge the command output with the existing stack variables using add_json_objects
