@@ -7832,7 +7832,7 @@ generate_stack_config_n8n(){
     --arg stack_name "$stack_name" \
     --arg n8n_editor_url "$n8n_editor_url" \
     --arg n8n_webhook_url "$n8n_webhook_url" \
-    --arg n8n_smtp_email "$n8n_smtp_email" \
+    --arg n8n_smtp_from_email "$n8n_smtp_from_email" \
     --arg n8n_smtp_username "$n8n_smtp_username" \
     --arg n8n_smtp_password "$n8n_smtp_password" \
     --arg n8n_smtp_host "$n8n_smtp_host" \
