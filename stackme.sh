@@ -4198,11 +4198,12 @@ wait_for_services() {
     services=$(docker stack services --format '{{.Name}}' "$stack_name")
 
     # Loop until all services are healthy or timeout occurs
+    start_time=$(date +%s)  # Record the start time
     while true; do
         all_healthy=true
         for service in $services; do
             # Get the current state of the service using docker service ps
-            service_state=$(\
+            service_state=$(
               docker service ps \
               --filter "desired-state=running" \
               --format "{{.CurrentState}}" "$service" | \
@@ -4212,7 +4213,10 @@ wait_for_services() {
             # If the service is not running or not in the "Running" state
             if [[ -z "$service_state" ]]; then
                 all_healthy=false
-                info "Service '$service' is not healthy yet. Waiting... we will wait $timout_min minutes."
+                current_time=$(date +%s)
+                elapsed=$(( (current_time - start_time) / 60 )) # Convert elapsed time to minutes
+                time_info="elapsed time: ${elapsed} minutes (timeout: $timeout_min minutes)."
+                info "Service '$service' is not healthy yet. Waiting... $time_info"
                 break
             fi
         done
@@ -4224,6 +4228,8 @@ wait_for_services() {
         fi
 
         # Check if we've exceeded the timeout
+        current_time=$(date +%s)
+        elapsed=$((current_time - start_time))  # Elapsed time in seconds
         if (( elapsed >= timeout )); then
             failure "Timeout reached! Not all services of stack $stack_name are healthy."
             exit 1
@@ -4231,8 +4237,8 @@ wait_for_services() {
 
         # Sleep for the interval before checking again
         sleep "$interval"
-        elapsed=$((elapsed + interval))
     done
+
 }
 
 # Function to download stack compose templates with progress bar
@@ -4959,7 +4965,8 @@ traefik_and_portainer_exist(){
   stack_names=("traefik" "portainer")
   
   if ! stacks_exist "${stack_names[@]}"; then
-    error "Traefik and Portainer stacks do not exist. Deploy them manually before any other stack."
+    error "Traefik and Portainer stacks do not exist. Choose the first option on Stacks manu."
+    wait_for_input
     return 1
   fi
 
@@ -7846,6 +7853,19 @@ generate_stack_config_n8n(){
     error "Unable to retrieve $stack_name configuration."
     return 1
   fi
+💡 [2025-01-29 00:41:45] [2/8] Generating use N8N password
+💡 [2025-01-29 00:41:45] [3/8] Create encryption key
+jq: error: $n8n_editor_url is not defined at <top-level>, line 4:
+              "n8n_editor_url": $n8n_editor_url,
+jq: error: $n8n_webhook_url is not defined at <top-level>, line 5:
+              "n8n_webhook_url": $n8n_webhook_url,
+jq: error: $n8n_smtp_from_email is not defined at <top-level>, line 6:
+              "n8n_smtp_from_email": $n8n_smtp_from_email,
+jq: error: $n8n_smtp_username is not defined at <top-level>, line 7:
+              "n8n_smtp_username": $n8n_smtp_username,
+jq: 4 compile errors
+
+Operation interrupted. Exiting script...
 
   collected_object="$(process_prompt_items "$collected_items")"
 
@@ -7869,10 +7889,10 @@ generate_stack_config_n8n(){
 
   jq -n \
     --arg stack_name "$stack_name" \
-    --arg n8n_url_editor "$n8n_editor_url" \
-    --arg n8n_url_webhook "$n8n_webhook_url" \
+    --arg n8n_editor_url "$n8n_editor_url" \
+    --arg n8n_webhook_url "$n8n_webhook_url" \
     --arg n8n_smtp_email "$n8n_smtp_email" \
-    --arg n8n_smtp_user "$n8n_smtp_user" \
+    --arg n8n_smtp_username "$n8n_smtp_username" \
     --arg n8n_smtp_password "$n8n_smtp_password" \
     --arg n8n_smtp_host "$n8n_smtp_host" \
     --arg n8n_smtp_port "$n8n_smtp_port" \
