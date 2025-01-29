@@ -7881,6 +7881,7 @@ generate_stack_config_n8n(){
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
+          "target": "portainer",
           "variables": {
               "n8n_editor_url": $n8n_editor_url,
               "n8n_webhook_url": $n8n_webhook_url,
@@ -7958,6 +7959,7 @@ generate_stack_config_uptimekuma() {
     --arg network_name "$network_name" \
     '{
           "name": $stack_name,
+          "target": "portainer",
           "variables": {
               "uptimekuma_url": $uptimekuma_url,
               "network_name": $network_name
@@ -8014,6 +8016,7 @@ generate_stack_config_odoo() {
     --arg odoo_url "$odoo_url" \
     '{
           "name": $stack_name,
+          "target": "portainer",
           "variables": {
               "odoo_url": $odoo_url,
               "network_name": $network_name
@@ -8057,6 +8060,7 @@ generate_stack_config_botpress() {
     --argjson prompt_items "$prompt_items" \
     '{
           "name": $stack_name,
+          "target": "portainer",
           "prompt": $prompt_items,
           "dependencies": [],
           "actions": {
