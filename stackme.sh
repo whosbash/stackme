@@ -6681,9 +6681,7 @@ fetch_database_password() {
 
   # Read the database password from the config file
   local database_password
-  database_password=$(jq -r '.db_password' "$config_file")
-
-  debug "$database_password"
+  database_password=$(jq -r '.variables.db_password' "$config_file")
 
   echo "$database_password"
 }
