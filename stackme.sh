@@ -5575,7 +5575,7 @@ generate_stack_config_pipeline() {
 
   total_steps=2
 
-  stack_name="$(echo "$config_instructions" | jq -c '.name')"
+  stack_name="$(echo "$config_instructions" | jq -r '.name')"
 
   # Prompting step
   prompt_items="$(echo "$config_instructions" | jq -c '.prompt')"
