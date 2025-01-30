@@ -5610,7 +5610,7 @@ generate_stack_config_pipeline() {
 
   jq -n \
     --arg stack_name "$stack_name" \
-    --arg target "$target" \ 
+    --arg target "$target" \
     --argjson variables "$variables" \
     --argjson dependencies "$dependencies" \
     --argjson actions "$actions" \
@@ -8149,7 +8149,7 @@ generate_stack_config_pgadmin() {
           "validate_fn": "validate_url_suffix"
       },
       {
-          "name": "pgadmin_usermae",
+          "name": "pgadmin_username",
           "label": "PgAdmin username",
           "description": "Username for PgAdmin",
           "required": "yes",
