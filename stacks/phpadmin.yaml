@@ -13,10 +13,7 @@ services:
       - PMA_PORT=3306
       
       ## Credentials
-      - PMA_HOST=mysql
-      - PMA_PASSWORD={{mysql_password}}
-      # - PMA_USER={{phpadmin_username}}
-      # - PMA_PASSWORD={{phpadmin_password}}
+      - PMA_ARBITRARY=1
       - PMA_ABSOLUTE_URI=https://{{phpadmin_url}}
       
       ## Upload limit
