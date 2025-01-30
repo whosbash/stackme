@@ -4838,6 +4838,8 @@ upload_stack_on_portainer() {
     success "Stack '$stack_name' uploaded successfully."
   )
 
+  debug "$response" 
+
   if [[ -z "$reponse" ]]; then
     error "Failed to upload stack '$stack_name'."
     return 1
