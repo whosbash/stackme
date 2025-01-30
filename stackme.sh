@@ -5575,6 +5575,8 @@ generate_stack_config_pipeline() {
     target="portainer"
   fi
 
+  debug "$target"
+
   # Prompting step
   prompt_items="$(echo "$config_instructions" | jq -c '.prompt')"
 
@@ -5681,7 +5683,7 @@ deployment_pipeline() {
   step_info 5 $total_steps "Deploying stack on target"
   local target
   target=$(echo "$config_json" | jq -r '.target // "swarm"')
-  debug "$target"
+
   deploy_stack_on_target "$stack_name" "$compose_path" "$target" || {
     failure "Failed to deploy stack on target: $target"
     return 1
@@ -8153,7 +8155,7 @@ generate_stack_config_pgadmin() {
           "label": "PgAdmin username",
           "description": "Username for PgAdmin",
           "required": "yes",
-          "validate_fn": "validate_username"
+          "validate_fn": "validate_email_value"
       },
       {
           "name": "pgadmin_password",
@@ -8305,7 +8307,7 @@ define_menu_stacks_miscelaneous() {
     build_menu_item "excalidraw (working)" "Deploy" "deploy_stack_handler excalidraw"
   )"
   item_6="$(
-    build_menu_item "metabase (wip)" "Deploy" "deploy_stack_handler metabase"
+    build_menu_item "pgadmin (working)" "Deploy" "deploy_stack_handler pgadmin"
   )"
   item_7="$(
     build_menu_item "n8n (wip)" "Deploy" "deploy_stack_handler n8n"
@@ -8329,8 +8331,9 @@ define_menu_stacks_miscelaneous() {
     build_menu_item "PHPAdmin (wip)" "Deploy" "deploy_stack_handler phpadmin"
   )"
   item_14="$(
-    build_menu_item "pgadmin (wip)" "Deploy" "deploy_stack_handler pgadmin"
+    build_menu_item "metabase (wip)" "Deploy" "deploy_stack_handler metabase"
   )"
+  
 
   items=(
     "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" 
