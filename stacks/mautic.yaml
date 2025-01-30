@@ -15,18 +15,18 @@ services:
       - {{network_name}}
 
     environment:
-      ## Dados MySQL
+      ## MySQL
       - MAUTIC_DB_NAME=mautic
       - MAUTIC_DB_HOST=mysql
       - MAUTIC_DB_PORT=3306
       - MAUTIC_DB_USER=root
       - MAUTIC_DB_PASSWORD={{mysql_password}}
       
-      ## Acess data
-      - MAUTIC_ADMIN_EMAIL={{mautic_email}}
-      - MAUTIC_ADMIN_USERNAME={{mautic_username}}
-      - MAUTIC_ADMIN_PASSWORD={{mautic_password}}
-      - MAUTIC_URL=https://{{mautic_url}}
+      ## Access data
+      - MAUTIC_ADMIN_EMAIL={{mautic_email_username}}
+      - MAUTIC_ADMIN_USERNAME={{mautic_email_username}}
+      - MAUTIC_ADMIN_PASSWORD={{mautic_email_password}}
+      - MAUTIC_URL=https://{{mautic_url}}/
 
       ## Settings
       - MAUTIC_TRUSTED_PROXIES=["0.0.0.0/0"]
@@ -76,8 +76,8 @@ services:
       - MAUTIC_DB_PASSWORD={{mysql_password}}
       
       ## Access data
-      - MAUTIC_ADMIN_EMAIL={{mautic_email}}
-      - MAUTIC_ADMIN_USERNAME={{mautic_username}}
+      - MAUTIC_ADMIN_EMAIL={{mautic_email_username}}
+      - MAUTIC_ADMIN_USERNAME={{mautic_email_username}}
       - MAUTIC_ADMIN_PASSWORD={{mautic_email_password}}
       - MAUTIC_URL=https://{{mautic_url}}
 
@@ -100,7 +100,7 @@ services:
           memory: 2048M
 
   mautic_cron:
-    image: mautic/mautic:latest ## Versão do Mautic
+    image: mautic/mautic:latest ## Mautic
 
     volumes:
       - mautic_config:/var/www/html/config
@@ -113,20 +113,20 @@ services:
       - {{network_name}}
 
     environment:
-      ## Dados MySQL
+      ## MySQL
       - MAUTIC_DB_NAME=mautic
       - MAUTIC_DB_HOST=mysql
       - MAUTIC_DB_PORT=3306
       - MAUTIC_DB_USER=root
       - MAUTIC_DB_PASSWORD={{mysql_password}}
       
-      ## Dados de acesso
-      - MAUTIC_ADMIN_EMAIL={{mautic_email}}
-      - MAUTIC_ADMIN_USERNAME={{mautic_username}}
+      ## Access data
+      - MAUTIC_ADMIN_EMAIL={{mautic_email_username}}
+      - MAUTIC_ADMIN_USERNAME={{mautic_email_username}}
       - MAUTIC_ADMIN_PASSWORD={{mautic_email_password}}
       - MAUTIC_URL=https://{{mautic_url}}
 
-      ## Configurações
+      ## Settings
       - MAUTIC_TRUSTED_PROXIES=["0.0.0.0/0"]
       - DOCKER_MAUTIC_ROLE=mautic_cron
       - DOCKER_MAUTIC_WORKERS_CONSUME_EMAIL=2

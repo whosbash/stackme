@@ -84,14 +84,14 @@ services:
       - {{network_name}}
 
     environment:
-      ## Url WoofedCRM
+      ## WoofedCRM
       - FRONTEND_URL=https://{{woofed_url}}
       - SECRET_KEY_BASE={{woofed_encryption_key}}
 
-      ## Idioma
+      ## Language
       - LANGUAGE=pt-BR
 
-      ## Permitir/Bloquear novas Inscrições
+      ## Enable/disable user signups
       - ENABLE_USER_SIGNUP=true
 
       ## Credenciais Motor

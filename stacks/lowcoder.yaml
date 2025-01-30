@@ -26,10 +26,10 @@ services:
       - LOWCODER_CREATE_WORKSPACE_ON_SIGNUP=true ## true = allow signups
       - LOWCODER_WORKSPACE_MODE=SAAS
 
-      ## Encryption
+      ## Encryption lowcoder_encryption_key
       - LOWCODER_DB_ENCRYPTION_PASSWORD={{lowcoder_encryption_key}} ## hash Encryption
-      - LOWCODER_DB_ENCRYPTION_SALT={{lowcoder_encryption_key}} ## hash Encryption
-      - LOWCODER_API_KEY_SECRET={{lowcoder_encryption_key}} # hash Encryption
+      - LOWCODER_DB_ENCRYPTION_SALT={{lowcoder_encryption_salt}} ## hash Encryption
+      - LOWCODER_API_KEY_SECRET={{lowcoder_api_secret_key}} # hash Encryption
 
       ## Outras configurações
       - LOWCODER_CORS_DOMAINS=*
@@ -87,7 +87,7 @@ services:
     image: lowcoderorg/lowcoder-ce-frontend:latest
 
     volumes:
-     - lowcoder_assets:/lowcoder/assets
+      - lowcoder_assets:/lowcoder/assets
 
     networks:
       - {{network_name}}

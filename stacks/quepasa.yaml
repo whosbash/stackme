@@ -33,7 +33,7 @@ services:
       - READUPDATE=false
       - LOGLEVEL=DEBUG
 
-      ## Configurações quepasa
+      ## Quepasa
       - QUEPASA_HOST_NAME=Quepasa
       - QUEPASA_MEMORY_LIMIT=4096M
       - WEBSOCKETSSL=true

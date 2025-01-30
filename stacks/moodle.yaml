@@ -11,16 +11,16 @@ services:
       - {{network_name}}
 
     environment:
-      ## Dados do projeto
+      ## Project
       - MOODLE_SITE_NAME={{moodle_project_name}}
 
-      ## Dados de acesso
+      ## Signup
       - MOODLE_HOST={{moodle_url}}
       - MOODLE_USERNAME={{moodle_username}}
       - MOODLE_PASSWORD={{moodle_password}}
       - MOODLE_EMAIL={{moodle_email}}
 
-      ## Dados SMTP
+      ## SMTP
       - MOODLE_SMTP_HOST={{moodle_smtp_host}}
       - MOODLE_SMTP_PORT_NUMBER={{moodle_smtp_port}}
       - MOODLE_SMTP_USER={{moodle_smtp_username}}
@@ -30,7 +30,7 @@ services:
       ## Language
       - MOODLE_LANG=pt
       
-      ## Dados MarinaDB
+      ## MariaDB
       - MOODLE_DATABASE_HOST=mariadb
       - MOODLE_DATABASE_PORT_NUMBER=3306
       - MOODLE_DATABASE_USER=mariadb
