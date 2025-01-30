@@ -4827,7 +4827,7 @@ upload_stack_on_portainer() {
   content_type="application/json"
   url="$(get_api_url "https" "$portainer_url" "$resource")"
 
-  reponse=$(
+  response=$(
     curl -s -k -X POST \
     -H "Authorization: Bearer $token" \
     -F "Name=$stack_name" \
@@ -4838,7 +4838,9 @@ upload_stack_on_portainer() {
     success "Stack '$stack_name' uploaded successfully."
   )
 
-  if [[ -z "$reponse" ]]; then
+  debug "$response"
+
+  if [[ -z "$response" ]]; then
     error "Failed to upload stack '$stack_name'."
     return 1
   fi
@@ -8950,7 +8952,7 @@ generate_stack_config_stirlingpdf() {
           "label": "StirlingPDF Description",
           "description": "Description for StirlingPDF app",
           "required": "yes",
-          "validate_fn": "validate_url_suffix"
+          "validate_fn": "validate_empty_value"
       },
       {
           "name": "stirlingpdf_url",
@@ -9585,7 +9587,6 @@ define_menu_stacks_databases() {
   define_menu "$menu_key" "$menu_object"
 }
 
-
 # main:stacks:miscelaneous
 define_menu_stacks_miscelaneous() {
   menu_key="main:stacks:miscelaneous"
@@ -9599,6 +9600,7 @@ define_menu_stacks_miscelaneous() {
       ["focalboard"]="working"
       ["excalidraw"]="working"
       ["pgadmin"]="working"
+      ["clickhouse"]="working"
       ["n8n"]="wip"
       ["yourls"]="wip"
       ["qdrant"]="wip"
@@ -9608,8 +9610,7 @@ define_menu_stacks_miscelaneous() {
       ["phpadmin"]="wip"
       ["metabase"]="wip"
       ["nocodb"]="wip"
-      ["ntfy"]="wip"
-      ["clickhouse"]="wip"
+      ["ntfy"]="wip"      
       ["redisinsight"]="wip"
       ["weavite"]="wip"
       ["rabbitmq"]="wip"
