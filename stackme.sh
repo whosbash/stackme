@@ -4815,17 +4815,23 @@ upload_stack_on_portainer() {
     return 1
   fi
 
+  debug "Endpoint ID: $endpoint_id"
+
   swarm_id=$(get_portainer_swarm_id "$portainer_url" "$token" "$endpoint_id")
   if [[ -z "$swarm_id" ]]; then
     error "Failed to retrieve Swarm ID."
     return 1
   fi
 
+  debug "Swarm ID: $swarm_id"
+
   # Upload the stack
   info "Uploading stack: ${stack_name}... (It may take mostly less than 5 minutes. Ctrl+C if it takes longer.)"
   resource="stacks/create/swarm/file"
   content_type="application/json"
   url="$(get_api_url "https" "$portainer_url" "$resource")"
+
+  debug "$compose_file"
 
   reponse=$(
     curl -s -k -X POST \
@@ -4837,6 +4843,8 @@ upload_stack_on_portainer() {
     "$url" &&
     success "Stack '$stack_name' uploaded successfully."
   )
+
+  debug "$reponse"
   
   if [[ -z "$reponse" ]]; then
     error "Failed to upload stack '$stack_name'."
