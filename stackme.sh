@@ -5618,6 +5618,7 @@ generate_stack_config_pipeline() {
     --argjson actions "$actions" \
     '{
           "name": $stack_name,
+          "target": $target,
           "variables": $variables,
           "dependencies": $dependencies,
           "actions": $actions
@@ -8221,7 +8222,8 @@ generate_stack_config_phpadmin() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items
+          "prompt": $prompt_items,
+          "dependencies": ["mysql"]
       }'
   ) || {
       error "Failed to generate JSON"
