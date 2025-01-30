@@ -1,7 +1,7 @@
 version: "3.7"
 services:
   evolution_lite:
-    image: atendai/evolution-api-lite:latest ## Versão da Evolution API
+    image: atendai/evolution-api-lite:latest
     entrypoint: ["/bin/bash", "-c", ". ./Docker/scripts/deploy_database.sh && npm run start:prod" ]
 
     volumes:
@@ -11,7 +11,7 @@ services:
       - {{network_name}}
 
     environment:
-      ## Configurações Gerais
+      ## Settings
       - SERVER_URL=https://{{evolution_url}}
       - AUTHENTICATION_API_KEY={{evolution_api_key}}
       - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
@@ -25,7 +25,7 @@ services:
       - CONFIG_SESSION_PHONE_CLIENT=
       - CONFIG_SESSION_PHONE_NAME=Chrome
       
-      ## Configuração do Banco de Dados
+      ## Database
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
       - DATABASE_CONNECTION_URI=postgresql://postgres{{postgres_password}}@postgres:5432/evolution_lite
@@ -38,14 +38,14 @@ services:
       - DATABASE_SAVE_DATA_LABELS=true
       - DATABASE_SAVE_DATA_HISTORIC=true
       
-      ## Configuração do Cache
+      ## Cache
       - CACHE_REDIS_ENABLED=true
       - CACHE_REDIS_URI=redis://redis:6379/8
       - CACHE_REDIS_PREFIX_KEY=evolution
       - CACHE_REDIS_SAVE_INSTANCES=false
       - CACHE_LOCAL_ENABLED=false
       
-      ## Configuração do S3
+      ## S3
       - S3_ENABLED=false
       - S3_ACCESS_KEY=
       - S3_SECRET_KEY=
@@ -55,7 +55,7 @@ services:
       - S3_USE_SSL=true
       #- S3_REGION=eu-south
 
-      ## Configuração do WhatsApp Business
+      ## WhatsApp Business
       - WA_BUSINESS_TOKEN_WEBHOOK=evolution
       - WA_BUSINESS_URL=https://graph.facebook.com
       - WA_BUSINESS_VERSION=v20.0
@@ -65,18 +65,18 @@ services:
       - TELEMETRY=false
       - TELEMETRY_URL=
 
-      ## Configuração do WebSocket
+      ## WebSocket
       - WEBSOCKET_ENABLED=false
       - WEBSOCKET_GLOBAL_EVENTS=false
 
-      ## Configuração do SQS
+      ## SQS
       - SQS_ENABLED=false
       - SQS_ACCESS_KEY_ID=
       - SQS_SECRET_ACCESS_KEY=
       - SQS_ACCOUNT_ID=
       - SQS_REGION=
 
-      ## Configuração do RabbitMQ
+      ## RabbitMQ
       - RABBITMQ_ENABLED=false
       - RABBITMQ_URI=amqp://USER:PASS@rabbitmq:5672/evolution
       - RABBITMQ_EXCHANGE_NAME=evolution
@@ -107,7 +107,7 @@ services:
       - RABBITMQ_EVENTS_TYPEBOT_START=false
       - RABBITMQ_EVENTS_TYPEBOT_CHANGE_STATUS=false
 
-      ## Configuração do Webhook
+      ## Webhook
       - WEBHOOK_GLOBAL_ENABLED=false
       - WEBHOOK_GLOBAL_URL=
       - WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS=false
@@ -139,7 +139,7 @@ services:
       - WEBHOOK_EVENTS_ERRORS=false
       - WEBHOOK_EVENTS_ERRORS_WEBHOOK=
 
-      ## Configuração do Provider
+      ## Provider
       - PROVIDER_ENABLED=false
       - PROVIDER_HOST=127.0.0.1
       - PROVIDER_PORT=5656

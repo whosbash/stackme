@@ -11,7 +11,7 @@ services:
       - {{network_name}}
 
     environment:
-      ## Dados do Mysql
+      ## Mysql
       - WORDPRESS_DB_NAME={{wordpress_site_name}}
       - WORDPRESS_DB_HOST=mysql
       - WORDPRESS_DB_PORT=3306
@@ -23,10 +23,10 @@ services:
       - WP_REDIS_PORT=6379
       - WP_REDIS_DATABASE=6
 
-      ## Url do Wordpress
+      ## Wordpress Url
       - VIRTUAL_HOST={{wordpress_url}}
 
-      ## Localização
+      ## Locale
       - WP_LOCALE=pt_BR
 
     deploy:

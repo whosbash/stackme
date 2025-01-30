@@ -28,7 +28,7 @@ services:
       - API_BASE_PATH=/api/
 
       ## Encryption Key
-      - APP_KEY={{nocobase_encryption_key}}
+      - APP_KEY={{nocobase_app_key}}
       - ENCRYPTION_FIELD_KEY={{nocobase_encryption_key}}
 
     deploy:

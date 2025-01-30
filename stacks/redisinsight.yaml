@@ -14,7 +14,7 @@ services:
     environment:
       - RI_APP_PORT=5540
       - RI_APP_HOST=0.0.0.0
-      - RI_ENCRYPTION_KEY={{redisinsight_key}}
+      - RI_ENCRYPTION_KEY={{redisinsight_encryption_key}}
       - RI_LOG_LEVEL=info
       - RI_FILES_LOGGER=false
       - RI_STDOUT_LOGGER=true
