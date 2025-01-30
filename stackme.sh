@@ -8191,10 +8191,24 @@ generate_stack_config_phpadmin() {
   local prompt_items=$(jq -n '[
       {
           "name": "phpadmin_url",
-          "label": "PHPAdmina domain name",
-          "description": "URL to access PHPAdmina remotely",
+          "label": "PHPAdmin domain name",
+          "description": "URL to access PHPAdmin remotely",
           "required": "yes",
           "validate_fn": "validate_url_suffix"
+      },
+      {
+          "name": "phpadmin_username",
+          "label": "PHPAdmin username",
+          "description": "Username for PHPAdmin",
+          "required": "yes",
+          "validate_fn": "validate_email_value"
+      },
+      {
+          "name": "phpadmin_password",
+          "label": "PHPAdmin password",
+          "description": "Password for PHPAdmin",
+          "required": "yes",
+          "validate_fn": "validate_password"
       }
   ]')
 
