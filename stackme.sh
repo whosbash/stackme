@@ -7193,7 +7193,6 @@ generate_stack_config_generic_database() {
     '{
       "name": $stack_name,
       "target": "portainer",
-      "prompt": [],
       "actions": {
         "refresh": [
           {
@@ -7221,54 +7220,6 @@ generate_stack_config_generic_database() {
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
-}
-
-# Function to generate Database service configuration JSON
-generate_stack_config_generic_database() {
-  local stack_name="$1"
-  local image_version="$2"
-  local db_username="$3"
-
-  total_steps=2
-
-  step_info 1 $total_steps "Generating used $stack_name password"
-  local db_password="$(random_string)"
-
-  step_info 2 $total_steps "Retrieving network name"
-  local network_name="$(get_network_name)"
-
-  if [[ -z "$network_name" ]]; then
-    reason="Either stackme was not initialized properly or server_info.json file is corrupted."
-    step_error 2 $total_steps "Unable to retrieve network name. $reason"
-    return 1
-  fi
-
-  # Ensure everything is quoted correctly
-  jq -n \
-    --arg stack_name "$stack_name" \
-    --arg image_version "$image_version" \
-    --arg db_username "$db_username" \
-    --arg db_password "$db_password" \
-    --arg network_name "$network_name" \
-    '{
-          "name": $stack_name,
-          "target": "portainer",
-          "variables": {
-              "image_version": $image_version,
-              "db_username": $db_username,
-              "db_password": $db_password,
-              "network_name": $network_name
-          },
-          "dependencies": [],
-          "actions": {
-            "refresh": [],
-            "prepare": [],
-            "finalize": []
-          }
-      }' | jq . || {
-    error "Failed to generate JSON"
-    return 1
-  }
 }
 
 # Function to generate configuration files for redis
@@ -7353,7 +7304,9 @@ generate_stack_config_whoami() {
     '{
       "name": $stack_name,
       "target": "portainer",
-      "prompt": $prompt_items
+      "actions": {
+        "prompt": $prompt_items
+      }
     }'
   ) || {
       error "Failed to generate JSON"
@@ -7393,9 +7346,9 @@ generate_stack_config_airflow() {
     '{
       "name": $stack_name,
       "target": "portainer",
-      "prompt": $prompt_items,
       "dependencies": ["postgres", "redis"],
       "actions": {
+        "prompt": $prompt_items,
         "refresh": [
           {
             "name": "postgres_password",
@@ -7444,9 +7397,9 @@ generate_stack_config_metabase() {
     '{
       "name": $stack_name,
       "target": "portainer",
-      "prompt": $prompt_items,
       "dependencies": ["postgres", "redis"],
       "actions": {
+      "prompt": $prompt_items,
         "refresh": [
           {
             "name": "postgres_password",
@@ -7509,7 +7462,9 @@ generate_stack_config_yourls() {
     '{
       "name": $stack_name,
       "target": "portainer",
-      "prompt": $prompt_items
+      "actions": {
+        "prompt": $prompt_items
+      }
     }'
   ) || {
       error "Failed to generate JSON"
@@ -7542,7 +7497,9 @@ generate_stack_config_appsmith() {
     '{
       "name": $stack_name,
       "target": "portainer",
-      "prompt": $prompt_items
+      "actions": {
+        "prompt": $prompt_items
+      }
     }'
   ) || {
       error "Failed to generate JSON"
@@ -7575,7 +7532,9 @@ generate_stack_config_focalboard() {
     '{
       "name": $stack_name,
       "target": "portainer",
-      "prompt": $prompt_items
+      "actions": {
+        "prompt": $prompt_items
+      }
     }'
   ) || {
       error "Failed to generate JSON"
@@ -7608,7 +7567,9 @@ generate_stack_config_excalidraw() {
     '{
       "name": $stack_name,
       "target": "portainer",
-      "prompt": $prompt_items
+      "actions": {
+        "prompt": $prompt_items
+      }
     }'
   ) || {
       error "Failed to generate JSON"
@@ -7641,7 +7602,9 @@ generate_stack_config_glpi() {
     '{
       "name": $stack_name,
       "target": "portainer",
-      "prompt": $prompt_items
+      "actions": {
+        "prompt": $prompt_items
+      }
     }'
   ) || {
       error "Failed to generate JSON"
@@ -7674,7 +7637,9 @@ generate_stack_config_qdrant() {
     '{
       "name": $stack_name,
       "target": "portainer",
-      "prompt": $prompt_items
+      "actions": {
+        "prompt": $prompt_items
+      }
     }'
   ) || {
       error "Failed to generate JSON"
@@ -7714,9 +7679,9 @@ generate_stack_config_n8n() {
     '{
         "name": $stack_name,
         "target": "portainer",
-        "prompt": $prompt_items,
         "dependencies": ["postgres", "redis"],
         "actions": {
+          "prompt": $prompt_items,
           "refresh": [
             {
               "name": "postgres_password",
@@ -7773,7 +7738,9 @@ generate_stack_config_uptimekuma() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items
+          "actions": {
+            "prompt": $prompt_items
+          }
       }'
   ) || {
       error "Failed to generate JSON"
@@ -7806,8 +7773,8 @@ generate_stack_config_odoo() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "actions": {
+            "prompt": $prompt_items,
             "prepare": [
               {
                 "name": "create_user odoo",
@@ -7847,8 +7814,8 @@ generate_stack_config_botpress() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "actions": {
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "postgres_password",
@@ -7902,7 +7869,9 @@ generate_stack_config_pgadmin() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
+          "actions": {
+            "prompt": $prompt_items
+          }
       }'
   ) || {
       error "Failed to generate JSON"
@@ -7934,9 +7903,9 @@ generate_stack_config_phpadmin() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "dependencies": ["mysql"],
           "actions": {
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "mysql_password",
@@ -7977,9 +7946,9 @@ generate_stack_config_nocodb() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "dependencies": ["postgres"],
           "actions": {
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "postgres_password",
@@ -8019,8 +7988,10 @@ generate_stack_config_ntfy() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
-          "dependencies": []
+          "actions": {
+            "prompt": $prompt_items,
+          }
+
       }'
   ) || {
       error "Failed to generate JSON"
@@ -8067,8 +8038,9 @@ generate_stack_config_clickhouse() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
-          "dependencies": []
+          "actions": {
+            "prompt": $prompt_items
+          }
       }'
   ) || {
       error "Failed to generate JSON"
@@ -8101,9 +8073,9 @@ generate_stack_config_redisinsight() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "dependencies": ["redis"],
           "actions":{
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "redisinsight_encryption_key",
@@ -8144,9 +8116,9 @@ generate_stack_config_weavite() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "dependencies": [],
           "actions":{
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "weaviate_token",
@@ -8201,9 +8173,8 @@ generate_stack_config_rabbitmq() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
-          "dependencies": [],
           "actions":{
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "rabbitmq_cookie_key",
@@ -8244,9 +8215,8 @@ generate_stack_config_langfuse() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
-          "dependencies": [],
           "actions":{
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "langfuse_encryption_key",
@@ -8318,8 +8288,9 @@ generate_stack_config_transcrevezap() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
-          "dependencies": []
+          "actions": {
+            "prompt": $prompt_items
+          }
       }'
   ) || {
       error "Failed to generate JSON"
@@ -8373,8 +8344,9 @@ generate_stack_config_langflow() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
-          "dependencies": []
+          "actions": {
+            "prompt": $prompt_items
+          }
       }'
   ) || {
       error "Failed to generate JSON"
@@ -8428,8 +8400,9 @@ generate_stack_config_langflow() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
-          "dependencies": []
+          "actions": {
+            "prompt": $prompt_items
+          }
       }'
   ) || {
       error "Failed to generate JSON"
@@ -8462,9 +8435,11 @@ generate_stack_config_wuzapi() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "dependencies": ["redis", "postgres"],
           "actions":{
+            "prompt": {
+              "prompt": $prompt_items
+            }
             "refresh": [
               {
                 "name": "wuzapi_secret_key",
@@ -8510,9 +8485,9 @@ generate_stack_config_openproject() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "dependencies": ["redis", "postgres"],
           "actions":{
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "openproject_key",
@@ -8567,9 +8542,9 @@ generate_stack_config_flowise() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "dependencies": ["redis", "postgres"],
           "actions":{
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "flowise_encryption_key",
@@ -8622,9 +8597,9 @@ generate_stack_config_wordpress() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "dependencies": ["mysql"],
           "actions":{
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "mysql_password",
@@ -8665,9 +8640,9 @@ generate_stack_config_easyappointments() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "dependencies": ["mysql"],
           "actions":{
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "mysql_password",
@@ -8729,9 +8704,9 @@ generate_stack_config_nocobase() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "dependencies": ["redis", "postgres"],
           "actions":{
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "nocobase_app_key",
@@ -8772,8 +8747,9 @@ generate_stack_config_mattermost() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
-          "dependencies": []
+          "actions": {
+            "prompt": $prompt_items
+          }
       }'
   ) || {
       error "Failed to generate JSON"
@@ -8806,8 +8782,9 @@ generate_stack_config_traccar() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
-          "dependencies": []
+          "actions": {
+            "prompt": $prompt_items
+          }
       }'
   ) || {
       error "Failed to generate JSON"
@@ -8840,9 +8817,9 @@ generate_stack_config_evolution() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "dependencies": ["postgres", "rabbitmq"]
           "actions":{
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "postgres_password",
@@ -8882,9 +8859,9 @@ generate_stack_config_evolution_lite() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "dependencies": ["postgres", "rabbitmq"]
           "actions":{
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "postgres_password",
@@ -8937,9 +8914,9 @@ generate_stack_config_firecrawl() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "dependencies": ["postgres", "rabbitmq"]
           "actions":{
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "postgres_password",
@@ -8992,9 +8969,9 @@ generate_stack_config_ollama() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "dependencies": []
           "actions":{
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "ollama_webui_secret_key",
@@ -9049,7 +9026,9 @@ generate_stack_config_stirlingpdf() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items
+          "actions": {
+            "prompt": $prompt_items
+          }
       }'
   ) || {
       error "Failed to generate JSON"
@@ -9082,8 +9061,8 @@ generate_stack_config_twentycrm() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "actions": {
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "twentycrm_postgres_password",
@@ -9143,8 +9122,8 @@ generate_stack_config_nextcloud() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "actions": {
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "postgres_password",
@@ -9206,8 +9185,8 @@ generate_stack_config_quepasa() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "actions": {
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "postgres_password",
@@ -9262,9 +9241,9 @@ generate_stack_config_quepasa() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "dependencies": ["mysql"],
           "actions": {
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "strapi_jwt_secret",
@@ -9341,9 +9320,9 @@ generate_stack_config_quepasa() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "dependencies": ["redis", "postgres"],
           "actions": {
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "outline_secret_key",
@@ -9408,9 +9387,9 @@ generate_stack_config_mautic() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "dependencies": ["mysql"],
           "actions": {
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "mysql_password",
@@ -9479,9 +9458,9 @@ generate_stack_config_woofed() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "dependencies": ["pgvector"],
           "actions": {
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "pgvector_password",
@@ -9536,8 +9515,9 @@ generate_stack_config_iceberg() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
-          "dependencies": []
+          "actions": {
+            "prompt": $prompt_items
+          }
       }'
   ) || {
       error "Failed to generate JSON"
@@ -9598,9 +9578,9 @@ generate_stack_config_moodle() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "prompt": $prompt_items,
           "dependencies": ["mariadb"],
           "actions": {
+            "prompt": $prompt_items
             "refresh": [
               {
                 "description": "Fetch mariadb database password",
