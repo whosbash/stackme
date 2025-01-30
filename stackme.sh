@@ -4859,6 +4859,8 @@ deploy_stack_on_portainer() {
     get_portainer_auth_token "$portainer_url" "$portainer_credentials"
   )"
 
+  debug "$portainer_auth_token"
+
   if [[ -z "$portainer_auth_token" ]]; then
     error "Failed to retrieve Portainer token."
     return 1
@@ -5505,6 +5507,7 @@ deploy_stack_on_target() {
   portainer)
     info "Deploying stack '$stack_name' on Portainer"
     portainer_config="$(load_portainer_url_and_credentials)"
+    debug "$portainer_config"
 
     deploy_stack_on_portainer "$portainer_config" "$stack_name" "$compose_path"
 
@@ -5735,8 +5738,6 @@ deploy_stack() {
   # Generate the stack JSON configuration
   local stack_config
   stack_config=$(eval "generate_stack_config_$stack_name")
-
-  debug "$stack_config"
 
   if [ -z "$stack_config" ]; then
     return 1
@@ -8198,20 +8199,6 @@ generate_stack_config_phpadmin() {
           "description": "URL to access PHPAdmin remotely",
           "required": "yes",
           "validate_fn": "validate_url_suffix"
-      },
-      {
-          "name": "phpadmin_username",
-          "label": "PHPAdmin username",
-          "description": "Username for PHPAdmin",
-          "required": "yes",
-          "validate_fn": "validate_email_value"
-      },
-      {
-          "name": "phpadmin_password",
-          "label": "PHPAdmin password",
-          "description": "Password for PHPAdmin",
-          "required": "yes",
-          "validate_fn": "validate_password"
       }
   ]')
 
