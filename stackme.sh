@@ -4838,8 +4838,6 @@ upload_stack_on_portainer() {
     success "Stack '$stack_name' uploaded successfully."
   )
 
-  debug "$response" 
-
   if [[ -z "$reponse" ]]; then
     error "Failed to upload stack '$stack_name'."
     return 1
@@ -9664,7 +9662,6 @@ define_menu_stacks_miscelaneous() {
   # Generate menu items and append them to the array
   for stack in "${!stacks[@]}"; do
       item="$(build_menu_item "$stack (${stacks[$stack]})" "Deploy" "deploy_stack_handler $stack")"
-      debug "$item"
       items+=("$item")
   done
 
