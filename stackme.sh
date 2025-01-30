@@ -8136,6 +8136,84 @@ generate_stack_config_botpress() {
   generate_stack_config_pipeline "$config_instructions"
 }
 
+generate_stack_config_pgadmin() {
+  local stack_name="pgadmin"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "pgadmin_url",
+          "label": "PgAdmin domain name",
+          "description": "URL to access PgAdmin remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      },
+      {
+          "name": "pgadmin_usermae",
+          "label": "PgAdmin username",
+          "description": "Username for PgAdmin",
+          "required": "yes",
+          "validate_fn": "validate_username"
+      },
+      {
+          "name": "pgadmin_password",
+          "label": "PgAdmin password",
+          "description": "Password for PgAdmin",
+          "required": "yes",
+          "validate_fn": "validate_password"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "prompt": $prompt_items,
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+generate_stack_config_phpadmin() {
+  local stack_name="phpadmin"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "phpadmin_url",
+          "label": "PHPAdmina domain name",
+          "description": "URL to access PHPAdmina remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "prompt": $prompt_items
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
 #################################### END OF STACK CONFIGURATION ###################################
 
 ################################ BEGIN OF STACK DEPLOYMENT FUNCTIONS ##############################
@@ -8247,11 +8325,17 @@ define_menu_stacks_miscelaneous() {
   item_12="$(
     build_menu_item "botpress (wip)" "Deploy" "deploy_stack_handler botpress"
   )"
+  item_13="$(
+    build_menu_item "PHPAdmin (wip)" "Deploy" "deploy_stack_handler phpadmin"
+  )"
+  item_14="$(
+    build_menu_item "pgadmin (wip)" "Deploy" "deploy_stack_handler pgadmin"
+  )"
 
   items=(
     "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" 
     "$item_6" "$item_7" "$item_8" "$item_9" "$item_10"
-    "$item_11" "$item_12"
+    "$item_11" "$item_12" "$item_13" "$item_14"
   )
 
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
