@@ -5581,7 +5581,7 @@ generate_stack_config_pipeline() {
   # Prompting step
   step_info 1 $total_steps "Prompting required $stack_name information"
 
-  prompt_items="$(echo "$config_instructions" | jq -c '.prompt // []')"
+  prompt_items="$(echo "$config_instructions" | jq -c '.actions.prompt // []')"
   if [[ "$prompt_items" == "[]" ]]; then
     display_prompt_items "$prompt_items"
   else
@@ -8139,7 +8139,7 @@ generate_stack_config_weavite() {
 
 # Function to generate RabbtiMQ service configuration JSON
 generate_stack_config_rabbitmq() {
-  local stack_name="rabbitmq"
+  local stack_name="rabbitmq" 
 
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
@@ -8274,62 +8274,6 @@ generate_stack_config_transcrevezap() {
       },
       {
           "name": "transcrevezap_password",
-          "label": "Langfuse password",
-          "description": "Password to access TranscreveZap remotely",
-          "required": "yes",
-          "validate_fn": "validate_password"
-      }
-  ]')
-
-  # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
-          "name": $stack_name,
-          "target": "portainer",
-          "actions": {
-            "prompt": $prompt_items
-          }
-      }'
-  ) || {
-      error "Failed to generate JSON"
-      return 1
-  }
-
-  # Pass variable correctly
-  generate_stack_config_pipeline "$config_instructions"
-}
-
-# Function to generate Langflow service configuration JSON
-generate_stack_config_langflow() {
-  local stack_name="langflow"
-
-  # Prompting step (escaped properly for Bash)
-  local prompt_items=$(jq -n '[
-      {
-          "name": "langflow_url",
-          "label": "TranscreveZap domain name",
-          "description": "URL to access TranscreveZap remotely",
-          "required": "yes",
-          "validate_fn": "validate_url_suffix"
-      },
-      {
-          "name": "langflow_api_url",
-          "label": "TranscreveZap API domain name",
-          "description": "URL to access TranscreveZap API remotely",
-          "required": "yes",
-          "validate_fn": "validate_url_suffix"
-      },
-      {
-          "name": "langflow_username",
-          "label": "TranscreveZap username",
-          "description": "Username to access TranscreveZap remotely",
-          "required": "yes",
-          "validate_fn": "validate_username"
-      },
-      {
-          "name": "langflow_password",
           "label": "Langfuse password",
           "description": "Password to access TranscreveZap remotely",
           "required": "yes",
@@ -8839,7 +8783,7 @@ generate_stack_config_evolution() {
 
 # Function to generate Evolution Lite service configuration JSON
 generate_stack_config_evolution_lite() {
-  local stack_name="evolution"
+  local stack_name="evolution_lite"
 
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
@@ -9205,32 +9149,19 @@ generate_stack_config_quepasa() {
   generate_stack_config_pipeline "$config_instructions"
 }
 
-# Function to generate Quepasa service configuration JSON
-generate_stack_config_quepasa() {
-  local stack_name="quepasa"
+# Function to generate Strapi service configuration JSON
+generate_stack_config_strapi() {
+  local stack_name="strapi"
 
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
       {
-          "name": "quepasa_url",
+          "name": "strapi_url",
           "label": "Quepasa URL",
           "description": "URL to access Quepasa remotely",
           "required": "yes",
           "validate_fn": "validate_url_suffix"
-      },
-      {
-          "name": "quepasa_email_username",
-          "label": "Quepasa username",
-          "description": "Username to access Quepasa remotely",
-          "required": "yes",
-          "validate_fn": "validate_username"
-      },
-      {
-          "name": "quepasa_email_password",
-          "label": "Quepasa password",
-          "description": "Password to access Quepasa remotely",
-          "required": "yes",
-          "validate_fn": "validate_username"
+      }
       }
   ]')
 
@@ -9277,9 +9208,9 @@ generate_stack_config_quepasa() {
   generate_stack_config_pipeline "$config_instructions"
 }
 
-# Function to generate Quepasa service configuration JSON
-generate_stack_config_quepasa() {
-  local stack_name="quepasa"
+# Function to generate Outline service configuration JSON
+generate_stack_config_outline() {
+  local stack_name="outline"
 
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
@@ -9678,55 +9609,63 @@ define_menu_stacks_miscelaneous() {
   menu_key="main:stacks:miscelaneous"
   menu_title="Miscelaneous stacks"
 
-  item_1="$(
-    build_menu_item "whoami" "Deploy (working)" "deploy_stack_handler whoami"
-  )"
-  item_2="$(
-    build_menu_item "uptimekuma (working)" "Deploy" "deploy_stack_handler uptimekuma"
-  )"
-  item_3="$(
-    build_menu_item "appsmith (working)" "Deploy" "deploy_stack_handler appsmith"
-  )"
-  item_4="$(
-    build_menu_item "focalboard (working)" "Deploy" "deploy_stack_handler focalboard"
-  )"
-  item_5="$(
-    build_menu_item "excalidraw (working)" "Deploy" "deploy_stack_handler excalidraw"
-  )"
-  item_6="$(
-    build_menu_item "pgadmin (working)" "Deploy" "deploy_stack_handler pgadmin"
-  )"
-  item_7="$(
-    build_menu_item "n8n (wip)" "Deploy" "deploy_stack_handler n8n"
-  )"
-  item_8="$(
-    build_menu_item "yourls (wip)" "Deploy" "deploy_stack_handler yourls"
-  )"
-  item_9="$(
-    build_menu_item "qdrant (wip)" "Deploy" "deploy_stack_handler qdrant"
-  )"
-  item_10="$(
-    build_menu_item "glpi (wip)" "Deploy" "deploy_stack_handler glpi"
-  )"
-  item_11="$(
-    build_menu_item "odoo (wip)" "Deploy" "deploy_stack_handler odoo"
-  )"
-  item_12="$(
-    build_menu_item "botpress (wip)" "Deploy" "deploy_stack_handler botpress"
-  )"
-  item_13="$(
-    build_menu_item "PHPAdmin (wip)" "Deploy" "deploy_stack_handler phpadmin"
-  )"
-  item_14="$(
-    build_menu_item "metabase (wip)" "Deploy" "deploy_stack_handler metabase"
-  )"
-  
-
-  items=(
-    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" 
-    "$item_6" "$item_7" "$item_8" "$item_9" "$item_10"
-    "$item_11" "$item_12" "$item_13" "$item_14"
+  # Define applications and their statuses
+  declare -A stacks=(
+      ["whoami"]="working"
+      ["uptimekuma"]="working"
+      ["appsmith"]="working"
+      ["focalboard"]="working"
+      ["excalidraw"]="working"
+      ["pgadmin"]="working"
+      ["n8n"]="wip"
+      ["yourls"]="wip"
+      ["qdrant"]="wip"
+      ["glpi"]="wip"
+      ["odoo"]="wip"
+      ["botpress"]="wip"
+      ["phpadmin"]="wip"
+      ["metabase"]="wip"
+      ["nocodb"]="wip"
+      ["ntfy"]="wip"
+      ["clickhouse"]="wip"
+      ["redisinsight"]="wip"
+      ["weavite"]="wip"
+      ["rabbitmq"]="wip"
+      ["langfuse"]="wip"
+      ["transcrevezap"]="wip"
+      ["langflow"]="wip"
+      ["wuzapi"]="wip"
+      ["openproject"]="wip"
+      ["flowise"]="wip"
+      ["wordpress"]="wip"
+      ["easyappointments"]="wip"
+      ["nocobase"]="wip"
+      ["mattermost"]="wip"
+      ["traccar"]="wip"
+      ["evolution"]="wip"
+      ["evolution_lite"]="wip"
+      ["firecrawl"]="wip"
+      ["ollama"]="wip"
+      ["stirlingpdf"]="wip"
+      ["twentycrm"]="wip"
+      ["nextcloud"]="wip"
+      ["quepasa"]="wip"
+      ["strapi"]="wip"
+      ["outline"]="wip"
+      ["mautic"]="wip"
+      ["woofed"]="wip"
+      ["iceberg"]="wip"
+      ["moodle"]="wip"
   )
+
+  # Initialize an array to store menu items
+  items=()
+
+  # Generate menu items and append them to the array
+  for app in "${!stacks[@]}"; do
+      item="$(build_menu_item "$stack (${stacks[$stack]})" "Deploy" "deploy_stack_handler $stack")"
+      items+=("$item")
+  done
 
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
 
@@ -9831,69 +9770,41 @@ define_menu_utilities() {
 }
 
 # main:health
+# main:health
 define_menu_health() {
   menu_key="main:health"
   menu_title="Health"
 
-  run_command(){
+  run_command() {
     local title="$1"
     local command="$2"
-
     diplay_header "$title"
-
     eval "$command"
     wait_for_input
   }
 
-  item_1="$(
-    build_menu_item "Machine specifications" "describe" \
-      "run_command 'Machine specifications' 'generate_machine_specs'"
-  )"
-  item_2="$(
-    build_menu_item "Awake Usage" "describe" \
-      "run_command 'Uptime' 'uptime_usage'"
-  )"
-  item_3="$(
-    build_menu_item "Memory Usage" "describe" \
-      "run_command 'Memory' 'memory_usage'"
-  )"
-  item_4="$(
-    build_menu_item "Disk Usage" "describe" \
-      "run_command 'Disk' 'disk_usage'"
-  )"
-  item_5="$(
-    build_menu_item "Network" "describe" \
-      "run_command 'Network' 'network_usage'"
-  )"
-  item_6="$(
-    build_menu_item "Top Processes" "list" \
-      "run_command 'Processes' 'top_processes'"
-  )"
-  item_7="$(
-    build_menu_item "Security" "diagnose" \
-      "run_command 'Security' 'security_diagnostics'"
-  )"
-  item_8="$(
-    build_menu_item "Load Average" "describe" \
-      "run_command 'Load Average' 'load_average'"
-  )"
-  item_9="$(
-    build_menu_item "Bandwidth" "describe" \
-      "run_command 'Bandwidth' 'bandwidth_usage'"
-  )"
-  item_10="$(
-    build_menu_item "Package Updates" "install" \
-      "run_command 'Package Updates' 'update_and_check_packages'"
-  )"
-  items=(
-    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5"
-    "$item_6" "$item_7" "$item_8" "$item_9" "$item_10"
+  # Define menu items in an array
+  menu_items=(
+    "Machine specifications:describe:generate_machine_specs"
+    "Awake Usage:describe:uptime_usage"
+    "Memory Usage:describe:memory_usage"
+    "Disk Usage:describe:disk_usage"
+    "Network:describe:network_usage"
+    "Top Processes:list:top_processes"
+    "Security:diagnose:security_diagnostics"
+    "Load Average:describe:load_average"
+    "Bandwidth:describe:bandwidth_usage"
+    "Package Updates:install:update_and_check_packages"
   )
 
-  menu_object="$(
-    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}"
-  )"
+  items=()
+  for item in "${menu_items[@]}"; do
+    IFS=":" read -r title action cmd <<< "$item"
+    items+=("$(build_menu_item "$title" "$action" "run_command '$title' '$cmd'")")
+  done
 
+  # Build and define menu
+  menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
   define_menu "$menu_key" "$menu_object"
 }
 
