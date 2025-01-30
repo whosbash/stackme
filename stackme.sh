@@ -9664,6 +9664,7 @@ define_menu_stacks_miscelaneous() {
   # Generate menu items and append them to the array
   for app in "${!stacks[@]}"; do
       item="$(build_menu_item "$stack (${stacks[$stack]})" "Deploy" "deploy_stack_handler $stack")"
+      debug "$item"
       items+=("$item")
   done
 
