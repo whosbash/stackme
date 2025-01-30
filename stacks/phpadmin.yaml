@@ -9,13 +9,13 @@ services:
 
     environment:
       ## MySQL
-      - PMA_HOSTS={{phpmyadmin_host}}
+      - PMA_HOSTS={{phpadmin_url}}
       - PMA_PORT=3306
       
       ## Credentials
-      #- PMA_USER=
-      #- PMA_PASSWORD=
-      - PMA_ABSOLUTE_URI=https://{{phpmyadmin_url}}
+      - PMA_USER={{phpadmin_username}}
+      - PMA_PASSWORD={{phpadmin_password}}
+      - PMA_ABSOLUTE_URI=https://{{phpadmin_url}}
       
       ## Upload limit
       - UPLOAD_LIMIT=10M
@@ -32,7 +32,7 @@ services:
           memory: 2048M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.phpmyadmin.rule=Host(`{{phpmyadmin_url}}`)
+        - traefik.http.routers.phpmyadmin.rule=Host(`{{phpadmin_url}}`)
         - traefik.http.routers.phpmyadmin.entrypoints=web,websecure
         - traefik.http.routers.phpmyadmin.tls.certresolver=letsencryptresolver
         - traefik.http.services.phpmyadmin.loadbalancer.server.port=80
