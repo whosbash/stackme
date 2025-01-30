@@ -5561,6 +5561,7 @@ save_stack_configuration() {
   fi
 }
 
+# Function to generate the stack configuration pipeline
 generate_stack_config_pipeline() {
   local config_instructions="$1"
 
@@ -5578,10 +5579,14 @@ generate_stack_config_pipeline() {
   fi
 
   # Prompting step
-  prompt_items="$(echo "$config_instructions" | jq -c '.prompt')"
-
   step_info 1 $total_steps "Prompting required $stack_name information"
-  display_prompt_items "$prompt_items"
+
+  prompt_items="$(echo "$config_instructions" | jq -c '.prompt // []')"
+  if [[ "$prompt_items" == "[]" ]]; then
+    display_prompt_items "$prompt_items"
+  else
+    warning "No prompt items found for stack '$stack_name'."
+  fi
 
   collected_items="$(run_collection_process "$prompt_items")"
 
@@ -5589,12 +5594,6 @@ generate_stack_config_pipeline() {
     step_error 1 $total_steps "Unable to prompt configuration."
     return 1
   fi
-
-  variables="$(process_prompt_items "$collected_items")"
-
-  dependencies="$(echo "$config_instructions" | jq -c '.dependencies // []')"
-
-  actions="$(echo "$config_instructions" | jq -c '.actions // {}')"
 
   # Step 2: Retrieve network name
   step_info 2 $total_steps "Retrieving network name"
@@ -5605,10 +5604,14 @@ generate_stack_config_pipeline() {
     return 1
   fi
 
+  variables="$(process_prompt_items "$collected_items")"
   variables="$(\
     echo "$variables" | \
     jq --arg network_name "$network_name" '. + { "network_name": $network_name }'\
   )"
+
+  dependencies="$(echo "$config_instructions" | jq -c '.dependencies // []')"
+  actions="$(echo "$config_instructions" | jq -c '.actions // {}')"
 
   jq -n \
     --arg stack_name "$stack_name" \
@@ -5720,7 +5723,11 @@ deploy_stack() {
   exit_code=$?
   
   # If Traefik or Portainer do not exist AND the stack is not one of them, return 1
-  if [[ $exit_code -ne 0 && "$stack_name" != "traefik" && "$stack_name" != "portainer" ]]; then
+  if [[ \
+    $exit_code -ne 0 && \
+    "$stack_name" != "traefik" && \
+    "$stack_name" != "portainer" 
+  ]]; then
     return 1
   fi
 
@@ -6665,8 +6672,6 @@ fetch_stack_compose(){
   fi
 }
 
-# Function  
-
 ############################# BEGIN OF STACK DEPLOYMENT UTILITARY FUNCTIONS #######################
 
 # Function to get the database password from a configuration
@@ -6761,8 +6766,29 @@ create_user_postgres() {
   fi
 }
 
+make_airflow_folders(){
+  mkdir -p "$TOOL_STACKS_DIR/airflow/"{config,logs,dags,plugins}
+}
+
+# Function to generate a firecrawl string
 generate_firecrawl_api_key(){
   echo "fc-$(random_string)"
+}
+
+# Function to custom smtp information
+custom_smtp_information(){
+  local identifier="$1"
+  
+  smtp_json="$(get_smtp_configuration)"
+
+  # Add/update field smtp_secure to smtp_json
+  smtp_secure="$(is_smtp_port_secure "$(echo "$smtp_json" | jq -r ".smtp_port")")"
+  smtp_json="$(\
+    add_json_objects "$smtp_json" \
+      "$(jq -n --arg smtp_secure "$smtp_secure" '{smtp_secure: $smtp_secure}')"
+  )"
+
+  custom_json_keys_with_identifier "$identifier" "$smtp_json"
 }
 
 # Function to display prompt items
@@ -7001,10 +7027,7 @@ generate_stack_config_portainer() {
             "portainer_credentials": $portainer_credentials,
             "network_name": $network_name
         },
-        "dependencies": [],
         "actions": {
-            "refresh": [],
-            "prepare": [],
             "finalize": [
                 {
                     "name": "signup_on_portainer",
@@ -7155,6 +7178,51 @@ EOL
     }'
 }
 
+# Function to generate Whoami service configuration JSON
+generate_stack_config_generic_database() {
+  local stack_name="$1"
+  local image_version="$2"
+  local db_username="$3"
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --arg image_version "$image_version" \
+    --arg db_password "$(random_string)" \
+    --arg db_username "$db_username" \
+    '{
+      "name": $stack_name,
+      "target": "portainer",
+      "prompt": [],
+      "actions": {
+        "refresh": [
+          {
+            "name": "image_version",
+            "description": "Image version",
+            "command": "$(echo $image_version)" 
+          },
+          {
+            "name": "db_username",
+            "description": "Database username",
+            "command": "$(echo $db_username)" 
+          },
+          {
+            "name": "db_password",
+            "description": "Database password",
+            "command": "$(echo $db_password)" 
+          }
+        ],
+      }
+    }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
 # Function to generate Database service configuration JSON
 generate_stack_config_generic_database() {
   local stack_name="$1"
@@ -7263,13 +7331,12 @@ generate_stack_config_mongodb() {
   generate_stack_config_generic_database "$stack_name" "$image_version"
 }
 
+# Function to generate Whoami service configuration JSON
 generate_stack_config_whoami() {
-  local stack_name='whoami'
+  local stack_name="whoami"
 
-  total_steps=2
-
-  # Prompting step
-  prompt_items='[
+  # Prompting step (escaped properly for Bash)
+  local prompt_items='[
       {
           "name": "whoami_url",
           "label": "Whoami domain name",
@@ -7279,133 +7346,88 @@ generate_stack_config_whoami() {
       }
   ]'
 
-  step_info 1 $total_steps "Prompting required $stack_name information"
-  display_prompt_items "$prompt_items"
-
-  collected_items="$(run_collection_process "$prompt_items")"
-
-  if [[ "$collected_items" == "[]" ]]; then
-    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
-    return 1
-  fi
-
-  processed_items="$(process_prompt_items "$collected_items")"
-
-  # Step 2: Retrieve network name
-  step_info 2 $total_steps "Retrieving network name"
-  network_name="$(get_network_name)"
-
-  whoami_url="$(echo "$processed_items" | jq -r '.whoami_url')"
-
-  jq -n \
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
     --arg stack_name "$stack_name" \
-    --arg whoami_url "$whoami_url" \
-    --arg network_name "$network_name" \
+    --argjson prompt_items "$prompt_items" \
     '{
-          "name": $stack_name,
-          "target": "portainer",
-          "variables": {
-              "whoami_url": $whoami_url,
-              "network_name": $network_name,
-          },
-          "dependencies": [],
-          "actions": {
-            "refresh": [],
-            "prepare": [],
-            "finalize": []
-          }
-      }' | jq . || {
-    error "Failed to generate JSON"
-    return 1
+      "name": $stack_name,
+      "target": "portainer",
+      "prompt": $prompt_items
+    }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
   }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
 }
 
 # Function to generate Airflow service configuration JSON
 generate_stack_config_airflow() {
-  local stack_name='airflow'
+  local stack_name="airflow"
 
-  total_steps=2
+  # Prompting step (escaped properly for Bash)
+  local prompt_items='[
+    {
+        "name": "airflow_url",
+        "label": "Airflow domain name",
+        "description": "URL to access Airflow remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix" 
+    },
+    {
+        "name": "flower_url",
+        "label": "Flower domain name",
+        "description": "URL to access Flower remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix" 
+    }
+]'
 
-  # Prompting step
-  prompt_items='[
-      {
-          "name": "airflow_url",
-          "label": "Airflow domain name",
-          "description": "URL to access Airflow remotely",
-          "required": "yes",
-          "validate_fn": "validate_url_suffix" 
-      },
-      {
-          "name": "flower_url",
-          "label": "Flower domain name",
-          "description": "URL to access Flower remotely",
-          "required": "yes",
-          "validate_fn": "validate_url_suffix" 
-      }
-  ]'
-
-  step_info 1 $total_steps "Prompting required $stack_name information"
-  display_prompt_items "$prompt_items"
-
-  collected_items="$(run_collection_process "$prompt_items")"
-
-  if [[ "$collected_items" == "[]" ]]; then
-    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
-    return 1
-  fi
-
-  processed_items="$(process_prompt_items "$collected_items")"
-
-  airflow_url="$(echo "$processed_items" | jq -r '.airflow_url')"
-  flower_url="$(echo "$processed_items" | jq -r '.flower_url')"
-
-  # Step 2: Create Airflow folders
-  step_info 2 $total_steps "Creating Airflow folders"
-  mkdir -p "$TOOL_STACKS_DIR/airflow/"{config,logs,dags,plugins}
-
-  # Step 3: Retrieve network name
-  step_info 3 $total_steps "Retrieving network name"
-  network_name="$(get_network_name)"
-
-  jq -n \
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
     --arg stack_name "$stack_name" \
-    --arg airflow_url "$airflow_url" \
-    --arg flower_url "$flower_url" \
-    --arg network_name "$network_name" \
+    --argjson prompt_items "$prompt_items" \
     '{
-          "name": $stack_name,
-          "target": "portainer",
-          "variables": {
-              "airflow_url": $airflow_url,
-              "flower_url": $flower_url,
-              "network_name": $network_name,
-          },
-          "dependencies": ["postgres", "redis"],
-          "actions": {
-            "refresh": [
-              {
-                "name": "postgres_password",
-                "description": "Fetching postgres password",
-                "command": "fetch_database_password postgres",
-              }
-            ],
-            "prepare": [],
-            "finalize": []
+      "name": $stack_name,
+      "target": "portainer",
+      "prompt": $prompt_items,
+      "dependencies": ["postgres", "redis"],
+      "actions": {
+        "refresh": [
+          {
+            "name": "postgres_password",
+            "description": "Fetching postgres password",
+            "command": "fetch_database_password postgres",
           }
-      }' | jq . || {
-    error "Failed to generate JSON"
-    return 1
+        ],
+        "prepare": [
+          {
+            "name": "Airflow folders",
+            "description": "Creating Airflow folders for storage",
+            "command": "make_airflow_folders",
+          }
+        ],
+        "finalize": []
+      }
+    }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
   }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
 }
 
 # Function to generate Metabase service configuration JSON
 generate_stack_config_metabase() {
-  local stack_name='metabase'
+  local stack_name="metabase"
 
-  total_steps=2
-
-  # Prompting step
-  prompt_items='[
+  # Prompting step (escaped properly for Bash)
+  local prompt_items='[
       {
           "name": "metabase_url",
           "label": "Metabase domain name",
@@ -7415,66 +7437,47 @@ generate_stack_config_metabase() {
       }
   ]'
 
-  step_info 1 $total_steps "Prompting required $stack_name information"
-  display_prompt_items "$prompt_items"
-
-  collected_items="$(run_collection_process "$prompt_items")"
-
-  if [[ "$collected_items" == "[]" ]]; then
-    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
-    return 1
-  fi
-
-  processed_items="$(process_prompt_items "$collected_items")"
-
-  metabase_url="$(echo "$processed_items" | jq -r '.metabase_url')"
-
-  # Step 2: Retrieve network name
-  step_info 2 $total_steps "Retrieving network name"
-  network_name="$(get_network_name)"
-
-  jq -n \
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
     --arg stack_name "$stack_name" \
-    --arg metabase_url "$metabase_url" \
-    --arg network_name "$network_name" \
+    --argjson prompt_items "$prompt_items" \
     '{
-          "name": $stack_name,
-          "target": "portainer",
-          "variables": {
-              "metabase_url": $metabase_url,
-              "network_name": $network_name,
-          },
-          "dependencies": ["postgres", "redis"],
-          "actions": {
-            "refresh": [
-              {
-                "name": "postgres_password",
-                "description": "Fetching postgres password",
-                "command": "fetch_database_password postgres",
-              }
-            ],
-            "prepare": [
-              {
-                "name": "create_postgres_database_metabase",
-                "description": "Creating Metabase database",
-                "command": "create_database_postgres metabase",
-              }
-            ],
-            "finalize": []
+      "name": $stack_name,
+      "target": "portainer",
+      "prompt": $prompt_items,
+      "dependencies": ["postgres", "redis"],
+      "actions": {
+        "refresh": [
+          {
+            "name": "postgres_password",
+            "description": "Fetching postgres password",
+            "command": "fetch_database_password postgres",
           }
-      }' | jq . || {
-    error "Failed to generate JSON"
-    return 1
+        ],
+        "prepare": [
+          {
+            "name": "create_postgres_database_metabase",
+            "description": "Creating Metabase database",
+            "command": "create_database_postgres metabase",
+          }
+        ],
+        "finalize": []
+      }
+    }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
   }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
 }
 
-# Function to generate yourls service configuration JSON
+# Function to generate stack configuration for yourls
 generate_stack_config_yourls() {
-  local stack_name='yourls'
+  local stack_name="yourls"
 
-  total_steps=2
-
-  # Prompting step
+  # Prompting step (escaped properly for Bash)
   prompt_items='[
       {
           "name": "yourls_url",
@@ -7499,65 +7502,29 @@ generate_stack_config_yourls() {
       }
   ]'
 
-  step_info 1 $total_steps "Prompting required $stack_name information"
-  display_prompt_items "$prompt_items"
-  collected_items="$(run_collection_process "$prompt_items")"
-
-  if [[ "$collected_items" == "[]" ]]; then
-    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
-    return 1
-  fi
-
-  processed_items="$(process_prompt_items "$collected_items")"
-
-  yourls_url="$(echo "$processed_items" | jq -r '.yourls_url')"
-  yourls_username="$(echo "$processed_items" | jq -r '.yourls_username')"
-  yourls_password="$(echo "$processed_items" | jq -r '.yourls_password')"
-
-  # Step 2: Retrieve network name
-  step_info 2 $total_steps "Retrieving network name"
-  network_name="$(get_network_name)"
-
-  jq -n \
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
     --arg stack_name "$stack_name" \
-    --arg yourls_url "$yourls_url" \
-    --arg yourls_username "$yourls_username" \
-    --arg yourls_password "$yourls_password" \
-    --arg network_name "$network_name" \
+    --argjson prompt_items "$prompt_items" \
     '{
-          "name": $stack_name,
-          "target": "portainer",
-          "variables": {
-              "yourls_url": $yourls_url,
-              "yourls_username": $yourls_username,
-              "yourls_password": $yourls_password,
-              "network_name": $network_name,
-          },
-          "dependencies": ["mysql"],
-          "actions": {
-            "refresh": [
-              {
-                "name": "mysql_password",
-                "description": "Fetching mysql password",
-                "command": "fetch_database_password mysql",
-              }
-            ],
-            "prepare": [],
-            "finalize": []
-          }
-      }' | jq . || {
-    error "Failed to generate JSON"
-    return 1
+      "name": $stack_name,
+      "target": "portainer",
+      "prompt": $prompt_items
+    }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
   }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
 }
 
-# Function to generate appsmith service configuration JSON
+# Function to generate stack configuration for appsmith
 generate_stack_config_appsmith() {
-  local stack_name='appsmith'
+  local stack_name="appsmith"
 
-  total_steps=2
-
-  # Prompting step
+  # Prompting step (escaped properly for Bash)
   prompt_items='[
       {
           "name": "appsmith_url",
@@ -7568,54 +7535,29 @@ generate_stack_config_appsmith() {
       }
   ]'
 
-  step_info 1 $total_steps "Prompting required $stack_name information"
-  display_prompt_items "$prompt_items"
-
-  collected_items="$(run_collection_process "$prompt_items")"
-
-  if [[ "$collected_items" == "[]" ]]; then
-    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
-    return 1
-  fi
-
-  processed_items="$(process_prompt_items "$collected_items")"
-
-  appsmith_url="$(echo "$processed_items" | jq -r '.appsmith_url')"
-
-  # Step 2: Retrieve network name
-  step_info 2 $total_steps "Retrieving network name"
-  network_name="$(get_network_name)"
-
-  jq -n \
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
     --arg stack_name "$stack_name" \
-    --arg appsmith_url "$appsmith_url" \
-    --arg network_name "$network_name" \
+    --argjson prompt_items "$prompt_items" \
     '{
-          "name": $stack_name,
-          "target": "portainer",
-          "variables": {
-              "appsmith_url": $appsmith_url,
-              "network_name": $network_name,
-          },
-          "dependencies": [],
-          "actions": {
-            "refresh": [],
-            "prepare": [],
-            "finalize": []
-          }
-      }' | jq . || {
-    error "Failed to generate JSON"
-    return 1
+      "name": $stack_name,
+      "target": "portainer",
+      "prompt": $prompt_items
+    }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
   }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
 }
 
-# Function to generate focalboard service configuration JSON
+# Function to generate stack configuration for focalboard
 generate_stack_config_focalboard() {
-  local stack_name='focalboard'
+  local stack_name="focalboard"
 
-  total_steps=2
-
-  # Prompting step
+  # Prompting step (escaped properly for Bash)
   prompt_items='[
       {
           "name": "focalboard_url",
@@ -7626,54 +7568,29 @@ generate_stack_config_focalboard() {
       }
   ]'
 
-  step_info 1 $total_steps "Prompting required $stack_name information"
-  display_prompt_items "$prompt_items"
-
-  collected_items="$(run_collection_process "$prompt_items")"
-
-  if [[ "$collected_items" == "[]" ]]; then
-    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
-    return 1
-  fi
-
-  processed_items="$(process_prompt_items "$collected_items")"
-
-  focalboard_url="$(echo "$processed_items" | jq -r '.focalboard_url')"
-
-  # Step 2: Retrieve network name
-  step_info 2 $total_steps "Retrieving network name"
-  network_name="$(get_network_name)"
-
-  jq -n \
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
     --arg stack_name "$stack_name" \
-    --arg focalboard_url "$focalboard_url" \
-    --arg network_name "$network_name" \
+    --argjson prompt_items "$prompt_items" \
     '{
-          "name": $stack_name,
-          "target": "portainer",
-          "variables": {
-              "focalboard_url": $focalboard_url,
-              "network_name": $network_name,
-          },
-          "dependencies": [],
-          "actions": {
-            "refresh": [],
-            "prepare": [],
-            "finalize": []
-          }
-      }' | jq . || {
-    error "Failed to generate JSON"
-    return 1
+      "name": $stack_name,
+      "target": "portainer",
+      "prompt": $prompt_items
+    }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
   }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
 }
 
-# Function to generate excalidraw service configuration JSON
+# Function to generate stack configuration for excalidraw
 generate_stack_config_excalidraw() {
-  local stack_name='excalidraw'
+  local stack_name="excalidraw"
 
-  total_steps=2
-
-  # Prompting step
+  # Prompting step (escaped properly for Bash)
   prompt_items='[
       {
           "name": "excalidraw_url",
@@ -7684,55 +7601,30 @@ generate_stack_config_excalidraw() {
       }
   ]'
 
-  step_info 1 $total_steps "Prompting required $stack_name information"
-  display_prompt_items "$prompt_items"
-
-  collected_items="$(run_collection_process "$prompt_items")"
-
-  if [[ "$collected_items" == "[]" ]]; then
-    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
-    return 1
-  fi
-
-  processed_items="$(process_prompt_items "$collected_items")"
-
-  excalidraw_url="$(echo "$processed_items" | jq -r '.excalidraw_url')"
-
-  # Step 2: Retrieve network name
-  step_info 2 $total_steps "Retrieving network name"
-  network_name="$(get_network_name)"
-
-  jq -n \
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
     --arg stack_name "$stack_name" \
-    --arg excalidraw_url "$excalidraw_url" \
-    --arg network_name "$network_name" \
+    --argjson prompt_items "$prompt_items" \
     '{
-          "name": $stack_name,
-          "target": "portainer",
-          "variables": {
-              "excalidraw_url": $excalidraw_url,
-              "network_name": $network_name,
-          },
-          "dependencies": [],
-          "actions": {
-            "refresh": [],
-            "prepare": [],
-            "finalize": []
-          }
-      }' | jq . || {
-    error "Failed to generate JSON"
-    return 1
+      "name": $stack_name,
+      "target": "portainer",
+      "prompt": $prompt_items
+    }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
   }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
 }
 
-# Function to generate glpi service configuration JSON
+# Function to generate stack configuration for glpi
 generate_stack_config_glpi() {
-  local stack_name='glpi'
+  local stack_name="glpi"
 
-  total_steps=2
-
-  # Prompting step
-  prompt_items='[
+  # Prompting step (escaped properly for Bash)
+  local prompt_items='[
       {
           "name": "glpi_url",
           "label": "GLPI domain name",
@@ -7742,55 +7634,30 @@ generate_stack_config_glpi() {
       }
   ]'
 
-  step_info 1 $total_steps "Prompting required $stack_name information"
-  display_prompt_items "$prompt_items"
-
-  collected_items="$(run_collection_process "$prompt_items")"
-
-  if [[ "$collected_items" == "[]" ]]; then
-    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
-    return 1
-  fi
-
-  processed_items="$(process_prompt_items "$collected_items")"
-
-  glpi_url="$(echo "$processed_items" | jq -r '.glpi_url')"
-
-  # Step 2: Retrieve network name
-  step_info 2 $total_steps "Retrieving network name"
-  network_name="$(get_network_name)"
-
-  jq -n \
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
     --arg stack_name "$stack_name" \
-    --arg glpi_url "$glpi_url" \
-    --arg network_name "$network_name" \
+    --argjson prompt_items "$prompt_items" \
     '{
-          "name": $stack_name,
-          "target": "portainer",
-          "variables": {
-              "glpi_url": $glpi_url,
-              "network_name": $network_name,
-          },
-          "dependencies": [],
-          "actions": {
-            "refresh": [],
-            "prepare": [],
-            "finalize": []
-          }
-      }' | jq . || {
-    error "Failed to generate JSON"
-    return 1
+      "name": $stack_name,
+      "target": "portainer",
+      "prompt": $prompt_items
+    }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
   }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
 }
 
-# Function to generate qdrant service configuration JSON
+# Function to generate stack configuration for qdrant
 generate_stack_config_qdrant() {
-  local stack_name='qdrant'
+  local stack_name="qdrant"
 
-  total_steps=2
-
-  # Prompting step
-  prompt_items='[
+  # Prompting step (escaped properly for Bash)
+  local prompt_items='[
       {
           "name": "qdrant_url",
           "label": "Qdrant domain name",
@@ -7800,52 +7667,30 @@ generate_stack_config_qdrant() {
       }
   ]'
 
-  step_info 1 $total_steps "Prompting required $stack_name information"
-  display_prompt_items "$prompt_items"
-
-  collected_items="$(run_collection_process "$prompt_items")"
-
-  if [[ "$collected_items" == "[]" ]]; then
-    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
-    return 1
-  fi
-
-  processed_items="$(process_prompt_items "$collected_items")"
-
-  qdrant_url="$(echo "$processed_items" | jq -r '.qdrant_url')"
-
-  # Step 2: Retrieve network name
-  step_info 2 $total_steps "Retrieving network name"
-  network_name="$(get_network_name)"
-
-  jq -n \
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
     --arg stack_name "$stack_name" \
-    --arg qdrant_url "$qdrant_url" \
-    --arg network_name "$network_name" \
+    --argjson prompt_items "$prompt_items" \
     '{
-          "name": $stack_name,
-          "target": "portainer",
-          "variables": {
-              "qdrant_url": $qdrant_url,
-              "network_name": $network_name,
-          },
-          "dependencies": [],
-          "actions": {
-            "refresh": [],
-            "prepare": [],
-            "finalize": []
-          }
-      }' | jq . || {
-    error "Failed to generate JSON"
-    return 1
+      "name": $stack_name,
+      "target": "portainer",
+      "prompt": $prompt_items
+    }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
   }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
 }
 
-# Function to generate n8n service configuration JSON
-generate_stack_config_n8n(){
-  local stack_name='n8n'
+# Function to generate stack configuration for n8n
+generate_stack_config_n8n() {
+  local stack_name="n8n"
 
-  prompt_items='[
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
       {
           "name": "n8n_editor_url",
           "label": "Editor domain name",
@@ -7859,135 +7704,59 @@ generate_stack_config_n8n(){
           "description": "URL to access Webhook remotely",
           "required": "yes",
           "validate_fn": "validate_url_suffix" 
-      },
-      {
-          "name": "n8n_smtp_from_email",
-          "label": "SMTP E-mail",
-          "description": "E-mail to send SMTP notifications",
-          "required": "yes",
-          "validate_fn": "validate_email_value" 
-      },
-      {
-          "name": "n8n_smtp_username",
-          "label": "SMTP User",
-          "description": "User to send SMTP notifications",
-          "required": "yes",
-          "validate_fn": "validate_email_value" 
-      },
-      {
-          "name": "n8n_smtp_password",
-          "label": "SMTP Password",
-          "description": "Password to send SMTP notifications",
-          "required": "yes",
-          "validate_fn": "validate_empty_value" 
-      },
-      {
-          "name": "n8n_smtp_host",
-          "label": "SMTP Host",
-          "description": "Host to send SMTP notifications",
-          "required": "yes",
-          "validate_fn": "validate_url_suffix" 
-      },
-      {
-          "name": "n8n_smtp_port",
-          "label": "SMTP Port",
-          "description": "Port to send SMTP notifications",
-          "required": "yes",
-          "validate_fn": "validate_smtp_port" 
       }
-  ]'
+  ]')
 
-  step_message="Retrieving $stack_name configuration"
-  step_info 1 $total_steps "$step_message"
-
-  display_prompt_items "$prompt_items"
-
-  collected_items="$(run_collection_process "$prompt_items")"
-
-  if [[ "$collected_items" == "[]" ]]; then
-    error "Unable to retrieve $stack_name configuration."
-    return 1
-  fi
-
-  collected_object="$(process_prompt_items "$collected_items")"
-
-  n8n_editor_url="$(echo "$collected_object" | jq -r '.n8n_editor_url')"
-  n8n_webhook_url="$(echo "$collected_object" | jq -r '.n8n_webhook_url')"
-  n8n_smtp_from_email="$(echo "$collected_object" | jq -r '.n8n_smtp_from_email')"
-  n8n_smtp_host="$(echo "$collected_object" | jq -r '.n8n_smtp_host')" 
-  n8n_smtp_port="$(echo "$collected_object" | jq -r '.n8n_smtp_port')"
-  n8n_smtp_username="$(echo "$collected_object" | jq -r '.n8n_smtp_username')"
-  n8n_smtp_password="$(echo "$collected_object" | jq -r '.n8n_smtp_password')" 
-  
-  n8n_smtp_secure="$(cast_port_to_smtp_secure "$n8n_smtp_port")"
-
-  step_message="Generating use N8N password"
-  step_info 2 $total_steps "$step_message"
-  local network_name="$(get_network_name)"
-
-  step_message="Create encryption key"
-  step_info 3 $total_steps "$step_message"
-  local encryption_key="$(random_string)"
-
-  jq -n \
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
     --arg stack_name "$stack_name" \
-    --arg n8n_editor_url "$n8n_editor_url" \
-    --arg n8n_webhook_url "$n8n_webhook_url" \
-    --arg n8n_smtp_from_email "$n8n_smtp_from_email" \
-    --arg n8n_smtp_username "$n8n_smtp_username" \
-    --arg n8n_smtp_password "$n8n_smtp_password" \
-    --arg n8n_smtp_host "$n8n_smtp_host" \
-    --arg n8n_smtp_port "$n8n_smtp_port" \
-    --arg n8n_smtp_secure "$n8n_smtp_secure" \
-    --arg n8n_encryption_key "$encryption_key" \
-    --arg network_name "$network_name" \
+    --argjson prompt_items "$prompt_items" \
     '{
-          "name": $stack_name,
-          "target": "portainer",
-          "variables": {
-              "n8n_editor_url": $n8n_editor_url,
-              "n8n_webhook_url": $n8n_webhook_url,
-              "n8n_smtp_from_email": $n8n_smtp_from_email,
-              "n8n_smtp_username": $n8n_smtp_username, 
-              "n8n_smtp_password": $n8n_smtp_password,
-              "n8n_smtp_host": $n8n_smtp_host,
-              "n8n_smtp_port": $n8n_smtp_port,
-              "n8n_smtp_secure": $n8n_smtp_secure,
-              "n8n_encryption_key": $n8n_encryption_key, 
-              "network_name": $network_name
-          },
-          "dependencies": ["postgres", "redis"],
-          "actions": {
-            "refresh": [
-              {
-                "name": "postgres_password",
-                "description": "Fetching postgres password",
-                "command": "fetch_database_password postgres",
-              }
-            ],
-            "prepare": [
-              {
-                "name": "create_postgres_database_n8n",
-                "description": "Creating N8N database",
-                "command": "create_database_postgres n8n_queue",
-              }
-            ],
-            "finalize": []
-          }
-      }' | jq . || {
-        error "Failed to generate JSON"
-        return 1
-    }
+        "name": $stack_name,
+        "target": "portainer",
+        "prompt": $prompt_items,
+        "dependencies": ["postgres", "redis"],
+        "actions": {
+          "refresh": [
+            {
+              "name": "postgres_password",
+              "description": "Fetching postgres password",
+              "command": "fetch_database_password postgres",
+            },
+            {
+              "name": "n8n_encryption_key",
+              "description": "Generating N8N encryption key",
+              "command": "random_string",
+            }
+          ],
+          "prepare": [
+            {
+              "description": "Custom smtp information with label n8n",
+              "command": "custom_smtp_information n8n",
+            },
+            {
+              "name": "create_postgres_database_n8n",
+              "description": "Creating N8N database",
+              "command": "create_database_postgres n8n_queue",
+            }
+          ]
+        }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
 }
 
 # Function to generate stack configuration for uptimekuma
 generate_stack_config_uptimekuma() {
   local stack_name="uptimekuma"
 
-  total_steps=2
-
-  # Prompting step
-  prompt_items='[
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
       {
           "name": "uptimekuma_url",
           "label": "Uptime kuma domain name",
@@ -7995,56 +7764,32 @@ generate_stack_config_uptimekuma() {
           "required": "yes",
           "validate_fn": "validate_url_suffix" 
       }
-  ]'
+  ]')
 
-  step_info 1 $total_steps "Prompting required $stack_name information"
-  display_prompt_items "$prompt_items"
-
-  collected_items="$(run_collection_process "$prompt_items")"
-
-  if [[ "$collected_items" == "[]" ]]; then
-    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
-    return 1
-  fi
-
-  processed_items="$(process_prompt_items "$collected_items")"
-
-  uptimekuma_url="$(echo "$processed_items" | jq -r '.uptimekuma_url')"
-
-  # Step 2: Retrieve network name
-  step_info 2 $total_steps "Retrieving network name"
-  network_name="$(get_network_name)"
-
-  jq -n \
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
     --arg stack_name "$stack_name" \
-    --arg uptimekuma_url "$uptimekuma_url" \
-    --arg network_name "$network_name" \
+    --argjson prompt_items "$prompt_items" \
     '{
           "name": $stack_name,
           "target": "portainer",
-          "variables": {
-              "uptimekuma_url": $uptimekuma_url,
-              "network_name": $network_name
-          },
-          "dependencies": [],
-          "actions": {
-            "refresh": [],
-            "prepare": [],
-            "finalize": []
-          }
-      }' | jq . || {
-        error "Failed to generate JSON"
-        return 1
-    }
+          "prompt": $prompt_items
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
 }
 
+# Function to generate stack configuration for odoo
 generate_stack_config_odoo() {
   local stack_name="odoo"
 
-  total_steps=2
-
-  # Prompting step
-  prompt_items='[
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
       {
           "name": "odoo_url",
           "label": "Odoo domain name",
@@ -8052,53 +7797,33 @@ generate_stack_config_odoo() {
           "required": "yes",
           "validate_fn": "validate_url_suffix" 
       }
-  ]'
+  ]')
 
-  step_info 1 $total_steps "Prompting required $stack_name information"
-  display_prompt_items "$prompt_items"
-
-  collected_items="$(run_collection_process "$prompt_items")"
-
-  if [[ "$collected_items" == "[]" ]]; then
-    step_error 1 $total_steps "Unable to prompt $stack_name configuration."
-    return 1
-  fi
-
-  processed_items="$(process_prompt_items "$collected_items")"
-
-  odoo_url="$(echo "$processed_items" | jq -r '.odoo_url')"
-
-  # Step 2: Retrieve network name
-  step_info 2 $total_steps "Retrieving network name"
-  network_name="$(get_network_name)"
-
-  jq -n \
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
     --arg stack_name "$stack_name" \
-    --arg network_name "$network_name" \
-    --arg odoo_url "$odoo_url" \
+    --argjson prompt_items "$prompt_items" \
     '{
           "name": $stack_name,
           "target": "portainer",
-          "variables": {
-              "odoo_url": $odoo_url,
-              "network_name": $network_name
-          },
-          "dependencies": [],
+          "prompt": $prompt_items,
           "actions": {
-            "refresh": [],
             "prepare": [
               {
                 "name": "create_user odoo",
                 "description": "Creating odoo user",
                 "command": "create_user_postgres metabase",
               }
-            ],
-            "finalize": []
+            ]
           }
-      }' | jq . || {
-        error "Failed to generate JSON"
-        return 1
-    }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
 }
 
 generate_stack_config_botpress() {
@@ -9183,7 +8908,7 @@ generate_stack_config_evolution_lite() {
   generate_stack_config_pipeline "$config_instructions"
 }
 
-# Function to generate Firecrawl Lite service configuration JSON
+# Function to generate Firecrawl service configuration JSON
 generate_stack_config_firecrawl() {
   local stack_name="firecrawl"
 
@@ -9238,7 +8963,7 @@ generate_stack_config_firecrawl() {
   generate_stack_config_pipeline "$config_instructions"
 }
 
-# Function to generate Ollama Lite service configuration JSON
+# Function to generate Ollama service configuration JSON
 generate_stack_config_ollama() {
   local stack_name="ollama"
 
@@ -9288,7 +9013,7 @@ generate_stack_config_ollama() {
   generate_stack_config_pipeline "$config_instructions"
 }
 
-# Function to generate StirlingPDF Lite service configuration JSON
+# Function to generate StirlingPDF service configuration JSON
 generate_stack_config_stirlingpdf() {
   local stack_name="stirlingpdf"
 
@@ -9330,6 +9055,569 @@ generate_stack_config_stirlingpdf() {
       error "Failed to generate JSON"
       return 1
   }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+# Function to generate TwentyCRM service configuration JSON
+generate_stack_config_twentycrm() {
+  local stack_name="twentycrm"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "twentycrm_url",
+          "label": "TwentyCRM URL",
+          "description": "URL to access TwentyCRM remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "prompt": $prompt_items,
+          "actions": {
+            "refresh": [
+              {
+                "name": "twentycrm_postgres_password",
+                "description": "Generate StirlingPDF database password",
+                "command": "random_string"
+              },
+              {
+                "name": "twentycrm_secret_key",
+                "description": "Generate TwentyCRM secret key",
+                "command": "random_string"
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+# Function to generate NextCloud Lite service configuration JSON
+generate_stack_config_nextcloud() {
+  local stack_name="nextcloud"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "nextcloud_url",
+          "label": "NextCloud URL",
+          "description": "URL to access NextCloud remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      },
+      {
+          "name": "nextcloud_username",
+          "label": "NextCloud username",
+          "description": "Username to access NextCloud remotely",
+          "required": "yes",
+          "validate_fn": "validate_username"
+      },
+      {
+          "name": "nextcloud_password",
+          "label": "NextCloud password",
+          "description": "Password to access NextCloud remotely",
+          "required": "yes",
+          "validate_fn": "validate_username"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "prompt": $prompt_items,
+          "actions": {
+            "refresh": [
+              {
+                "name": "postgres_password",
+                "description": "Fetch postgres database password",
+                "command": "fetch_database_password postgres"
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+# Function to generate Quepasa Lite service configuration JSON
+generate_stack_config_quepasa() {
+  local stack_name="quepasa"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "quepasa_title",
+          "label": "Quepasa URL",
+          "description": "Title to display on Quepasa site",
+          "required": "yes",
+          "validate_fn": "validate_empty_value"
+      },
+      {
+          "name": "quepasa_url",
+          "label": "Quepasa URL",
+          "description": "URL to access Quepasa remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      },
+      {
+          "name": "quepasa_email_username",
+          "label": "Quepasa username",
+          "description": "Username to access Quepasa remotely",
+          "required": "yes",
+          "validate_fn": "validate_username"
+      },
+      {
+          "name": "quepasa_email_password",
+          "label": "Quepasa password",
+          "description": "Password to access Quepasa remotely",
+          "required": "yes",
+          "validate_fn": "validate_username"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "prompt": $prompt_items,
+          "actions": {
+            "refresh": [
+              {
+                "name": "postgres_password",
+                "description": "Fetch postgres database password",
+                "command": "fetch_database_password postgres"
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+# Function to generate Quepasa service configuration JSON
+generate_stack_config_quepasa() {
+  local stack_name="quepasa"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "quepasa_url",
+          "label": "Quepasa URL",
+          "description": "URL to access Quepasa remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      },
+      {
+          "name": "quepasa_email_username",
+          "label": "Quepasa username",
+          "description": "Username to access Quepasa remotely",
+          "required": "yes",
+          "validate_fn": "validate_username"
+      },
+      {
+          "name": "quepasa_email_password",
+          "label": "Quepasa password",
+          "description": "Password to access Quepasa remotely",
+          "required": "yes",
+          "validate_fn": "validate_username"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "prompt": $prompt_items,
+          "dependencies": ["mysql"],
+          "actions": {
+            "refresh": [
+              {
+                "name": "strapi_jwt_secret",
+                "description": "Generate Strapi JWT secret",
+                "command": "random_string"
+              },
+              {
+                "name": "strapi_admin_jwt_secret",
+                "description": "Generate Strapi Admin JWT secret",
+                "command": "random_string"
+              },
+              {
+                "name": "strapi_app_keys",
+                "description": "Generate Strapi app keys",
+                "command": "random_string"
+              },
+              {
+                "name": "mysql_password",
+                "description": "Fetch mysql database password",
+                "command": "fetch_database_password mysql"
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+# Function to generate Quepasa service configuration JSON
+generate_stack_config_quepasa() {
+  local stack_name="quepasa"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "outline_url",
+          "label": "Outline URL",
+          "description": "URL to access Outline remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      },
+      {
+          "name": "outline_google_client_id",
+          "label": "Google Client ID",
+          "description": "ID of the client on Google Cloud Platform",
+          "required": "yes",
+          "validate_fn": "validate_empty_value"
+      },
+      {
+          "name": "outline_google_client_secret",
+          "label": "Google Client Secret",
+          "description": "Secret key of the client on Google Cloud Platform",
+          "required": "yes",
+          "validate_fn": "validate_empty_value"
+      },
+      {
+          "name": "outline_google_api_key",
+          "label": "Google API Key",
+          "description": "API key of the client on Google Cloud Platform",
+          "required": "yes",
+          "validate_fn": "validate_empty_value"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "prompt": $prompt_items,
+          "dependencies": ["redis", "postgres"],
+          "actions": {
+            "refresh": [
+              {
+                "name": "outline_secret_key",
+                "description": "Generate Strapi JWT secret",
+                "command": "random_string"
+              },
+              {
+                "name": "outline_utils_secret",
+                "description": "Generate Strapi Admin JWT secret",
+                "command": "random_string"
+              },
+              {
+                "name": "postgres_password",
+                "description": "Fetch postgres database password",
+                "command": "fetch_database_password postgres"
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  } 
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+# Function to generate Mautic service configuration JSON
+generate_stack_config_mautic() {
+  local stack_name="mautic"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "mautic_url",
+          "label": "Mautic URL",
+          "description": "Title to display on Mautic site",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      },
+      {
+          "name": "mautic_email_username",
+          "label": "Mautic username",
+          "description": "Username to access Mautic remotely",
+          "required": "yes",
+          "validate_fn": "validate_empty_value"
+      },
+      {
+          "name": "mautic_email_password",
+          "label": "Mautic password",
+          "description": "Password to access Mautic remotely",
+          "required": "yes",
+          "validate_fn": "validate_empty_value"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "prompt": $prompt_items,
+          "dependencies": ["mysql"],
+          "actions": {
+            "refresh": [
+              {
+                "name": "mysql_password",
+                "description": "Fetch mysql database password",
+                "command": "fetch_database_password mysql"
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  } 
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+# Function to generate Woofed service configuration JSON
+generate_stack_config_woofed() {
+  local stack_name="woofed"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "woofed_url",
+          "label": "Woofed URL",
+          "description": "URL to access Woofed remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      },
+      {
+          "name": "woofed_username",
+          "label": "Woofed username",
+          "description": "Username to access Woofed remotely",
+          "required": "yes",
+          "validate_fn": "validate_empty_value"
+      },
+      {
+          "name": "woofed_password",
+          "label": "Woofed password",
+          "description": "Password to access Woofed remotely",
+          "required": "yes",
+          "validate_fn": "validate_empty_value"
+      },
+      {
+          "name": "evolution_url",
+          "label": "Evolution URL",
+          "description": "URL to access Evolution remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      },
+      {
+          "name": "evolution_api_key",
+          "label": "Evolution API key",
+          "description": "API key to access Evolution remotely",
+          "required": "yes",
+          "validate_fn": "validate_empty_value"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "prompt": $prompt_items,
+          "dependencies": ["pgvector"],
+          "actions": {
+            "refresh": [
+              {
+                "name": "pgvector_password",
+                "description": "Fetch pgvector database password",
+                "command": "fetch_database_password pgvector"
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  } 
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+# Function to generate Iceberg service configuration JSON
+generate_stack_config_iceberg() {
+  local stack_name="iceberg"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "kafka_broker_url",
+          "label": "Kafka broker URL",
+          "description": "URL to access Kafka broker remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      },
+      {
+          "name": "kafka_rest_url",
+          "label": "Kafka rest URL",
+          "description": "URL to access Kafka rest remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      },
+      {
+          "name": "kafka_ui_url",
+          "label": "Kafka UI URL",
+          "description": "URL to access Kafka UI remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "prompt": $prompt_items,
+          "dependencies": []
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  } 
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+# Function to generate Moodle service configuration JSON
+generate_stack_config_moodle() {
+  local stack_name="moodle"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "moodle_project_name",
+          "label": "Moodle project name",
+          "description": "Project name of Moodle app",
+          "required": "yes",
+          "validate_fn": "validate_empty_value"
+      },
+      {
+          "name": "moodle_url",
+          "label": "Moodle URL",
+          "description": "URL to access Moodle rest remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      },
+      {
+          "name": "moodle_username",
+          "label": "Moodle username",
+          "description": "Username to access Moodle remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      },
+      {
+          "name": "moodle_password",
+          "label": "Moodle password",
+          "description": "Password to access Moodle remotely",
+          "required": "yes",
+          "validate_fn": "validate_password"
+      },
+      {
+          "name": "moodle_email",
+          "label": "Moodle e-mail",
+          "description": "E-mail to access Moodle remotely",
+          "required": "yes",
+          "validate_fn": "validate_email_value"
+      }
+  ]') 
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "prompt": $prompt_items,
+          "dependencies": ["mariadb"],
+          "actions": {
+            "refresh": [
+              {
+                "description": "Fetch mariadb database password",
+                "name": "mariadb_password",
+                "command": "fetch_database_password mariadb"
+              },
+              {
+                "description": "Custom smtp with identifier moodle",
+                "command": "custom_smtp_information moodle",
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  } 
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
