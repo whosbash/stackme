@@ -8018,14 +8018,14 @@ generate_stack_config_clickhouse() {
           "label": "Ntfy username name",
           "description": "Username to access ntfy remotely",
           "required": "yes",
-          "validate_fn": "validate_url_suffix"
+          "validate_fn": "validate_username"
       },
       {
           "name": "clickhouse_password",
           "label": "Ntfy password name",
           "description": "Password to access ntfy remotely",
           "required": "yes",
-          "validate_fn": "validate_url_suffix"
+          "validate_fn": "validate_password"
       }
   ]')
 
@@ -8466,14 +8466,14 @@ generate_stack_config_flowise() {
           "label": "OpenProject username",
           "description": "Username to access OpenProject remotely",
           "required": "yes",
-          "validate_fn": "validate_url_suffix"
+          "validate_fn": "validate_username"
       },
       {
           "name": "flowise_password",
           "label": "OpenProject password",
           "description": "Password to access OpenProject remotely",
           "required": "yes",
-          "validate_fn": "validate_url_suffix"
+          "validate_fn": "validate_password"
       }
   ]')
 
@@ -9574,33 +9574,17 @@ define_menu_stacks_databases() {
   menu_key="main:stacks:databases"
   menu_title="Database stacks"
 
-  item_1="$(
-    build_menu_item "postgres" "Deploy" "deploy_stack_handler postgres"
-  )"
-  item_2="$(
-    build_menu_item "pgvector" "Deploy" "deploy_stack_handler pgvector"
-  )"
-  item_3="$(
-    build_menu_item "redis" "Deploy" "deploy_stack_handler redis"
-  )"
-  item_4="$(
-    build_menu_item "mysql" "Deploy" "deploy_stack_handler mysql"
-  )"
-  item_5="$(
-    build_menu_item "mongodb" "Deploy" "deploy_stack_handler mongodb"
-  )"
-  item_6="$(
-    build_menu_item "mariadb" "Deploy" "deploy_stack_handler mariadb"
-  )"
+  declare -a databases=("postgres" "pgvector" "redis" "mysql" "mongodb" "mariadb")
+  items=()
 
-  items=(
-    "$item_1" "$item_2" "$item_3" "$item_4" "$item_5" "$item_6"
-  )
+  for db in "${databases[@]}"; do
+    items+=("$(build_menu_item "$db" "Deploy" "deploy_stack_handler $db")")
+  done
 
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
-  
   define_menu "$menu_key" "$menu_object"
 }
+
 
 # main:stacks:miscelaneous
 define_menu_stacks_miscelaneous() {
@@ -9798,7 +9782,8 @@ define_menu_health() {
   items=()
   for item in "${menu_items[@]}"; do
     IFS=":" read -r title action cmd <<< "$item"
-    items+=("$(build_menu_item "$title" "$action" "run_command '$title' '$cmd'")")
+    command="run_command '$title' '$cmd'"
+    items+=("$(build_menu_item "$title" "$action" "$command")")
   done
 
   # Build and define menu
