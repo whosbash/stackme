@@ -1184,7 +1184,6 @@ is_valid_json() {
   fi
 }
 
-
 # Function to check if a json object has fields  
 has_fields() {
   local json_data="$1"
@@ -4883,12 +4882,35 @@ deploy_stack_on_portainer() {
   }
 }
 
-# Function to delete a stack
+# Function to deploy a stack
 delete_stack_on_portainer() {
-  local portainer_url="$1"
-  local token="$2"
-  local stack_name="$3"
+  local portainer_config="$1"
+  local stack_name="$2"
 
+  portainer_url="$(echo "$portainer_config" | jq -r '.portainer_url')"
+  portainer_credentials="$(echo "$portainer_config" | jq -r '.portainer_credentials')"
+
+  # Get Portainer auth token
+  portainer_auth_token="$(
+    get_portainer_auth_token "$portainer_url" "$portainer_credentials"
+  )"
+
+  if [[ -z "$portainer_auth_token" ]]; then
+    error "Failed to retrieve Portainer token."
+    return 1
+  fi
+
+  # Check if the stack already exists
+  check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"
+
+  if [[ $? -eq 0 ]]; then
+    warning "Stack $stack_name exists"
+    return 1
+  else
+    warning "Stack $stack_name does not exist"
+  fi
+
+  # Upload the stack
   highlight "Deleting stack '$stack_name' on Portainer $portainer_url"
 
   # Retrieve stack ID based on the stack name
@@ -4898,7 +4920,9 @@ delete_stack_on_portainer() {
   local jq_filter=".[] | select(.Name == \"$stack_name\") | .Id"
   local stack_id
 
-  stack_id=$(check_portainer_stack_exists "$portainer_url" "$token" "$stack_name")
+  stack_id=$(\
+    check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"\
+  )
 
   if [[ -z "$stack_id" ]]; then
     warning "Stack '${stack_name}' not found. Exiting without error."
@@ -5188,16 +5212,30 @@ should_remove_stack() {
     local prompt_message="${yellow}Stack '$stack_name' exists. Would you like to remove it? (Y/n)${normal}"
     if handle_confirmation_prompt "$prompt_message" "n" 5; then
       warning "Proceeding to remove stack '$stack_name'."
-      docker stack rm "$stack_name"
-      info "Stack '$stack_name' has been removed."
-      return 0
+      
+      if [[ "$stack_name" != "traefik" && "$stack_name" != "portainer" ]]; then
+        docker stack rm "$stack_name"
+      else
+        portainer_config="$(load_portainer_url_and_credentials)"
+
+        delete_stack_on_portainer "$portainer_config" "$stack_name" 
+      fi
+
+      exit_code=$?
+      if [[ $exit_code -ne 0 ]]; then
+        error "Failed to remove stack '$stack_name'."
+        return 1
+      else
+        info "Stack '$stack_name' has been removed."
+        return 0
+      fi
     else
       warning "Stack '$stack_name' was not removed. Proceeding..."
       return 1
     fi
   else
     info "Stack '$stack_name' is inexistent."
-    return 2
+    return 0
   fi
 }
 
