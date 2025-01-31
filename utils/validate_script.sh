@@ -462,92 +462,53 @@ check_large_lines() {
 }
 
 # Function to check the length of functions
-check_function_length() { 
-    local file="$1"
-    local max_length="$2"
-    local verbose="$3"
+check_function_length() {
+    local file="$1"          # The shell script file to analyze
+    local max_count="$2"     # The maximum number of lines allowed per function
+    local verbose="$3"       # If true, will print verbose information
 
     print_header "Checking Function Length"
 
     validate_file "$file"
 
-    local function_start=0
-    local line_count=0
-    local issues=0
-    local function_name=""
-    local long_functions=""
+    local awk_script='
+    BEGIN { inside_function=0; }
+    /^([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\)\s*\{/ { inside_function=1; function_name=$1; line_count=0; }
+    inside_function { line_count++; }
+    /^\}/ { if (inside_function) { inside_function=0; print function_name ":" line_count; } }
+    '  
 
-    # Matches 'function function_name'
-    pattern_1='function[[:space:]]+[a-zA-Z_][a-zA-Z0-9_]*'
-    
-    # Matches 'function_name ()', 'function_name {' etc.
-    pattern_2='\w+\s*\(\)\s*\{|\w+\s*\{|\w+\s*\(\s*\)\s*function'
-    
-    # Combined pattern to match different function signatures
-    pattern="^[[:space:]]*($pattern_1|$pattern_2)"
+    # Extract function names and line counts using AWK
+    function_sizes=$(awk "$awk_script" "$file")
 
-    # Remove 'function' and spaces
-    function_name_pattern='^[[:space:]]*(function[[:space:]]+|[[:space:]]*)'
+    declare -A function_names_line_counts
 
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        # Detect function start with various patterns: 'function name', 'name ()', 'name {'
-        if [[ "$line" =~ $pattern ]]; then
-            # If already inside a function, check if it exceeded the limit before resetting
-            if [[ $function_start -gt 0 && $line_count -gt "$max_length" ]]; then
-                ((issues++))
-                local exceed="by $((line_count - max_length)) lines"
-                local message="Function '$function_name' exceeds $max_length lines $exceed."
-                long_functions="$long_functions\n$message"
+    # Parse function names and their respective line counts
+    for entry in $function_sizes; do
+        function_name=$(echo "$entry" | cut -d ':' -f1)
+        line_count=$(echo "$entry" | cut -d ':' -f2)
 
-                [[ "$verbose" == true ]] && print_message "$COLOR_YELLOW" "$message"
-            fi
+        # Remove any parentheses or curly brackets from the function name (if any)
+        function_name=$(echo "$function_name" | sed 's/[(){}]//g')
 
-            # Capture function name from the pattern
-            function_name=$(
-                echo "$line" | \
-                sed -E "s/$function_name_pattern//;s/\(.*//;s/[[:space:]]*\{.*//"
-            )
+        function_names_line_counts["$function_name"]=$line_count
+    done
 
-            # Start counting lines for the new function
-            function_start=$((line_count + 1))
-            line_count=1
-            continue
+    # Sort the functions by line count in descending order
+    sorted_function_names=$(for function_name in "${!function_names_line_counts[@]}"; do
+        echo "${function_names_line_counts[$function_name]}:$function_name"
+    done | sort -n | cut -d ':' -f2-)
+
+    # Print the function name and row count in the desired format
+    for function_name in $sorted_function_names; do
+        line_count=${function_names_line_counts[$function_name]}
+
+        # Check if the function exceeds max_count
+        if [[ $line_count -gt $max_count && $verbose ]]; then
+            print_message "$COLOR_YELLOW" "Function '$function_name' exceeds the max allowed lines ($max_count lines) by $((line_count - max_count)) lines!"
         fi
-
-        # If inside a function, continue counting lines
-        if [[ $function_start -gt 0 ]]; then
-            ((line_count++))
-        fi
-
-        # Check if the function ends (line contains only '}')
-        if [[ $function_start -gt 0 && "$line" =~ ^[[:space:]]*\}[[:space:]]*$ ]]; then
-            # Check if the function exceeded the length limit
-            if [[ $line_count -gt "$max_length" ]]; then
-                ((issues++))
-                local exceed="by $((line_count - max_length)) lines"
-                local message="Function '$function_name' exceeds $max_length lines $exceed."
-                long_functions="$long_functions\n$message"
-
-                [[ "$verbose" == true ]] && print_message "$COLOR_YELLOW" "$message"
-            fi
-
-            # Reset for the next function
-            function_start=0
-            line_count=0
-        fi
-    done <"$file"
-
-    # If any functions exceeded the max length, display them
-    if [[ $issues -gt 0 ]]; then
-        print_message "$COLOR_YELLOW" "Found functions longer than $max_length lines:"
-        echo -e "$long_functions"  # Output the list of long functions
-        increment_warnings "$issues"
-    else
-        print_message "$COLOR_GREEN" "All functions are within the length limit."
-    fi
-    echo ""
+    done
 }
-
 
 # Process a single file
 process_checks() {
