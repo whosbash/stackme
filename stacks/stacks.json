@@ -1,618 +1,618 @@
 [
   {
+    "category_name": "data_storage",
+    "category_label": "Data Storage",
     "stack_name": "baserow",
     "stack_label": "baserow",
     "stack_description": "A no-code platform for building collaborative databases.",
-    "category_name": "data_storage",
-    "category_label": "Data Storage",
     "status": "working"
   },
   {
+    "category_name": "automation_and_low-code",
+    "category_label": "Automation and Low-Code",
     "stack_name": "flowise",
     "stack_label": "flowise",
     "stack_description": "A low-code platform for automating workflows.",
-    "category_name": "automation_&_low-code",
-    "category_label": "Automation & Low-Code",
     "status": "WIP"
   },
   {
+    "category_name": "document_and_content_management",
+    "category_label": "Document and Content Management",
     "stack_name": "stirlingpdf",
     "stack_label": "stirlingpdf",
     "stack_description": "A tool for working with and managing PDFs.",
-    "category_name": "document_&_content_management",
-    "category_label": "Document & Content Management",
     "status": "WIP"
   },
   {
+    "category_name": "data_storage",
+    "category_label": "Data Storage",
     "stack_name": "redisinsight",
     "stack_label": "redisinsight",
     "stack_description": "A graphical interface for managing Redis databases.",
-    "category_name": "data_storage",
-    "category_label": "Data Storage",
     "status": "WIP"
   },
   {
+    "category_name": "data_storage",
+    "category_label": "Data Storage",
     "stack_name": "iceberg",
     "stack_label": "iceberg",
     "stack_description": "A high-performance table format for large analytical datasets.",
-    "category_name": "data_storage",
-    "category_label": "Data Storage",
     "status": "WIP"
   },
   {
+    "category_name": "data_storage",
+    "category_label": "Data Storage",
     "stack_name": "clickhouse",
     "stack_label": "clickhouse",
     "stack_description": "A columnar database for online analytical processing (OLAP).",
-    "category_name": "data_storage",
-    "category_label": "Data Storage",
     "status": "WIP"
   },
   {
+    "category_name": "messaging_and_communication",
+    "category_label": "Messaging and Communication",
     "stack_name": "rabbitmq",
     "stack_label": "rabbitmq",
     "stack_description": "An open-source message broker for handling queues.",
-    "category_name": "messaging_&_communication",
-    "category_label": "Messaging & Communication",
     "status": "working"
   },
   {
+    "category_name": "messaging_and_communication",
+    "category_label": "Messaging and Communication",
     "stack_name": "typebot",
     "stack_label": "typebot",
     "stack_description": "A chatbot development platform for building and managing bots.",
-    "category_name": "messaging_&_communication",
-    "category_label": "Messaging & Communication",
     "status": "WIP"
   },
   {
+    "category_name": "messaging_and_communication",
+    "category_label": "Messaging and Communication",
     "stack_name": "transcrevezap",
     "stack_label": "transcrevezap",
     "stack_description": "A tool for managing WhatsApp message automation.",
-    "category_name": "messaging_&_communication",
-    "category_label": "Messaging & Communication",
     "status": "WIP"
   },
   {
+    "category_name": "document_and_content_management",
+    "category_label": "Document and Content Management",
     "stack_name": "docuseal",
     "stack_label": "docuseal",
     "stack_description": "A platform for signing and managing documents.",
-    "category_name": "document_&_content_management",
-    "category_label": "Document & Content Management",
     "status": "WIP"
   },
   {
+    "category_name": "data_storage",
+    "category_label": "Data Storage",
     "stack_name": "pgvector",
     "stack_label": "pgvector",
     "stack_description": "A PostgreSQL extension for working with vector data.",
-    "category_name": "data_storage",
-    "category_label": "Data Storage",
     "status": "working"
   },
   {
+    "category_name": "infrastructure_and_services",
+    "category_label": "Infrastructure and Services",
     "stack_name": "vaultwarden",
     "stack_label": "vaultwarden",
     "stack_description": "A self-hosted password manager.",
-    "category_name": "infrastructure_&_services",
-    "category_label": "Infrastructure & Services",
     "status": "WIP"
   },
   {
+    "category_name": "scheduling_and_collaboration",
+    "category_label": "Scheduling and Collaboration",
     "stack_name": "easyappointments",
     "stack_label": "easyappointments",
     "stack_description": "An online scheduling tool for booking appointments.",
-    "category_name": "scheduling_&_collaboration",
-    "category_label": "Scheduling & Collaboration",
     "status": "WIP"
   },
   {
+    "category_name": "document_and_content_management",
+    "category_label": "Document and Content Management",
     "stack_name": "documenso",
     "stack_label": "documenso",
     "stack_description": "A document management system for storing and organizing files.",
-    "category_name": "document_&_content_management",
-    "category_label": "Document & Content Management",
     "status": "WIP"
   },
   {
+    "category_name": "automation_and_low-code",
+    "category_label": "Automation and Low-Code",
     "stack_name": "n8n",
     "stack_label": "n8n",
     "stack_description": "An open-source workflow automation tool.",
-    "category_name": "automation_&_low-code",
-    "category_label": "Automation & Low-Code",
     "status": "WIP"
   },
   {
+    "category_name": "data_storage",
+    "category_label": "Data Storage",
     "stack_name": "mongodb",
     "stack_label": "mongodb",
     "stack_description": "An open-source NoSQL document database.",
-    "category_name": "data_storage",
-    "category_label": "Data Storage",
     "status": "working"
   },
   {
+    "category_name": "document_and_content_management",
+    "category_label": "Document and Content Management",
     "stack_name": "formbricks",
     "stack_label": "formbricks",
     "stack_description": "A tool for creating and managing forms.",
-    "category_name": "document_&_content_management",
-    "category_label": "Document & Content Management",
     "status": "working"
   },
   {
+    "category_name": "infrastructure_and_services",
+    "category_label": "Infrastructure and Services",
     "stack_name": "traefik",
     "stack_label": "traefik",
     "stack_description": "A modern reverse proxy and load balancer.",
-    "category_name": "infrastructure_&_services",
-    "category_label": "Infrastructure & Services",
     "status": "working"
   },
   {
+    "category_name": "project_and_task_management",
+    "category_label": "Project and Task Management",
     "stack_name": "openproject",
     "stack_label": "openproject",
     "stack_description": "A project management tool for collaboration and tracking.",
-    "category_name": "project_&_task_management",
-    "category_label": "Project & Task Management",
     "status": "WIP"
   },
   {
+    "category_name": "web_development",
+    "category_label": "Web Development",
     "stack_name": "directus",
     "stack_label": "directus",
     "stack_description": "An open-source headless CMS for managing content.",
-    "category_name": "web_development",
-    "category_label": "Web Development",
     "status": "WIP"
   },
   {
+    "category_name": "automation_and_low-code",
+    "category_label": "Automation and Low-Code",
     "stack_name": "tooljet",
     "stack_label": "tooljet",
     "stack_description": "An open-source low-code platform for building internal tools.",
-    "category_name": "automation_&_low-code",
-    "category_label": "Automation & Low-Code",
     "status": "WIP"
   },
   {
+    "category_name": "ai_and_nlp",
+    "category_label": "AI and NLP",
     "stack_name": "ollama",
     "stack_label": "ollama",
     "stack_description": "A platform for deploying AI models with ease.",
-    "category_name": "ai_&_nlp",
-    "category_label": "AI & NLP",
     "status": "WIP"
   },
   {
+    "category_name": "automation_and_low-code",
+    "category_label": "Automation and Low-Code",
     "stack_name": "appsmith",
     "stack_label": "appsmith",
     "stack_description": "A platform for building internal apps with low code.",
-    "category_name": "automation_&_low-code",
-    "category_label": "Automation & Low-Code",
     "status": "working"
   },
   {
+    "category_name": "ai_and_nlp",
+    "category_label": "AI and NLP",
     "stack_name": "affine",
     "stack_label": "affine",
     "stack_description": "A data science tool for building machine learning models.",
-    "category_name": "ai_&_nlp",
-    "category_label": "AI & NLP",
     "status": "WIP"
   },
   {
+    "category_name": "project_and_task_management",
+    "category_label": "Project and Task Management",
     "stack_name": "zep",
     "stack_label": "zep",
     "stack_description": "A project management and collaboration tool.",
-    "category_name": "project_&_task_management",
-    "category_label": "Project & Task Management",
     "status": "working"
   },
   {
+    "category_name": "infrastructure_and_services",
+    "category_label": "Infrastructure and Services",
     "stack_name": "uptimekuma",
     "stack_label": "uptimekuma",
     "stack_description": "An open-source status monitoring tool for websites and services.",
-    "category_name": "infrastructure_&_services",
-    "category_label": "Infrastructure & Services",
     "status": "WIP"
   },
   {
+    "category_name": "messaging_and_communication",
+    "category_label": "Messaging and Communication",
     "stack_name": "kafka",
     "stack_label": "kafka",
     "stack_description": "A distributed streaming platform for handling real-time data feeds.",
-    "category_name": "messaging_&_communication",
-    "category_label": "Messaging & Communication",
     "status": "WIP"
   },
   {
+    "category_name": "design_and_prototyping",
+    "category_label": "Design and Prototyping",
     "stack_name": "excalidraw",
     "stack_label": "excalidraw",
     "stack_description": "A virtual whiteboard for collaborative drawing.",
-    "category_name": "design_&_prototyping",
-    "category_label": "Design & Prototyping",
     "status": "working"
   },
   {
+    "category_name": "automation_and_low-code",
+    "category_label": "Automation and Low-Code",
     "stack_name": "dify",
     "stack_label": "dify",
     "stack_description": "A platform for automating and managing workflows.",
-    "category_name": "automation_&_low-code",
-    "category_label": "Automation & Low-Code",
     "status": "WIP"
   },
   {
+    "category_name": "project_and_task_management",
+    "category_label": "Project and Task Management",
     "stack_name": "evolution_lite",
     "stack_label": "evolution lite",
     "stack_description": "A lightweight version of the Evolution CRM platform.",
-    "category_name": "project_&_task_management",
-    "category_label": "Project & Task Management",
     "status": "WIP"
   },
   {
+    "category_name": "data_management",
+    "category_label": "Data Management",
     "stack_name": "phpadmin",
     "stack_label": "phpadmin",
     "stack_description": "A web-based interface for managing MySQL and MariaDB databases.",
-    "category_name": "data_management",
-    "category_label": "Data Management",
     "status": "WIP"
   },
   {
+    "category_name": "automation_and_low-code",
+    "category_label": "Automation and Low-Code",
     "stack_name": "nocodb",
     "stack_label": "nocodb",
     "stack_description": "An open-source no-code platform for building applications.",
-    "category_name": "automation_&_low-code",
-    "category_label": "Automation & Low-Code",
     "status": "WIP"
   },
   {
+    "category_name": "ai_and_nlp",
+    "category_label": "AI and NLP",
     "stack_name": "anythingllm",
     "stack_label": "anythingllm",
     "stack_description": "A platform for working with large language models.",
-    "category_name": "ai_&_nlp",
-    "category_label": "AI & NLP",
     "status": "WIP"
   },
   {
+    "category_name": "data_management",
+    "category_label": "Data Management",
     "stack_name": "pgadmin",
     "stack_label": "pgadmin",
     "stack_description": "A popular web-based interface for managing PostgreSQL databases.",
-    "category_name": "data_management",
-    "category_label": "Data Management",
     "status": "working"
   },
   {
+    "category_name": "automation_and_low-code",
+    "category_label": "Automation and Low-Code",
     "stack_name": "firecrawl",
     "stack_label": "firecrawl",
     "stack_description": "A web scraping tool for crawling and extracting data from websites.",
-    "category_name": "automation_&_low-code",
-    "category_label": "Automation & Low-Code",
     "status": "WIP"
   },
   {
+    "category_name": "project_and_task_management",
+    "category_label": "Project and Task Management",
     "stack_name": "krayincrm",
     "stack_label": "krayincrm",
     "stack_description": "A CRM platform for managing customer relationships.",
-    "category_name": "project_&_task_management",
-    "category_label": "Project & Task Management",
     "status": "WIP"
   },
   {
+    "category_name": "social_and_marketing",
+    "category_label": "Social and Marketing",
     "stack_name": "humhub",
     "stack_label": "humhub",
     "stack_description": "A social networking platform for creating and managing communities.",
-    "category_name": "social_&_marketing",
-    "category_label": "Social & Marketing",
     "status": "WIP"
   },
   {
+    "category_name": "data_storage",
+    "category_label": "Data Storage",
     "stack_name": "redis",
     "stack_label": "redis",
     "stack_description": "An open-source in-memory data structure store.",
-    "category_name": "data_storage",
-    "category_label": "Data Storage",
     "status": "working"
   },
   {
+    "category_name": "messaging_and_communication",
+    "category_label": "Messaging and Communication",
     "stack_name": "mattermost",
     "stack_label": "mattermost",
     "stack_description": "An open-source messaging platform for teams.",
-    "category_name": "messaging_&_communication",
-    "category_label": "Messaging & Communication",
     "status": "working"
   },
   {
+    "category_name": "social_and_marketing",
+    "category_label": "Social and Marketing",
     "stack_name": "mautic",
     "stack_label": "mautic",
     "stack_description": "An open-source marketing automation platform.",
-    "category_name": "social_&_marketing",
-    "category_label": "Social & Marketing",
     "status": "WIP"
   },
   {
+    "category_name": "infrastructure_and_services",
+    "category_label": "Infrastructure and Services",
     "stack_name": "unoapi",
     "stack_label": "unoapi",
     "stack_description": "An API management platform.",
-    "category_name": "infrastructure_&_services",
-    "category_label": "Infrastructure & Services",
     "status": "WIP"
   },
   {
+    "category_name": "data_storage",
+    "category_label": "Data Storage",
     "stack_name": "postgres",
     "stack_label": "postgres",
     "stack_description": "An open-source relational database management system.",
-    "category_name": "data_storage",
-    "category_label": "Data Storage",
     "status": "working"
   },
   {
+    "category_name": "project_and_task_management",
+    "category_label": "Project and Task Management",
     "stack_name": "twentycrm",
     "stack_label": "twentycrm",
     "stack_description": "A customer relationship management (CRM) platform.",
-    "category_name": "project_&_task_management",
-    "category_label": "Project & Task Management",
     "status": "working"
   },
   {
+    "category_name": "web_development",
+    "category_label": "Web Development",
     "stack_name": "strapi",
     "stack_label": "strapi",
     "stack_description": "An open-source headless CMS for content management.",
-    "category_name": "web_development",
-    "category_label": "Web Development",
     "status": "working"
   },
   {
+    "category_name": "project_and_task_management",
+    "category_label": "Project and Task Management",
     "stack_name": "focalboard",
     "stack_label": "focalboard",
     "stack_description": "A task and project management tool.",
-    "category_name": "project_&_task_management",
-    "category_label": "Project & Task Management",
     "status": "WIP"
   },
   {
+    "category_name": "scheduling_and_collaboration",
+    "category_label": "Scheduling and Collaboration",
     "stack_name": "calcom",
     "stack_label": "calcom",
     "stack_description": "A scheduling platform for booking appointments.",
-    "category_name": "scheduling_&_collaboration",
-    "category_label": "Scheduling & Collaboration",
     "status": "WIP"
   },
   {
+    "category_name": "data_storage",
+    "category_label": "Data Storage",
     "stack_name": "mariadb",
     "stack_label": "mariadb",
     "stack_description": "A relational database management system, a fork of MySQL.",
-    "category_name": "data_storage",
-    "category_label": "Data Storage",
     "status": "working"
   },
   {
+    "category_name": "ai_and_nlp",
+    "category_label": "AI and NLP",
     "stack_name": "woofed",
     "stack_label": "woofed",
     "stack_description": "A machine learning framework or platform for model training.",
-    "category_name": "ai_&_nlp",
-    "category_label": "AI & NLP",
     "status": "WIP"
   },
   {
+    "category_name": "ai_and_nlp",
+    "category_label": "AI and NLP",
     "stack_name": "qdrant",
     "stack_label": "qdrant",
     "stack_description": "A vector database for machine learning and AI applications.",
-    "category_name": "ai_&_nlp",
-    "category_label": "AI & NLP",
     "status": "WIP"
   },
   {
+    "category_name": "data_storage",
+    "category_label": "Data Storage",
     "stack_name": "supabase",
     "stack_label": "supabase",
     "stack_description": "An open-source alternative to Firebase for building backend services.",
-    "category_name": "data_storage",
-    "category_label": "Data Storage",
     "status": "WIP"
   },
   {
+    "category_name": "messaging_and_communication",
+    "category_label": "Messaging and Communication",
     "stack_name": "botpress",
     "stack_label": "botpress",
     "stack_description": "An open-source platform for building chatbots.",
-    "category_name": "messaging_&_communication",
-    "category_label": "Messaging & Communication",
     "status": "WIP"
   },
   {
+    "category_name": "messaging_and_communication",
+    "category_label": "Messaging and Communication",
     "stack_name": "quepasa",
     "stack_label": "quepasa",
     "stack_description": "A chatbot and customer support tool for automating conversations.",
-    "category_name": "messaging_&_communication",
-    "category_label": "Messaging & Communication",
     "status": "WIP"
   },
   {
+    "category_name": "project_and_task_management",
+    "category_label": "Project and Task Management",
     "stack_name": "evolution",
     "stack_label": "evolution",
     "stack_description": "A CRM and sales platform.",
-    "category_name": "project_&_task_management",
-    "category_label": "Project & Task Management",
     "status": "working"
   },
   {
+    "category_name": "automation_and_low-code",
+    "category_label": "Automation and Low-Code",
     "stack_name": "nocobase",
     "stack_label": "nocobase",
     "stack_description": "A no-code platform for building business applications.",
-    "category_name": "automation_&_low-code",
-    "category_label": "Automation & Low-Code",
     "status": "WIP"
   },
   {
+    "category_name": "infrastructure_and_services",
+    "category_label": "Infrastructure and Services",
     "stack_name": "portainer",
     "stack_label": "portainer",
     "stack_description": "A tool for managing Docker containers.",
-    "category_name": "infrastructure_&_services",
-    "category_label": "Infrastructure & Services",
     "status": "working"
   },
   {
+    "category_name": "ai_and_nlp",
+    "category_label": "AI and NLP",
     "stack_name": "langfuse",
     "stack_label": "langfuse",
     "stack_description": "A platform for integrating large language models into workflows.",
-    "category_name": "ai_&_nlp",
-    "category_label": "AI & NLP",
     "status": "WIP"
   },
   {
+    "category_name": "automation_and_low-code",
+    "category_label": "Automation and Low-Code",
     "stack_name": "weavite",
     "stack_label": "weavite",
     "stack_description": "A tool for automating website scraping and analysis.",
-    "category_name": "automation_&_low-code",
-    "category_label": "Automation & Low-Code",
     "status": "WIP"
   },
   {
+    "category_name": "analytics_and_bi",
+    "category_label": "Analytics and BI",
     "stack_name": "metabase",
     "stack_label": "metabase",
     "stack_description": "An open-source business intelligence platform.",
-    "category_name": "analytics_&_bi",
-    "category_label": "Analytics & BI",
     "status": "WIP"
   },
   {
+    "category_name": "scheduling_and_collaboration",
+    "category_label": "Scheduling and Collaboration",
     "stack_name": "nextcloud",
     "stack_label": "nextcloud",
     "stack_description": "A file-sharing and collaboration platform.",
-    "category_name": "scheduling_&_collaboration",
-    "category_label": "Scheduling & Collaboration",
     "status": "WIP"
   },
   {
+    "category_name": "messaging_and_communication",
+    "category_label": "Messaging and Communication",
     "stack_name": "ntfy",
     "stack_label": "ntfy",
     "stack_description": "A simple notification service for sending and receiving messages.",
-    "category_name": "messaging_&_communication",
-    "category_label": "Messaging & Communication",
     "status": "WIP"
   },
   {
+    "category_name": "automation_and_low-code",
+    "category_label": "Automation and Low-Code",
     "stack_name": "airflow",
     "stack_label": "airflow",
     "stack_description": "An open-source workflow automation platform.",
-    "category_name": "automation_&_low-code",
-    "category_label": "Automation & Low-Code",
     "status": "WIP"
   },
   {
+    "category_name": "messaging_and_communication",
+    "category_label": "Messaging and Communication",
     "stack_name": "chatwoot",
     "stack_label": "chatwoot",
     "stack_description": "An open-source customer support and engagement platform.",
-    "category_name": "messaging_&_communication",
-    "category_label": "Messaging & Communication",
     "status": "WIP"
   },
   {
+    "category_name": "miscellaneous",
+    "category_label": "Miscellaneous",
     "stack_name": "whoami",
     "stack_label": "whoami",
     "stack_description": "A simple identity service for determining the current user.",
-    "category_name": "miscellaneous",
-    "category_label": "Miscellaneous",
-    "status": "working"
+    "status": "WIP"
   },
   {
+    "category_name": "automation_and_low-code",
+    "category_label": "Automation and Low-Code",
     "stack_name": "lowcoder",
     "stack_label": "lowcoder",
     "stack_description": "A low-code platform for building applications.",
-    "category_name": "automation_&_low-code",
-    "category_label": "Automation & Low-Code",
     "status": "WIP"
   },
   {
+    "category_name": "web_development",
+    "category_label": "Web Development",
     "stack_name": "wordpress",
     "stack_label": "wordpress",
     "stack_description": "A popular content management system (CMS) for building websites.",
-    "category_name": "web_development",
-    "category_label": "Web Development",
     "status": "WIP"
   },
   {
+    "category_name": "ai_and_nlp",
+    "category_label": "AI and NLP",
     "stack_name": "langflow",
     "stack_label": "langflow",
     "stack_description": "An AI tool for managing workflows for large language models (LLMs).",
-    "category_name": "ai_&_nlp",
-    "category_label": "AI & NLP",
     "status": "WIP"
   },
   {
+    "category_name": "infrastructure_and_services",
+    "category_label": "Infrastructure and Services",
     "stack_name": "glpi",
     "stack_label": "glpi",
     "stack_description": "An IT asset management software.",
-    "category_name": "infrastructure_&_services",
-    "category_label": "Infrastructure & Services",
     "status": "WIP"
   },
   {
+    "category_name": "messaging_and_communication",
+    "category_label": "Messaging and Communication",
     "stack_name": "chatwoot_nestor",
     "stack_label": "chatwoot nestor",
     "stack_description": "An extension of the Chatwoot platform for advanced features.",
-    "category_name": "messaging_&_communication",
-    "category_label": "Messaging & Communication",
     "status": "WIP"
   },
   {
+    "category_name": "erp_and_enterprise_solutions",
+    "category_label": "ERP and Enterprise Solutions",
     "stack_name": "odoo",
     "stack_label": "odoo",
     "stack_description": "An open-source ERP and business management platform.",
-    "category_name": "erp_&_enterprise_solutions",
-    "category_label": "ERP & Enterprise Solutions",
     "status": "WIP"
   },
   {
+    "category_name": "document_and_content_management",
+    "category_label": "Document and Content Management",
     "stack_name": "outline",
     "stack_label": "outline",
     "stack_description": "A knowledge base and wiki platform.",
-    "category_name": "document_&_content_management",
-    "category_label": "Document & Content Management",
     "status": "WIP"
   },
   {
+    "category_name": "data_storage",
+    "category_label": "Data Storage",
     "stack_name": "mysql",
     "stack_label": "mysql",
     "stack_description": "A relational database management system.",
-    "category_name": "data_storage",
-    "category_label": "Data Storage",
     "status": "working"
   },
   {
+    "category_name": "data_storage",
+    "category_label": "Data Storage",
     "stack_name": "minio",
     "stack_label": "minio",
     "stack_description": "An open-source object storage service compatible with Amazon S3.",
-    "category_name": "data_storage",
-    "category_label": "Data Storage",
     "status": "WIP"
   },
   {
+    "category_name": "infrastructure_and_services",
+    "category_label": "Infrastructure and Services",
     "stack_name": "wuzapi",
     "stack_label": "wuzapi",
     "stack_description": "An API management tool for routing and controlling APIs.",
-    "category_name": "infrastructure_&_services",
-    "category_label": "Infrastructure & Services",
     "status": "WIP"
   },
   {
+    "category_name": "infrastructure_and_services",
+    "category_label": "Infrastructure and Services",
     "stack_name": "yourls",
     "stack_label": "yourls",
     "stack_description": "A URL shortening service.",
-    "category_name": "infrastructure_&_services",
-    "category_label": "Infrastructure & Services",
     "status": "WIP"
   },
   {
+    "category_name": "infrastructure_and_services",
+    "category_label": "Infrastructure and Services",
     "stack_name": "monitor",
     "stack_label": "monitor",
     "stack_description": "A system monitoring tool for tracking performance and uptime.",
-    "category_name": "infrastructure_&_services",
-    "category_label": "Infrastructure & Services",
     "status": "WIP"
   },
   {
+    "category_name": "location_services",
+    "category_label": "Location Services",
     "stack_name": "traccar",
     "stack_label": "traccar",
     "stack_description": "A GPS tracking platform for managing vehicle or asset location.",
-    "category_name": "location_services",
-    "category_label": "Location Services",
-    "status": "WIP"
+    "status": "working"
   },
   {
+    "category_name": "document_and_content_management",
+    "category_label": "Document and Content Management",
     "stack_name": "moodle",
     "stack_label": "moodle",
     "stack_description": "An open-source learning management system (LMS).",
-    "category_name": "document_&_content_management",
-    "category_label": "Document & Content Management",
     "status": "WIP"
   }
 ]
