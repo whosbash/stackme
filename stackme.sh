@@ -6,7 +6,7 @@ stty -icanon min 1 time 0
 # Ensure terminal settings are restored on script exit
 trap "stty sane" EXIT
 
-######################################### BEGIN OF CONSTANTS ######################################
+############################### BEGIN OF DISPLAY-RELATED CONSTANTS ############################
 
 # Define colors with consistent names
 declare -A COLORS=(
@@ -116,9 +116,6 @@ magenta="\033[35m"
 cyan="\033[35m"
 normal="\033[0m"
 
-# API URL
-STACKS_TEMPLATE_URL="https://api.github.com/repos/whosbash/stackme/contents/stacks"
-
 # Cleanup
 current_pid=0
 
@@ -140,14 +137,25 @@ DEFAULT_ARROW_OPTION='angle'
 # Default page size
 DEFAULT_PAGE_SIZE=5
 
+############################ END OF DEPLOYMENT-RELATED CONSTANTS ###############################
+
+########################### BEGIN OF DEPLOYMENT-RELATED CONSTANTS ##############################
+
 # Tools constants
 TOOL_NAME="StackMe"
 TOOL_LOGO_URL="https://raw.githubusercontent.com/whosbash/stackme/main/images/stackme_tiny.png"
 TOOL_REPOSITORY_URL='https://github.com/whosbash/stackme'
 
+# STACKS COMPOSE TEMPLATES URL
+TOOL_STACKS_TEMPLATE_URL="https://api.github.com/repos/whosbash/stackme/contents/stacks"
+
+TOOL_STACKS_OBJECT_URL="https://api.github.com/repos/whosbash/stackme/contents/stacks/stacks.json"
+
 TOOL_BASE_DIR="/opt/stackme"
 TOOL_STACKS_DIR="$TOOL_BASE_DIR/stacks"
 TOOL_TEMPLATES_DIR="$TOOL_BASE_DIR/templates"
+
+############################## END OF DISPLAY-RELATED FUNCTIONS ##############################
 
 ############################# BEGIN OF DISPLAY-RELATED FUNCTIONS #############################
 
@@ -4260,13 +4268,13 @@ download_stack_compose_templates() {
     info "Fetching file list from GitHub API..."
     # Fetch the file information from the API
     file_urls=$(\
-        curl -s -H "Accept: application/vnd.github.v3+json" "$STACKS_TEMPLATE_URL" | \
+        curl -s -H "Accept: application/vnd.github.v3+json" "$TOOL_STACKS_TEMPLATE_URL" | \
         jq -r '.[] | select(.type == "file") | .download_url'
     )
 
     # Check if files were found
     if [[ -z "$file_urls" ]]; then
-        warning "No files found at $STACKS_TEMPLATE_URL."
+        warning "No files found at $TOOL_STACKS_TEMPLATE_URL."
         return 1
     fi
 
@@ -6710,8 +6718,6 @@ fetch_stack_compose(){
   fi
 }
 
-############################# BEGIN OF STACK DEPLOYMENT UTILITARY FUNCTIONS #######################
-
 # Function to get the database password from a configuration
 fetch_database_password() {
   local stack_name="$1"
@@ -6851,6 +6857,38 @@ display_prompt_items() {
 
     highlight "\t$name$required: $description"
   done  
+}
+
+build_stack_objects(){
+    # Initialize an empty JSON array
+    json_output="[]"
+
+    # Iterate over each tool
+    for name in "${!descriptions[@]}"; do
+        desc="${descriptions[$name]}"
+        category="Unknown"
+        status="${tool_status[$name]:-Unknown}"  # Get status from the new tool_status array
+
+        # Find the category for the current tool
+        for domain in "${!domains[@]}"; do
+            if [[ " ${domains[$domain]} " =~ " $name " ]]; then
+                category="$domain"
+                break
+            fi
+        done
+
+        # Append the JSON object to the array
+        json_output=$(\
+            jq -c \
+                --arg name "$name" \
+                --arg desc "$desc" \
+                --arg category "$category" \
+                --arg status "$status" \
+                '. + [{"name": $name, "category": $category, "description": $desc, "status": $status}]' <<< "$json_output"
+            )
+    done
+
+    echo "$json_output"
 }
 
 ############################## END OF STACK DEPLOYMENT UTILITARY FUNCTIONS ########################
@@ -9609,6 +9647,19 @@ deploy_stacks_startup() {
 
 ##################################### BEGIN OF MENU DEFINITIONS ####################################
 
+define_menu_stacks_category() {
+  local menu_key="$1"
+  local menu_title="$2"
+  local menu_category="$3"
+
+  # TODO: 
+  # - Download stacks object;
+  # - Define menu items from menu category;
+  # - Create menu object;
+  # - Define menu functions;
+  # - Define menu dependencies;
+}
+
 # main:stacks:databases
 define_menu_stacks_databases() {
   menu_key="main:stacks:databases"
@@ -9702,21 +9753,7 @@ define_menu_stacks() {
     build_menu_item "Startup" \
       "Traefik & Portainer" "deploy_stacks_startup"
   )"
-  item_2="$(
-    build_menu_item "Monitor" \
-      "Jaeger & Prometheus & Node Exporter & Grafana & Kibana & " \
-      "deploy_stack_handler monitor"
-  )"
-  item_3="$(
-    build_menu_item "Databases" \
-      "Postgres & Redis & MySQL & MongoDB" \
-      "navigate_menu 'main:stacks:databases'"
-  )"
-  item_4="$(
-    build_menu_item "Miscelaneous" \
-      "Whoami & Airflow & Metabase & N8N" \
-      "navigate_menu 'main:stacks:miscelaneous'"
-  )"
+  
 
   items=(
     "$item_1" "$item_2" "$item_3" "$item_4"
@@ -9790,7 +9827,6 @@ define_menu_utilities() {
   define_menu "$menu_key" "$menu_object"
 }
 
-# main:health
 # main:health
 define_menu_health() {
   menu_key="main:health"
