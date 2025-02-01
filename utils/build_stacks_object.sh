@@ -177,28 +177,11 @@ declare -A tool_status=(
   ["mongodb"]="working"
   ["odoo"]="WIP"
   ["qdrant"]="WIP"
-  ["traccar"]="WIP"
-  ["whoami"]="working"
+  ["traccar"]="working"
+  ["whoami"]="WIP"
 )
 
-
-# Create arrays to store formatted values
-declare -A category_label
-declare -A stack_label
-
-# Generate labels for categories and tools
-generate_labels() {
-    for category in "${!categories[@]}"; do
-        category_label["$category"]=$(echo "$category" | tr '[:upper:]' '[:lower:]' | tr -s ' ' '_')
-        for tool in ${categories[$category]}; do
-            stack_label["$tool"]=$(echo "$tool" | tr '[:lower:]' '[:upper:]' | tr -s ' ' '_')
-            tool_category["$tool"]="$category"  # Store category lookup for each tool
-        done
-    done
-}
-
-# Function to build the stack objects and output the final JSON array
-build_stack_objects() {
+build_stack_objects(){
     # Initialize an empty JSON array
     json_output="[]"
 
@@ -253,4 +236,3 @@ build_stack_objects() {
 
 # Output the final JSON array with status
 time build_stack_objects | jq '.'
-
