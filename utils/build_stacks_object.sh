@@ -80,25 +80,46 @@ declare -A descriptions=(
   ["whoami"]="A simple identity service for determining the current user."
 )
 
-declare -A categories
-categories=(
-  ["Infrastructure & Services"]="monitor uptimekuma glpi traefik vaultwarden wuzapi unoapi yourls portainer"
+declare -A categories_to_stacks
+categories_to_stacks=(
+  ["Infrastructure and Services"]="monitor uptimekuma glpi traefik vaultwarden wuzapi unoapi yourls portainer"
   ["Data Storage"]="supabase clickhouse redis redisinsight pgvector iceberg minio mysql mariadb baserow postgres mongodb"
   ["Data Management"]="pgadmin phpadmin"
-  ["Analytics & BI"]="metabase"
-  ["Project & Task Management"]="openproject focalboard zep twentycrm evolution evolution_lite krayincrm"
-  ["ERP & Enterprise Solutions"]="odoo"
-  ["AI & NLP"]="affine ollama anythingllm qdrant woofed langflow langfuse"
-  ["Messaging & Communication"]="rabbitmq transcrevezap kafka quepasa typebot botpress chatwoot chatwoot_nestor mattermost ntfy"
-  ["Document & Content Management"]="documenso docuseal stirlingpdf formbricks moodle outline"
+  ["Analytics and BI"]="metabase"
+  ["Project and Task Management"]="openproject focalboard zep twentycrm evolution evolution_lite krayincrm"
+  ["ERP and Enterprise Solutions"]="odoo"
+  ["AI and NLP"]="affine ollama anythingllm qdrant woofed langflow langfuse"
+  ["Messaging and Communication"]="rabbitmq transcrevezap kafka quepasa typebot botpress chatwoot chatwoot_nestor mattermost ntfy"
+  ["Document and Content Management"]="documenso docuseal stirlingpdf formbricks moodle outline"
   ["Web Development"]="wordpress directus strapi"
-  ["Automation & Low-Code"]="firecrawl weavite n8n dify airflow flowise lowcoder appsmith nocobase nocodb tooljet"
-  ["Scheduling & Collaboration"]="easyappointments calcom nextcloud"
-  ["Social & Marketing"]="humhub mautic"
+  ["Automation and Low-Code"]="firecrawl weavite n8n dify airflow flowise lowcoder appsmith nocobase nocodb tooljet"
+  ["Scheduling and Collaboration"]="easyappointments calcom nextcloud"
+  ["Social and Marketing"]="humhub mautic"
   ["Location Services"]="traccar"
-  ["Design & Prototyping"]="excalidraw"
+  ["Design and Prototyping"]="excalidraw"
   ["Miscellaneous"]="whoami"
 )
+
+  # Declare category descriptions
+  declare -A categories_descriptions
+  categories_descriptions=(
+    ["Infrastructure and Services"]="Tools related to managing infrastructure and services, including monitoring, security, and more."
+    ["Data Storage"]="Tools for managing and storing data, from databases to storage services."
+    ["Data Management"]="Tools for managing and administrating databases."
+    ["Analytics and BI"]="Business Intelligence and analytics tools for data analysis and reporting."
+    ["Project and Task Management"]="Tools for managing projects, tasks, and team collaboration."
+    ["ERP and Enterprise Solutions"]="Enterprise Resource Planning and other solutions for managing business operations."
+    ["AI and NLP"]="AI and Natural Language Processing tools to build and deploy models."
+    ["Messaging and Communication"]="Tools for messaging, communication, and collaboration."
+    ["Document and Content Management"]="Tools for managing documents and content in an organization."
+    ["Web Development"]="Tools for building and managing websites and web applications."
+    ["Automation and Low-Code"]="Automation and low-code platforms for developing applications quickly."
+    ["Scheduling and Collaboration"]="Tools for scheduling and team collaboration."
+    ["Social and Marketing"]="Social media management and marketing automation tools."
+    ["Location Services"]="Tools for location-based services and geospatial data."
+    ["Design and Prototyping"]="Design and prototyping tools for visualizing ideas."
+    ["Miscellaneous"]="Other useful or unique tools."
+  )
 
 # New array for categorizing tools as "working" or "WIP"
 declare -A tool_status=(
@@ -187,13 +208,13 @@ build_stack_objects(){
 
     # Iterate over each tool
     for name in "${!descriptions[@]}"; do
-        desc="${descriptions[$name]}"
+        desc="${descriptions[$name]}"  # Tool description
         category="Unknown"
         status="${tool_status[$name]:-Unknown}"  # Get status from the tool_status array (assumed to be populated)
 
         # Find the category for the current tool
-        for cat in "${!categories[@]}"; do
-            if [[ " ${categories[$cat]} " =~ " $name " ]]; then
+        for cat in "${!categories_to_stacks[@]}"; do
+            if [[ " ${categories_to_stacks[$cat]} " =~ " $name " ]]; then
                 category="$cat"
                 break
             fi
@@ -210,20 +231,26 @@ build_stack_objects(){
         stack_name=$(lowercase_transform "$name")
         stack_label="${name//_/ }"  # Convert underscores to spaces
 
+        # Fetch the description for the category from the categories_descriptions array
+        category_description="${categories_descriptions[$category]:-No description available}"
+
+        # Create the stack object with the category_description
         stack_item=$(jq -n \
             --arg category_name "$category_name" \
             --arg category_label "$category_label" \
             --arg stack_name "$stack_name" \
             --arg stack_label "$stack_label" \
             --arg desc "$desc" \
+            --arg category_description "$category_description" \
             --arg status "$status" \
             '{
-                "category_name": $category_name,
-                "category_label": $category_label,
                 "stack_name": $stack_name,
                 "stack_label": $stack_label,
                 "stack_description": $desc,
-                "status": $status
+                "stack_status": $status,
+                "category_name": $category_name,
+                "category_label": $category_label,
+                "category_description": $category_description,                
             }')
 
         # Append the stack_item to the JSON array
@@ -234,5 +261,6 @@ build_stack_objects(){
     echo "$json_output"
 }
 
+
 # Output the final JSON array with status
-time build_stack_objects | jq '.'
+time build_stack_objects | jq '.' > "./stacks/stacks.json"
