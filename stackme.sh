@@ -149,7 +149,7 @@ TOOL_REPOSITORY_URL='https://github.com/whosbash/stackme'
 # STACKS COMPOSE TEMPLATES URL
 TOOL_STACKS_TEMPLATE_URL="https://api.github.com/repos/whosbash/stackme/contents/stacks"
 
-TOOL_STACKS_OBJECT_URL="https://api.github.com/repos/whosbash/stackme/contents/stacks/stacks.json"
+TOOL_STACKS_OBJECT_URL="https://raw.githubusercontent.com/whosbash/stackme/main/stacks/stacks.json"
 
 TOOL_BASE_DIR="/opt/stackme"
 TOOL_STACKS_DIR="$TOOL_BASE_DIR/stacks"
@@ -1020,8 +1020,8 @@ filter_items() {
   local items="$1"     # The JSON array of items to filter
   local filter_fn="$2" # The jq filter to apply
 
-  # Apply the jq filter and return the filtered result as an array
-  filtered_items=$(echo "$items" | jq "[ $filter_fn ]")
+  # Apply the jq filter and return the filtered result as a JSON array
+  filtered_items=$(echo "$items" | jq "$filter_fn")
   echo "$filtered_items"
 }
 
@@ -1425,7 +1425,7 @@ run_ctop() {
         success "CTOP is already installed. Type 'ctop' in the terminal to use it."
     else
         # Install ctop if not already installed
-        install_ctop    
+        install_ctop
         exit_code=$?
 
         if [[ $exit_code -ne 0 ]]; then
@@ -3305,8 +3305,10 @@ build_menu() {
 
 # Append a menu object to the MENUS array
 define_menu() {
-  local key="$1"
-  local menu_object="$2"
+  local menu_object="$1"
+  key="$(echo "$menu_object" | jq -r '.key')"
+
+  info "Defining menu: $key"
 
   MENUS["$key"]+="$menu_object"
 }
@@ -4844,8 +4846,6 @@ upload_stack_on_portainer() {
     "$url" &&
     success "Stack '$stack_name' uploaded successfully."
   )
-
-  debug "$response"
 
   if [[ -z "$response" ]]; then
     error "Failed to upload stack '$stack_name'."
@@ -9647,122 +9647,104 @@ deploy_stacks_startup() {
 
 ##################################### BEGIN OF MENU DEFINITIONS ####################################
 
-define_menu_stacks_category() {
-  local menu_key="$1"
-  local menu_title="$2"
-  local menu_category="$3"
+# Function to define menu stacks category
+define_stacks_category_menu() {
+  local category_stacks_jarray="$1"
 
-  # TODO: 
-  # - Download stacks object;
-  # - Define menu items from menu category;
-  # - Create menu object;
-  # - Define menu functions;
-  # - Define menu dependencies;
-}
+  # Extract first element details
+  stack_category=$(echo "$category_stacks_jarray" | jq -r '.[0].category_name')
+  menu_key="main:stacks:$stack_category"
+  menu_title=$(echo "$category_stacks_jarray" | jq -r '.[0].category_label')
 
-# main:stacks:databases
-define_menu_stacks_databases() {
-  menu_key="main:stacks:databases"
-  menu_title="Database stacks"
+  # Convert JSON array to Bash array
+  mapfile -t category_stacks < <(echo "$category_stacks_jarray" | jq -c '.[]')
 
-  declare -a databases=("postgres" "pgvector" "redis" "mysql" "mongodb" "mariadb")
-  items=()
+  # Create menu items from array
+  menu_items=()
+  for stack_object in "${category_stacks[@]}"; do
+    stack_name=$(echo "$stack_object" | jq -r '.stack_name')
+    stack_label=$(echo "$stack_object" | jq -r '.stack_label')
+    stack_description=$(echo "$stack_object" | jq -r '.stack_description')
 
-  for db in "${databases[@]}"; do
-    items+=("$(build_menu_item "$db" "Deploy" "deploy_stack_handler $db")")
+    menu_item="$(\
+      build_menu_item "$stack_label" "$stack_description" "deploy_stack_handler $stack_name"\
+    )"
+
+    menu_items+=("$menu_item")
   done
 
-  menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
-  define_menu "$menu_key" "$menu_object"
+  # Create menu object
+  menu_object="$(\
+    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${menu_items[@]}"
+  )"
+
+  define_menu "$menu_object"
 }
 
-# main:stacks:miscelaneous
-define_menu_stacks_miscelaneous() {
-  menu_key="main:stacks:miscelaneous"
-  menu_title="Miscelaneous stacks"
+# Function to define menu stacks
+define_menu_stacks_categories() {
+  local stacks_json="$1"
 
-  # Define applications and their statuses
-  declare -A stacks=(
-      ["whoami"]="working"
-      ["uptimekuma"]="working"
-      ["appsmith"]="working"
-      ["focalboard"]="working"
-      ["excalidraw"]="working"
-      ["pgadmin"]="working"
-      ["clickhouse"]="working"
-      ["n8n"]="wip"
-      ["yourls"]="wip"
-      ["qdrant"]="wip"
-      ["glpi"]="wip"
-      ["odoo"]="wip"
-      ["botpress"]="wip"
-      ["phpadmin"]="wip"
-      ["metabase"]="wip"
-      ["nocodb"]="wip"
-      ["ntfy"]="wip"      
-      ["redisinsight"]="wip"
-      ["weavite"]="wip"
-      ["rabbitmq"]="wip"
-      ["langfuse"]="wip"
-      ["transcrevezap"]="wip"
-      ["langflow"]="wip"
-      ["wuzapi"]="wip"
-      ["openproject"]="wip"
-      ["flowise"]="wip"
-      ["wordpress"]="wip"
-      ["easyappointments"]="wip"
-      ["nocobase"]="wip"
-      ["mattermost"]="wip"
-      ["traccar"]="wip"
-      ["evolution"]="wip"
-      ["evolution_lite"]="wip"
-      ["firecrawl"]="wip"
-      ["ollama"]="wip"
-      ["stirlingpdf"]="wip"
-      ["twentycrm"]="wip"
-      ["nextcloud"]="wip"
-      ["quepasa"]="wip"
-      ["strapi"]="wip"
-      ["outline"]="wip"
-      ["mautic"]="wip"
-      ["woofed"]="wip"
-      ["iceberg"]="wip"
-      ["moodle"]="wip"
-  )
+  # Get unique categories (if stacks_json is an array)
+  categories=$(echo "$stacks_json" | jq -r 'map(.category_name) | unique[]')
 
-  # Initialize an array to store menu items
-  items=()
+  # Initialize an empty JSON array
+  stack_items='[]'
 
-  # Generate menu items and append them to the array
-  for stack in "${!stacks[@]}"; do
-      item="$(build_menu_item "$stack (${stacks[$stack]})" "Deploy" "deploy_stack_handler $stack")"
-      items+=("$item")
+  for stack_category in $categories; do
+    # Use filter_items to get stacks in the given category
+    filter_fn="map(select(.category_name == \"$stack_category\"))"
+    filtered_stacks=$(filter_items "$stacks_json" "$filter_fn")
+
+    define_stacks_category_menu "$filtered_stacks"
   done
-
-  menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
-
-  define_menu "$menu_key" "$menu_object"
 }
 
 # main:stacks
 define_menu_stacks() {
   menu_key="main:stacks"
-  menu_title="stacks"
+  menu_title="Stacks"
 
-  item_1="$(
+  # Startup item (Exception to other stacks)
+  startup_item="$(
     build_menu_item "Startup" \
-      "Traefik & Portainer" "deploy_stacks_startup"
+      "Deploy Traefik & Portainer" "deploy_stacks_startup"
   )"
-  
 
-  items=(
-    "$item_1" "$item_2" "$item_3" "$item_4"
+  # Download stacks.json
+  stacks_json=$(curl -s "$TOOL_STACKS_OBJECT_URL")
+
+  # Get unique category objects
+  categories_objects=$(
+    echo "$stacks_json" | jq -c 'map({category_name, category_label}) | unique'
   )
 
-  page_size=10
-  menu_object="$(build_menu "$menu_key" "$menu_title" $page_size "${items[@]}")"
+  # Initialize menu items
+  menu_stack_categories=("$startup_item")  # Starting with the startup item
 
-  define_menu "$menu_key" "$menu_object"
+  # Iterate over category objects
+  while read -r categories_object; do
+    category_name=$(echo "$categories_object" | jq -r '.category_name')
+    category_label=$(echo "$categories_object" | jq -r '.category_label')
+
+    category_key="main:stacks:$category_name"
+    category_item="$(\
+      build_menu_item "$category_label" "Navigate" "navigate_menu $category_key"\
+    )"
+
+    menu_stack_categories+=("${category_item}")
+  done < <(echo "$categories_objects" | jq -c '.[]')
+
+  # Build the menu object
+  menu_object="$(\
+    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${menu_stack_categories[@]}"\
+  )"
+
+  # Define the menu using the built object
+  define_menu "$menu_object"
+
+  # Define sub-menus (you can expand this logic)
+  define_menu_stacks_categories "$stacks_json"
 }
 
 # main:utilities:smtp
@@ -9785,7 +9767,7 @@ define_menu_utilities_smtp() {
 
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
 
-  define_menu "$menu_key" "$menu_object"
+  define_menu "$menu_object"
 }
 
 # main:utilities:docker
@@ -9803,7 +9785,7 @@ define_menu_utilities_docker() {
 
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
 
-  define_menu "$menu_key" "$menu_object"
+  define_menu "$menu_object"
 }
 
 # main:utilities
@@ -9824,7 +9806,11 @@ define_menu_utilities() {
 
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
 
-  define_menu "$menu_key" "$menu_object"
+  define_menu "$menu_object"
+
+  # Define sub-menus
+  define_menu_utilities_docker
+  define_menu_utilities_smtp
 }
 
 # main:health
@@ -9863,11 +9849,12 @@ define_menu_health() {
 
   # Build and define menu
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
-  define_menu "$menu_key" "$menu_object"
+  define_menu "$menu_object"
 }
 
 # main
 define_menu_main() {
+
   menu_key="main"
   menu_title="main"
 
@@ -9881,31 +9868,25 @@ define_menu_main() {
 
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
 
-  define_menu "$menu_key" "$menu_object"
-}
+  define_menu "$menu_object"
 
-# Populate MENUS
-define_menus() {
-  define_menu_main
-
-  # Stacks and its submenus
+  # Define sub-menus
   define_menu_stacks
-  define_menu_stacks_databases
-  define_menu_stacks_miscelaneous
-
-  # Utilities and its submenus
   define_menu_utilities
-  define_menu_utilities_docker
-  define_menu_utilities_smtp
-
   define_menu_health
+
 }
 
 start_main_menu() {
   navigate_menu "main"
+  
   cleanup
   clean_screen
+  
   farewell_message
+  wait_for_input 5
+  
+  clean_screen
 }
 
 ###################################### END OF MENU DEFINITIONS ####################################
@@ -10001,14 +9982,12 @@ main() {
   fi
 
   # Perform startup tasks
-  startup
+  # startup
 
   # Define menus on registry
-  define_menus
+  define_menu_main
 
   start_main_menu
-  wait_for_input 5
-  clean_screen
 }
 
 # Call the main function
