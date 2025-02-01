@@ -9726,10 +9726,11 @@ define_menu_stacks() {
   while read -r categories_object; do
     category_name=$(echo "$categories_object" | jq -r '.category_name')
     category_label=$(echo "$categories_object" | jq -r '.category_label')
+    category_description=$(echo "$categories_object" | jq -r '.category_description')
 
     category_key="main:stacks:$category_name"
     category_item="$(\
-      build_menu_item "$category_label" "Navigate" "navigate_menu $category_key"\
+      build_menu_item "$category_label" "$category_description" "navigate_menu $category_key"\
     )"
 
     menu_stack_categories+=("${category_item}")
