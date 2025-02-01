@@ -80,8 +80,8 @@ declare -A descriptions=(
   ["whoami"]="A simple identity service for determining the current user."
 )
 
-declare -A domains
-domains=(
+declare -A categories
+categories=(
   ["Infrastructure & Services"]="monitor uptimekuma glpi traefik vaultwarden wuzapi unoapi yourls portainer"
   ["Data Storage"]="supabase clickhouse redis redisinsight pgvector iceberg minio mysql mariadb baserow postgres mongodb"
   ["Data Management"]="pgadmin phpadmin"
@@ -102,27 +102,27 @@ domains=(
 
 # New array for categorizing tools as "working" or "WIP"
 declare -A tool_status=(
-  ["affine"]="working"
-  ["clickhouse"]="working"
+  ["affine"]="WIP"
+  ["clickhouse"]="WIP"
   ["firecrawl"]="WIP"
-  ["langflow"]="working"
+  ["langflow"]="WIP"
   ["monitor"]="WIP"
-  ["ollama"]="working"
-  ["quepasa"]="working"
+  ["ollama"]="WIP"
+  ["quepasa"]="WIP"
   ["traefik"]="working"
   ["woofed"]="WIP"
-  ["airflow"]="working"
-  ["dify"]="working"
+  ["airflow"]="WIP"
+  ["dify"]="WIP"
   ["flowise"]="WIP"
-  ["langfuse"]="working"
+  ["langfuse"]="WIP"
   ["moodle"]="WIP"
-  ["openproject"]="working"
+  ["openproject"]="WIP"
   ["rabbitmq"]="working"
   ["transcrevezap"]="WIP"
-  ["wordpress"]="working"
-  ["anythingllm"]="working"
-  ["directus"]="working"
-  ["focalboard"]="working"
+  ["wordpress"]="WIP"
+  ["anythingllm"]="WIP"
+  ["directus"]="WIP"
+  ["focalboard"]="WIP"
   ["lowcoder"]="WIP"
   ["mysql"]="working"
   ["outline"]="WIP"
@@ -133,45 +133,45 @@ declare -A tool_status=(
   ["documenso"]="WIP"
   ["formbricks"]="working"
   ["mariadb"]="working"
-  ["n8n"]="working"
+  ["n8n"]="WIP"
   ["pgadmin"]="working"
-  ["redisinsight"]="working"
+  ["redisinsight"]="WIP"
   ["typebot"]="WIP"
   ["yourls"]="WIP"
   ["baserow"]="working"
   ["docuseal"]="WIP"
   ["glpi"]="WIP"
   ["mattermost"]="working"
-  ["nextcloud"]="working"
+  ["nextcloud"]="WIP"
   ["pgvector"]="working"
   ["stirlingpdf"]="WIP"
   ["unoapi"]="WIP"
   ["zep"]="working"
   ["botpress"]="WIP"
-  ["easyappointments"]="working"
+  ["easyappointments"]="WIP"
   ["humhub"]="WIP"
   ["mautic"]="WIP"
-  ["nocobase"]="working"
+  ["nocobase"]="WIP"
   ["phpadmin"]="WIP"
   ["strapi"]="working"
   ["uptimekuma"]="WIP"
   ["calcom"]="WIP"
   ["evolution"]="working"
   ["iceberg"]="WIP"
-  ["metabase"]="working"
-  ["nocodb"]="working"
+  ["metabase"]="WIP"
+  ["nocodb"]="WIP"
   ["portainer"]="working"
-  ["supabase"]="working"
+  ["supabase"]="WIP"
   ["vaultwarden"]="WIP"
-  ["chatwoot"]="working"
-  ["evolution_lite"]="working"
-  ["kafka"]="working"
-  ["minio"]="working"
+  ["chatwoot"]="WIP"
+  ["evolution_lite"]="WIP"
+  ["kafka"]="WIP"
+  ["minio"]="WIP"
   ["ntfy"]="WIP"
   ["postgres"]="working"
   ["tooljet"]="WIP"
   ["weavite"]="WIP"
-  ["chatwoot_nestor"]="working"
+  ["chatwoot_nestor"]="WIP"
   ["excalidraw"]="working"
   ["krayincrm"]="WIP"
   ["mongodb"]="working"
@@ -189,29 +189,50 @@ build_stack_objects(){
     for name in "${!descriptions[@]}"; do
         desc="${descriptions[$name]}"
         category="Unknown"
-        status="${tool_status[$name]:-Unknown}"  # Get status from the new tool_status array
+        status="${tool_status[$name]:-Unknown}"  # Get status from the tool_status array (assumed to be populated)
 
         # Find the category for the current tool
-        for domain in "${!domains[@]}"; do
-            if [[ " ${domains[$domain]} " =~ " $name " ]]; then
-                category="$domain"
+        for cat in "${!categories[@]}"; do
+            if [[ " ${categories[$cat]} " =~ " $name " ]]; then
+                category="$cat"
                 break
             fi
         done
 
-        # Append the JSON object to the array
-        json_output=$(\
-            jq -c \
-                --arg name "$name" \
-                --arg desc "$desc" \
-                --arg category "$category" \
-                --arg status "$status" \
-                '. + [{"name": $name, "category": $category, "description": $desc, "status": $status}]' <<< "$json_output"
-            )
+        # Lowercase transformation functions for labels
+        lowercase_transform() {
+            echo "$1" | tr '[:upper:]' '[:lower:]' | tr -s ' ' '_'
+        }
+
+        # Create transformed labels
+        category_name=$(lowercase_transform "$category")
+        category_label="${category//_/ }"  # Convert underscores to spaces
+        stack_name=$(lowercase_transform "$name")
+        stack_label="${name//_/ }"  # Convert underscores to spaces
+
+        stack_item=$(jq -n \
+            --arg category_name "$category_name" \
+            --arg category_label "$category_label" \
+            --arg stack_name "$stack_name" \
+            --arg stack_label "$stack_label" \
+            --arg desc "$desc" \
+            --arg status "$status" \
+            '{
+                "category_name": $category_name,
+                "category_label": $category_label,
+                "stack_name": $stack_name,
+                "stack_label": $stack_label,
+                "stack_description": $desc,
+                "status": $status
+            }')
+
+        # Append the stack_item to the JSON array
+        json_output=$(jq -c ". + [$stack_item]" <<< "$json_output")
     done
 
+    # Output the final JSON array
     echo "$json_output"
 }
 
 # Output the final JSON array with status
-echo "$(build_stack_objects)"
+time build_stack_objects | jq '.'
