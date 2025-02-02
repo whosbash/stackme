@@ -8739,7 +8739,7 @@ generate_stack_config_wordpress() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "dependencies": ["mysql"],
+          "dependencies": ["mysql", "redis"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
