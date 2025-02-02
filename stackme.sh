@@ -7946,6 +7946,7 @@ generate_stack_config_odoo() {
                 "description": "Fetching postgres password",
                 "command": "fetch_database_password postgres",
               }
+            ],
             "prepare": [
               {
                 "name": "create_user odoo",
