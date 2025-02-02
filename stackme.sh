@@ -9767,8 +9767,10 @@ define_menu_stacks() {
   local stacks_json
   stacks_json=$(curl -s "$TOOL_STACKS_OBJECT_URL")
 
+  debug "$stacks_json"
+
   # Convert the JSON array to an associative array
-  for row in $(echo "$json_array" | jq -r '.[] | @base64'); do
+  for row in $(echo "$stacks_json" | jq -r '.[] | @base64'); do
       # Decode the JSON object
       stack_name=$(echo "${row}" | base64 --decode | jq -r '.stack_name')
 
@@ -9925,7 +9927,7 @@ define_menu_health() {
 
 # main
 define_menu_main() {
-  info "BUilding main menu..."
+  highlight "BUilding main menu..."
 
   menu_key="main"
   menu_title="main"
@@ -10058,8 +10060,8 @@ main() {
     exit 1
   fi
 
-  # # Perform startup tasks
-  # startup
+  # Perform startup tasks
+  startup
 
   # Define menus on registry
   define_menu_main
