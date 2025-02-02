@@ -5776,8 +5776,15 @@ deployment_pipeline() {
 deploy_stack() {
   local stack_name="$1"
 
+  cleanup
+  clean_screen
+
+  debug "Deploying stack: $stack_name"
+
   traefik_and_portainer_exist
   exit_code=$?
+
+  debug "Traefik and Portainer exist: $exit_code"
 
   # If Traefik or Portainer do not exist AND the stack is not one of them, return 1
   if [[ \
@@ -5795,17 +5802,17 @@ deploy_stack() {
     return 1
   fi
 
-#  # Avoiding deploying a WIP stack with property 'stack_status' set to 'WIP'
-#  stack_status="$(echo "$stack_object" | jq -r '.stack_status // "WIP"' | uppercase)"
-#
-#  debug "Current stack status: $stack_status"
-#
-#  # Check if the stack is WIP
-#  if [[ "$stack_status" == "WIP" ]]; then
-#    warning "Stack '$stack_name' is under maintenance. Skipping deployment."
-#    wait_for_input
-#    return 1
-#  fi
+  # Avoiding deploying a WIP stack with property 'stack_status' set to 'WIP'
+  stack_status="$(echo "$stack_object" | jq -r '.stack_status // "WIP"' | uppercase)"
+
+  debug "Current stack status: $stack_status"
+
+  # Check if the stack is WIP
+  if [[ "$stack_status" == "WIP" ]]; then
+    warning "Stack '$stack_name' is under maintenance. Skipping deployment."
+    wait_for_input
+    return 1
+  fi
 
   # Check if the stack should be removed
   should_remove_stack "$stack_name"
@@ -9663,16 +9670,8 @@ generate_stack_config_moodle() {
 
 ################################ BEGIN OF STACK DEPLOYMENT FUNCTIONS ##############################
 
-deploy_stack_handler() {
-  local stack_name="$1"
-
-  cleanup
-  clean_screen
-  deploy_stack "$stack_name"
-}
-
 deploy_stacks_startup() {
-  deploy_stack_handler 'traefik'
+  deploy_stack 'traefik'
 
   if [[ $? -ne 0 ]]; then
     failure "Portainer deployment failed. Rolling back..."
@@ -9681,7 +9680,7 @@ deploy_stacks_startup() {
     return 1
   fi
 
-  deploy_stack_handler 'portainer'
+  deploy_stack 'portainer'
 
   if [[ $? -ne 0 ]]; then
     failure "Portainer deployment failed. Rolling back..."
@@ -9711,7 +9710,7 @@ define_stacks_category_menu() {
   while IFS=$'\t' read -r stack_name stack_label stack_description stack_status; do
     menu_item="$(\
       build_menu_item \
-        "$stack_label ($stack_status)" "$stack_description" "deploy_stack_handler $stack_name"\
+        "$stack_label ($stack_status)" "$stack_description" "deploy_stack $stack_name"\
     )"
 
     menu_items+=("$menu_item")
