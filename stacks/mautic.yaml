@@ -43,8 +43,8 @@ services:
           - node.role == manager
       resources:
         limits:
-          cpus: "2"
-          memory: 2048M
+          cpus: "1"
+          memory: 1024M
       labels:
         - traefik.enable=true
         - traefik.http.routers.mautic.rule=Host(`{{mautic_url}}`)
@@ -96,8 +96,8 @@ services:
           - node.role == manager
       resources:
         limits:
-          cpus: "2"
-          memory: 2048M
+          cpus: "1"
+          memory: 1024M
 
   mautic_cron:
     image: mautic/mautic:latest ## Mautic
