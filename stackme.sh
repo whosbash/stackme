@@ -5795,17 +5795,17 @@ deploy_stack() {
     return 1
   fi
 
-  # Avoiding deploying a WIP stack with property 'stack_status' set to 'WIP'
-  stack_status="$(echo "$stack_object" | jq -r '.stack_status // "WIP"' | uppercase)"
-
-  debug "Current stack status: $stack_status"
-
-  # Check if the stack is WIP
-  if [[ "$stack_status" == "WIP" ]]; then
-    warning "Stack '$stack_name' is under maintenance. Skipping deployment."
-    wait_for_input
-    return 1
-  fi
+#  # Avoiding deploying a WIP stack with property 'stack_status' set to 'WIP'
+#  stack_status="$(echo "$stack_object" | jq -r '.stack_status // "WIP"' | uppercase)"
+#
+#  debug "Current stack status: $stack_status"
+#
+#  # Check if the stack is WIP
+#  if [[ "$stack_status" == "WIP" ]]; then
+#    warning "Stack '$stack_name' is under maintenance. Skipping deployment."
+#    wait_for_input
+#    return 1
+#  fi
 
   # Check if the stack should be removed
   should_remove_stack "$stack_name"
