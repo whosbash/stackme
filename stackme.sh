@@ -2881,7 +2881,6 @@ run_collection_process() {
   while [[ "$has_errors" == true ]]; do
     collected_info="$(collect_prompt_info "$items")"
 
-    debug "Collected info: $collected_info"
 
     # If no values were collected, exit early
     if [[ "$collected_info" == "[]" ]]; then
@@ -2901,9 +2900,6 @@ run_collection_process() {
     # Ensure valid JSON formatting by stripping any unwanted characters
     valid_items_json=$(echo "$valid_items" | jq -c .)
     all_collected_info_json=$(echo "$all_collected_info" | jq -c .)
-
-    debug "Valid items: $valid_items_json"
-    debug "All collected info: $all_collected_info_json" 
 
     # Merge valid items with previously collected information
     all_collected_info=$(add_json_objects "$all_collected_info" "$valid_items")
@@ -4864,15 +4860,15 @@ upload_stack_on_portainer() {
 
   info "Deployment response: $response"
 
-  echo "$json_response" | \
-    jq -e 'has("Id") and \
-      has("Name") and \
-      has("Type") and \
-      has("ResourceControl") \
-      and has("Status") and \
-      has("ProjectPath") and \
-      has("CreationDate")' > /dev/null
-
+  echo "$json_response" | jq -e '
+      has("Id") and
+      has("Name") and
+      has("Type") and
+      has("ResourceControl") and
+      has("Status") and
+      has("ProjectPath") and
+      has("CreationDate")
+  ' > /dev/null
 
   if [[ $? -ne 0 ]]; then
     error "Failed to upload stack: $stack_name"
@@ -5665,8 +5661,6 @@ generate_stack_config_pipeline() {
 
   collected_items="$(run_collection_process "$prompt_items")"
 
-  debug "Collected items: $collected_items"
-
   if [[ "$collected_items" == "[]" ]]; then
     step_error 1 $total_steps "Unable to prompt configuration."
     return 1
@@ -5764,8 +5758,6 @@ deployment_pipeline() {
   step_info 5 $total_steps "Deploying stack on target"
   local target
   target=$(echo "$config_json" | jq -r '.target // "swarm"')
-
-  debug "Compose: $(cat "$compose_path")"
 
   deploy_stack_on_target "$stack_name" "$compose_path" "$target" || {
     failure "Failed to deploy stack on target: $target"
