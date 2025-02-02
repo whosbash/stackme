@@ -9675,13 +9675,18 @@ define_stacks_category_menu() {
   menu_title=$(echo "$category_stacks_jarray" | jq -r '.[0].category_label')
 
   # Extract all stack details in a single pass
-  while IFS=$'\t' read -r stack_name stack_label stack_description; do
+  local menu_items
+
+  while IFS=$'\t' read -r stack_name stack_label stack_description stack_status; do
     menu_item="$(\
-      build_menu_item "$stack_label" "$stack_description" "deploy_stack_handler $stack_name"\
+      build_menu_item \
+        "$stack_label ($stack_status)" "$stack_description" "deploy_stack_handler $stack_name"\
     )"
+
     menu_items+=("$menu_item")
   done < <(echo "$category_stacks_jarray" | \
-    jq -r '.[] | "\(.stack_name)\t\(.stack_label)\t\(.stack_description)"')
+    jq -r '.[] | "\(.stack_name)\t\(.stack_label)\t\(.stack_description)\t\(.stack_status)"')
+
 
   # Create menu object
   menu_object="$(\
@@ -9695,14 +9700,25 @@ define_stacks_category_menu() {
 define_menu_stacks_categories() {
   local stacks_json="$1"
 
-  # Extract unique categories and their stacks in a single pass
-  echo "$stacks_json" | \
-    jq -c 'group_by(.category_name)[]' | 
-    while read -r category_group; do
-    define_stacks_category_menu "$category_group"
+  # Extract unique category names (one per category)
+  local unique_categories
+  unique_categories=$(echo "$stacks_json" | jq -r 'map(.category_name) | unique | .[]')
+
+  for category in $unique_categories; do
+    # Build a filter to select only stacks for the current category
+    local filter_fn
+    filter_fn="map(select(.category_name == \"$category\"))"
+
+    # Use filter_items to get the JSON array of stacks for this category
+    local filtered_stacks
+    filtered_stacks=$(filter_items "$stacks_json" "$filter_fn")
+
+    # Define the menu for this category
+    define_stacks_category_menu "$filtered_stacks"
   done
 }
 
+# Function to define menu stacks
 define_menu_stacks() {
   local menu_key="main:stacks"
   local menu_title="Stacks"
@@ -9731,19 +9747,22 @@ define_menu_stacks() {
       category_description: (.[0].category_description // "")
     })')
 
+  # Declare local variables outside the loop
+  local category_name category_label category_description category_key category_item
+
+  # Iterate over JSON array
   while IFS= read -r category_object; do
-    local category_name category_label category_description category_key category_item
-    category_name=$(echo "$category_object" | jq -r '.category_name')
-    category_label=$(echo "$category_object" | jq -r '.category_label')
-    category_description=$(echo "$category_object" | jq -r '.category_description')
+      category_name=$(jq -r '.category_name' <<< "$category_object")
+      category_label=$(jq -r '.category_label' <<< "$category_object")
+      category_description=$(jq -r '.category_description' <<< "$category_object")
 
-    category_key="main:stacks:$category_name"
-    category_item="$(
-      build_menu_item "$category_label" "$category_description" "navigate_menu $category_key"
-    )"
+      category_key="main:stacks:$category_name"
+      category_item="$(
+        build_menu_item "$category_label" "$category_description" "navigate_menu $category_key"
+      )"
 
-    menu_stack_categories+=("$category_item")
-  done < <(echo "$category_list" | jq -c '.[]')
+      menu_stack_categories+=("$category_item")
+  done < <(jq -r '.[] | @json' <<< "$category_list")
 
   # Build and define the main stacks menu
   local menu_object
@@ -9754,12 +9773,7 @@ define_menu_stacks() {
   define_menu "$menu_object"
 
   # Process stack categories in a single pass
-  local stack_categories
-  stack_categories=$(echo "$stacks_json" | jq -c 'group_by(.category_name)')
-
-  while IFS= read -r category_stacks; do
-    define_stacks_category_menu "$category_stacks"
-  done < <(echo "$stack_categories" | jq -c '.[]')
+  define_menu_stacks_categories "$stacks_json"
 }
 
 # main:utilities:smtp
@@ -10002,8 +10016,8 @@ main() {
     exit 1
   fi
 
-  # Perform startup tasks
-  startup
+  # # Perform startup tasks
+  # startup
 
   # Define menus on registry
   define_menu_main
