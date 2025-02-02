@@ -2881,6 +2881,8 @@ run_collection_process() {
   while [[ "$has_errors" == true ]]; do
     collected_info="$(collect_prompt_info "$items")"
 
+    debug "Collected info: $collected_info"
+
     # If no values were collected, exit early
     if [[ "$collected_info" == "[]" ]]; then
       warning "No data collected. Exiting process."
