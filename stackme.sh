@@ -9869,6 +9869,7 @@ define_menu_health() {
 
 # main
 define_menu_main() {
+  info "BUilding main menu..."
 
   menu_key="main"
   menu_title="main"
@@ -9886,8 +9887,13 @@ define_menu_main() {
   define_menu "$menu_object"
 
   # Define sub-menus
+  info "Defining menu Stacks..."
   define_menu_stacks
+
+  info "Defining menu Utilities..."
   define_menu_utilities
+
+  info "Defining menu Health..."
   define_menu_health
 
 }
