@@ -8396,6 +8396,7 @@ generate_stack_config_langfuse() {
     '{
           "name": $stack_name,
           "target": "portainer",
+          "dependencies": ["clickhouse", "postgres"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
@@ -8535,6 +8536,13 @@ generate_stack_config_langflow() {
                 "name": "langflow_secret_key",
                 "description": "Create Langflow secret key",
                 "command": "uuidgen"
+              }
+            ],
+            "prepare": [
+              {
+                "name": "create_langflow_db",
+                "description": "Create Langflow database",
+                "command": "create_database_postgres langflow"
               }
             ]
           }
@@ -8852,6 +8860,11 @@ generate_stack_config_nocobase() {
             "refresh": [
               {
                 "name": "nocobase_app_key",
+                "description": "Generate Nocobase app key",
+                "command": "random_string"
+              },
+              {
+                "name": "nocobase_encryption_key",
                 "description": "Generate Nocobase app key",
                 "command": "random_string"
               },
@@ -10026,6 +10039,7 @@ define_menu_main() {
   info "Defining menu Health..."
   define_menu_health
 
+  wait_for_input
 }
 
 start_main_menu() {
