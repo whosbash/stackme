@@ -9703,7 +9703,6 @@ define_menu_stacks_categories() {
   done
 }
 
-# main:stacks
 define_menu_stacks() {
   local menu_key="main:stacks"
   local menu_title="Stacks"
@@ -9715,18 +9714,24 @@ define_menu_stacks() {
       "Deploy Traefik & Portainer" "deploy_stacks_startup"
   )"
 
-  # Download stacks.json once and process it
+  # Download stacks.json once
   local stacks_json
   stacks_json=$(curl -s "$TOOL_STACKS_OBJECT_URL")
 
-  # Extract unique category objects in a single step
+  # Extract unique category objects in an array
   local menu_stack_categories=("$startup_item")  # Start with startup item
-  echo "$stacks_json" | jq -c 'group_by(.category_name) | map({ 
-      category_name: .[0].category_name, 
-      category_label: .[0].category_label, 
-      category_description: .[0].category_description 
-    })[]' | while read -r category_object; do
 
+  # Read categories into an array before iterating (avoiding subshell issues)
+  local category_list
+  category_list=$(echo "$stacks_json" | jq -c '
+    group_by(.category_name) | 
+    map({
+      category_name: (.[0].category_name // ""),
+      category_label: (.[0].category_label // ""),
+      category_description: (.[0].category_description // "")
+    })')
+
+  while IFS= read -r category_object; do
     local category_name category_label category_description category_key category_item
     category_name=$(echo "$category_object" | jq -r '.category_name')
     category_label=$(echo "$category_object" | jq -r '.category_label')
@@ -9738,7 +9743,7 @@ define_menu_stacks() {
     )"
 
     menu_stack_categories+=("$category_item")
-  done
+  done < <(echo "$category_list" | jq -c '.[]')
 
   # Build and define the main stacks menu
   local menu_object
@@ -9748,10 +9753,13 @@ define_menu_stacks() {
 
   define_menu "$menu_object"
 
-  # Define sub-menus for each stack category efficiently
-  echo "$stacks_json" | jq -c 'group_by(.category_name)[]' | while read -r category_stacks; do
+  # Process stack categories in a single pass
+  local stack_categories
+  stack_categories=$(echo "$stacks_json" | jq -c 'group_by(.category_name)')
+
+  while IFS= read -r category_stacks; do
     define_stacks_category_menu "$category_stacks"
-  done
+  done < <(echo "$stack_categories" | jq -c '.[]')
 }
 
 # main:utilities:smtp
