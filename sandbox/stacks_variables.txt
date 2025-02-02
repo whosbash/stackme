@@ -1,0 +1,649 @@
+Listing Mustache variables in each file:
+
+File: ./stacks//affine.yaml
+{{affine_email}}
+{{affine_password}}
+{{affine_smtp_host}}
+{{affine_smtp_password}}
+{{affine_smtp_port}}
+{{affine_smtp_username}}
+{{affine_url}}
+{{network_name}}
+{{postgres_password}}
+
+File: ./stacks//airflow.yaml
+{{airflow_url}}
+{{flower_url}}
+{{network_name}}
+{{postgres_password}}
+
+File: ./stacks//anythingllm.yaml
+{{anythingllm_url}}
+{{network_name}}
+{{qdrant_api_key}}
+{{qdrant_url}}
+
+File: ./stacks//appsmith.yaml
+{{appsmith_url}}
+{{network_name}}
+
+File: ./stacks//baserow.yaml
+{{baserow_smtp_from_email}}
+{{baserow_smtp_host}}
+{{baserow_smtp_password}}
+{{baserow_smtp_port}}
+{{baserow_smtp_secure}}
+{{baserow_smtp_username}}
+{{baserow_url}}
+{{network_name}}
+{{postgres_password}}
+
+File: ./stacks//botpress.yaml
+{{botpress_url}}
+{{network_name}}
+{{postgres_password}}
+
+File: ./stacks//calcom.yaml
+{{calcom_smtp_from_email}}
+{{calcom_smtp_host}}
+{{calcom_smtp_password}}
+{{calcom_smtp_port}}
+{{calcom_smtp_username}}
+{{calcom_url}}
+{{network_name}}
+{{postgres_password}}
+
+File: ./stacks//chatwoot.yaml
+{{chatwoot_encryption_key}}
+{{chatwoot_name}}
+{{chatwoot_smtp_from_email}}
+{{chatwoot_smtp_host}}
+{{chatwoot_smtp_password}}
+{{chatwoot_smtp_port}}
+{{chatwoot_smtp_secure}}
+{{chatwoot_smtp_username}}
+{{chatwoot_url}}
+{{network_name}}
+{{postgres_password}}
+
+File: ./stacks//chatwoot_nestor.yaml
+{{chatwoot_admin_email}}
+{{chatwoot_company_name}}
+{{chatwoot_encryption_key}}
+{{chatwoot_smtp_domain}}
+{{chatwoot_smtp_from_email}}
+{{chatwoot_smtp_host}}
+{{chatwoot_smtp_password}}
+{{chatwoot_smtp_port}}
+{{chatwoot_smtp_secure}}
+{{chatwoot_smtp_username}}
+{{chatwoot_url}}
+{{network_name}}
+{{postgres_password}}
+
+File: ./stacks//clickhouse.yaml
+{{clickhouse_password}}
+{{clickhouse_url}}
+{{clickhouse_username}}
+{{network_name}}
+
+File: ./stacks//dify.yaml
+{{dify_api_url}}
+{{dify_sandbox_api_key}}
+{{dify_secret_key}}
+{{dify_smtp_from_email}}
+{{dify_smtp_host}}
+{{dify_smtp_password}}
+{{dify_smtp_port}}
+{{dify_smtp_username}}
+{{dify_url}}
+{{network_name}}
+{{postgres_password}}
+{{s3_access_key}}
+{{s3_secret_key}}
+{{s3_url}}
+{{secret_key}}
+{{weaviate_token}}
+
+File: ./stacks//directus.yaml
+{{directus_email}}
+{{directus_key}}
+{{directus_password}}
+{{directus_s3_access_key}}
+{{directus_s3_region}}
+{{directus_s3_secret_key}}
+{{directus_s3_url}}
+{{directus_secret}}
+{{directus_smtp_host}}
+{{directus_smtp_password}}
+{{directus_smtp_port}}
+{{directus_smtp_secure}}
+{{directus_smtp_username}}
+{{directus_url}}
+{{network_name}}
+{{postgres_password}}
+
+File: ./stacks//documenso.yaml
+{{documenso_s3_access_key}}
+{{documenso_s3_secret_key}}
+{{documenso_s3_url}}
+{{documenso_secret_key}}
+{{documenso_secret}}
+{{documenso_smtp_from_email}}
+{{documenso_smtp_password}}
+{{documenso_smtp_port}}
+{{documenso_smtp_secure}}
+{{documenso_smtp_username}}
+{{documenso_url}}
+{{documento_smtp_host}}
+{{network_name}}
+{{postgres_password}}
+
+File: ./stacks//docuseal.yaml
+{{docuseal_secret_key}}
+{{docuseal_smtp_from_email}}
+{{docuseal_smtp_host}}
+{{docuseal_smtp_password}}
+{{docuseal_smtp_port}}
+{{docuseal_smtp_username}}
+{{docuseal_url}}
+{{network_name}}
+{{postgres_password}}
+
+File: ./stacks//easyappointments.yaml
+{{easyappointments_url}}
+{{mysql_password}}
+{{network_name}}
+
+File: ./stacks//evolution.yaml
+{{evolution_api_key}}
+{{evolution_url}}
+{{network_name}}
+{{postgres_password}}
+
+File: ./stacks//evolution_lite.yaml
+{{evolution_api_key}}
+{{evolution_url}}
+{{network_name}}
+{{postgres_password}}
+
+File: ./stacks//excalidraw.yaml
+{{excalidraw_url}}
+{{network_name}}
+
+File: ./stacks//firecrawl.yaml
+{{firecrawl_api_key}}
+{{firecrawl_openai_api_key}}
+{{firecrawl_url}}
+{{network_name}}
+
+File: ./stacks//flowise.yaml
+{{flowise_encryption_key}}
+{{flowise_password}}
+{{flowise_url}}
+{{flowise_username}}
+{{network_name}}
+{{postgres_password}}
+
+File: ./stacks//focalboard.yaml
+{{focalboard_url}}
+{{network_name}}
+
+File: ./stacks//formbricks.yaml
+{{formbricks_cron_key}}
+{{formbricks_encryption_key}}
+{{formbricks_next_key}}
+{{formbricks_smtp_from_email}}
+{{formbricks_smtp_host}}
+{{formbricks_smtp_password}}
+{{formbricks_smtp_port}}
+{{formbricks_smtp_secure}}
+{{formbricks_smtp_username}}
+{{formbricks_url}}
+{{network_name}}
+{{pgvector_password}}
+
+File: ./stacks//glpi.yaml
+{{glpi_url}}
+{{network_name}}
+
+File: ./stacks//humhub.yaml
+{{humhub_email}}
+{{humhub_password}}
+{{humhub_smtp_from_email}}
+{{humhub_smtp_host}}
+{{humhub_smtp_password}}
+{{humhub_smtp_port}}
+{{humhub_smtp_username}}
+{{humhub_url}}
+{{humhub_username}}
+{{mysql_password}}
+{{network_name}}
+
+File: ./stacks//iceberg.yaml
+{{aws_access_key_id}}
+{{aws_secret_access_key}}
+{{iceberg_credentials}}
+{{iceberg_url}}
+{{network_name}}
+
+File: ./stacks//kafka.yaml
+{{kafka_broker_url}}
+{{kafka_rest_url}}
+{{kafka_ui_url}}
+{{network_name}}
+
+File: ./stacks//krayincrm.yaml
+{{krayincrm_secret_key}}
+{{krayincrm_smtp_from_email}}
+{{krayincrm_smtp_host}}
+{{krayincrm_smtp_password}}
+{{krayincrm_smtp_port}}
+{{krayincrm_smtp_secure}}
+{{krayincrm_smtp_username}}
+{{krayincrm_url}}
+{{mysql_password}}
+{{network_name}}
+
+File: ./stacks//langflow.yaml
+{{langflow_password}}
+{{langflow_secret_key}}
+{{langflow_url}}
+{{langflow_username}}
+{{network_name}}
+{{postgres_password}}
+
+File: ./stacks//langfuse.yaml
+{{langfuse_encryption_key}}
+{{langfuse_salt}}
+{{langfuse_secret_key}}
+{{langfuse_url}}
+{{network_name}}
+{{postgres_password}}
+
+File: ./stacks//lowcoder.yaml
+{{lowcoder_api_secret_key}}
+{{lowcoder_encryption_key}}
+{{lowcoder_encryption_salt}}
+{{lowcoder_smtp_from_email}}
+{{lowcoder_smtp_host}}
+{{lowcoder_smtp_password}}
+{{lowcoder_smtp_port}}
+{{lowcoder_smtp_secure}}
+{{lowcoder_smtp_username}}
+{{lowcoder_url}}
+{{mongodb_password}}
+{{mongodb_username}}
+{{network_name}}
+
+File: ./stacks//mariadb.yaml
+{{db_password}}
+{{image_version}}
+{{network_name}}
+
+File: ./stacks//mattermost.yaml
+{{mattermost_url}}
+{{network_name}}
+{{postgres_password}}
+
+File: ./stacks//mautic.yaml
+{{mautic_email_password}}
+{{mautic_email_username}}
+{{mautic_url}}
+{{mysql_password}}
+{{network_name}}
+
+File: ./stacks//metabase.yaml
+{{metabase_url}}
+{{network_name}}
+{{postgres_password}}
+
+File: ./stacks//minio.yaml
+{{minio_password}}
+{{minio_url}}
+{{minio_username}}
+{{network_name}}
+{{s3_access_key_id}}
+{{s3_secret_access_key}}
+{{s3_url}}
+{{url_minio}}
+
+File: ./stacks//mongodb.yaml
+{{db_password}}
+{{image_version}}
+{{network_name}}
+
+File: ./stacks//monitor.yaml
+{{cadvisor_url}}
+{{elasticsearch_password}}
+{{grafana_url}}
+{{jaeger_url}}
+{{kibana_url}}
+{{network_name}}
+{{node_exporter_url}}
+{{prometheus_url}}
+
+File: ./stacks//moodle.yaml
+{{mariadb_password}}
+{{moodle_email}}
+{{moodle_password}}
+{{moodle_project_name}}
+{{moodle_smtp_host}}
+{{moodle_smtp_password}}
+{{moodle_smtp_port}}
+{{moodle_smtp_secure}}
+{{moodle_smtp_username}}
+{{moodle_url}}
+{{moodle_username}}
+{{network_name}}
+
+File: ./stacks//mosquitto.yaml
+{{mosquitto_broker_url}}
+
+File: ./stacks//mysql.yaml
+{{db_password}}
+{{image_version}}
+{{network_name}}
+
+File: ./stacks//n8n.yaml
+{{n8n_editor_url}}
+{{n8n_encryption_key}}
+{{n8n_smtp_from_email}}
+{{n8n_smtp_host}}
+{{n8n_smtp_password}}
+{{n8n_smtp_port}}
+{{n8n_smtp_secure}}
+{{n8n_smtp_username}}
+{{n8n_webhook_url}}
+{{network_name}}
+{{postgres_password}}
+{{url_editor}}
+
+File: ./stacks//nextcloud.yaml
+{{network_name}}
+{{nextcloud_password}}
+{{nextcloud_url}}
+{{nextcloud_username}}
+{{postgres_password}}
+
+File: ./stacks//nocobase.yaml
+{{network_name}}
+{{nocobase_app_key}}
+{{nocobase_email}}
+{{nocobase_encryption_key}}
+{{nocobase_password}}
+{{nocobase_url}}
+{{nocobase_username}}
+{{postgres_password}}
+
+File: ./stacks//nocodb.yaml
+{{network_name}}
+{{nocodb_url}}
+{{postgres_password}}
+
+File: ./stacks//ntfy.yaml
+{{network_name}}
+{{ntfy_credentials}}
+{{ntfy_url}}
+
+File: ./stacks//odoo.yaml
+{{network_name}}
+{{odoo_url}}
+{{postgres_password}}
+
+File: ./stacks//ollama.yaml
+{{network_name}}
+{{ollama_api_url}}
+{{ollama_url}}
+{{ollama_webui_secret_key}}
+
+File: ./stacks//openproject.yaml
+{{network_name}}
+{{openproject_key}}
+{{openproject_url}}
+{{postgres_password}}
+
+File: ./stacks//outline.yaml
+{{network_name}}
+{{outline_google_api_key}}
+{{outline_google_client_id}}
+{{outline_google_client_secret}}
+{{outline_secret_key}}
+{{outline_url}}
+{{outline_utils_secret}}
+{{postgres_password}}
+
+File: ./stacks//pgadmin.yaml
+{{network_name}}
+{{pgadmin_password}}
+{{pgadmin_url}}
+{{pgadmin_username}}
+
+File: ./stacks//pgvector.yaml
+{{db_password}}
+{{image_version}}
+{{network_name}}
+
+File: ./stacks//phpadmin.yaml
+{{network_name}}
+{{phpadmin_url}}
+
+File: ./stacks//portainer.yaml
+{{network_name}}
+{{portainer_agent_version}}
+{{portainer_ce_version}}
+{{portainer_url}}
+
+File: ./stacks//postgres.yaml
+{{db_password}}
+{{image_version}}
+{{network_name}}
+
+File: ./stacks//qdrant.yaml
+{{network_name}}
+{{qdrant_url}}
+
+File: ./stacks//quepasa.yaml
+{{network_name}}
+{{quepasa_email_password}}
+{{quepasa_email_username}}
+{{quepasa_signing_secret}}
+{{quepasa_title}}
+{{quepasa_url}}
+
+File: ./stacks//rabbitmq.yaml
+{{network_name}}
+{{rabbitmq_cookie_key}}
+{{rabbitmq_password}}
+{{rabbitmq_url}}
+{{rabbitmq_username}}
+
+File: ./stacks//redis.yaml
+{{image_version}}
+{{network_name}}
+
+File: ./stacks//redisinsight.yaml
+{{network_name}}
+{{redisinsight_encryption_key}}
+{{redisinsight_url}}
+
+File: ./stacks//stacks.json
+
+File: ./stacks//stirlingpdf.yaml
+{{network_name}}
+{{stirlingpdf_description}}
+{{stirlingpdf_name}}
+{{stirlingpdf_url}}
+
+File: ./stacks//strapi.yaml
+{{mysql_password}}
+{{network_name}}
+{{strapi_admin_jwt_secret}}
+{{strapi_app_keys}}
+{{strapi_jwt_secret}}
+{{strapi_url}}
+
+File: ./stacks//supabase.yaml
+{{jwt_key}}
+{{jwt_secret}}
+{{kong_anon_key}}
+{{kong_jwt_secret}}
+{{kong_service_key}}
+{{logflare_api_key}}
+{{logflare_key}}
+{{network_name}}
+{{postgres_password}}
+{{postgrest_jwt_key}}
+{{postgrest_jwt_secret_key}}
+{{realtime_jwt_secret}}
+{{realtime_secret_key_base}}
+{{supabase_anon_key}}
+{{supabase_functions_jwt_secret}}
+{{supabase_jwt_secret_key}}
+{{supabase_jwt_secret}}
+{{supabase_logflare_key}}
+{{supabase_password}}
+{{supabase_s3_access_key}}
+{{supabase_s3_url}}
+{{supabase_service_key}}
+{{supabase_smtp_from_email}}
+{{supabase_smtp_host}}
+{{supabase_smtp_password}}
+{{supabase_smtp_port}}
+{{supabase_smtp_username}}
+{{supabase_url}}
+{{supabase_username}}
+{{supavisor_secret_key_base}}
+
+File: ./stacks//tooljet.yaml
+{{network_name}}
+{{postgres_password}}
+{{postgrest_jwt_key}}
+{{tooljet_lockbox_secret_key}}
+{{tooljet_secret_key}}
+{{tooljet_smtp_from_email}}
+{{tooljet_smtp_host}}
+{{tooljet_smtp_password}}
+{{tooljet_smtp_port}}
+{{tooljet_smtp_username}}
+{{tooljet_url}}
+
+File: ./stacks//traccar.yaml
+{{mysql_password}}
+{{network_name}}
+{{traccar_url}}
+
+File: ./stacks//traefik.yaml
+{{network_name}}
+{{traefik_credentials}}
+{{traefik_email_ssl}}
+{{traefik_url}}
+
+File: ./stacks//transcrevezap.yaml
+{{network_name}}
+{{transcrevezap_api_url}}
+{{transcrevezap_password}}
+{{transcrevezap_url}}
+{{transcrevezap_username}}
+
+File: ./stacks//twentycrm.yaml
+{{network_name}}
+{{twentycrm_postgres_password}}
+{{twentycrm_secret_key}}
+{{twentycrm_url}}
+
+File: ./stacks//typebot.yaml
+{{network_name}}
+{{postgres_password}}
+{{typebot_email_password}}
+{{typebot_email_username}}
+{{typebot_email}}
+{{typebot_image_version}}
+{{typebot_s3_access_key}}
+{{typebot_s3_secret_key}}
+{{typebot_s3_url}}
+{{typebot_secret_key}}
+{{typebot_smtp_from_email}}
+{{typebot_smtp_host}}
+{{typebot_smtp_password}}
+{{typebot_smtp_port}}
+{{typebot_smtp_secure}}
+{{typebot_smtp_username}}
+{{typebot_url}}
+{{typebot_viewer_url}}
+
+File: ./stacks//unoapi.yaml
+{{network_name}}
+{{rabbitmq_password}}
+{{rabbitmq_username}}
+{{unoapi_ignore_broadcast_messages}}
+{{unoapi_ignore_group_messages}}
+{{unoapi_ignore_own_messages}}
+{{unoapi_ignore_status_message}}
+{{unoapi_s3_access_key}}
+{{unoapi_s3_secret_key}}
+{{unoapi_s3_url}}
+{{unoapi_send_connection_status}}
+{{unoapi_token}}
+{{unoapi_url}}
+
+File: ./stacks//uptimekuma.yaml
+{{network_name}}
+{{uptimekuma_url}}
+
+File: ./stacks//vaultwarden.yaml
+{{network_name}}
+{{vaultwarden_smtp_from_email}}
+{{vaultwarden_smtp_host}}
+{{vaultwarden_smtp_password}}
+{{vaultwarden_smtp_port}}
+{{vaultwarden_smtp_secure}}
+{{vaultwarden_smtp_username}}
+{{vaultwarden_url}}
+
+File: ./stacks//weavite.yaml
+{{network_name}}
+{{weaviate_token}}
+{{weaviate_url}}
+
+File: ./stacks//whoami.yaml
+{{network_name}}
+{{whoami_url}}
+
+File: ./stacks//woofed.yaml
+{{evolution_api_key}}
+{{evolution_url}}
+{{network_name}}
+{{pgvector_password}}
+{{woofed_encryption_key}}
+{{woofed_password}}
+{{woofed_url}}
+{{woofed_username}}
+
+File: ./stacks//wordpress.yaml
+{{mysql_password}}
+{{network_name}}
+{{wordpress_site_name}}
+{{wordpress_url}}
+
+File: ./stacks//wuzapi.yaml
+{{network_name}}
+{{postgres_password}}
+{{wuzapi_api_key}}
+{{wuzapi_secret_key}}
+{{wuzapi_url}}
+
+File: ./stacks//yourls.yaml
+{{mysql_password}}
+{{network_name}}
+{{yourls_password}}
+{{yourls_url}}
+{{yourls_username}}
+
+File: ./stacks//zep.yaml
+{{network_name}}
+{{pgvector_password}}
+{{zep_api_key}}
+{{zep_openai_api_key}}
+{{zep_url}}
+
