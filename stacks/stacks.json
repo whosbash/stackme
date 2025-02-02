@@ -228,7 +228,7 @@
     "stack_name": "uptimekuma",
     "stack_label": "uptimekuma",
     "stack_description": "An open-source status monitoring tool for websites and services.",
-    "stack_status": "WIP",
+    "stack_status": "working",
     "category_name": "infrastructure",
     "category_label": "Infrastructure",
     "category_description": "Tools related to managing infrastructure and services, including monitoring, security, and more."
@@ -399,7 +399,7 @@
     "stack_name": "focalboard",
     "stack_label": "focalboard",
     "stack_description": "A task and project management tool.",
-    "stack_status": "WIP",
+    "stack_status": "working",
     "category_name": "project_management",
     "category_label": "Project Management",
     "category_description": "Tools for managing projects, tasks, and team collaboration."
@@ -516,7 +516,7 @@
     "stack_name": "metabase",
     "stack_label": "metabase",
     "stack_description": "An open-source business intelligence platform.",
-    "stack_status": "WIP",
+    "stack_status": "working",
     "category_name": "analytics",
     "category_label": "Analytics",
     "category_description": "Business Intelligence and analytics tools for data analysis and reporting."
@@ -561,7 +561,7 @@
     "stack_name": "whoami",
     "stack_label": "whoami",
     "stack_description": "A simple identity service for determining the current user.",
-    "stack_status": "WIP",
+    "stack_status": "working",
     "category_name": "miscellaneous",
     "category_label": "Miscellaneous",
     "category_description": "Other useful or unique tools."

@@ -88,6 +88,8 @@ declare -A ARROWS=(
 # Define a global associative array for storing menu items
 declare -A MENUS
 
+declare -A STACKS
+
 # Define a global array for storing navigation history
 menu_navigation_history=()
 
@@ -1234,6 +1236,16 @@ random_string() {
 
   local word="$(openssl rand -hex $length)"
   echo "$word"
+}
+
+# Lower case transformation functions for labels
+lowercase() {
+  echo "$1" | tr '[:upper:]' '[:lower:]' | tr -s ' ' '_'
+}
+
+# Upper case transformation functions for labels
+uppercase() {
+  echo "$1" | tr '[:lower:]' '[:upper:]'
 }
 
 # Function to cast a port to the 'smtp_secure' variable
@@ -5766,13 +5778,29 @@ deploy_stack() {
 
   traefik_and_portainer_exist
   exit_code=$?
-  
+
   # If Traefik or Portainer do not exist AND the stack is not one of them, return 1
   if [[ \
     $exit_code -ne 0 && \
     "$stack_name" != "traefik" && \
     "$stack_name" != "portainer" 
   ]]; then
+    return 1
+  fi
+
+  # Check current stack is WIP from associative array STACKS 
+  #   object property 'stack_status' (case insensitive) is
+  stack_object="${STACKS[$stack_name]}"
+  if [[ -z "$stack_object" ]]; then
+    return 1
+  fi
+
+  # Avoiding deploying a WIP stack with property 'stack_status' set to 'WIP'
+  stack_status="$(echo "$stack_object" | jq -r '.stack_status // "WIP"' | uppercase)"
+
+  # Check if the stack is WIP
+  if [[ "$stack_status" == "WIP" ]]; then
+    warning "Stack '$stack_name' is under development. Skipping deployment."
     return 1
   fi
 
@@ -9733,6 +9761,15 @@ define_menu_stacks() {
   # Download stacks.json once
   local stacks_json
   stacks_json=$(curl -s "$TOOL_STACKS_OBJECT_URL")
+
+  # Convert the JSON array to an associative array
+  for row in $(echo "$json_array" | jq -r '.[] | @base64'); do
+      # Decode the JSON object
+      stack_name=$(echo "${row}" | base64 --decode | jq -r '.stack_name')
+
+      # Build key-value pairs using the stack_name as the key
+      STACKS["$stack_name"]="$row"
+  done
 
   # Extract unique category objects in an array
   local menu_stack_categories=("$startup_item")  # Start with startup item
