@@ -2890,13 +2890,12 @@ run_collection_process() {
       exit 0
     fi
 
-    # Define the filter functions in jq format
-    labels='.name and .label and .description and .value and .required'
-    collection_item_filter=".[] | select($labels)"
-    error_item_filter='.[] | select(.message and .function)'
-
     # Separate valid collection items and error objects
+    labels='.name and .label and .description and .value and .required'
+    collection_item_filter="[.[] | select($labels)]"
     valid_items=$(filter_items "$collected_info" "$collection_item_filter")
+
+    error_item_filter="[.[] | select(.message and .function)]"
     error_items=$(filter_items "$collected_info" "$error_item_filter")
 
     # Ensure valid JSON formatting by stripping any unwanted characters
