@@ -4858,10 +4858,13 @@ upload_stack_on_portainer() {
     success "Stack '$stack_name' uploaded successfully."
   )
 
+  info "Deployment response: $response"
+
   if [[ -z "$response" ]]; then
     error "Failed to upload stack '$stack_name'."
     return 1
   fi
+
   return 0
 }
 
@@ -5640,9 +5643,7 @@ generate_stack_config_pipeline() {
 
   prompt_items="$(echo "$config_instructions" | jq -c '.actions.prompt // []')"
 
-  debug "Prompt items: $prompt_items"
-
-  if [[ "$prompt_items" == "[]" ]]; then
+  if [[ "$prompt_items" != "[]" ]]; then
     display_prompt_items "$prompt_items"
   else
     warning "No prompt items found for stack '$stack_name'."
@@ -6409,7 +6410,7 @@ prepare_environment() {
 
   # Install required apt packages quietly
   apt_packages=(
-    "sudo" "apt-utils" "apparmor-utils" "apache2-utils" "jq" "python3"
+    "sudo" "apt-utils" "apparmor-utils" "apache2-utils" "jq" "python3" "uuid"
     "docker" "figlet" "swaks" "netcat" "vnstat" "network-manager" "upower"
   )
   step_message="Installing required apt-get packages"
@@ -8365,6 +8366,11 @@ generate_stack_config_langfuse() {
                 "name": "langfuse_salt",
                 "description": "Fetching Langfuse salt",
                 "command": "random_string"
+              },
+              {
+                "name": "postgres_password",
+                "description": "Fetching Postgres password",
+                "command": "fetch_database_password postgres"
               }
             ]
           }
@@ -8442,29 +8448,22 @@ generate_stack_config_langflow() {
   local prompt_items=$(jq -n '[
       {
           "name": "langflow_url",
-          "label": "TranscreveZap domain name",
-          "description": "URL to access TranscreveZap remotely",
-          "required": "yes",
-          "validate_fn": "validate_url_suffix"
-      },
-      {
-          "name": "langflow_api_url",
-          "label": "TranscreveZap API domain name",
-          "description": "URL to access TranscreveZap API remotely",
+          "label": "Langflow domain name",
+          "description": "URL to access Langflow remotely",
           "required": "yes",
           "validate_fn": "validate_url_suffix"
       },
       {
           "name": "langflow_username",
-          "label": "TranscreveZap username",
-          "description": "Username to access TranscreveZap remotely",
+          "label": "Langflow username",
+          "description": "Username to access Langflow remotely",
           "required": "yes",
           "validate_fn": "validate_username"
       },
       {
           "name": "langflow_password",
           "label": "Langfuse password",
-          "description": "Password to access TranscreveZap remotely",
+          "description": "Password to access Langflow remotely",
           "required": "yes",
           "validate_fn": "validate_password"
       }
@@ -8478,7 +8477,19 @@ generate_stack_config_langflow() {
           "name": $stack_name,
           "target": "portainer",
           "actions": {
-            "prompt": $prompt_items
+            "prompt": $prompt_items,
+            "refresh": [
+              {
+                "name": "postgres_password",
+                "description": "Fetching Postgres password",
+                "command": "fetch_database_password postgres"
+              },
+              {
+                "name": "langflow_secret_key",
+                "description": "Create Langflow secret key",
+                "command": "uuid"
+              }
+            ]
           }
       }'
   ) || {
