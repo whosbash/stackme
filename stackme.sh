@@ -5025,11 +5025,11 @@ traefik_and_portainer_exist(){
   return 0
 }
 
-is_portainer_response_valid(){
+is_portainer_response_valid() {
   local portainer_response
   portainer_response="$1"
 
-  echo "$json_response" | jq -e '
+  echo "$portainer_response" | jq -e '
       has("Id") and
       has("Name") and
       has("Type") and
@@ -5047,6 +5047,7 @@ is_portainer_response_valid(){
 
   return 0
 }
+
 
 ################################# END OF PORTAINER DEPLOYMENT UTILS ###############################
 
