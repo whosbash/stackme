@@ -5039,7 +5039,9 @@ is_portainer_response_valid(){
       has("CreationDate")
   ')
 
-  if [[ "$validity" == "true" ]]; then
+  debug "Portainer response validity: $validity"
+
+  if [[ "$validity" == true ]]; then
     return 0
   else
     return 1
