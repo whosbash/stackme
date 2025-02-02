@@ -5779,12 +5779,8 @@ deploy_stack() {
   cleanup
   clean_screen
 
-  debug "Deploying stack: $stack_name"
-
   traefik_and_portainer_exist
   exit_code=$?
-
-  debug "Traefik and Portainer exist: $exit_code"
 
   # If Traefik or Portainer do not exist AND the stack is not one of them, return 1
   if [[ \
@@ -5799,16 +5795,12 @@ deploy_stack() {
   #   object property 'stack_status' (case insensitive) is
   stack_object="${STACKS[$stack_name]}"
 
-  debug "Current stack object: $stack_object"
-
   if [[ -z "$stack_object" ]]; then
     return 1
   fi
 
   # Avoiding deploying a WIP stack with property 'stack_status' set to 'WIP'
   stack_status="$(echo "$stack_object" | jq -r '.stack_status // "WIP"' | uppercase)"
-
-  debug "Current stack status: $stack_status"
 
   # Check if the stack is WIP
   if [[ "$stack_status" == "WIP" ]]; then
@@ -9767,15 +9759,13 @@ define_menu_stacks() {
   local stacks_json
   stacks_json=$(curl -s "$TOOL_STACKS_OBJECT_URL")
 
-  debug "$stacks_json"
-
   # Convert the JSON array to an associative array
   for row in $(echo "$stacks_json" | jq -r '.[] | @base64'); do
       # Decode the JSON object
       stack_name=$(echo "${row}" | base64 --decode | jq -r '.stack_name')
 
       # Build key-value pairs using the stack_name as the key
-      STACKS["$stack_name"]="$row"
+      STACKS["$stack_name"]="$(echo "${row}" | base64 --decode)"
   done
 
   # Extract unique category objects in an array
