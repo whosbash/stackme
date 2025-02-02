@@ -153,15 +153,6 @@
     "category_description": "Tools for managing documents and content in an organization."
   },
   {
-    "stack_name": "traefik",
-    "stack_label": "traefik",
-    "stack_description": "A modern reverse proxy and load balancer.",
-    "stack_status": "stable",
-    "category_name": "infrastructure",
-    "category_label": "Infrastructure",
-    "category_description": "Tools related to managing infrastructure and services, including monitoring, security, and more."
-  },
-  {
     "stack_name": "openproject",
     "stack_label": "openproject",
     "stack_description": "A project management tool for collaboration and tracking.",
@@ -246,7 +237,7 @@
     "stack_name": "excalidraw",
     "stack_label": "excalidraw",
     "stack_description": "A virtual whiteboard for collaborative drawing.",
-    "stack_status": "stable",
+    "stack_status": "beta",
     "category_name": "design_and_prototyping",
     "category_label": "Design and Prototyping",
     "category_description": "Design and prototyping tools for visualizing ideas."
@@ -282,7 +273,7 @@
     "stack_name": "nocodb",
     "stack_label": "nocodb",
     "stack_description": "An open-source no-code platform for building applications.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "automation_and_low-code",
     "category_label": "Automation and Low-Code",
     "category_description": "Automation and low-code platforms for developing applications quickly."
@@ -408,7 +399,7 @@
     "stack_name": "focalboard",
     "stack_label": "focalboard",
     "stack_description": "A task and project management tool.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "project_management",
     "category_label": "Project Management",
     "category_description": "Tools for managing projects, tasks, and team collaboration."
@@ -493,15 +484,6 @@
     "category_name": "automation_and_low-code",
     "category_label": "Automation and Low-Code",
     "category_description": "Automation and low-code platforms for developing applications quickly."
-  },
-  {
-    "stack_name": "portainer",
-    "stack_label": "portainer",
-    "stack_description": "A tool for managing Docker containers.",
-    "stack_status": "stable",
-    "category_name": "infrastructure",
-    "category_label": "Infrastructure",
-    "category_description": "Tools related to managing infrastructure and services, including monitoring, security, and more."
   },
   {
     "stack_name": "langfuse",
@@ -624,7 +606,7 @@
     "stack_name": "odoo",
     "stack_label": "odoo",
     "stack_description": "An open-source ERP and business management platform.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "erp",
     "category_label": "ERP",
     "category_description": "Enterprise Resource Planning and other solutions for managing business operations."
