@@ -2463,7 +2463,8 @@ show_progress() {
     done
   done
 
-  echo -ne "\bDone!\n"
+  echo -ne "\b"
+  success "Done!"
 }
 
 # Function to validate the input and return errors for invalid fields
@@ -3307,8 +3308,6 @@ build_menu() {
 define_menu() {
   local menu_object="$1"
   key="$(echo "$menu_object" | jq -r '.key')"
-
-  info "Defining menu: $key"
 
   MENUS["$key"]+="$menu_object"
 }
@@ -9651,27 +9650,19 @@ deploy_stacks_startup() {
 define_stacks_category_menu() {
   local category_stacks_jarray="$1"
 
-  # Extract first element details
+  # Extract first element details only once
   stack_category=$(echo "$category_stacks_jarray" | jq -r '.[0].category_name')
   menu_key="main:stacks:$stack_category"
   menu_title=$(echo "$category_stacks_jarray" | jq -r '.[0].category_label')
 
-  # Convert JSON array to Bash array
-  mapfile -t category_stacks < <(echo "$category_stacks_jarray" | jq -c '.[]')
-
-  # Create menu items from array
-  menu_items=()
-  for stack_object in "${category_stacks[@]}"; do
-    stack_name=$(echo "$stack_object" | jq -r '.stack_name')
-    stack_label=$(echo "$stack_object" | jq -r '.stack_label')
-    stack_description=$(echo "$stack_object" | jq -r '.stack_description')
-
+  # Extract all stack details in a single pass
+  while IFS=$'\t' read -r stack_name stack_label stack_description; do
     menu_item="$(\
       build_menu_item "$stack_label" "$stack_description" "deploy_stack_handler $stack_name"\
     )"
-
     menu_items+=("$menu_item")
-  done
+  done < <(echo "$category_stacks_jarray" | \
+    jq -r '.[] | "\(.stack_name)\t\(.stack_label)\t\(.stack_description)"')
 
   # Create menu object
   menu_object="$(\
@@ -9685,67 +9676,63 @@ define_stacks_category_menu() {
 define_menu_stacks_categories() {
   local stacks_json="$1"
 
-  # Get unique categories (if stacks_json is an array)
-  categories=$(echo "$stacks_json" | jq -r 'map(.category_name) | unique[]')
-
-  # Initialize an empty JSON array
-  stack_items='[]'
-
-  for stack_category in $categories; do
-    # Use filter_items to get stacks in the given category
-    filter_fn="map(select(.category_name == \"$stack_category\"))"
-    filtered_stacks=$(filter_items "$stacks_json" "$filter_fn")
-
-    define_stacks_category_menu "$filtered_stacks"
+  # Extract unique categories and their stacks in a single pass
+  echo "$stacks_json" | \
+    jq -c 'group_by(.category_name)[]' | 
+    while read -r category_group; do
+    define_stacks_category_menu "$category_group"
   done
 }
 
 # main:stacks
 define_menu_stacks() {
-  menu_key="main:stacks"
-  menu_title="Stacks"
+  local menu_key="main:stacks"
+  local menu_title="Stacks"
 
   # Startup item (Exception to other stacks)
+  local startup_item
   startup_item="$(
     build_menu_item "Startup" \
       "Deploy Traefik & Portainer" "deploy_stacks_startup"
   )"
 
-  # Download stacks.json
+  # Download stacks.json once and process it
+  local stacks_json
   stacks_json=$(curl -s "$TOOL_STACKS_OBJECT_URL")
 
-  # Get unique category objects
-  categories_objects=$(
-    echo "$stacks_json" | jq -c 'map({category_name, category_label}) | unique'
-  )
+  # Extract unique category objects in a single step
+  local menu_stack_categories=("$startup_item")  # Start with startup item
+  echo "$stacks_json" | jq -c 'group_by(.category_name) | map({ 
+      category_name: .[0].category_name, 
+      category_label: .[0].category_label, 
+      category_description: .[0].category_description 
+    })[]' | while read -r category_object; do
 
-  # Initialize menu items
-  menu_stack_categories=("$startup_item")  # Starting with the startup item
-
-  # Iterate over category objects
-  while read -r categories_object; do
-    category_name=$(echo "$categories_object" | jq -r '.category_name')
-    category_label=$(echo "$categories_object" | jq -r '.category_label')
-    category_description=$(echo "$categories_object" | jq -r '.category_description')
+    local category_name category_label category_description category_key category_item
+    category_name=$(echo "$category_object" | jq -r '.category_name')
+    category_label=$(echo "$category_object" | jq -r '.category_label')
+    category_description=$(echo "$category_object" | jq -r '.category_description')
 
     category_key="main:stacks:$category_name"
-    category_item="$(\
-      build_menu_item "$category_label" "$category_description" "navigate_menu $category_key"\
+    category_item="$(
+      build_menu_item "$category_label" "$category_description" "navigate_menu $category_key"
     )"
 
-    menu_stack_categories+=("${category_item}")
-  done < <(echo "$categories_objects" | jq -c '.[]')
+    menu_stack_categories+=("$category_item")
+  done
 
-  # Build the menu object
-  menu_object="$(\
-    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${menu_stack_categories[@]}"\
+  # Build and define the main stacks menu
+  local menu_object
+  menu_object="$(
+    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${menu_stack_categories[@]}"
   )"
 
-  # Define the menu using the built object
   define_menu "$menu_object"
 
-  # Define sub-menus (you can expand this logic)
-  define_menu_stacks_categories "$stacks_json"
+  # Define sub-menus for each stack category efficiently
+  echo "$stacks_json" | jq -c 'group_by(.category_name)[]' | while read -r category_stacks; do
+    define_stacks_category_menu "$category_stacks"
+  done
 }
 
 # main:utilities:smtp
@@ -9983,7 +9970,7 @@ main() {
   fi
 
   # Perform startup tasks
-  # startup
+  startup
 
   # Define menus on registry
   define_menu_main
