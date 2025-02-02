@@ -7925,6 +7925,12 @@ generate_stack_config_odoo() {
           "target": "portainer",
           "actions": {
             "prompt": $prompt_items,
+            "refresh": [
+              {
+                "name": "postgres_password",
+                "description": "Fetching postgres password",
+                "command": "fetch_database_password postgres",
+              }
             "prepare": [
               {
                 "name": "create_user odoo",
