@@ -2901,6 +2901,9 @@ run_collection_process() {
     valid_items_json=$(echo "$valid_items" | jq -c .)
     all_collected_info_json=$(echo "$all_collected_info" | jq -c .)
 
+    debug "Valid items: $valid_items_json"
+    debug "All collected info: $all_collected_info_json" 
+
     # Merge valid items with previously collected information
     all_collected_info=$(add_json_objects "$all_collected_info" "$valid_items")
 
