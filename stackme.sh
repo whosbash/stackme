@@ -4858,17 +4858,16 @@ upload_stack_on_portainer() {
     success "Stack '$stack_name' uploaded successfully."
   )
 
+  if [[ $? -eq 0 ]]; then
+      success "Stack '$stack_name' uploaded successfully."
+  else
+      error "Failed to upload stack: $stack_name"
+      return 1
+  fi
+
   info "Deployment response: $response"
 
-  echo "$json_response" | jq -e '
-      has("Id") and
-      has("Name") and
-      has("Type") and
-      has("ResourceControl") and
-      has("Status") and
-      has("ProjectPath") and
-      has("CreationDate")
-  ' > /dev/null
+  is_portainer_response_valid "$response"
 
   if [[ $? -ne 0 ]]; then
     error "Failed to upload stack: $stack_name"
@@ -5020,6 +5019,27 @@ traefik_and_portainer_exist(){
   fi
 
   return 0
+}
+
+is_portainer_response_valid(){
+  local portainer_response
+  portainer_response="$1"
+
+  validity=$(echo "$json_response" | jq -e '
+      has("Id") and
+      has("Name") and
+      has("Type") and
+      has("ResourceControl") and
+      has("Status") and
+      has("ProjectPath") and
+      has("CreationDate")
+  ')
+
+  if [[ "$validity" == "true" ]]; then
+    return 0
+  else
+    return 1
+  fi
 }
 
 ################################# END OF PORTAINER DEPLOYMENT UTILS ###############################
