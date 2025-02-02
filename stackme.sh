@@ -7943,15 +7943,15 @@ generate_stack_config_odoo() {
             "refresh": [
               {
                 "name": "postgres_password",
-                "description": "Fetching postgres password",
-                "command": "fetch_database_password postgres",
+                "description": "Create postgres password",
+                "command": "echo odoo",
               }
             ],
             "prepare": [
               {
                 "name": "create_user odoo",
                 "description": "Creating odoo user",
-                "command": "create_user_postgres metabase",
+                "command": "create_user_postgres odoo odoo",
               }
             ]
           }
@@ -9127,7 +9127,7 @@ generate_stack_config_stirlingpdf() {
           "label": "StirlingPDF Name",
           "description": "Name for StirlingPDF app",
           "required": "yes",
-          "validate_fn": "validate_url_suffix"
+          "validate_fn": "validate_empty_value"
       },
       {
           "name": "stirlingpdf_description",
@@ -9693,7 +9693,7 @@ generate_stack_config_moodle() {
           "target": "portainer",
           "dependencies": ["mariadb"],
           "actions": {
-            "prompt": $prompt_items
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "description": "Fetch mariadb database password",
