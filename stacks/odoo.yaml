@@ -14,7 +14,7 @@ services:
     environment:
       ## Postgres
       - HOST=postgres
-      - USER=postgres
+      - USER=odoo
       - PASSWORD={{postgres_password}}
 
     deploy:
