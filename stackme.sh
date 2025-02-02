@@ -4163,6 +4163,8 @@ navigate_menu() {
 
     clear_below_line $menu_line_count
   done
+
+  return 0
 }
 
 ######################################### END OF MENU UTILS ########################################
@@ -7628,7 +7630,14 @@ generate_stack_config_yourls() {
       "name": $stack_name,
       "target": "portainer",
       "actions": {
-        "prompt": $prompt_items
+        "prompt": $prompt_items,
+        "refresh": [
+          {
+            "name": "mysql_password",
+            "description": "Fetching mysql password",
+            "command": "fetch_database_password mysql",
+          }
+        ],
       }
     }'
   ) || {
@@ -8563,9 +8572,11 @@ generate_stack_config_wuzapi() {
           "target": "portainer",
           "dependencies": ["redis", "postgres"],
           "actions":{
-            "prompt": {
-              "prompt": $prompt_items
-            }
+            "prompt": [
+              {
+                "prompt": $prompt_items
+              }
+            ],
             "refresh": [
               {
                 "name": "wuzapi_secret_key",
@@ -8619,6 +8630,11 @@ generate_stack_config_openproject() {
                 "name": "openproject_key",
                 "description": "Generate OpenProject secret key",
                 "command": "random_string"
+              },
+              {
+                "name": "postgres_password",
+                "description": "Fetching postgres password",
+                "command": "fetch_database_password postgres",
               }
             ]
           }
@@ -8909,7 +8925,14 @@ generate_stack_config_traccar() {
           "name": $stack_name,
           "target": "portainer",
           "actions": {
-            "prompt": $prompt_items
+            "prompt": $prompt_items,
+            "refresh": [
+              {
+                "name": "mysql_password",
+                "description": "Fetching mysql password",
+                "command": "fetch_database_password mysql",
+              }
+            ]
           }
       }'
   ) || {
@@ -8943,14 +8966,14 @@ generate_stack_config_evolution() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "dependencies": ["postgres", "rabbitmq"]
+          "dependencies": ["postgres", "rabbitmq"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "postgres_password",
                 "description": "fetch postgres password",
-                "command": "fetch_database_password postgres"
+                "command": "fetch_d atabase_password postgres"
             ]
           }
       }'
@@ -8985,7 +9008,7 @@ generate_stack_config_evolution_lite() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "dependencies": ["postgres", "rabbitmq"]
+          "dependencies": ["postgres", "rabbitmq"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
@@ -9237,7 +9260,7 @@ generate_stack_config_nextcloud() {
           "label": "NextCloud password",
           "description": "Password to access NextCloud remotely",
           "required": "yes",
-          "validate_fn": "validate_username"
+          "validate_fn": "validate_password"
       }
   ]')
 
@@ -9343,7 +9366,6 @@ generate_stack_config_strapi() {
           "description": "URL to access Quepasa remotely",
           "required": "yes",
           "validate_fn": "validate_url_suffix"
-      }
       }
   ]')
 
