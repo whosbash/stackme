@@ -5029,7 +5029,7 @@ is_portainer_response_valid(){
   local portainer_response
   portainer_response="$1"
 
-  validity=$(echo "$json_response" | jq -e '
+  echo "$json_response" | jq -e '
       has("Id") and
       has("Name") and
       has("Type") and
@@ -5037,15 +5037,15 @@ is_portainer_response_valid(){
       has("Status") and
       has("ProjectPath") and
       has("CreationDate")
-  ')
+  ' > /dev/null 2>&1
 
-  debug "Portainer response validity: $validity"
-
-  if [[ "$validity" == true ]]; then
-    return 0
-  else
+  if [[ $? -ne 0 ]]; then
+    error "Invalid Portainer response: $portainer_response"
+    wait_for_input
     return 1
   fi
+
+  return 0
 }
 
 ################################# END OF PORTAINER DEPLOYMENT UTILS ###############################
