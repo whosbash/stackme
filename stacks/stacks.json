@@ -246,7 +246,7 @@
     "stack_name": "excalidraw",
     "stack_label": "excalidraw",
     "stack_description": "A virtual whiteboard for collaborative drawing.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "design_and_prototyping",
     "category_label": "Design and Prototyping",
     "category_description": "Design and prototyping tools for visualizing ideas."
