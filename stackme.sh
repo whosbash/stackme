@@ -4869,10 +4869,6 @@ upload_stack_on_portainer() {
 
   is_portainer_response_valid "$response"
 
-  exit_code=$?
-
-  debug "Exit code: $exit_code"
-
   if [[ $? -ne 0 ]]; then
     error "Failed to upload stack: $stack_name"
     return 1
