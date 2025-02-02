@@ -5798,6 +5798,9 @@ deploy_stack() {
   # Check current stack is WIP from associative array STACKS 
   #   object property 'stack_status' (case insensitive) is
   stack_object="${STACKS[$stack_name]}"
+
+  debug "Current stack object: $stack_object"
+
   if [[ -z "$stack_object" ]]; then
     return 1
   fi
