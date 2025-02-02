@@ -6923,7 +6923,7 @@ custom_smtp_information(){
       "$(jq -n --arg smtp_secure "$smtp_secure" '{smtp_secure: $smtp_secure}')"
   )"
 
-  custom_json_keys_with_identifier "$identifier" "$smtp_json"
+  echo "$(custom_json_keys_with_identifier "$identifier" "$smtp_json")"
 }
 
 # Function to display prompt items
@@ -8534,7 +8534,7 @@ generate_stack_config_langflow() {
               {
                 "name": "langflow_secret_key",
                 "description": "Create Langflow secret key",
-                "command": "uuid"
+                "command": "uuidgen"
               }
             ]
           }
@@ -8854,6 +8854,11 @@ generate_stack_config_nocobase() {
                 "name": "nocobase_app_key",
                 "description": "Generate Nocobase app key",
                 "command": "random_string"
+              },
+              {
+                "name": "postgres_password",
+                "description": "Fetch postgres password",
+                "command": "fetch_database_password postgres"
               }
             ]
           }
@@ -9063,7 +9068,7 @@ generate_stack_config_firecrawl() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "dependencies": ["postgres", "rabbitmq"]
+          "dependencies": ["postgres", "rabbitmq"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
@@ -9118,7 +9123,7 @@ generate_stack_config_ollama() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "dependencies": []
+          "dependencies": [],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
