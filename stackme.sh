@@ -5661,6 +5661,8 @@ generate_stack_config_pipeline() {
 
   collected_items="$(run_collection_process "$prompt_items")"
 
+  debug "Collected items: $collected_items"
+
   if [[ "$collected_items" == "[]" ]]; then
     step_error 1 $total_steps "Unable to prompt configuration."
     return 1
