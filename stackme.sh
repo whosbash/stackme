@@ -5799,12 +5799,9 @@ deploy_stack() {
     return 1
   fi
 
-  debug "Stack object: $stack_object"
-
   # Avoiding deploying a WIP stack with property 'stack_status' set to 'WIP'
-  stack_status="$(echo "$stack_object" | jq -r '.stack_status // "WIP"' | uppercase)"
-
-  debug "Stack status: $stack_status"
+  stack_status="$(echo "$stack_object" | jq -r '.stack_status // "WIP"')"
+  stack_status="$(uppercase "$stack_status")"
 
   # Check if the stack is WIP
   if [[ "$stack_status" == "WIP" ]]; then
