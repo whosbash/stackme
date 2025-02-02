@@ -263,6 +263,12 @@ build_stack_objects(){
     echo "$json_output"
 }
 
+generate_stack_status_stats() {
+  printf '%s\n' "${tool_status[@]}" | jq -R . | jq -s 'group_by(.) | map({(.[0]): length}) | add'
+}
+
 
 # Output the final JSON array with status
 time build_stack_objects | jq '.' > "./stacks/stacks.json"
+
+generate_stack_status_stats
