@@ -4860,8 +4860,18 @@ upload_stack_on_portainer() {
 
   info "Deployment response: $response"
 
-  if [[ -z "$response" ]]; then
-    error "Failed to upload stack '$stack_name'."
+  echo "$json_response" | \
+    jq -e 'has("Id") and \
+      has("Name") and \
+      has("Type") and \
+      has("ResourceControl") \
+      and has("Status") and \
+      has("ProjectPath") and \
+      has("CreationDate")' > /dev/null
+
+
+  if [[ $? -ne 0 ]]; then
+    error "Failed to upload stack: $stack_name"
     return 1
   fi
 
