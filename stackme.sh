@@ -9917,7 +9917,7 @@ define_menu_health() {
 
 # main
 define_menu_main() {
-  highlight "BUilding main menu..."
+  highlight "Building main menu..."
 
   menu_key="main"
   menu_title="main"

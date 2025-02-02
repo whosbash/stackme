@@ -315,6 +315,15 @@
     "category_description": "Automation and low-code platforms for developing applications quickly."
   },
   {
+    "stack_name": "mosquitto",
+    "stack_label": "mosquitto",
+    "stack_description": "An open-source message broker for handling MQTT messages.",
+    "stack_status": "WIP",
+    "category_name": "communication",
+    "category_label": "Communication",
+    "category_description": "Tools for messaging, communication, and collaboration."
+  },
+  {
     "stack_name": "krayincrm",
     "stack_label": "krayincrm",
     "stack_description": "A CRM platform for managing customer relationships.",

@@ -1,0 +1,45 @@
+version: "3.7"
+services:
+  mosquitto:
+    image: eclipse-mosquitto
+    hostname: mosquitto
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto:/etc/mosquitto
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    networks:
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mosquitto.rule=Host(`{{mosquitto_broker_url}}`)"
+      - "traefik.http.services.mosquitto.loadbalancer.server.port=9001"
+      - traefik.http.routers.mosquitto.entrypoints=websecure
+      - traefik.http.routers.mosquitto.priority=1
+      - traefik.http.routers.mosquitto.tls.certresolver=letsencryptresolver
+      - traefik.http.routers.mosquitto.service=n8n_editor
+      - traefik.http.services.mosquitto.loadbalancer.passHostHeader=1
+
+  mosquitto-ui:
+    image: "jpmens/mosquitto-frontend"
+    container_name: mosquitto-ui
+    restart: unless-stopped
+    networks:
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mosquitto-ui.rule=Host(`mosquitto_ui_url`)"
+      - "traefik.http.services.mosquitto-ui.loadbalancer.server.port=80"
+      - traefik.http.routers.mosquitto_ui.entrypoints=websecure
+      - traefik.http.routers.mosquitto_ui.priority=1
+      - traefik.http.routers.mosquitto_ui.tls.certresolver=letsencryptresolver
+      - traefik.http.routers.mosquitto_ui.service=n8n_editor
+      - traefik.http.services.mosquitto_ui.loadbalancer.passHostHeader=1
+
+networks:
+  traefik:
+    external: true
