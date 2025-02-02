@@ -6483,7 +6483,7 @@ install_docker() {
 }
 
 # Function to merge server, network, and IP information
-get_server_info() {
+prompt_server_info() {
   local server_array ip_object merged_result
 
   # Get the server and network information
@@ -6507,7 +6507,7 @@ get_server_info() {
   collected_items="$(run_collection_process "$items")"
   if [[ "$collected_items" == "[]" ]]; then
     error "Unable to retrieve server and network names."
-    exit 1
+    return 1
   fi
 
   collected_object="$(process_prompt_items "$collected_items")"
@@ -6516,41 +6516,62 @@ get_server_info() {
   echo "$collected_object"
 }
 
-fetch_and_save_server_info() {
-  server_filename="$TOOL_BASE_DIR/server_info.json"
-  if [[ -f "$server_filename" ]]; then
-    server_info_json=$(cat "$server_filename" 2>/dev/null)
+# Function to fetch server info and validate required fields
+fetch_server_info() {
+  local server_info_json
+  server_info_json=$(prompt_server_info)
 
-    if jq -e . >/dev/null 2>&1 <<<"$server_info_json"; then
-      info "Valid $server_filename found. Using existing information."
-    else
-      error "Content on file $server_filename is invalid. Reinitializing..."
-      server_info_json=$(get_server_info)
-
-      if ! has_fields "$server_info_json" "server_name" "network_name"; then
-        error "Unable to retrieve server and network names."
-        wait_for_input
-        exit 1
-      fi
-
-      # Save the server information to a JSON file
-      echo "$server_info_json" >"$server_filename"
-    fi
-  else
-    server_info_json=$(get_server_info)
-
-    if ! has_fields "$server_info_json" "server_name" "network_name"; then
-      error "Unable to retrieve server and network names."
-      wait_for_input
-      exit 1
-    fi
-
-    # Save the server information to a JSON file
-    echo "$server_info_json" > "$server_filename"
+  if ! has_fields "$server_info_json" "server_name" "network_name"; then
+    error "Unable to retrieve server and network names."
+    return 1
   fi
 
   echo "$server_info_json"
 }
+
+# Function to save server info to a file
+save_server_info() {
+  local filename="$1"
+  local content="$2"
+  local dir
+
+  dir=$(dirname "$filename")
+
+  # Ensure directory exists before writing the file
+  [[ -d "$dir" ]] || mkdir -p "$dir" || {
+    error "Failed to create directory: $dir"
+    return 1
+  }
+
+  echo "$content" > "$filename"
+}
+
+# Function to fetch and save server, network, and IP information
+fetch_and_save_server_info() {
+  local server_filename="$TOOL_BASE_DIR/server_info.json"
+  local server_info_json
+
+  # Check if the server info file exists
+  if [[ -f "$server_filename" ]]; then
+    server_info_json=$(<"$server_filename")
+
+    # Validate JSON file
+    if jq -e . >/dev/null 2>&1 <<<"$server_info_json"; then
+      info "Valid $server_filename found. Using existing information."
+    else
+      error "Invalid content in $server_filename. Reinitializing..."
+      server_info_json=$(fetch_server_info) || return 1
+      save_server_info "$server_filename" "$server_info_json" || return 1
+    fi
+  else
+    # Fetch new server info if the file does not exist
+    server_info_json=$(fetch_server_info) || return 1
+    save_server_info "$server_filename" "$server_info_json" || return 1
+  fi
+
+  echo "$server_info_json"
+}
+
 
 # Function to initialize the server information
 initialize_server_info() {
@@ -6559,18 +6580,16 @@ initialize_server_info() {
   # Step 1: Check if server_info.json exists and is valid
   message="Initialization of server information"
   step_progress 1 $total_steps "$message"
-  server_info_json="$(fetch_and_save_server_info)"   
+  server_info_json="$(fetch_and_save_server_info)"
+
+  # Output results
+  if [[ -z "$server_info_json" ]]; then
+    exit 1
+  fi
 
   # Extract server_name and network_name
   server_name="$(echo "$server_info_json" | jq -r  ".server_name")"
   network_name="$(echo "$server_info_json" | jq -r ".network_name" )"
-
-  # Output results
-  if [[ -z "$server_name" || -z "$network_name" ]]; then
-    error "Missing server_name or network_name in file $server_filename"
-    wait_for_input
-    exit 1
-  fi
 
   step_success 1 $total_steps "Server information saved to file $server_filename"
 
