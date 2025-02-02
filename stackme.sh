@@ -5800,7 +5800,8 @@ deploy_stack() {
 
   # Check if the stack is WIP
   if [[ "$stack_status" == "WIP" ]]; then
-    warning "Stack '$stack_name' is under development. Skipping deployment."
+    warning "Stack '$stack_name' is under maintenance. Skipping deployment."
+    wait_for_input
     return 1
   fi
 
