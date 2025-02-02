@@ -5639,6 +5639,9 @@ generate_stack_config_pipeline() {
   step_info 1 $total_steps "Prompting required $stack_name information"
 
   prompt_items="$(echo "$config_instructions" | jq -c '.actions.prompt // []')"
+
+  debug "Prompt items: $prompt_items"
+
   if [[ "$prompt_items" == "[]" ]]; then
     display_prompt_items "$prompt_items"
   else
@@ -5744,6 +5747,8 @@ deployment_pipeline() {
   step_info 5 $total_steps "Deploying stack on target"
   local target
   target=$(echo "$config_json" | jq -r '.target // "swarm"')
+
+  debug "Compose: $(cat "$compose_path")"
 
   deploy_stack_on_target "$stack_name" "$compose_path" "$target" || {
     failure "Failed to deploy stack on target: $target"
