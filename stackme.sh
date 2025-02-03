@@ -9706,7 +9706,7 @@ generate_stack_config_moodle() {
           "label": "Moodle username",
           "description": "Username to access Moodle remotely",
           "required": "yes",
-          "validate_fn": "validate_url_suffix"
+          "validate_fn": "validate_username"
       },
       {
           "name": "moodle_password",
