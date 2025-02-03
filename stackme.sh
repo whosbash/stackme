@@ -5290,6 +5290,7 @@ should_remove_stack() {
     question='Would you like to remove it? (Y/n)'
     prompt_message="${yellow}Stack '$stack_name' exists. $question${normal}"
     if handle_confirmation_prompt "$prompt_message" "n" 5; then
+      echo "" >&2
       warning "Proceeding to remove stack '$stack_name'."
 
       if [[ "$stack_name" != "traefik" && "$stack_name" != "portainer" ]]; then
@@ -5309,11 +5310,11 @@ should_remove_stack() {
         return 0
       fi
     else
+      echo "" >&2
       warning "Stack '$stack_name' was not removed. Proceeding..."
       return 1
     fi
   else
-    info "Stack '$stack_name' is inexistent."
     return 0
   fi
 }
