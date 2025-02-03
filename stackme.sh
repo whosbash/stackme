@@ -3593,8 +3593,7 @@ render_options() {
     option_label=$(get_menu_item_label "${menu_options[i]}")
     option_desc=$(get_menu_item_description "${menu_options[i]}")
 
-    truncate_length=$(( page_width - ${#option_label} - 2 ))
-    truncated_desc="$(truncate_option "$option_desc" $truncate_length)"
+    truncated_desc="$(truncate_option "$option_desc")"
 
     if [[ -z "$option_desc" ]]; then
       option="${option_label}"
