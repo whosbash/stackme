@@ -4,8 +4,8 @@ services:
     image: traccar/traccar:latest
     
     volumes:
-      - /opt/traccar/logs:/opt/traccar/logs:rw
-      - /opt/traccar/traccar.xml:/opt/traccar/conf/traccar.xml:ro
+      - /opt/stackme/stacks/traccar/logs:/opt/traccar/logs:rw
+      - /opt/stackme/stacks/traccar.xml:/opt/traccar/conf/traccar.xml:ro
       - traccar_data:/opt/traccar/
 
     networks:

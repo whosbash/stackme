@@ -16,7 +16,7 @@ services:
         - MARIADB_PASSWORD={{db_password}}
         - MARIADB_CHARACTER_SET=utf8mb4
         - MARIADB_COLLATE=utf8mb4_unicode_ci
-        - ALLOW_EMPTY_PASSWORD=no
+        - ALLOW_EMPTY_PASSWORD=yes
 
       deploy:
         mode: replicated
