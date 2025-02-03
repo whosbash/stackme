@@ -7917,13 +7917,13 @@ generate_stack_config_n8n() {
               "name": "n8n_encryption_key",
               "description": "Generating N8N encryption key",
               "command": "random_string",
-            }
-          ],
-          "prepare": [
+            },
             {
               "description": "Custom smtp information with label n8n",
               "command": "custom_smtp_information n8n",
-            },
+            }
+          ],
+          "prepare": [
             {
               "name": "create_postgres_database_n8n",
               "description": "Creating N8N database",
