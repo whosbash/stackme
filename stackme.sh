@@ -8075,6 +8075,13 @@ generate_stack_config_botpress() {
                 "description": "Fetching postgres password",
                 "command": "fetch_database_password postgres"
               }
+            ],
+            "prepare": [
+              {
+                "name": "create_postgres_database_botpress",
+                "description": "Creating botpress database",
+                "command": "create_database_postgres botpress"
+              }
             ]
           }
       }'
