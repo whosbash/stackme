@@ -5537,8 +5537,6 @@ execute_refresh_actions() {
       error "Failed to update stack variables after executing variable '$name'"
       return 1
     }
-
-    debug "Refreshed stack variables: $(echo "$updated_variables" | jq -c '.')"
   done
 
   info "Refreshed stack variables: $(echo "$updated_variables" | jq -c '.')"
@@ -5797,6 +5795,12 @@ deployment_pipeline() {
     failure "Failed to execute refresh actions"
     return 1
   }
+
+  # Update variables property on config_json
+  config_json=$(\
+    echo "$config_json" | \
+    jq --argjson stack_variables "$stack_variables" '.variables = $stack_variables'\
+  )
 
   # Step 3: Execute prepare actions
   step_info 3 $total_steps "Executing prepare actions"
