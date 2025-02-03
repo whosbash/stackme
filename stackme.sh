@@ -7403,39 +7403,40 @@ generate_stack_config_generic_database() {
 
   # Correct command substitution without unnecessary piping
   config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --arg image_version "$image_version" \
-    --arg db_password "$(random_string)" \
-    --arg db_username "$db_username" \
-    '{
-      "name": $stack_name,
-      "target": "portainer",
-      "actions": {
-        "refresh": [
-          {
-            "name": "image_version",
-            "description": "Image version",
-            "command": "echo $image_version" 
-          },
-          {
-            "name": "db_username",
-            "description": "Database username",
-            "command": "echo $db_username" 
-          },
-          {
-            "name": "db_password",
-            "description": "Database password",
-            "command": "echo $db_password" 
-          }
-        ],
-      }
-    }'
+      --arg stack_name "$stack_name" \
+      --arg image_version "$image_version" \
+      --arg db_password "$(random_string)" \
+      --arg db_username "$db_username" \
+      --arg image_command "echo $image_version" \
+      --arg db_user_command "echo $db_username" \
+      --arg db_pass_command "echo $db_password" \
+      '{
+        "name": $stack_name,
+        "target": "portainer",
+        "actions": {
+          "refresh": [
+            {
+              "name": "image_version",
+              "description": "Image version",
+              "command": $image_command
+            },
+            {
+              "name": "db_username",
+              "description": "Database username",
+              "command": $db_user_command
+            },
+            {
+              "name": "db_password",
+              "description": "Database password",
+              "command": $db_pass_command
+            }
+          ]
+        }
+      }'
   ) || {
       error "Failed to generate JSON"
       return 1
   }
-
-  debug "Config instructions: $config_instructions"
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
