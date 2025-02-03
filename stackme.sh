@@ -8650,6 +8650,8 @@ generate_stack_config_wuzapi() {
       }
   ]')
 
+  debug "prompt_items: $prompt_items"
+
   # Correct command substitution without unnecessary piping
   config_instructions=$(jq -n \
     --arg stack_name "$stack_name" \
@@ -8682,6 +8684,8 @@ generate_stack_config_wuzapi() {
       error "Failed to generate JSON"
       return 1
   }
+
+  debug "$config_instructions"
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
@@ -9436,14 +9440,14 @@ generate_stack_config_quepasa() {
           "label": "Quepasa username",
           "description": "Username to access Quepasa remotely",
           "required": "yes",
-          "validate_fn": "validate_username"
+          "validate_fn": "validate_email_value"
       },
       {
           "name": "quepasa_email_password",
           "label": "Quepasa password",
           "description": "Password to access Quepasa remotely",
           "required": "yes",
-          "validate_fn": "validate_username"
+          "validate_fn": "validate_password"
       }
   ]')
 
