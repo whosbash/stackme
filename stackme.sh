@@ -6952,7 +6952,7 @@ generate_firecrawl_api_key(){
 create_traccar_volumes(){
   docker pull traccar/traccar:latest > /dev/null 2>&1
 
-  mkdir -p /opt/traccar/logs
+  mkdir -p "$TOOL_STACKS_DIR/traccar/logs"
 
   docker run \
   --rm \
@@ -8661,11 +8661,7 @@ generate_stack_config_wuzapi() {
           "target": "portainer",
           "dependencies": ["redis", "postgres"],
           "actions":{
-            "prompt": [
-              {
-                "prompt": $prompt_items
-              }
-            ],
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "wuzapi_secret_key",
@@ -8684,8 +8680,6 @@ generate_stack_config_wuzapi() {
       error "Failed to generate JSON"
       return 1
   }
-
-  debug "$config_instructions"
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
