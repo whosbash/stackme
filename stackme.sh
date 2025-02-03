@@ -9084,6 +9084,11 @@ generate_stack_config_evolution() {
                 "name": "postgres_password",
                 "description": "fetch postgres password",
                 "command": "fetch_database_password postgres"
+              },
+              {
+                "name": "evolution_api_key",
+                "description": "Generate Evolution API key",
+                "command": "random_string"
               }
             ]
           }
