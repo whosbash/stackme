@@ -85,9 +85,8 @@ declare -A ARROWS=(
   ["circle_empty_filled"]="⊚"
 )
 
-# Define a global associative array for storing menu items
+# Define a global associative array for storing menu items and stacks
 declare -A MENUS
-
 declare -A STACKS
 
 # Define a global array for storing navigation history
@@ -145,12 +144,10 @@ DEFAULT_PAGE_SIZE=5
 
 # Tools constants
 TOOL_NAME="StackMe"
+
 TOOL_LOGO_URL="https://raw.githubusercontent.com/whosbash/stackme/main/images/stackme_tiny.png"
 TOOL_REPOSITORY_URL='https://github.com/whosbash/stackme'
-
-# STACKS COMPOSE TEMPLATES URL
 TOOL_STACKS_TEMPLATE_URL="https://api.github.com/repos/whosbash/stackme/contents/stacks"
-
 TOOL_STACKS_OBJECT_URL="https://raw.githubusercontent.com/whosbash/stackme/main/stacks/stacks.json"
 
 TOOL_BASE_DIR="/opt/stackme"
@@ -4818,7 +4815,6 @@ check_portainer_stack_exists() {
 
     # Check if stack ID was retrieved
     if [[ -z "$stack_id" ]]; then
-      echo ""
       return 1
     fi
 
@@ -5293,7 +5289,7 @@ should_remove_stack() {
       echo "" >&2
       warning "Proceeding to remove stack '$stack_name'."
 
-      if [[ "$stack_name" != "traefik" && "$stack_name" != "portainer" ]]; then
+      if [[ "$stack_name" == "traefik" && "$stack_name" == "portainer" ]]; then
         docker stack rm "$stack_name"
       else
         portainer_config="$(load_portainer_url_and_credentials)"
@@ -6953,6 +6949,18 @@ generate_firecrawl_api_key(){
   echo "fc-$(random_string)"
 }
 
+startup_traccar(){
+  docker pull traccar/traccar:latest > /dev/null 2>&1
+
+  mkdir -p /opt/traccar/logs
+
+  docker run \
+  --rm \
+  --entrypoint cat \
+  traccar/traccar:latest \
+  /opt/traccar/conf/traccar.xml > "$TOOL_STACKS_DIR/traccar/traccar.xml"
+}
+
 # Function to custom smtp information
 custom_smtp_information(){
   local identifier="$1"
@@ -7484,7 +7492,7 @@ generate_stack_config_pgvector() {
 generate_stack_config_mysql() {
   local stack_name='mysql'
   local image_version='8.0'
-    local db_username="mysql"
+  local db_username="mysql"
   local db_password="$(random_string)"
 
   generate_stack_config_generic_database "$stack_name" "$image_version" \
@@ -9019,7 +9027,7 @@ generate_stack_config_traccar() {
               {
                 "name": "mysql_password",
                 "description": "Fetching mysql password",
-                "command": "fetch_database_password mysql",
+                "command": "random_string",
               }
             ]
           }
