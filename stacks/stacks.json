@@ -3,7 +3,7 @@
     "stack_name": "baserow",
     "stack_label": "baserow",
     "stack_description": "A no-code platform for building collaborative databases.",
-    "stack_status": "stable",
+    "stack_status": "development",
     "category_name": "data_storage",
     "category_label": "Data Storage",
     "category_description": "Tools for managing and storing data, from databases to storage services."
@@ -237,7 +237,7 @@
     "stack_name": "excalidraw",
     "stack_label": "excalidraw",
     "stack_description": "A virtual whiteboard for collaborative drawing.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "design_and_prototyping",
     "category_label": "Design and Prototyping",
     "category_description": "Design and prototyping tools for visualizing ideas."
@@ -291,7 +291,7 @@
     "stack_name": "pgadmin",
     "stack_label": "pgadmin",
     "stack_description": "A popular web-based interface for managing PostgreSQL databases.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "data_management",
     "category_label": "Data Management",
     "category_description": "Tools for managing and administrating databases."
@@ -588,7 +588,7 @@
     "stack_name": "glpi",
     "stack_label": "glpi",
     "stack_description": "An IT asset management software.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "infrastructure",
     "category_label": "Infrastructure",
     "category_description": "Tools related to managing infrastructure and services, including monitoring, security, and more."

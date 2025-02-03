@@ -33,8 +33,6 @@ services:
         - traefik.http.routers.spark-iceberg.tls.certresolver=letsencryptresolver
         - traefik.http.services.spark-iceberg.loadbalancer.server.port=8888
         - traefik.http.routers.spark-iceberg.service=spark-iceberg@internal
-        - traefik.http.routers.spark-iceberg.middlewares=auth@file
-        - traefik.http.middlewares.auth.basicauth.users={{iceberg_credentials}}
         - traefik.http.routers.spark-iceberg.priority=1
       
     
