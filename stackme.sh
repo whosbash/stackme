@@ -6952,6 +6952,7 @@ generate_firecrawl_api_key(){
 create_traccar_volumes(){
   docker pull traccar/traccar:latest > /dev/null 2>&1
 
+  mkdir -p "$TOOL_STACKS_DIR/traccar"
   mkdir -p "$TOOL_STACKS_DIR/traccar/logs"
 
   docker run \
@@ -9082,7 +9083,7 @@ generate_stack_config_evolution() {
               {
                 "name": "postgres_password",
                 "description": "fetch postgres password",
-                "command": "fetch_d atabase_password postgres"
+                "command": "fetch_database_password postgres"
               }
             ]
           }
