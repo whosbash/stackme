@@ -3591,15 +3591,16 @@ render_options() {
   for i in $(seq $start $((end - 1))); do
     option_label=$(get_menu_item_label "${menu_options[i]}")
     option_desc=$(get_menu_item_description "${menu_options[i]}")
-    truncated_option_desc="$(truncate_option "$option_desc")"
 
     if [[ -z "$option_desc" ]]; then
       option="${option_label}"
     else
-      option="${option_label}: ${truncated_option_desc}"
+      option="${option_label}: ${option_desc}"
     fi
 
-    menu_lines+=("$option")
+    truncated_option="$(truncate_option "$option")"
+
+    menu_lines+=("$truncated_option")
   done
 
   # Fill remaining space if fewer items than page size
