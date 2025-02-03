@@ -97,7 +97,7 @@ services:
       - N8N_ENCRYPTION_KEY={{n8n_encryption_key}}
 
       ## Url do N8N
-      - N8N_HOST={{url_editor}}
+      - N8N_HOST={{n8n_editor_url}}
       - N8N_EDITOR_BASE_URL=https://{{n8n_editor_url}}/
       - WEBHOOK_URL=https://{{n8n_webhook_url}}/
       - N8N_PROTOCOL=https

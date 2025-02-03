@@ -4315,7 +4315,6 @@ download_stack_compose_templates() {
     fi
 
     total_files=$(echo "$file_urls" | wc -l)
-    info "Found $total_files files. Starting download..."
 
     # Prepare a variable to track failed downloads
     failed_downloads=()
