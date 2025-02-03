@@ -1345,7 +1345,8 @@ progress_bar() {
 
   # Display the progress bar with current, total, speed, elapsed time, and final estimated time
   printf "\r[%-s] %3d%% (%d/%d) Speed: %10s, Elapsed: %6s secs, Final: %6s secs" \
-    "${filled_part}${empty_part}" "$percentage" "$current" "$total" "$speed_display" "$formatted_elapsed_time" "$formatted_final_time"
+    "${filled_part}${empty_part}" "$percentage" "$current" "$total" "$speed_display" \
+    "$formatted_elapsed_time" "$formatted_final_time"
 }
 
 # Function to check the IP address of a domain
@@ -1408,7 +1409,8 @@ install_ctop(){
   step_info 1 $total_steps "Installing CTOP"
 
     # Download ctop binary
-    wget https://github.com/bcicen/ctop/releases/download/v0.7.7/ctop-0.7.7-linux-amd64 -O /usr/local/bin/ctop
+    wget https://github.com/bcicen/ctop/releases/download/v0.7.7/ctop-0.7.7-linux-amd64 \
+      -O /usr/local/bin/ctop
     exit_code=$?
     message="Failed to download CTOP"
     handle_exit $exit_code 1 $total_steps "$message"
@@ -1465,7 +1467,8 @@ generate_uuid() {
       "$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c8)" \
       "$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c4)" \
       "$(printf '4%x' $(( RANDOM % 16 )))$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c3)" \
-      "$(printf '%x%x' $(( RANDOM % 4 + 8 )) $(( RANDOM % 16 )))$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c3)" \
+      "$(printf '%x%x' $(( RANDOM % 4 + 8 )) $(( RANDOM % 16 )))$(cat /dev/urandom | \
+      tr -dc 'a-f0-9' | head -c3)" \
       "$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c12)"
   fi
 }
@@ -1698,9 +1701,10 @@ generate_machine_specs_table() {
      generate_table_row "Processor Cores" \
        "$(safe_exec "lscpu | awk -F ':' '/^CPU\(s\):/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
    )
+
+   command="lscpu | awk -F ':' '/^Thread\(s\) per core:/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'"
    machine_specs_rows+=$(
-     generate_table_row "Processor Threads" \
-       "$(safe_exec "lscpu | awk -F ':' '/^Thread\(s\) per core:/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
+     generate_table_row "Processor Threads" "$(safe_exec "$command")"
    )
    machine_specs_rows+=$(
      generate_table_row "Clock Speed" \
@@ -1761,7 +1765,9 @@ generate_machine_specs_table() {
   local network_rows=""
   network_rows+=$(generate_table_row "Ethernet" "$ethernet_info")
   network_rows+=$(generate_table_row "Wi-Fi" "$wifi_info")
-  html_content+=$(create_table "Network Information" "<th>Type</th><th>Details</th>" "$network_rows")
+  html_content+=$(\
+    create_table "Network Information" "<th>Type</th><th>Details</th>" "$network_rows" \
+  )
 
   # Return the complete HTML content
   echo "$html_content"
@@ -2153,7 +2159,9 @@ remove_dangling_images() {
       echo "Failed to remove $failure_count dangling images. Images might be in use."
     else
       echo "partial_success"
-      echo "Removed $success_count images successfully. Failed to remove $failure_count images: ${failed_images[*]}"
+
+      local non_removed_images="Failed to remove $failure_count images: ${failed_images[*]}"
+      echo "Removed $success_count images successfully. $non_removed_images"
     fi
   fi
 }
@@ -2880,7 +2888,6 @@ run_collection_process() {
   # Keep collecting and re-requesting info for errors
   while [[ "$has_errors" == true ]]; do
     collected_info="$(collect_prompt_info "$items")"
-
 
     # If no values were collected, exit early
     if [[ "$collected_info" == "[]" ]]; then
@@ -4316,7 +4323,9 @@ download_stack_compose_templates() {
                 if ! curl -s --fail -o "$destination_file" "$url"; then
                     # Log the failed download with HTTP error message
                     error_message=$(curl -s -w "%{http_code}" -o /dev/null "$url")
-                    failed_downloads+=("$(date '+%Y-%m-%d %H:%M:%S') - $file_name - Error: HTTP $error_message")
+                    failed_downloads+=(\
+                      "$(date '+%Y-%m-%d %H:%M:%S') - $file_name - Error: HTTP $error_message"\
+                    )
                 fi
             } &
         done
@@ -4334,7 +4343,6 @@ download_stack_compose_templates() {
         for failed in "${failed_downloads[@]}"; do
             echo "$failed" >> "$failed_filename"
         done
-        failure "Failed downloads logged in $failed_filename"
     fi
 }
 
@@ -4844,7 +4852,8 @@ upload_stack_on_portainer() {
   fi
 
   # Upload the stack
-  info "Uploading stack: ${stack_name}... (It may take mostly less than 5 minutes. Ctrl+C if it takes longer.)"
+  advice="It may take mostly less than 5 minutes. Ctrl+C if it takes longer."
+  info "Uploading stack: ${stack_name}... ($advice)"
   resource="stacks/create/swarm/file"
   content_type="application/json"
   url="$(get_api_url "https" "$portainer_url" "$resource")"
@@ -5043,7 +5052,6 @@ is_portainer_response_valid() {
 
   return 0
 }
-
 
 ################################# END OF PORTAINER DEPLOYMENT UTILS ###############################
 
@@ -5262,12 +5270,15 @@ build_stack_info() {
 # Function to request permission for stack removal
 should_remove_stack() {
   local stack_name="$1"
+  local question
+  local prompt_message
 
   if stack_exists "$stack_name"; then
-    local prompt_message="${yellow}Stack '$stack_name' exists. Would you like to remove it? (Y/n)${normal}"
+    question='Would you like to remove it? (Y/n)'
+    prompt_message="${yellow}Stack '$stack_name' exists. $question${normal}"
     if handle_confirmation_prompt "$prompt_message" "n" 5; then
       warning "Proceeding to remove stack '$stack_name'."
-      
+
       if [[ "$stack_name" != "traefik" && "$stack_name" != "portainer" ]]; then
         docker stack rm "$stack_name"
       else
@@ -6473,7 +6484,8 @@ install_docker() {
 
   # Step 1: Check and install prerequisites
   info "Checking prerequisites..."
-  if dpkg -l | grep -qE "apt-transport-https|ca-certificates|curl|software-properties-common"; then
+  if dpkg -l | \
+    grep -qE "apt-transport-https|ca-certificates|curl|software-properties-common"; then
     success "Prerequisites are already installed."
   else
     info "Installing prerequisites..."
@@ -6489,7 +6501,8 @@ install_docker() {
   # Step 2: Add Docker's official GPG key and repository (if not already added)
   info "Checking Docker GPG key and repository..."
   keyring_path="/usr/share/keyrings/docker-archive-keyring.gpg"
-  if [[ -f "$keyring_path" ]] && grep -q "download.docker.com" /etc/apt/sources.list.d/docker.list; then
+  if [[ -f "$keyring_path" ]] && \
+    grep -q "download.docker.com" /etc/apt/sources.list.d/docker.list; then
     success "Docker GPG key and repository are already configured."
   else
     info "Adding Docker GPG key and repository..."
@@ -6643,7 +6656,6 @@ fetch_and_save_server_info() {
   echo "$server_info_json"
 }
 
-
 # Function to initialize the server information
 initialize_server_info() {
   total_steps=8
@@ -6672,7 +6684,7 @@ initialize_server_info() {
 
   step_message="Download stacks templates"
   step_progress 3 $total_steps "$step_message"
-  download_stack_compose_templates
+  download_stack_compose_templates &
   handle_exit $? 3 $total_steps "$step_message"
 
   # Update /etc/hosts
@@ -6890,7 +6902,8 @@ create_user_postgres() {
   # Create the user if it doesn't exist
   info "Creating user '$user_name'..."
   if docker exec "$container_id" \
-    psql -U "$db_user" -c "CREATE USER \"$user_name\" WITH PASSWORD '$user_password';" >/dev/null 2>&1; then
+    psql -U "$db_user" -c "CREATE USER \"$user_name\" WITH PASSWORD '$user_password';" \
+    >/dev/null 2>&1; then
     success "User '$user_name' created successfully."
     return 0
   else
@@ -6967,13 +6980,14 @@ build_stack_objects(){
         done
 
         # Append the JSON object to the array
+        mask='. + [{"name": $name, "category": $category, "description": $desc, "status": $status}]'
         json_output=$(\
             jq -c \
                 --arg name "$name" \
                 --arg desc "$desc" \
                 --arg category "$category" \
                 --arg status "$status" \
-                '. + [{"name": $name, "category": $category, "description": $desc, "status": $status}]' <<< "$json_output"
+                "$mask" <<< "$json_output"
             )
     done
 
@@ -9827,7 +9841,6 @@ define_stacks_category_menu() {
     menu_items+=("$menu_item")
   done < <(echo "$category_stacks_jarray" | \
     jq -r '.[] | "\(.stack_name)\t\(.stack_label)\t\(.stack_description)\t\(.stack_status)"')
-
 
   # Create menu object
   menu_object="$(\
