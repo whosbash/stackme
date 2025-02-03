@@ -123,7 +123,7 @@ categories_to_stacks=(
 # New array for categorizing tools as "stable" or "development"
 declare -A tool_status=(
   ["affine"]="development"
-  ["clickhouse"]="beta"
+  ["clickhouse"]="stable"
   ["firecrawl"]="beta"
   ["langflow"]="stable"
   ["monitor"]="development"

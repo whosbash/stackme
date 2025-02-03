@@ -48,7 +48,7 @@
     "stack_name": "clickhouse",
     "stack_label": "clickhouse",
     "stack_description": "A columnar database for online analytical processing (OLAP).",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "data_storage",
     "category_label": "Data Storage",
     "category_description": "Tools for managing and storing data, from databases to storage services."
