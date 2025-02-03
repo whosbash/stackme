@@ -4860,9 +4860,7 @@ upload_stack_on_portainer() {
     success "Stack '$stack_name' uploaded successfully."
   )
 
-  if [[ $? -eq 0 ]]; then
-      success "Stack '$stack_name' uploaded successfully."
-  else
+  if [[ $? -ne 0 ]]; then
       error "Failed to upload stack: $stack_name"
       return 1
   fi
@@ -5686,7 +5684,7 @@ generate_stack_config_pipeline() {
 
   collected_items="$(run_collection_process "$prompt_items")"
 
-  if [[ "$collected_items" == "[]" ]]; then
+  if [[ "$collected_items" == "[]" && "$prompt_items" != "[]" ]]; then
     step_error 1 $total_steps "Unable to prompt configuration."
     return 1
   fi
@@ -6923,7 +6921,7 @@ custom_smtp_information(){
       "$(jq -n --arg smtp_secure "$smtp_secure" '{smtp_secure: $smtp_secure}')"
   )"
 
-  custom_json_keys_with_identifier "$identifier" "$smtp_json"
+  echo "$(custom_json_keys_with_identifier "$identifier" "$smtp_json")"
 }
 
 # Function to display prompt items
@@ -7351,6 +7349,10 @@ generate_stack_config_generic_database() {
   local image_version="$2"
   local db_username="$3"
 
+  debug "Image version: $image_version"
+  debug "Database username: $db_username"
+  debug "Stack name: $stack_name"
+
   # Correct command substitution without unnecessary piping
   config_instructions=$(jq -n \
     --arg stack_name "$stack_name" \
@@ -7365,17 +7367,17 @@ generate_stack_config_generic_database() {
           {
             "name": "image_version",
             "description": "Image version",
-            "command": "$(echo $image_version)" 
+            "command": "echo $image_version" 
           },
           {
             "name": "db_username",
             "description": "Database username",
-            "command": "$(echo $db_username)" 
+            "command": "echo $db_username" 
           },
           {
             "name": "db_password",
             "description": "Database password",
-            "command": "$(echo $db_password)" 
+            "command": "echo $db_password" 
           }
         ],
       }
@@ -8396,6 +8398,7 @@ generate_stack_config_langfuse() {
     '{
           "name": $stack_name,
           "target": "portainer",
+          "dependencies": ["clickhouse", "postgres"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
@@ -8534,7 +8537,14 @@ generate_stack_config_langflow() {
               {
                 "name": "langflow_secret_key",
                 "description": "Create Langflow secret key",
-                "command": "uuid"
+                "command": "uuidgen"
+              }
+            ],
+            "prepare": [
+              {
+                "name": "create_langflow_db",
+                "description": "Create Langflow database",
+                "command": "create_database_postgres langflow"
               }
             ]
           }
@@ -8596,6 +8606,8 @@ generate_stack_config_wuzapi() {
       return 1
   }
 
+  debug "$config_instructions"
+
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
 }
@@ -8635,6 +8647,13 @@ generate_stack_config_openproject() {
                 "name": "postgres_password",
                 "description": "Fetching postgres password",
                 "command": "fetch_database_password postgres",
+              }
+            ],
+            "prepare": [
+              {	
+                "name": "create_openproject_db",
+                "description": "Create OpenProject database",
+                "command": "create_database_postgres openproject"
               }
             ]
           }
@@ -8739,7 +8758,7 @@ generate_stack_config_wordpress() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "dependencies": ["mysql"],
+          "dependencies": ["mysql", "redis"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
@@ -8854,6 +8873,16 @@ generate_stack_config_nocobase() {
                 "name": "nocobase_app_key",
                 "description": "Generate Nocobase app key",
                 "command": "random_string"
+              },
+              {
+                "name": "nocobase_encryption_key",
+                "description": "Generate Nocobase app key",
+                "command": "random_string"
+              },
+              {
+                "name": "postgres_password",
+                "description": "Fetch postgres password",
+                "command": "fetch_database_password postgres"
               }
             ]
           }
@@ -8974,6 +9003,7 @@ generate_stack_config_evolution() {
                 "name": "postgres_password",
                 "description": "fetch postgres password",
                 "command": "fetch_d atabase_password postgres"
+              }
             ]
           }
       }'
@@ -9008,7 +9038,7 @@ generate_stack_config_evolution_lite() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "dependencies": ["postgres", "rabbitmq"],
+          "dependencies": ["postgres", "rabbitmq", "redis"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
@@ -9021,6 +9051,13 @@ generate_stack_config_evolution_lite() {
                 "name": "evolution_api_key",
                 "description": "Generate Evolution API key",
                 "command": "random_string" 
+              }
+            ],
+            "prepare": [
+              {
+                "name": "create_evolution_lite_db",
+                "description": "Create Evolution Lite database",
+                "command": "create_database_postgres evolution_lite"
               }
             ]
           }
@@ -9063,7 +9100,7 @@ generate_stack_config_firecrawl() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "dependencies": ["postgres", "rabbitmq"]
+          "dependencies": ["postgres", "rabbitmq"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
@@ -9118,7 +9155,7 @@ generate_stack_config_ollama() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "dependencies": []
+          "dependencies": [],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
@@ -9271,6 +9308,7 @@ generate_stack_config_nextcloud() {
     '{
           "name": $stack_name,
           "target": "portainer",
+          "dependencies": ["redis"],
           "actions": {
             "prompt": $prompt_items,
             "refresh": [
@@ -9621,25 +9659,25 @@ generate_stack_config_iceberg() {
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
       {
-          "name": "kafka_broker_url",
-          "label": "Kafka broker URL",
-          "description": "URL to access Kafka broker remotely",
+          "name": "iceberg_url",
+          "label": "Iceberg broker URL",
+          "description": "URL to access Iceberg broker remotely",
           "required": "yes",
           "validate_fn": "validate_url_suffix"
       },
       {
-          "name": "kafka_rest_url",
-          "label": "Kafka rest URL",
-          "description": "URL to access Kafka rest remotely",
+          "name": "aws_access_key_id",
+          "label": "AWS access key ID",
+          "description": "access key ID on AWS cloud",
           "required": "yes",
-          "validate_fn": "validate_url_suffix"
+          "validate_fn": "validate_empty_value"
       },
       {
-          "name": "kafka_ui_url",
-          "label": "Kafka UI URL",
-          "description": "URL to access Kafka UI remotely",
+          "name": "aws_secret_access_key",
+          "label": "AWS secret access key",
+          "description": "Secret access key on AWS cloud",
           "required": "yes",
-          "validate_fn": "validate_url_suffix"
+          "validate_fn": "validate_empty_value"
       }
   ]')
 
@@ -9650,6 +9688,7 @@ generate_stack_config_iceberg() {
     '{
           "name": $stack_name,
           "target": "portainer",
+          "dependencies": ["minio"],
           "actions": {
             "prompt": $prompt_items
           }
@@ -9688,7 +9727,7 @@ generate_stack_config_moodle() {
           "label": "Moodle username",
           "description": "Username to access Moodle remotely",
           "required": "yes",
-          "validate_fn": "validate_url_suffix"
+          "validate_fn": "validate_username"
       },
       {
           "name": "moodle_password",
@@ -10021,6 +10060,7 @@ define_menu_main() {
   info "Defining menu Health..."
   define_menu_health
 
+  wait_for_input
 }
 
 start_main_menu() {

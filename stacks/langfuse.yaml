@@ -7,13 +7,13 @@ services:
       - {{network_name}}
 
     environment:
-      ## Url do Langfuse
+      ## Langfuse
       - NEXTAUTH_URL=https://{{langfuse_url}}
 
-      ## Desativar novas incrições
+      ## Authentication
       - NEXT_PUBLIC_SIGN_UP_DISABLED=false
 
-      ## Dados Postgres
+      ## Postgres
       - DATABASE_URL=postgresql://postgres:{{postgres_password}}@postgres:5432/langfuse
 
       ## Secrets Key
@@ -21,10 +21,13 @@ services:
       - NEXTAUTH_SECRET={{langfuse_secret_key}}
       - SALT={{langfuse_salt}}
 
-      ## Ativar Telemetria
+      ## ClickHouse
+      - CLICKHOUSE_URL=http://clickhouse:8123
+
+      ## Telemetry
       - TELEMETRY_ENABLED=false
 
-      ## Features experimentais
+      ## Experimental Features 
       - LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES=false
 
       ## Node
