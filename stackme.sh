@@ -1098,6 +1098,18 @@ convert_array_to_json() {
   echo "$json"
 }
 
+# Function to convert a JSON string to an associative array
+convert_json_to_array() {
+  local json_string="$1"    # JSON input as a string
+  declare -n array_ref=$2   # Reference to the associative array
+
+  # Parse JSON and fill the associative array
+  while IFS="=" read -r key value; do
+    array_ref["$key"]="$value"
+  done < <(echo "$json_string" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"')
+}
+
+
 # Function to save an associative array to a JSON file
 save_array_to_json() {
   local file_path="$1" # File path to save the JSON data
@@ -5468,11 +5480,22 @@ execute_refresh_actions() {
     actions+=("$item")
   done < <(jq -r '.[] | @json' <<<"$refresh_actions_json")
 
+  # Declare an associative array
+  declare -A variables_array
+
   # Iterate over the refresh actions
   for action in "${actions[@]}"; do
     local command
+
+    convert_json_to_array "$stack_variables" variables_array
+
     command=$(echo "$action" | jq -r '.command') || {
       error "Missing 'command' field in refresh action."
+      return 1
+    }
+
+    command="$(replace_mustache_variables "$command" variables_array)" || {
+      error "Failed to replace mustache variables in refresh action."
       return 1
     }
 
@@ -5488,17 +5511,23 @@ execute_refresh_actions() {
 
     # If variable 'name' is empty, check if it is a json object
     if [ -z "$name" ]; then
+      constraint="a valid JSON when property 'name' is empty or not provided"
+      message="Refresh action command must be $constraint."
       # Validate if the output is a valid JSON object
       echo "$command_output" | jq empty >/dev/null 2>&1 || {
-        error "Refresh action command must be a valid JSON when property 'name' is empty or not provided. "
+        error 
         return 1
       }
+
+      debug "Refreshed stack variables: $(echo "$command_output" | jq -c '.')"
 
       # Merge the command output with the existing stack variables using add_json_objects
       updated_variables=$(add_json_objects "$updated_variables" "$command_output") || {
         error "Failed to update stack variables after executing refresh action."
         return 1
       }
+
+      debug "Refreshed stack variables: $(echo "$updated_variables" | jq -c '.')"
 
       continue
     fi
@@ -5507,6 +5536,8 @@ execute_refresh_actions() {
       echo "\"$command_output\"" | jq -c --arg key "$name" '{($key): .}'\
     )"
 
+    debug "Refreshed stack variables: $(echo "$variable_to_update" | jq -c '.')"
+
     # Merge the command output with the existing stack variables using add_json_objects
     updated_variables=$(\
       add_json_objects "$updated_variables" "$variable_to_update"
@@ -5514,6 +5545,8 @@ execute_refresh_actions() {
       error "Failed to update stack variables after executing variable '$name'"
       return 1
     }
+
+    debug "Refreshed stack variables: $(echo "$updated_variables" | jq -c '.')"
   done
 
   info "Refreshed stack variables: $(echo "$updated_variables" | jq -c '.')"
