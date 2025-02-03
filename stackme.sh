@@ -7349,6 +7349,10 @@ generate_stack_config_generic_database() {
   local image_version="$2"
   local db_username="$3"
 
+  debug "Image version: $image_version"
+  debug "Database username: $db_username"
+  debug "Stack name: $stack_name"
+
   # Correct command substitution without unnecessary piping
   config_instructions=$(jq -n \
     --arg stack_name "$stack_name" \
@@ -8997,6 +9001,7 @@ generate_stack_config_evolution() {
                 "name": "postgres_password",
                 "description": "fetch postgres password",
                 "command": "fetch_d atabase_password postgres"
+              }
             ]
           }
       }'
@@ -9301,6 +9306,7 @@ generate_stack_config_nextcloud() {
     '{
           "name": $stack_name,
           "target": "portainer",
+          "dependencies": ["redis"],
           "actions": {
             "prompt": $prompt_items,
             "refresh": [
