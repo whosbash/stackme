@@ -6952,7 +6952,8 @@ generate_firecrawl_api_key(){
 create_traccar_volumes(){
   docker pull traccar/traccar:latest > /dev/null 2>&1
 
-  mkdir -p /opt/traccar/logs
+  mkdir -p "$TOOL_STACKS_DIR/traccar"
+  mkdir -p "$TOOL_STACKS_DIR/traccar/logs"
 
   docker run \
   --rm \
@@ -8075,6 +8076,13 @@ generate_stack_config_botpress() {
                 "description": "Fetching postgres password",
                 "command": "fetch_database_password postgres"
               }
+            ],
+            "prepare": [
+              {
+                "name": "create_postgres_database_botpress",
+                "description": "Creating botpress database",
+                "command": "create_database_postgres botpress"
+              }
             ]
           }
       }'
@@ -8643,6 +8651,8 @@ generate_stack_config_wuzapi() {
       }
   ]')
 
+  debug "prompt_items: $prompt_items"
+
   # Correct command substitution without unnecessary piping
   config_instructions=$(jq -n \
     --arg stack_name "$stack_name" \
@@ -8652,11 +8662,7 @@ generate_stack_config_wuzapi() {
           "target": "portainer",
           "dependencies": ["redis", "postgres"],
           "actions":{
-            "prompt": [
-              {
-                "prompt": $prompt_items
-              }
-            ],
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "wuzapi_secret_key",
@@ -9077,7 +9083,7 @@ generate_stack_config_evolution() {
               {
                 "name": "postgres_password",
                 "description": "fetch postgres password",
-                "command": "fetch_d atabase_password postgres"
+                "command": "fetch_database_password postgres"
               }
             ]
           }
@@ -9429,14 +9435,14 @@ generate_stack_config_quepasa() {
           "label": "Quepasa username",
           "description": "Username to access Quepasa remotely",
           "required": "yes",
-          "validate_fn": "validate_username"
+          "validate_fn": "validate_email_value"
       },
       {
           "name": "quepasa_email_password",
           "label": "Quepasa password",
           "description": "Password to access Quepasa remotely",
           "required": "yes",
-          "validate_fn": "validate_username"
+          "validate_fn": "validate_password"
       }
   ]')
 
