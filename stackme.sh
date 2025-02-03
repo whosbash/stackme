@@ -3584,7 +3584,8 @@ render_options() {
   local end="$2"
   local current_idx="$3"
   local header_row_count="$4"
-  local menu_options=("${@:5}")
+  local page_width="$5"
+  local menu_options=("${@:6}")
 
   local menu_lines=()
 
@@ -3598,7 +3599,7 @@ render_options() {
       option="${option_label}: ${option_desc}"
     fi
 
-    truncated_option="$(truncate_option "$option")"
+    truncated_option="$(truncate_option "$option" "$page_width")"
 
     menu_lines+=("$truncated_option")
   done
@@ -3767,7 +3768,7 @@ render_menu() {
 
   # Render menu options
   local header_row_count=2
-  render_options "$start" "$end" "$current_idx" "$header_row_count" "${menu_options[@]}"
+  render_options "$start" "$end" "$current_idx" "$header_row_count" "$page_width" "${menu_options[@]}"
 
   # Render footer
   render_footer "$current_idx" "$page_size" "$page_width" "$num_options" "$keyboard_options_string"
