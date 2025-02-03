@@ -7367,17 +7367,17 @@ generate_stack_config_generic_database() {
           {
             "name": "image_version",
             "description": "Image version",
-            "command": "$(echo $image_version)" 
+            "command": "echo $image_version" 
           },
           {
             "name": "db_username",
             "description": "Database username",
-            "command": "$(echo $db_username)" 
+            "command": "echo $db_username" 
           },
           {
             "name": "db_password",
             "description": "Database password",
-            "command": "$(echo $db_password)" 
+            "command": "echo $db_password" 
           }
         ],
       }
