@@ -4860,9 +4860,7 @@ upload_stack_on_portainer() {
     success "Stack '$stack_name' uploaded successfully."
   )
 
-  if [[ $? -eq 0 ]]; then
-      success "Stack '$stack_name' uploaded successfully."
-  else
+  if [[ $? -ne 0 ]]; then
       error "Failed to upload stack: $stack_name"
       return 1
   fi
@@ -5686,7 +5684,7 @@ generate_stack_config_pipeline() {
 
   collected_items="$(run_collection_process "$prompt_items")"
 
-  if [[ "$collected_items" == "[]" ]]; then
+  if [[ "$collected_items" == "[]" && "$prompt_items" != "[]" ]]; then
     step_error 1 $total_steps "Unable to prompt configuration."
     return 1
   fi
@@ -8644,6 +8642,13 @@ generate_stack_config_openproject() {
                 "description": "Fetching postgres password",
                 "command": "fetch_database_password postgres",
               }
+            ],
+            "prepare": [
+              {	
+                "name": "create_openproject_db",
+                "description": "Create OpenProject database",
+                "command": "create_database_postgres openproject"
+              }
             ]
           }
       }'
@@ -9026,7 +9031,7 @@ generate_stack_config_evolution_lite() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "dependencies": ["postgres", "rabbitmq"],
+          "dependencies": ["postgres", "rabbitmq", "redis"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
@@ -9039,6 +9044,13 @@ generate_stack_config_evolution_lite() {
                 "name": "evolution_api_key",
                 "description": "Generate Evolution API key",
                 "command": "random_string" 
+              }
+            ],
+            "prepare": [
+              {
+                "name": "create_evolution_lite_db",
+                "description": "Create Evolution Lite database",
+                "command": "create_database_postgres evolution_lite"
               }
             ]
           }
@@ -9639,25 +9651,25 @@ generate_stack_config_iceberg() {
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
       {
-          "name": "kafka_broker_url",
-          "label": "Kafka broker URL",
-          "description": "URL to access Kafka broker remotely",
+          "name": "iceberg_url",
+          "label": "Iceberg broker URL",
+          "description": "URL to access Iceberg broker remotely",
           "required": "yes",
           "validate_fn": "validate_url_suffix"
       },
       {
-          "name": "kafka_rest_url",
-          "label": "Kafka rest URL",
-          "description": "URL to access Kafka rest remotely",
+          "name": "aws_access_key_id",
+          "label": "AWS access key ID",
+          "description": "access key ID on AWS cloud",
           "required": "yes",
-          "validate_fn": "validate_url_suffix"
+          "validate_fn": "validate_empty_value"
       },
       {
-          "name": "kafka_ui_url",
-          "label": "Kafka UI URL",
-          "description": "URL to access Kafka UI remotely",
+          "name": "aws_secret_access_key",
+          "label": "AWS secret access key",
+          "description": "Secret access key on AWS cloud",
           "required": "yes",
-          "validate_fn": "validate_url_suffix"
+          "validate_fn": "validate_empty_value"
       }
   ]')
 
@@ -9668,6 +9680,7 @@ generate_stack_config_iceberg() {
     '{
           "name": $stack_name,
           "target": "portainer",
+          "dependencies": ["minio"],
           "actions": {
             "prompt": $prompt_items
           }
