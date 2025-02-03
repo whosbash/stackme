@@ -5518,24 +5518,17 @@ execute_refresh_actions() {
         return 1
       }
 
-      debug "Refreshed stack variables: $(echo "$command_output" | jq -c '.')"
-
       # Merge the command output with the existing stack variables using add_json_objects
       updated_variables=$(add_json_objects "$updated_variables" "$command_output") || {
         error "Failed to update stack variables after executing refresh action."
         return 1
       }
-
-      debug "Refreshed stack variables: $(echo "$updated_variables" | jq -c '.')"
-
       continue
     fi
 
     variable_to_update="$(\
       echo "\"$command_output\"" | jq -c --arg key "$name" '{($key): .}'\
     )"
-
-    debug "Refreshed stack variables: $(echo "$variable_to_update" | jq -c '.')"
 
     # Merge the command output with the existing stack variables using add_json_objects
     updated_variables=$(\
@@ -7396,16 +7389,13 @@ generate_stack_config_generic_database() {
   local stack_name="$1"
   local image_version="$2"
   local db_username="$3"
-
-  debug "Image version: $image_version"
-  debug "Database username: $db_username"
-  debug "Stack name: $stack_name"
+  local db_password="$4"
 
   # Correct command substitution without unnecessary piping
   config_instructions=$(jq -n \
       --arg stack_name "$stack_name" \
       --arg image_version "$image_version" \
-      --arg db_password "$(random_string)" \
+      --arg db_password "$db_password" \
       --arg db_username "$db_username" \
       --arg image_command "echo $image_version" \
       --arg db_user_command "echo $db_username" \
@@ -7445,6 +7435,8 @@ generate_stack_config_generic_database() {
 # Function to generate configuration files for redis
 generate_stack_config_redis() {
   local stack_name='redis'
+  local db_username="redis"
+  local db_password="$(random_string)"
 
   highlight "Gathering $stack_name configuration"
 
@@ -7457,49 +7449,63 @@ generate_stack_config_redis() {
 
   info "Redis version: $image_version"
 
-  generate_stack_config_generic_database "$stack_name" "$image_version"
+  generate_stack_config_generic_database "$stack_name" "$image_version" \
+    "$username" "$password"
 }
 
 # Function to generate Postgres service configuration JSON
 generate_stack_config_postgres() {
   local stack_name='postgres'
   local image_version='15'
-
   local db_username="postgres"
+  local db_password="$(random_string)"
 
-  generate_stack_config_generic_database "$stack_name" "$image_version" "$db_username"
+  generate_stack_config_generic_database "$stack_name" "$image_version" \
+    "$db_username" "$db_password"
 }
 
 # Function to generate PgVector service configuration JSON
 generate_stack_config_pgvector() {
   local stack_name='pgvector'
   local image_version='pg16'
+  local db_username="pgvector"
+  local db_password="$(random_string)"
 
-  generate_stack_config_generic_database "$stack_name" "$image_version"
+  generate_stack_config_generic_database "$stack_name" "$image_version" \
+    "$db_username" "$db_password"
 }
 
 # Function to generate MySQL service configuration JSON
 generate_stack_config_mysql() {
   local stack_name='mysql'
   local image_version='8.0'
+    local db_username="mysql"
+  local db_password="$(random_string)"
 
-  generate_stack_config_generic_database "$stack_name" "$image_version"
+  generate_stack_config_generic_database "$stack_name" "$image_version" \
+    "$db_username" "$db_password"
 }
 
 # Function to generate MariaDB service configuration JSON
 generate_stack_config_mariadb() {
   local stack_name='mariadb'
   local image_version='latest'
+  local db_username="mariadb"
+  local db_password="$(random_string)"
 
-  generate_stack_config_generic_database "$stack_name" "$image_version"
+  generate_stack_config_generic_database "$stack_name" "$image_version" \
+    "$db_username" "$db_password"
 }
 
 # Function to generate MongoDB service configuration JSON
 generate_stack_config_mongodb() {
   local stack_name='mongodb'
   local image_version='4.4'
+  local db_username="mariadb"
+  local db_password="$(random_string)"
 
-  generate_stack_config_generic_database "$stack_name" "$image_version"
+  generate_stack_config_generic_database "$stack_name" "$image_version" \
+    "$db_username" "$db_password"
 }
 
 # Function to generate Whoami service configuration JSON
@@ -8656,8 +8662,6 @@ generate_stack_config_wuzapi() {
       error "Failed to generate JSON"
       return 1
   }
-
-  debug "$config_instructions"
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
