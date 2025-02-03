@@ -8606,6 +8606,8 @@ generate_stack_config_wuzapi() {
       return 1
   }
 
+  debug "$config_instructions"
+
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
 }
