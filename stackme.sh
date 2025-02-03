@@ -6949,7 +6949,7 @@ generate_firecrawl_api_key(){
   echo "fc-$(random_string)"
 }
 
-startup_traccar(){
+create_traccar_volumes(){
   docker pull traccar/traccar:latest > /dev/null 2>&1
 
   mkdir -p /opt/traccar/logs
@@ -9028,6 +9028,13 @@ generate_stack_config_traccar() {
                 "name": "mysql_password",
                 "description": "Fetching mysql password",
                 "command": "random_string",
+              }
+            ],
+            "prepare": [
+              {
+                "name": "startup_traccar_volumes",
+                "description": "Creating Traccar volumes",
+                "command": "create_traccar_volumes",
               }
             ]
           }
