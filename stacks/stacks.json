@@ -471,7 +471,7 @@
     "stack_name": "evolution",
     "stack_label": "evolution",
     "stack_description": "A CRM and sales platform.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "project_management",
     "category_label": "Project Management",
     "category_description": "Tools for managing projects, tasks, and team collaboration."

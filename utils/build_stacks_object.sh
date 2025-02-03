@@ -176,7 +176,7 @@ declare -A tool_status=(
   ["strapi"]="beta"
   ["uptimekuma"]="stable"
   ["calcom"]="development"
-  ["evolution"]="beta"
+  ["evolution"]="stable"
   ["iceberg"]="beta"
   ["metabase"]="stable"
   ["nocodb"]="stable"
@@ -259,12 +259,22 @@ build_stack_objects(){
     echo "$json_output"
 }
 
-generate_stack_status_stats() {
-  printf '%s\n' "${tool_status[@]}" | jq -R . | jq -s 'group_by(.) | map({(.[0]): length}) | add'
+generate_stack_status_stats_percentage() {
+  local total_count
+  total_count=$(printf '%s\n' "${tool_status[@]}" | wc -l)  # Get total number of items
+
+  if [[ "$total_count" -eq 0 ]]; then
+    echo '{}'  # Return empty JSON object if no statuses are present
+    return
+  fi
+
+  printf '%s\n' "${tool_status[@]}" | jq -R . | jq -s --arg total "$total_count" '
+    group_by(.) | map({(.[0]): { count: length, percentage: (length * 100 / ($total | tonumber)) }}) | add'
 }
+
 
 
 # Output the final JSON array with status
 time build_stack_objects | jq '.' > "./stacks/stacks.json"
 
-generate_stack_status_stats
+generate_stack_status_stats_percentage
