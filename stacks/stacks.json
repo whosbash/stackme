@@ -156,7 +156,7 @@
     "stack_name": "openproject",
     "stack_label": "openproject",
     "stack_description": "A project management tool for collaboration and tracking.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "project_management",
     "category_label": "Project Management",
     "category_description": "Tools for managing projects, tasks, and team collaboration."
@@ -255,7 +255,7 @@
     "stack_name": "evolution_lite",
     "stack_label": "evolution lite",
     "stack_description": "A lightweight version of the Evolution CRM platform.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "project_management",
     "category_label": "Project Management",
     "category_description": "Tools for managing projects, tasks, and team collaboration."
