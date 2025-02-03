@@ -129,7 +129,7 @@
     "stack_name": "n8n",
     "stack_label": "n8n",
     "stack_description": "An open-source workflow automation tool.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "automation_and_low-code",
     "category_label": "Automation and Low-Code",
     "category_description": "Automation and low-code platforms for developing applications quickly."
