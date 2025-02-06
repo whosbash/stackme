@@ -309,6 +309,5 @@ sort_by_complexity_and_status(){
 # Output the final JSON array with status
 time build_stack_objects | jq '.' > "./stacks/stacks.json"
 
-generate_stack_status_stats
-
-sort_by_complexity_and_status "$1"
+# generate_stack_status_stats
+# sort_by_complexity_and_status "$1"
