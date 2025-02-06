@@ -9863,6 +9863,47 @@ generate_stack_config_moodle() {
   generate_stack_config_pipeline "$config_instructions"
 }
 
+generate_stack_config_mosquitto() {
+  local stack_name="mosquitto"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "mosquitto_broker_url",
+          "label": "Mosquitto broker URL",
+          "description": "URL to access Mosquitto broker remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      },
+      {
+          "name": "mosquitto_ui_url",
+          "label": "Mosquitto UI URL",
+          "description": "URL to access Mosquitto UI remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "actions":{
+            "prompt": $prompt_items
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
 #################################### END OF STACK CONFIGURATION ###################################
 
 ################################ BEGIN OF STACK DEPLOYMENT FUNCTIONS ##############################
