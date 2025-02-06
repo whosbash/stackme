@@ -18,11 +18,11 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.mosquitto.rule=Host(`{{mosquitto_broker_url}}`)"
       - "traefik.http.services.mosquitto.loadbalancer.server.port=9001"
-      - traefik.http.routers.mosquitto.entrypoints=websecure
-      - traefik.http.routers.mosquitto.priority=1
-      - traefik.http.routers.mosquitto.tls.certresolver=letsencryptresolver
-      - traefik.http.routers.mosquitto.service=n8n_editor
-      - traefik.http.services.mosquitto.loadbalancer.passHostHeader=1
+      - "traefik.http.routers.mosquitto.entrypoints=websecure"
+      - "traefik.http.routers.mosquitto.priority=1"
+      - "traefik.http.routers.mosquitto.tls.certresolver=letsencryptresolver"
+      - "traefik.http.routers.mosquitto.service=mosquitto"
+      - "traefik.http.services.mosquitto.loadbalancer.passHostHeader=1"
 
   mosquitto-ui:
     image: "jpmens/mosquitto-frontend"
@@ -32,14 +32,14 @@ services:
       - traefik
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.mosquitto-ui.rule=Host(`mosquitto_ui_url`)"
+      - "traefik.http.routers.mosquitto-ui.rule=Host(`{{mosquitto_ui_url}}`)"
       - "traefik.http.services.mosquitto-ui.loadbalancer.server.port=80"
-      - traefik.http.routers.mosquitto_ui.entrypoints=websecure
-      - traefik.http.routers.mosquitto_ui.priority=1
-      - traefik.http.routers.mosquitto_ui.tls.certresolver=letsencryptresolver
-      - traefik.http.routers.mosquitto_ui.service=n8n_editor
-      - traefik.http.services.mosquitto_ui.loadbalancer.passHostHeader=1
+      - "traefik.http.routers.mosquitto_ui.entrypoints=websecure"
+      - "traefik.http.routers.mosquitto_ui.priority=1"
+      - "traefik.http.routers.mosquitto_ui.tls.certresolver=letsencryptresolver"
+      - "traefik.http.routers.mosquitto_ui.service=mosquitto_ui"
+      - "traefik.http.services.mosquitto_ui.loadbalancer.passHostHeader=1"
 
 networks:
-  traefik:
+  {{network_name}}:
     external: true
