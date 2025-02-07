@@ -534,7 +534,7 @@
     "stack_name": "ntfy",
     "stack_label": "ntfy",
     "stack_description": "A simple notification service for sending and receiving messages.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "communication",
     "category_label": "Communication",
     "category_description": "Tools for messaging, communication, and collaboration."
