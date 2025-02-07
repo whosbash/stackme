@@ -5870,12 +5870,11 @@ deploy_stack() {
   traefik_and_portainer_exist
   exit_code=$?
 
+  debug "Traefik and Portainer exist: $exit_code"
+
   # If Traefik or Portainer do not exist AND the stack is not one of them, return 1
-  if [[ \
-    $exit_code -ne 0 && \
-    "$stack_name" != "traefik" && \
-    "$stack_name" != "portainer" 
-  ]]; then
+  if [[ $exit_code -ne 0 && "$stack_name" != "traefik" && "$stack_name" != "portainer" ]]; then
+    debug "Stack name: $stack_name"
     return 1
   fi
 
@@ -6966,6 +6965,12 @@ make_airflow_folders(){
 make_folder_data_nodered(){
   mkdir -p "$TOOL_STACKS_DIR/nodered/data"
   chown -R 1000:1000 "$TOOL_STACKS_DIR/nodered/data"
+}
+
+make_folders_mosquitto(){
+  mkdir -p "$TOOL_STACKS_DIR/stacks/mosquitto"
+  mkdir -p "$TOOL_STACKS_DIR/stacks/mosquitto/data"
+  mkdir -p "$TOOL_STACKS_DIR/stacks/mosquitto/log"
 }
 
 # Function to generate a firecrawl string
@@ -9945,7 +9950,12 @@ generate_stack_config_mosquitto() {
           "name": $stack_name,
           "target": "portainer",
           "actions":{
-            "prompt": $prompt_items
+            "prompt": $prompt_items,
+            "prepare": [
+              {
+                "description": "Make folders for Mosquitto volumes",
+                "command": "make_folders_mosquitto"
+              }
           }
       }'
   ) || {
