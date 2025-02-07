@@ -5896,12 +5896,12 @@ deploy_stack() {
       return 1
     fi
 
-    # Avoiding deploying a WIP stack with property 'stack_status' set to 'WIP'
-    stack_status="$(echo "$stack_object" | jq -r '.stack_status // "WIP"')"
+    # Avoiding deploying a WIP stack with property 'stack_status' set to 'development'
+    stack_status="$(echo "$stack_object" | jq -r '.stack_status // "development"')"
     stack_status="$(uppercase "$stack_status")"
 
     # Check if the stack is WIP
-    if [[ "$stack_status" == "WIP" ]]; then
+    if [[ "$stack_status" == "development" ]]; then
       warning "Stack '$stack_name' is under maintenance. Skipping deployment."
       wait_for_input
       return 1
@@ -9470,6 +9470,11 @@ generate_stack_config_quepasa() {
                 "name": "postgres_password",
                 "description": "Fetch postgres database password",
                 "command": "fetch_database_password postgres"
+              },
+              {
+                "name": "quepasa_signing_secret",
+                "description": "Generate Quepasa signing secret",
+                "command": "random_string"
               }
             ]
           }
@@ -9624,7 +9629,7 @@ generate_stack_config_mautic() {
       {
           "name": "mautic_url",
           "label": "Mautic URL",
-          "description": "Title to display on Mautic site",
+          "description": "URL to access Mautic remotely",
           "required": "yes",
           "validate_fn": "validate_url_suffix"
       },
@@ -9633,14 +9638,14 @@ generate_stack_config_mautic() {
           "label": "Mautic username",
           "description": "Username to access Mautic remotely",
           "required": "yes",
-          "validate_fn": "validate_empty_value"
+          "validate_fn": "validate_username"
       },
       {
           "name": "mautic_email_password",
           "label": "Mautic password",
           "description": "Password to access Mautic remotely",
           "required": "yes",
-          "validate_fn": "validate_empty_value"
+          "validate_fn": "validate_password"
       }
   ]')
 
@@ -9897,7 +9902,7 @@ generate_stack_config_mosquitto() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "actions":{
+          "actions": {
             "prompt": $prompt_items,
             "prepare": [
               {
@@ -10111,6 +10116,11 @@ generate_stack_config_docuseal(){
               {
                 "description": "Custom smtp with identifier docuseal",
                 "command": "custom_smtp_information docuseal",
+              },
+              {
+                "name": "docuseal_secret_key",
+                "description": "Docuseal secret key",
+                "command": "random_string"
               }
             ],
             "prepare": [
@@ -10146,19 +10156,22 @@ generate_stack_config_humhub(){
           "name": "humhub_username",
           "label": "Humhub Username",
           "description": "Username to access Humhub remotely",
-          "required": "yes"
+          "required": "yes",
+          "validate_fn": "validate_empty_value"
       },
       {
           "name": "humhub_password",
           "label": "Humhub Password",
           "description": "Password to access Humhub remotely",
-          "required": "yes"
+          "required": "yes",
+          "validate_fn": "validate_empty_value"
       },
       {
         "name": "humhub_email",
         "label": "Humhub Email",
         "description": "Email to access Humhub remotely",
-        "required": "yes"
+        "required": "yes",
+        "validate_fn": "validate_empty_value"
       }
   ]')
 
@@ -10309,7 +10322,7 @@ generate_stack_config_chatwoot(){
           "description": "Name of app on Chatwoot",
           "required": "yes",
           "validate_fn": "validate_empty_value"
-      },
+      }
   ]')
 
   # Correct command substitution without unnecessary piping
@@ -10373,7 +10386,7 @@ generate_stack_config_chatwoot_nestor(){
           "description": "Name of app on Chatwoot",
           "required": "yes",
           "validate_fn": "validate_empty_value"
-      },
+      }
   ]')
 
   # Correct command substitution without unnecessary piping
@@ -10437,7 +10450,7 @@ generate_stack_config_tooljet(){
           "description": "Name of app on Chatwoot",
           "required": "yes",
           "validate_fn": "validate_empty_value"
-      },
+      }
   ]')
 
   # Correct command substitution without unnecessary piping
@@ -10551,8 +10564,7 @@ generate_stack_config_krayincrm(){
         "description": "URL to access KrayinCRM remotely",
         "required": "yes",
         "validate_fn": "validate_url_suffix"
-      },
-
+      }
   ]')
 
   # Correct command substitution without unnecessary piping
@@ -10631,13 +10643,15 @@ define_stacks_category_menu() {
   menu_title=$(echo "$category_stacks_jarray" | jq -r '.[0].category_label')
 
   # Extract all stack details in a single pass
-  local menu_items
+  local menu_items, label
 
   while IFS=$'\t' read -r stack_name stack_label stack_description stack_status; do
-    menu_item="$(\
-      build_menu_item \
-        "$stack_label ($stack_status)" "$stack_description" "deploy_stack $stack_name"\
-    )"
+  if [ "$stack_status" = "stable" ] || [ "$stack_status" = "beta" ]; then
+    item_label="$stack_label ($stack_status)"
+    menu_item="$(build_menu_item "$item_label" "$stack_description" "deploy_stack $stack_name")"
+    # Further processing with menu_item
+  fi
+done < input_file
 
     menu_items+=("$menu_item")
   done < <(echo "$category_stacks_jarray" | \
