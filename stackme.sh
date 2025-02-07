@@ -1363,12 +1363,8 @@ hash_credentials(){
   local password="$2"
 
   hashed_credentials="$(
-    htpasswd -nbB "$dashboard_username" "$dashboard_password" | sed -e 's/\$/\$\$/g' -e 's/\\\//\//g'
+    htpasswd -nbB "$username" "$password" | sed -e 's/\$/\$\$/g' -e 's/\\\//\//g'
   )"
-
-  debug "Hashed credentials: $hashed_credentials"
-  debug "Username: $username"
-  debug "Password: $password"
 
   echo "$hashed_credentials"
 }
