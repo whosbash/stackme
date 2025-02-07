@@ -6860,14 +6860,7 @@ fetch_stack_compose(){
 
 # Function to get the database password from a configuration
 fetch_database_password() {
-  local stack_name="$1"
-  local config_file="$TOOL_STACKS_DIR/$stack_name/stack_config.json"
-
-  # Read the database password from the config file
-  local database_password
-  database_password=$(jq -r '.variables.db_password' "$config_file")
-
-  echo "$database_password"
+  echo "$(fetch_stack_variable "$1" "db_password")"
 }
 
 # Function to create a PostgreSQL database
@@ -6949,6 +6942,20 @@ create_user_postgres() {
     error "Failed to create user '$user_name'. Please check the logs for details."
     return 1
   fi
+}
+
+# Function to get the database password from a configuration
+fetch_stack_variable() {
+  local stack_name="$1"
+  local variable_name="$2"
+
+  local config_file="$TOOL_STACKS_DIR/$stack_name/stack_config.json"
+
+  # Read the database password from the config file
+  local variable_value
+  variable_value=$(jq -r ".variables.$variable_name" "$config_file")
+
+  echo "$variable_value"
 }
 
 make_airflow_folders(){
@@ -9730,20 +9737,6 @@ generate_stack_config_woofed() {
           "description": "Password to access Woofed remotely",
           "required": "yes",
           "validate_fn": "validate_empty_value"
-      },
-      {
-          "name": "evolution_url",
-          "label": "Evolution URL",
-          "description": "URL to access Evolution remotely",
-          "required": "yes",
-          "validate_fn": "validate_url_suffix"
-      },
-      {
-          "name": "evolution_api_key",
-          "label": "Evolution API key",
-          "description": "API key to access Evolution remotely",
-          "required": "yes",
-          "validate_fn": "validate_empty_value"
       }
   ]')
 
@@ -9767,6 +9760,16 @@ generate_stack_config_woofed() {
                 "name": "woofed_encryption_key",
                 "description": "Generate Woofed encryption key",
                 "command": "random_string"
+              },
+              {
+                "name": "evolution_url",
+                "description": "Fetch Evolution URL",
+                "command": "fetch_stack_variable evolution evolution_url"
+              },
+              {
+                "name": "evolution_api_key",
+                "description": "Fetch Evolution API key",
+                "command": "fetch_stack_variable evolution evolution_api_key"
               }
             ]
           }
