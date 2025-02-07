@@ -3,8 +3,6 @@ services:
   mosquitto:
     image: eclipse-mosquitto
     hostname: mosquitto
-    container_name: mosquitto
-    restart: unless-stopped
     ports:
       - "1883:1883"
       - "9001:9001"
@@ -26,8 +24,6 @@ services:
 
   mosquitto-ui:
     image: "jpmens/mosquitto-frontend"
-    container_name: mosquitto-ui
-    restart: unless-stopped
     networks:
       - traefik
     labels:

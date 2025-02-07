@@ -8,7 +8,7 @@ services:
     ports:
       - "1880:1880"
     volumes:
-      - ./data:/data
+      - /opt/stackme/stacks/nodered/data:/data
     networks:
       - {{network_name}}
     deploy:
