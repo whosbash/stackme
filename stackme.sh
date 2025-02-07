@@ -9976,7 +9976,7 @@ generate_stack_config_lowcoder(){
     '{
           "name": $stack_name,
           "target": "portainer",
-          "dependencies": ["mongodb"]
+          "dependencies": ["mongodb"],
           "actions":{
             "prompt": $prompt_items,
             "prepare": [
