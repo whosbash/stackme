@@ -8833,7 +8833,7 @@ generate_stack_config_flowise() {
               {
                 "name": "postgres_password",
                 "description": "Fetch postgres password",
-                "command": "fetch_database_password postges"
+                "command": "fetch_database_password postgres"
               }
             ]
           }
