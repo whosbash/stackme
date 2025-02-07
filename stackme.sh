@@ -10643,7 +10643,7 @@ define_stacks_category_menu() {
   menu_title=$(echo "$category_stacks_jarray" | jq -r '.[0].category_label')
 
   # Extract all stack details in a single pass
-  local menu_items, label
+  local menu_items item_label
 
   while IFS=$'\t' read -r stack_name stack_label stack_description stack_status; do
     if [ "$stack_status" = "stable" ] || [ "$stack_status" = "beta" ]; then
