@@ -10562,6 +10562,7 @@ generate_stack_config_krayincrm(){
     '{
           "name": $stack_name,
           "target": "portainer",
+          "dependencies": ["mysql"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
