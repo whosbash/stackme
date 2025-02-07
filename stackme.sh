@@ -8835,6 +8835,13 @@ generate_stack_config_flowise() {
                 "description": "Fetch postgres password",
                 "command": "fetch_database_password postgres"
               }
+            ],
+            "prepare": [
+              {
+                "name": "create_postgres_database",
+                "description": "Create Flowise database",
+                "command": "create_postgres_database nocobase"
+              }
             ]
           }
       }'
