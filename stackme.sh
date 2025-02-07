@@ -5868,8 +5868,6 @@ deploy_stack() {
   traefik_and_portainer_exist
   exit_code=$?
 
-  debug "Traefik and Portainer exist: $exit_code"
-
   # If Traefik or Portainer do not exist:
   if [[ $exit_code -ne 0 ]]; then
     # Allow installation if the stack is Traefik or Portainer
@@ -5882,23 +5880,25 @@ deploy_stack() {
     fi
   fi
 
-  # Check current stack is WIP from associative array STACKS 
-  #   object property 'stack_status' (case insensitive) is
-  stack_object="${STACKS[$stack_name]}"
+  if [[ "$stack_name" != "traefik" && "$stack_name" != "portainer" ]]; then
+    # Check current stack is WIP from associative array STACKS 
+    #   object property 'stack_status' (case insensitive) is
+    stack_object="${STACKS[$stack_name]}"
 
-  if [[ -z "$stack_object" ]]; then
-    return 1
-  fi
+    if [[ -z "$stack_object" ]]; then
+      return 1
+    fi
 
-  # Avoiding deploying a WIP stack with property 'stack_status' set to 'WIP'
-  stack_status="$(echo "$stack_object" | jq -r '.stack_status // "WIP"')"
-  stack_status="$(uppercase "$stack_status")"
+    # Avoiding deploying a WIP stack with property 'stack_status' set to 'WIP'
+    stack_status="$(echo "$stack_object" | jq -r '.stack_status // "WIP"')"
+    stack_status="$(uppercase "$stack_status")"
 
-  # Check if the stack is WIP
-  if [[ "$stack_status" == "WIP" ]]; then
-    warning "Stack '$stack_name' is under maintenance. Skipping deployment."
-    wait_for_input
-    return 1
+    # Check if the stack is WIP
+    if [[ "$stack_status" == "WIP" ]]; then
+      warning "Stack '$stack_name' is under maintenance. Skipping deployment."
+      wait_for_input
+      return 1
+    fi
   fi
 
   # Check if the stack should be removed
