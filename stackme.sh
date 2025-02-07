@@ -8244,6 +8244,20 @@ generate_stack_config_ntfy() {
           "description": "URL to access ntfy remotely",
           "required": "yes",
           "validate_fn": "validate_url_suffix"
+      },
+      {
+          "name": "ntfy_username",
+          "label": "Ntfy username",
+          "description": "URL to access username remotely",
+          "required": "yes",
+          "validate_fn": "validate_username"
+      },
+      {
+          "name": "ntfy_password",
+          "label": "Ntfy password",
+          "description": "URL to access password remotely",
+          "required": "yes",
+          "validate_fn": "validate_password"
       }
   ]')
 
@@ -8256,6 +8270,13 @@ generate_stack_config_ntfy() {
           "target": "portainer",
           "actions": {
             "prompt": $prompt_items,
+            "refresh": [
+              {
+                "name": "ntfy_password",
+                "description": "Fetching ntfy password",
+                "command": "hash_credentials {{ntfy_username}} {{ntfy_password}}"
+              }
+            ]
           }
 
       }'
