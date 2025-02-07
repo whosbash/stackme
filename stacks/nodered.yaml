@@ -1,0 +1,36 @@
+version: "3.7"
+services:
+  node-red:
+    image: nodered/node-red:latest
+    container_name: node-red
+    environment:
+      - TZ=Europe/London
+    ports:
+      - "1880:1880"
+    volumes:
+      - ./data:/data
+    networks:
+      - {{network_name}}
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.nodered.rule=Host(`{{nodered_url}}`)
+        - traefik.http.routers.nodered.entrypoints=websecure
+        - traefik.http.services.nodered.loadbalancer.server.port=8080
+        - traefik.http.routers.nodered.service=nodered
+        - traefik.http.routers.nodered.tls.certresolver=letsencryptresolver
+        - com.centurylinklabs.watchtower.enable=true
+
+networks:
+  {{network_name}}:
+    name: {{network_name}}
+    external: true

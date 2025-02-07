@@ -309,10 +309,10 @@
     "stack_name": "mosquitto",
     "stack_label": "mosquitto",
     "stack_description": "An open-source message broker for handling MQTT messages.",
-    "stack_status": "development",
-    "category_name": "communication",
-    "category_label": "Communication",
-    "category_description": "Tools for messaging, communication, and collaboration."
+    "stack_status": "beta",
+    "category_name": "iot",
+    "category_label": "IoT",
+    "category_description": "Tools for working with IoT devices and data."
   },
   {
     "stack_name": "krayincrm",
@@ -448,6 +448,15 @@
     "category_name": "data_storage",
     "category_label": "Data Storage",
     "category_description": "Tools for managing and storing data, from databases to storage services."
+  },
+  {
+    "stack_name": "nodered",
+    "stack_label": "nodered",
+    "stack_description": "An open-source low-code platform for building IoT applications.",
+    "stack_status": "beta",
+    "category_name": "iot",
+    "category_label": "IoT",
+    "category_description": "Tools for working with IoT devices and data."
   },
   {
     "stack_name": "botpress",
