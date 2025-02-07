@@ -7171,7 +7171,7 @@ generate_stack_config_traefik() {
         "name": $stack_name,
         "target": "swarm",
         "variables": {
-          "traefik_email_ssl": $email_ssl,
+          "traefik_email_ssl": $traefik_email_ssl,
           "traefik_url": $traefik_url,
           "traefik_username": $traefik_username,
           "traefik_password": $traefik_password,
