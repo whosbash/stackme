@@ -7,9 +7,9 @@ services:
       - "1883:1883"
       - "9001:9001"
     volumes:
-      - ./mosquitto:/etc/mosquitto
-      - ./mosquitto/data:/mosquitto/data
-      - ./mosquitto/log:/mosquitto/log
+      - /opt/stackme/stacks/mosquitto:/etc/mosquitto
+      - /opt/stackme/stacks/mosquitto/data:/mosquitto/data
+      - /opt/stackme/stacks/mosquitto/log:/mosquitto/log
     networks:
       - {{network_name}}
     labels:
