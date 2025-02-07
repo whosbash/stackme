@@ -3122,10 +3122,10 @@ display_invalid_input_message() {
 
   reason="Invalid input \"$input\""
   select_options="Please enter 'y' for yes or 'n' for no."
-  invalid_message="${faded_color}$reason\n$select_options\n${reset_color}"
+  invalid_message="$reason\n$select_options\n"
 
   # Print the invalid message
-  echo -e "$invalid_message" >&2
+  error "$invalid_message"
   echo -ne "${faded_color}$prompt_message${reset_color}" >&2
 }
 
@@ -3927,6 +3927,7 @@ go_to_specific_page() {
   echo "$current_idx"
 }
 
+# Function to handle enter key
 handle_enter_key() {
   local menu_item="${menu_options[current_idx]}"
 
