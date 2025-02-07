@@ -30,7 +30,7 @@ services:
       - SMTP_PORT={{docuseal_smtp_port}}
       - SMTP_AUTHENTICATION=login
 
-      ## Dados do S3
+      ## S3
       ##- AWS_ACCESS_KEY_ID=
       ##- AWS_SECRET_ACCESS_KEY=
       ##- S3_ATTACHMENTS_BUCKET=

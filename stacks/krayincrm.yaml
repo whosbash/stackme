@@ -16,7 +16,7 @@ services:
       - APP_URL=https://{{krayincrm_url}}
       - krayin_CADDY_ADDRESSES=:80
       - APP_ENV=production
-      - APP_KEY={{krayincrm_secret_key}}
+      - APP_KEY={{krayincrm_secret_key}} 
       - APP_DEBUG=false
       - APP_TIMEZONE=America/Sao_Paulo
       - APP_LOCALE=pt_BR

@@ -1,7 +1,7 @@
 version: "3.7"
 services:
   typebot_builder:
-    image: baptistearno/typebot-builder:{{typebot_image_version}}
+    image: baptistearno/typebot-builder:latest
 
     networks:
       - {{network_name}}

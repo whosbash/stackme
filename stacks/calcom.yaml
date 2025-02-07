@@ -22,8 +22,8 @@ services:
       - WEB_APP=https://{{calcom_url}}
 
     ## Encryption
-      - NEXTAUTH_SECRET={calcom_secret}
-      - CALENDSO_ENCRYPTION_KEY={calcom_secret}
+      - NEXTAUTH_SECRET={{calcom_nextauth_secret}}
+      - CALENDSO_ENCRYPTION_KEY={{calcom_encryption_key}}
 
     ## Postgres
       - DATABASE_URL=postgresql://postgres:{{postgres_password}}@postgres:5432/calcom
