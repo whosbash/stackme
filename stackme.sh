@@ -7482,7 +7482,7 @@ generate_stack_config_mariadb() {
 generate_stack_config_mongodb() {
   local stack_name='mongodb'
   local image_version='4.4'
-  local db_username="mariadb"
+  local db_username="mongodb"
   local db_password="$(random_string)"
 
   generate_stack_config_generic_database "$stack_name" "$image_version" \
