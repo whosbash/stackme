@@ -25,7 +25,7 @@ services:
   mosquitto-ui:
     image: "jpmens/mosquitto-frontend"
     networks:
-      - traefik
+      - {{network_name}}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.mosquitto-ui.rule=Host(`{{mosquitto_ui_url}}`)"
