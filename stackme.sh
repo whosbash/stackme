@@ -8592,6 +8592,7 @@ generate_stack_config_langflow() {
     '{
           "name": $stack_name,
           "target": "portainer",
+          "dependencies": ["postgres"],
           "actions": {
             "prompt": $prompt_items,
             "refresh": [
@@ -8987,6 +8988,7 @@ generate_stack_config_mattermost() {
     '{
           "name": $stack_name,
           "target": "portainer",
+          "dependencies": ["postgres"],
           "actions": {
             "prompt": $prompt_items,
             "refresh": [
@@ -9243,7 +9245,6 @@ generate_stack_config_ollama() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "dependencies": [],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
@@ -9335,6 +9336,7 @@ generate_stack_config_twentycrm() {
     '{
           "name": $stack_name,
           "target": "portainer",
+          "dependencies": ["postgres"],
           "actions": {
             "prompt": $prompt_items,
             "refresh": [
@@ -9460,6 +9462,7 @@ generate_stack_config_quepasa() {
     '{
           "name": $stack_name,
           "target": "portainer",
+          "dependencies": ["postgres"],
           "actions": {
             "prompt": $prompt_items,
             "refresh": [
@@ -9973,6 +9976,7 @@ generate_stack_config_lowcoder(){
     '{
           "name": $stack_name,
           "target": "portainer",
+          "dependencies": ["mongodb"]
           "actions":{
             "prompt": $prompt_items,
             "prepare": [
@@ -10004,12 +10008,12 @@ generate_stack_config_lowcoder(){
               {
                 "name": "mongodb_username",
                 "description": "MongoDB username",
-                "command": "fetch_database_username mongo"
+                "command": "fetch_database_username mongodb"
               },
               {
                 "name": "mongodb_password",
                 "description": "MongoDB password",
-                "command": "fetch_database_password mongo"
+                "command": "fetch_database_password mongodb"
               }
             ]
           }
@@ -10095,6 +10099,7 @@ generate_stack_config_docuseal(){
     '{
           "name": $stack_name,
           "target": "portainer",
+          "dependencies": ["postgres"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
@@ -10164,6 +10169,7 @@ generate_stack_config_humhub(){
     '{
           "name": $stack_name,
           "target": "portainer",
+          "dependencies": ["mysql"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
@@ -10209,6 +10215,7 @@ generate_stack_config_calcom(){
     '{
           "name": $stack_name,
           "target": "portainer",
+          "dependencies": ["postgres"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
@@ -10259,6 +10266,7 @@ generate_stack_config_vaultwarden(){
     '{
           "name": $stack_name,
           "target": "portainer",
+          "dependencies": ["postgres"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
@@ -10311,6 +10319,7 @@ generate_stack_config_chatwoot(){
     '{
           "name": $stack_name,
           "target": "portainer",
+          "dependencies": ["postgres"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
@@ -10374,6 +10383,7 @@ generate_stack_config_chatwoot_nestor(){
     '{
           "name": $stack_name,
           "target": "portainer",
+          "dependencies": ["postgres"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
@@ -10458,6 +10468,11 @@ generate_stack_config_tooljet(){
               {
                 "description": "Custom smtp with identifier tooljet",
                 "command": "custom_smtp_information tooljet",
+              },
+              {
+                "name": "postgres_password",
+                "description": "Fetch postgres password",
+                "command": "fetch_database_password postgres",
               }
             ],
             "prepare": [
