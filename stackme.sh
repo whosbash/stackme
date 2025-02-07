@@ -1369,6 +1369,16 @@ hash_credentials(){
   echo "$hashed_credentials"
 }
 
+build_json_credentials(){
+  local username="$1"
+  local password="$2"
+
+  jq -n \
+    --arg username "$username" \
+    --arg password "$password" \
+    '{"username": $username, "password": $password}'
+}
+
 # Function to check the IP address of a domain
 check_domain_ip() {
   local domain="$1"
@@ -5410,14 +5420,11 @@ execute_action() {
   local action_command
   action_command=$(echo "$action_json" | jq -r '.command')
 
-  # Export variables if provided
-  if [ -n "$action_variables" ]; then
-    for var in $(echo "$action_variables" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"'); do
-      local var_name=$(echo "$var" | cut -d'=' -f1)
-      local var_value=$(echo "$var" | cut -d'=' -f2)
-      export "$var_name"="$var_value"
-    done
-  fi
+  # Declare an associative array
+  declare -A variables_array
+  convert_json_to_array "$action_variables" variables_array
+
+  action_command="$(replace_mustache_variables "$action_command" variables_array)"
 
   # Use eval safely to execute the command
   eval "$action_command" >&2
@@ -6867,6 +6874,11 @@ fetch_database_password() {
   echo "$(fetch_stack_variable "$1" "db_password")"
 }
 
+# Function to get the database password from a configuration
+fetch_database_username() {
+  echo "$(fetch_stack_variable "$1" "db_username")"
+}
+
 # Function to create a PostgreSQL database
 create_database_postgres() {
   local db_name="$1"
@@ -6960,6 +6972,23 @@ fetch_stack_variable() {
   variable_value=$(jq -r ".variables.$variable_name" "$config_file")
 
   echo "$variable_value"
+}
+
+manage_prometheus_config_file() {
+  local prometheus_config_path="$1"
+  shift
+  local targets=("$@") # New targets passed as arguments
+
+  prometheus_scrape_config="$(create_scrape_config_object --job_name "prometheus" \
+    --metrics_path "/metrics" \
+    --honor_timestamps "false" \
+    --honor_labels "true" \
+    --scrape_interval "10s" \
+    --targets "$(join_array ',' "${targets[@]}")")"
+
+  add_scrape_config_object "$prometheus_config_path" "$prometheus_scrape_config"
+
+  return 0
 }
 
 make_airflow_folders(){
@@ -7072,30 +7101,9 @@ build_stack_objects(){
 
 #################################### BEGIN OF STACK CONFIGURATION #################################
 
-manage_prometheus_config_file() {
-  local prometheus_config_path="$1"
-  shift
-  local targets=("$@") # New targets passed as arguments
-
-  prometheus_scrape_config="$(create_scrape_config_object --job_name "prometheus" \
-    --metrics_path "/metrics" \
-    --honor_timestamps "false" \
-    --honor_labels "true" \
-    --scrape_interval "10s" \
-    --targets "$(join_array ',' "${targets[@]}")")"
-
-  add_scrape_config_object "$prometheus_config_path" "$prometheus_scrape_config"
-
-  return 0
-}
-
 # Function to generate configuration files for startup
 generate_stack_config_traefik() {
   local stack_name="traefik"
-
-  total_steps=2
-
-  step_info 1 $total_steps "Gathering $stack_name configuration"
 
   prompt_items='[
       {
@@ -7128,74 +7136,36 @@ generate_stack_config_traefik() {
       }
   ]'
 
-  display_prompt_items "$prompt_items"
-  
-  collected_items="$(run_collection_process "$prompt_items")"
-
-  if [[ "$collected_items" == "[]" ]]; then
-    error "Unable to retrieve Traefik configuration."
-    return 1
-  fi
-
-  collected_object="$(process_prompt_items "$collected_items")"
-
-  traefik_email_ssl="$(echo "$collected_object" | jq -r '.traefik_email_ssl')"
-  traefik_url="$(echo "$collected_object" | jq -r '.traefik_url')"
-  traefik_username="$(echo "$collected_object" | jq -r '.traefik_username')"
-  traefik_password="$(echo "$collected_object" | jq -r '.traefik_password')"
-
-  traefik_credentials="$(
-    htpasswd -nbB "$traefik_username" "$traefik_password" |
-      sed -e 's/\$/\$\$/g' -e 's/\\\//\//g'
-  )"
-
-  step_info 2 $total_steps "Gathering network name"
-  local network_name="$(get_network_name)"
-
-  if [[ -z "$network_name" ]]; then
-    reason="Either stackme was not initialized properly or server_info.json file is corrupted."
-    error "Unable to retrieve network name. $reason"
-    return 1
-  fi
-
-  # Ensure everything is quoted correctly
-  jq -n \
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
     --arg stack_name "$stack_name" \
-    --arg traefik_email_ssl "$traefik_email_ssl" \
-    --arg traefik_url "$traefik_url" \
-    --arg traefik_username "$traefik_username" \
-    --arg traefik_password "$traefik_password" \
-    --arg traefik_credentials "$traefik_credentials" \
-    --arg network_name "$network_name" \
+    --arg prompt_items "$prompt_items" \
     '{
         "name": $stack_name,
         "target": "swarm",
-        "variables": {
-          "traefik_email_ssl": $traefik_email_ssl,
-          "traefik_url": $traefik_url,
-          "traefik_username": $traefik_username,
-          "traefik_password": $traefik_password,
-          "traefik_credentials": $traefik_credentials,          
-          "network_name": $network_name
+        "actions": {
+          "prompt": $prompt_items,
+          "refresh": [
+            {
+              "name": "traefik_credentials",
+              "description": "Traefik credentials",
+              "command": "hash_credentials {{traefik_username}} {{traefik_password}}"
+            }
+          ]
         }
     }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
 }
 
 # Function to generate configuration files for portainer
 generate_stack_config_portainer() {
   local stack_name="portainer"
-
-  total_steps=3
-
-  highlight "Gathering $stack_name configuration"
-
-  step_message="Retrieving Portainer versions"
-  step_info 1 $total_steps "$step_message"
-  local portainer_agent_version="$(get_latest_stable_version "portainer/agent")"
-  info "Portainer agent version: $portainer_agent_version"
-  local portainer_ce_version="$(get_latest_stable_version "portainer/portainer-ce")"
-  info "Portainer ce version: $portainer_ce_version"
-  step_success 1 $total_steps "$step_message"
 
   # Prompting step
   prompt_items='[
@@ -7222,71 +7192,41 @@ generate_stack_config_portainer() {
       }
   ]'
 
-  display_prompt_items "$prompt_items"
-
-  step_message="Prompting required Portainer information"
-  step_info 2 $total_steps "$step_message" 
-  collected_items="$(run_collection_process "$prompt_items")"
-
-  if [[ "$collected_items" == "[]" ]]; then
-    step_error 2 $total_steps "Unable to prompt Portainer configuration."
-    return 1
-  fi
-
-  collected_object="$(process_prompt_items "$collected_items")"
-
-  portainer_url="$(echo "$collected_object" | jq -r '.portainer_url')"
-  portainer_username="$(echo "$collected_object" | jq -r '.portainer_username')"
-  portainer_password="$(echo "$collected_object" | jq -r '.portainer_password')"
-
-  portainer_credentials="$(
-    jq -n \
-      --arg username "$portainer_username" \
-      --arg password "$portainer_password" \
-      '{"username": $username, "password": $password}'
-  )"
-
-  step_info 3 $total_steps "Gathering network name"
-  local network_name="$(get_network_name)"
-
-  if [[ -z "$network_name" ]]; then
-    reason="Either stackme was not initialized properly or server_info.json file is corrupted."
-    error "Unable to retrieve network name. $reason"
-    return 1
-  fi
-
-  jq -n \
+  config_instructions=(jq -n \
     --arg stack_name "$stack_name" \
-    --arg portainer_agent_version "$portainer_agent_version" \
-    --arg portainer_ce_version "$portainer_ce_version" \
-    --arg portainer_url "$portainer_url" \
-    --arg portainer_username "$portainer_username" \
-    --arg portainer_password "$portainer_password" \
-    --argjson portainer_credentials "$portainer_credentials" \
-    --arg network_name "$network_name" \
+    --argjson prompt_items "$prompt_items" \
     '{  
         "name": $stack_name,
         "target": "swarm",
-        "variables": {
-            "portainer_agent_version": $portainer_agent_version,
-            "portainer_ce_version": $portainer_ce_version,
-            "portainer_url": $portainer_url,
-            "portainer_credentials": $portainer_credentials,
-            "network_name": $network_name
-        },
         "actions": {
+            "prompt_items": $prompt_items,
+            "refresh": [
+              {
+                "name": "portainer_agent_version",
+                "description": "Portainer agent version", get_latest_stable_version 
+                "command": ("get_latest_stable_version \"" + portainer/agent + "\"")
+              },
+              {
+                "name": "portainer_ce_version",
+                "description": "Portainer ce version", get_latest_stable_version 
+                "command": ("get_latest_stable_version \"" + portainer/portainer-ce + "\"")
+              }
+            ]
             "finalize": [
                 {
                     "name": "signup_on_portainer",
                     "description": "Signup on portainer",
-                    "command": ("signup_on_portainer \"" + $portainer_url + "\" \"" + $portainer_username + "\" \"" + $portainer_password + "\"")
+                    "command": ("signup_on_portainer \"" + {{portainer_url}} + "\" \"" + {{portainer_username}} + "\" \"" + {{portainer_password}} + "\"")
                 }
             ]
         }
-    }' | jq . || {
-    echo "Failed to generate JSON"
-    return 1
-  }
+    }') || {
+      error "Failed to generate JSON"
+      return 1
+    }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
 }
 
 generate_stack_config_monitor() {
@@ -9999,6 +9939,77 @@ generate_stack_config_nodered() {
               {
                 "description": "Make folder data for NodeRed",
                 "command": "make_folder_data_nodered",
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+generate_stack_config_lowcoder(){
+  local stack_name="lowcoder"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "lowcoder_url",
+          "label": "Lowcoder URL",
+          "description": "URL to access Lowcoder remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "actions":{
+            "prompt": $prompt_items,
+            "prepare": [
+              {
+                "description": "Make folder data for NodeRed",
+                "command": "make_folder_data_nodered",
+              }
+            ],
+            "refresh": [
+              {
+                "name": "lowcoder_api_secret_key",
+                "description": "Lowcoder API secret key",
+                "command": "random_string"
+              }, 
+              {
+                "name": "lowcoder_encryption_key",
+                "description": "Lowcoder API secret key",
+                "command": "random_string"
+              },
+              {
+                "name": "lowcoder_encryption_salt",
+                "description": "Lowcoder API secret key",
+                "command": "random_string"
+              },
+              {
+                "description": "Custom smtp with identifier lowcoder",
+                "command": "custom_smtp_information lowcoder",
+              },
+              {
+                "name": "mongodb_username",
+                "description": "MongoDB username",
+                "command": "fetch_database_username mongo"
+              },
+              {
+                "name": "mongodb_password",
+                "description": "MongoDB password",
+                "command": "fetch_database_password mongo"
               }
             ]
           }
