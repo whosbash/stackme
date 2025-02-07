@@ -10023,6 +10023,559 @@ generate_stack_config_lowcoder(){
   generate_stack_config_pipeline "$config_instructions"
 }
 
+generate_stack_config_baserow(){
+  local stack_name="baserow"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "baserow_url",
+          "label": "Baserow URL",
+          "description": "URL to access Baserow remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "actions":{
+            "prompt": $prompt_items,
+            "refresh": [
+              {
+                "name": "postgres_password",
+                "description": "Fetch postgres password",
+                "command": "fetch_database_password postgres"
+              },
+              {
+                "description": "Custom smtp with identifier baserow",
+                "command": "custom_smtp_information baserow",
+              }
+            ],
+            "prepare": [
+              {
+                "description": "Create postgres database baserow",
+                "command": "create_postgres_database baserow",
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+generate_stack_config_docuseal(){
+  local stack_name="docuseal"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "docuseal_url",
+          "label": "Docuseal URL",
+          "description": "URL to access Docuseal remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "actions":{
+            "prompt": $prompt_items,
+            "refresh": [
+              {
+                "name": "postgres_password",
+                "description": "Fetch postgres password",
+                "command": "fetch_database_password postgres"
+              },
+              {
+                "description": "Custom smtp with identifier docuseal",
+                "command": "custom_smtp_information docuseal",
+              }
+            ],
+            "prepare": [
+              {
+                "description": "Create postgres database docuseal",
+                "command": "create_postgres_database docuseal",
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+generate_stack_config_humhub(){
+  local stack_name="humhub"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "humhub_url",
+          "label": "Humhub URL",
+          "description": "URL to access Humhub remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      },
+      {
+          "name": "humhub_username",
+          "label": "Humhub Username",
+          "description": "Username to access Humhub remotely",
+          "required": "yes"
+      },
+      {
+          "name": "humhub_password",
+          "label": "Humhub Password",
+          "description": "Password to access Humhub remotely",
+          "required": "yes"
+      },
+      {
+        "name": "humhub_email",
+        "label": "Humhub Email",
+        "description": "Email to access Humhub remotely",
+        "required": "yes"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "actions":{
+            "prompt": $prompt_items,
+            "refresh": [
+              {
+                "name": "mysql_password",
+                "description": "Fetch mysql password",
+                "command": "fetch_database_password mysql"
+              },
+              {
+                "description": "Custom smtp with identifier docuseal",
+                "command": "custom_smtp_information humhub",
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+generate_stack_config_calcom(){
+  local stack_name="calcom"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "calcom_url",
+          "label": "Calcom URL",
+          "description": "URL to access Calcom remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "actions":{
+            "prompt": $prompt_items,
+            "refresh": [
+              {
+                "name": "calcom_nextauth_secret",
+                "description": "Generate calcom nextauth secret",
+                "command": "random_string"
+              },
+              {
+                "description": "Custom smtp with identifier docuseal",
+                "command": "custom_smtp_information humhub",
+              },
+              {
+                "name": "postgres_password",
+                "description": "Fetch postgres password",
+                "command": "fetch_database_password postgres",
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+generate_stack_config_vaultwarden(){
+  local stack_name="vaultwarden"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "vaultwarden_url",
+          "label": "Vaultwarden URL",
+          "description": "URL to access Vaultwarden remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "actions":{
+            "prompt": $prompt_items,
+            "refresh": [
+              {
+                "description": "Custom smtp with identifier vaultwarden",
+                "command": "custom_smtp_information vaultwarden",
+              },
+              {
+                "name": "postgres_password",
+                "description": "Fetch postgres password",
+                "command": "fetch_database_password postgres",
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+generate_stack_config_chatwoot(){
+  local stack_name="chatwoot"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "chatwoot_url",
+          "label": "Chatwoot URL",
+          "description": "URL to access Chatwoot remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      },
+      {
+          "name": "chatwoot_name",
+          "label": "Chatwoot app name",
+          "description": "Name of app on Chatwoot",
+          "required": "yes",
+          "validate_fn": "validate_empty_value"
+      },
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "actions":{
+            "prompt": $prompt_items,
+            "refresh": [
+              {
+                "name": "chatwoot_encryption_key"
+                "description": "Generate chatwoot encryption key",
+                "command": "random_string",
+              },
+              {
+                "name": "postgres_password",
+                "description": "Fetch postgres password",
+                "command": "fetch_database_password postgres",
+              },
+              {
+                "description": "Custom smtp with identifier chatwoot",
+                "command": "custom_smtp_information chatwoot",
+              }
+            ],
+            "prepare": [
+              {
+                "description": "Create database chatwoot on Postgres",
+                "command": "create_postgres_database chatwoot",
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+generate_stack_config_chatwoot_nestor(){
+  local stack_name="chatwoot_nestor"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "chatwoot_url",
+          "label": "Chatwoot URL",
+          "description": "URL to access Chatwoot remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      },
+      {
+          "name": "chatwoot_name",
+          "label": "Chatwoot app name",
+          "description": "Name of app on Chatwoot",
+          "required": "yes",
+          "validate_fn": "validate_empty_value"
+      },
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "actions":{
+            "prompt": $prompt_items,
+            "refresh": [
+              {
+                "name": "chatwoot_encryption_key"
+                "description": "Generate chatwoot encryption key",
+                "command": "random_string",
+              },
+              {
+                "name": "postgres_password",
+                "description": "Fetch postgres password",
+                "command": "fetch_database_password postgres",
+              },
+              {
+                "description": "Custom smtp with identifier chatwoot",
+                "command": "custom_smtp_information chatwoot",
+              }
+            ],
+            "prepare": [
+              {
+                "description": "Create database chatwoot on Postgres",
+                "command": "create_postgres_database chatwoot",
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+generate_stack_config_tooljet(){
+  local stack_name="tooljet"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "tooljet_url",
+          "label": "Tooljet URL",
+          "description": "URL to access Tooljet remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      },
+      {
+          "name": "chatwoot_name",
+          "label": "Chatwoot app name",
+          "description": "Name of app on Chatwoot",
+          "required": "yes",
+          "validate_fn": "validate_empty_value"
+      },
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "actions":{
+            "prompt": $prompt_items,
+            "refresh": [
+              {
+                "name": "tooljet_lockbox_secret_key"
+                "description": "Generate tooljet lockbox secret key",
+                "command": "random_string",
+              },
+              {
+                "name": "tooljet_secret_key",
+                "description": "Generate tooljet secret key", 
+                "command": "random_string",
+              },
+              {
+                "name": "postgrest_jwt_key",
+                "description": "Generate PostgREST JWT key", 
+                "command": "random_string",
+              },
+              {
+                "description": "Custom smtp with identifier tooljet",
+                "command": "custom_smtp_information tooljet",
+              }
+            ],
+            "prepare": [
+              {
+                "description": "Create database chatwoot on Postgres",
+                "command": "create_postgres_database chatwoot",
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+generate_stack_config_kafka(){
+  local stack_name="kafka"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+        "name": "kafka_broker_url",
+        "label": "Tooljet URL",
+        "description": "URL to access Tooljet remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      },
+      {
+        "name": "kafka_rest_url",
+        "label": "Chatwoot app name",
+        "description": "Name of app on Chatwoot",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      },
+      {
+        "name": "kafka_ui_url",
+        "label": "Kafka UI URL",
+        "description": "URL to access Kafka UI remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "actions":{
+            "prompt": $prompt_items
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+generate_stack_config_krayincrm(){
+  local stack_name="krayincrm"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+        "name": "krayincrm_url",
+        "label": "KrayinCRM URL",
+        "description": "URL to access KrayinCRM remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      },
+
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "actions":{
+            "prompt": $prompt_items,
+            "refresh": [
+              {
+                "name": "krayincrm_secret_key",
+                "description": "Generate KrayinCRM secret key",
+                "command": "random_string",
+              },
+              {
+                "name": "mysql_password",
+                "description": "Fetch mysql password",
+                "command": "fetch_database_password mysql",
+              },
+              {
+                "description": "Custom smtp with identifier krayincrm",
+                "command": "custom_smtp_information krayincrm",
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
 #################################### END OF STACK CONFIGURATION ###################################
 
 ################################ BEGIN OF STACK DEPLOYMENT FUNCTIONS ##############################
