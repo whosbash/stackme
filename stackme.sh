@@ -9754,7 +9754,7 @@ generate_stack_config_woofed() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "dependencies": ["pgvector"],
+          "dependencies": ["pgvector", "evolution"],
           "actions": {
             "prompt": $prompt_items,
             "refresh": [
@@ -9762,6 +9762,11 @@ generate_stack_config_woofed() {
                 "name": "pgvector_password",
                 "description": "Fetch pgvector database password",
                 "command": "fetch_database_password pgvector"
+              },
+              {
+                "name": "woofed_encryption_key",
+                "description": "Generate Woofed encryption key",
+                "command": "random_string"
               }
             ]
           }
