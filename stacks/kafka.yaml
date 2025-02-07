@@ -31,12 +31,12 @@ services:
       placement:
         constraints:
           - node.role == worker
-        labels:
-          - traefik.enable=true
-          - traefik.http.routers.kafka-broker.entrypoints=websecure
-          - traefik.http.routers.kafka-broker.rule=Host(`{{kafka_broker_url}}`)
-          - traefik.http.routers.kafka-broker.tls.certresolver=letsencryptresolver
-          - traefik.http.services.kafka-broker.loadbalancer.server.port=9094
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.kafka-broker.entrypoints=websecure
+        - traefik.http.routers.kafka-broker.rule=Host(`{{kafka_broker_url}}`)
+        - traefik.http.routers.kafka-broker.tls.certresolver=letsencryptresolver
+        - traefik.http.services.kafka-broker.loadbalancer.server.port=9094
 
     networks:
       - {{network_name}}
