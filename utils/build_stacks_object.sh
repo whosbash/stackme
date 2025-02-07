@@ -139,13 +139,13 @@ declare -A tool_status=(
   ["langfuse"]="beta"
   ["moodle"]="beta"
   ["openproject"]="stable"
-  ["rabbitmq"]="beta"
+  ["rabbitmq"]="stable"
   ["transcrevezap"]="stable"
   ["wordpress"]="beta"
   ["anythingllm"]="development"
   ["directus"]="development"
   ["focalboard"]="stable"
-  ["lowcoder"]="development"
+  ["lowcoder"]="beta"
   ["mysql"]="stable"
   ["outline"]="beta"
   ["redis"]="stable"
@@ -162,8 +162,8 @@ declare -A tool_status=(
   ["redisinsight"]="beta"
   ["typebot"]="development"
   ["yourls"]="beta"
-  ["baserow"]="development"
-  ["docuseal"]="development"
+  ["baserow"]="beta"
+  ["docuseal"]="beta"
   ["glpi"]="stable"
   ["mattermost"]="stable"
   ["nextcloud"]="beta"
@@ -173,30 +173,30 @@ declare -A tool_status=(
   ["zep"]="stable"
   ["botpress"]="stable"
   ["easyappointments"]="beta"
-  ["humhub"]="development"
+  ["humhub"]="beta"
   ["mautic"]="beta"
   ["nocobase"]="beta"
   ["phpadmin"]="beta"
   ["strapi"]="beta"
   ["uptimekuma"]="stable"
-  ["calcom"]="development"
+  ["calcom"]="stable"
   ["evolution"]="stable"
   ["iceberg"]="beta"
   ["metabase"]="stable"
   ["nocodb"]="stable"
   ["supabase"]="development"
-  ["vaultwarden"]="development"
-  ["chatwoot"]="development"
+  ["vaultwarden"]="beta"
+  ["chatwoot"]="beta"
+  ["chatwoot_nestor"]="development"
   ["evolution_lite"]="stable"
-  ["kafka"]="development"
+  ["kafka"]="beta"
   ["minio"]="development"
   ["ntfy"]="stable"
   ["postgres"]="stable"
-  ["tooljet"]="development"
+  ["tooljet"]="beta"
   ["weavite"]="beta"
-  ["chatwoot_nestor"]="development"
   ["excalidraw"]="stable"
-  ["krayincrm"]="development"
+  ["krayincrm"]="beta"
   ["mongodb"]="stable"
   ["odoo"]="stable"
   ["qdrant"]="beta"
@@ -306,12 +306,13 @@ sort_by_complexity_and_status(){
   done < <(find "$folder_path" -type f -print0)
 
   # Pretty-print the JSON output and sort by complexity in descending order
-  echo "$json_output" | jq 'to_entries | map({key: .key, value: (.value | sort_by(.complexity) | reverse)}) | from_entries'
+  echo "$json_output" | \
+  jq 'to_entries | map({key: .key, value: (.value | sort_by(.complexity) | reverse)}) | from_entries'
 }
 
 
 # Output the final JSON array with status
 time build_stack_objects | jq '.' > "./stacks/stacks.json"
 
-# generate_stack_status_stats
+# # generate_stack_status_stats
 # sort_by_complexity_and_status "$1"
