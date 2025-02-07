@@ -5043,8 +5043,6 @@ traefik_and_portainer_exist(){
   stack_names=("traefik" "portainer")
   
   if ! stacks_exist "${stack_names[@]}"; then
-    error "Traefik and Portainer stacks do not exist. Choose the first option on Stacks menu."
-    wait_for_input
     return 1
   fi
 
@@ -5872,10 +5870,16 @@ deploy_stack() {
 
   debug "Traefik and Portainer exist: $exit_code"
 
-  # If Traefik or Portainer do not exist AND the stack is not one of them, return 1
-  if [[ $exit_code -ne 0 && "$stack_name" != "traefik" && "$stack_name" != "portainer" ]]; then
-    debug "Stack name: $stack_name"
-    return 1
+  # If Traefik or Portainer do not exist:
+  if [[ $exit_code -ne 0 ]]; then
+    # Allow installation if the stack is Traefik or Portainer
+    if [[ "$stack_name" == "traefik" || "$stack_name" == "portainer" ]]; then
+      debug "Installing missing stack: $stack_name"
+    else
+      # Otherwise, block installation
+      error "Traefik and Portainer are required before deploying $stack_name."
+      return 1
+    fi
   fi
 
   # Check current stack is WIP from associative array STACKS 
