@@ -10647,13 +10647,18 @@ define_stacks_category_menu() {
 
   while IFS=$'\t' read -r stack_name stack_label stack_description stack_status; do
     if [ "$stack_status" = "stable" ] || [ "$stack_status" = "beta" ]; then
-      item_label="$stack_label ($stack_status)"
+      if [ "$stack_status" = "beta" ]; then
+        item_label="$stack_label ($stack_status)"
+      else
+        item_label="$stack_label"
+      fi
       menu_item="$(build_menu_item "$item_label" "$stack_description" "deploy_stack $stack_name")"
       
       menu_items+=("$menu_item")
     fi
   done < <(echo "$category_stacks_jarray" | \
     jq -r '.[] | "\(.stack_name)\t\(.stack_label)\t\(.stack_description)\t\(.stack_status)"')
+
 
   # Create menu object
   menu_object="$(\
