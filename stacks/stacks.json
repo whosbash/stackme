@@ -3,7 +3,7 @@
     "stack_name": "baserow",
     "stack_label": "baserow",
     "stack_description": "A no-code platform for building collaborative databases.",
-    "stack_status": "development",
+    "stack_status": "beta",
     "category_name": "data_storage",
     "category_label": "Data Storage",
     "category_description": "Tools for managing and storing data, from databases to storage services."
@@ -57,7 +57,7 @@
     "stack_name": "rabbitmq",
     "stack_label": "rabbitmq",
     "stack_description": "An open-source message broker for handling queues.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "communication",
     "category_label": "Communication",
     "category_description": "Tools for messaging, communication, and collaboration."
@@ -84,7 +84,7 @@
     "stack_name": "docuseal",
     "stack_label": "docuseal",
     "stack_description": "A platform for signing and managing documents.",
-    "stack_status": "development",
+    "stack_status": "beta",
     "category_name": "content_management",
     "category_label": "Content Management",
     "category_description": "Tools for managing documents and content in an organization."
@@ -102,7 +102,7 @@
     "stack_name": "vaultwarden",
     "stack_label": "vaultwarden",
     "stack_description": "A self-hosted password manager.",
-    "stack_status": "development",
+    "stack_status": "beta",
     "category_name": "infrastructure",
     "category_label": "Infrastructure",
     "category_description": "Tools related to managing infrastructure and services, including monitoring, security, and more."
@@ -174,7 +174,7 @@
     "stack_name": "tooljet",
     "stack_label": "tooljet",
     "stack_description": "An open-source low-code platform for building internal tools.",
-    "stack_status": "development",
+    "stack_status": "beta",
     "category_name": "automation_and_low-code",
     "category_label": "Automation and Low-Code",
     "category_description": "Automation and low-code platforms for developing applications quickly."
@@ -228,7 +228,7 @@
     "stack_name": "kafka",
     "stack_label": "kafka",
     "stack_description": "A distributed streaming platform for handling real-time data feeds.",
-    "stack_status": "development",
+    "stack_status": "beta",
     "category_name": "communication",
     "category_label": "Communication",
     "category_description": "Tools for messaging, communication, and collaboration."
@@ -318,7 +318,7 @@
     "stack_name": "krayincrm",
     "stack_label": "krayincrm",
     "stack_description": "A CRM platform for managing customer relationships.",
-    "stack_status": "development",
+    "stack_status": "beta",
     "category_name": "project_management",
     "category_label": "Project Management",
     "category_description": "Tools for managing projects, tasks, and team collaboration."
@@ -327,7 +327,7 @@
     "stack_name": "humhub",
     "stack_label": "humhub",
     "stack_description": "A social netstable platform for creating and managing communities.",
-    "stack_status": "development",
+    "stack_status": "beta",
     "category_name": "social_and_marketing",
     "category_label": "Social and Marketing",
     "category_description": "Social media management and marketing automation tools."
@@ -408,7 +408,7 @@
     "stack_name": "calcom",
     "stack_label": "calcom",
     "stack_description": "A scheduling platform for booking appointments.",
-    "stack_status": "development",
+    "stack_status": "stable",
     "category_name": "scheduling_and_collaboration",
     "category_label": "Scheduling and Collaboration",
     "category_description": "Tools for scheduling and team collaboration."
@@ -552,7 +552,7 @@
     "stack_name": "chatwoot",
     "stack_label": "chatwoot",
     "stack_description": "An open-source customer support and engagement platform.",
-    "stack_status": "development",
+    "stack_status": "beta",
     "category_name": "communication",
     "category_label": "Communication",
     "category_description": "Tools for messaging, communication, and collaboration."
@@ -570,7 +570,7 @@
     "stack_name": "lowcoder",
     "stack_label": "lowcoder",
     "stack_description": "A low-code platform for building applications.",
-    "stack_status": "development",
+    "stack_status": "beta",
     "category_name": "automation_and_low-code",
     "category_label": "Automation and Low-Code",
     "category_description": "Automation and low-code platforms for developing applications quickly."
