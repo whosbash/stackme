@@ -6946,6 +6946,7 @@ make_airflow_folders(){
 
 make_folder_data_nodered(){
   mkdir -p "$TOOL_STACKS_DIR/nodered/data"
+  chown -R 1000:1000 "$TOOL_STACKS_DIR/nodered/data"
 }
 
 # Function to generate a firecrawl string
