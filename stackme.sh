@@ -1358,6 +1358,16 @@ progress_bar() {
     "$formatted_elapsed_time" "$formatted_final_time"
 }
 
+hash_credentials(){
+  local username="$1"
+  local password="$2"
+
+  echo "$(
+    htpasswd -nbB "$dashboard_username" "$dashboard_password" |
+      sed -e 's/\$/\$\$/g' -e 's/\\\//\//g'
+  )"
+}
+
 # Function to check the IP address of a domain
 check_domain_ip() {
   local domain="$1"
