@@ -8282,7 +8282,7 @@ generate_stack_config_ntfy() {
             "prompt": $prompt_items,
             "refresh": [
               {
-                "name": "ntfy_password",
+                "name": "ntfy_credentials",
                 "description": "Fetching ntfy password",
                 "command": "hash_credentials {{ntfy_username}} {{ntfy_password}}"
               }
