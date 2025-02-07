@@ -7173,9 +7173,9 @@ generate_stack_config_traefik() {
         "variables": {
           "traefik_email_ssl": $email_ssl,
           "traefik_url": $traefik_url,
-          "traefik_username": $dashboard_username,
-          "traefik_password": $dashboard_password,
-          "traefik_credentials": $dashboard_credentials,          
+          "traefik_username": $traefik_username,
+          "traefik_password": $traefik_password,
+          "traefik_credentials": $traefik_credentials,          
           "network_name": $network_name
         }
     }'
