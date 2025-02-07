@@ -5872,7 +5872,7 @@ deploy_stack() {
   if [[ $exit_code -ne 0 ]]; then
     # Allow installation if the stack is Traefik or Portainer
     if [[ "$stack_name" == "traefik" || "$stack_name" == "portainer" ]]; then
-      debug "Installing missing stack: $stack_name"
+      info "Installing missing startup stack: $stack_name"
     else
       # Otherwise, block installation
       error "Traefik and Portainer are required before deploying $stack_name."
@@ -7099,18 +7099,18 @@ generate_stack_config_traefik() {
 
   prompt_items='[
       {
-          "name": "email_ssl",
-          "label": "E-mail SSL",
-          "description": "E-mail to receive SSL notifications",
-          "required": "yes",
-          "validate_fn": "validate_email_value" 
-      },
-      {
           "name": "traefik_url",
           "label": "Traefik Domain Name",
           "description": "Domain name for Traefik",
           "required": "yes",
           "validate_fn": "validate_url_suffix" 
+      },
+      {
+          "name": "email_ssl",
+          "label": "E-mail SSL",
+          "description": "E-mail to receive SSL notifications",
+          "required": "yes",
+          "validate_fn": "validate_email_value" 
       },
       {
           "name": "dashboard_username",
@@ -7177,12 +7177,6 @@ generate_stack_config_traefik() {
           "dashboard_password": $dashboard_password,
           "dashboard_credentials": $dashboard_credentials,          
           "network_name": $network_name
-        },
-        "dependencies": [],
-        "actions": {
-          "refresh": [],
-          "prepare": [],
-          "finalize": []
         }
     }'
 }
