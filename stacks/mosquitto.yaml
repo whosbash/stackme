@@ -11,7 +11,7 @@ services:
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
     networks:
-      - traefik
+      - {{network_name}}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.mosquitto.rule=Host(`{{mosquitto_broker_url}}`)"
