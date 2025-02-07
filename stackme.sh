@@ -7106,21 +7106,21 @@ generate_stack_config_traefik() {
           "validate_fn": "validate_url_suffix" 
       },
       {
-          "name": "email_ssl",
+          "name": "traefik_email_ssl",
           "label": "E-mail SSL",
           "description": "E-mail to receive SSL notifications",
           "required": "yes",
           "validate_fn": "validate_email_value" 
       },
       {
-          "name": "dashboard_username",
+          "name": "traefik_username",
           "label": "Traefik Dashboard Username",
           "description": "Username for Traefik dashboard",
           "required": "yes",
           "validate_fn": "validate_username" 
       },
       {
-          "name": "dashboard_password",
+          "name": "traefik_password",
           "label": "Traefik Dashboard Password",
           "description": "Password for Traefik dashboard",
           "required": "yes",
@@ -7139,13 +7139,13 @@ generate_stack_config_traefik() {
 
   collected_object="$(process_prompt_items "$collected_items")"
 
-  email_ssl="$(echo "$collected_object" | jq -r '.email_ssl')"
+  traefik_email_ssl="$(echo "$collected_object" | jq -r '.traefik_email_ssl')"
   traefik_url="$(echo "$collected_object" | jq -r '.traefik_url')"
-  dashboard_username="$(echo "$collected_object" | jq -r '.dashboard_username')"
-  dashboard_password="$(echo "$collected_object" | jq -r '.dashboard_password')"
+  traefik_username="$(echo "$collected_object" | jq -r '.traefik_username')"
+  traefik_password="$(echo "$collected_object" | jq -r '.traefik_password')"
 
-  dashboard_credentials="$(
-    htpasswd -nbB "$dashboard_username" "$dashboard_password" |
+  traefik_credentials="$(
+    htpasswd -nbB "$traefik_username" "$traefik_password" |
       sed -e 's/\$/\$\$/g' -e 's/\\\//\//g'
   )"
 
@@ -7161,21 +7161,21 @@ generate_stack_config_traefik() {
   # Ensure everything is quoted correctly
   jq -n \
     --arg stack_name "$stack_name" \
-    --arg email_ssl "$email_ssl" \
+    --arg traefik_email_ssl "$traefik_email_ssl" \
     --arg traefik_url "$traefik_url" \
-    --arg dashboard_username "$dashboard_username" \
-    --arg dashboard_password "$dashboard_password" \
-    --arg dashboard_credentials "$dashboard_credentials" \
+    --arg traefik_username "$traefik_username" \
+    --arg traefik_password "$traefik_password" \
+    --arg traefik_credentials "$traefik_credentials" \
     --arg network_name "$network_name" \
     '{
         "name": $stack_name,
         "target": "swarm",
         "variables": {
-          "email_ssl": $email_ssl,
+          "traefik_email_ssl": $email_ssl,
           "traefik_url": $traefik_url,
-          "dashboard_username": $dashboard_username,
-          "dashboard_password": $dashboard_password,
-          "dashboard_credentials": $dashboard_credentials,          
+          "traefik_username": $dashboard_username,
+          "traefik_password": $dashboard_password,
+          "traefik_credentials": $dashboard_credentials,          
           "network_name": $network_name
         }
     }'
@@ -9048,7 +9048,14 @@ generate_stack_config_mattermost() {
           "name": $stack_name,
           "target": "portainer",
           "actions": {
-            "prompt": $prompt_items
+            "prompt": $prompt_items,
+            "refresh": [
+              {
+                "name": "postgres_password",
+                "description": "Fetch postgres password",
+                "command": "fetch_database_password postgres"
+              }
+            ]
           }
       }'
   ) || {
