@@ -6944,6 +6944,10 @@ make_airflow_folders(){
   mkdir -p "$TOOL_STACKS_DIR/airflow/"{config,logs,dags,plugins}
 }
 
+make_folder_data_nodered(){
+  mkdir -p "$TOOL_STACKS_DIR/nodered/data"
+}
+
 # Function to generate a firecrawl string
 generate_firecrawl_api_key(){
   echo "fc-$(random_string)"
@@ -9926,7 +9930,13 @@ generate_stack_config_nodered() {
           "name": $stack_name,
           "target": "portainer",
           "actions":{
-            "prompt": $prompt_items
+            "prompt": $prompt_items,
+            "prepare": [
+              {
+                "description": "Make folder data for NodeRed",
+                "command": "make_folder_data_nodered",
+              }
+            ]
           }
       }'
   ) || {
