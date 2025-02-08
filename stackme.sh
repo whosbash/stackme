@@ -5746,11 +5746,10 @@ generate_stack_config_pipeline() {
   dependencies="$(echo "$config_instructions" | jq -c '.dependencies // []')"
   actions="$(echo "$config_instructions" | jq -c '.actions // {}')"
 
-  debug "Generated stack configuration for stack '$stack_name'"
-  debug "Variables: $variables"
-  debug "Dependencies: $dependencies"
-  debug "Actions: $actions"
-  debug "Target: $target"
+  # Ensure each JSON variable is compact and valid
+  variables=$(echo "$variables" | jq -c .)
+  dependencies=$(echo "$dependencies" | jq -c .)
+  actions=$(echo "$actions" | jq -c .)
 
   jq -n \
     --arg stack_name "$stack_name" \
@@ -5764,7 +5763,7 @@ generate_stack_config_pipeline() {
           "variables": $variables,
           "dependencies": $dependencies,
           "actions": $actions
-      }' | jq . || {
+      }' || {
         error "Failed to generate JSON"
         return 1
     }
