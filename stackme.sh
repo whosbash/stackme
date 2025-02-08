@@ -9906,6 +9906,7 @@ generate_stack_config_mosquitto() {
                 "description": "Make folders for Mosquitto volumes",
                 "command": "make_folders_mosquitto"
               }
+            ]
           }
       }'
   ) || {
