@@ -5895,6 +5895,13 @@ deploy_stack() {
       wait_for_input
       return 1
     fi
+
+    # Check if the stack is WIP
+    if [[ "$stack_status" == "beta" ]]; then
+      warn_message="It might not work properly. Deployment will continue on your own risk."
+      warning "Stack '$stack_name' is under testing. $warn_message"
+      wait_for_input
+    fi
   fi
 
   # Check if the stack should be removed
