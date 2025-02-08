@@ -5746,11 +5746,6 @@ generate_stack_config_pipeline() {
   dependencies="$(echo "$config_instructions" | jq -c '.dependencies // []')"
   actions="$(echo "$config_instructions" | jq -c '.actions // {}')"
 
-  # Ensure each JSON variable is compact and valid
-  variables=$(echo "$variables" | jq -c .)
-  dependencies=$(echo "$dependencies" | jq -c .)
-  actions=$(echo "$actions" | jq -c .)
-
   jq -n \
     --arg stack_name "$stack_name" \
     --arg target "$target" \
@@ -8329,9 +8324,9 @@ generate_stack_config_redis_commander() {
             "prompt": $prompt_items,
             "refresh": [
               {
-                "name": "redisinsight_encryption_key",
-                "description": "Fetching redisinsight encryption key",
-                "command": "fetch_stack_variable redis redis_password"
+                "name": "redis_password",
+                "description": "Fetching redis password",
+                "command": "fetch_database_password redis"
               }
             ]
           }
