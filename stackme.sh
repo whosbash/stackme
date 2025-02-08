@@ -8298,6 +8298,48 @@ generate_stack_config_redisinsight() {
   generate_stack_config_pipeline "$config_instructions"
 }
 
+generate_stack_config_redis_commander() {
+  local stack_name="redis_commander"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "redis_commander_url",
+          "label": "Redis Commander domain name",
+          "description": "URL to access Redis Commander remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "dependencies": ["redis"],
+          "actions":{
+            "prompt": $prompt_items,
+            "refresh": [
+              {
+                "name": "redisinsight_encryption_key",
+                "description": "Fetching redisinsight encryption key",
+                "command": "fetch_stack_variable redis_password"
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
 # Function to generate Weavite service configuration JSON
 generate_stack_config_weavite() {
   local stack_name="weavite"
