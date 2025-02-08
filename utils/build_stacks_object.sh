@@ -83,9 +83,9 @@ declare -A descriptions=(
 declare -A categories_to_stacks
 categories_to_stacks=(
   ["Infrastructure"]="monitor uptimekuma glpi vaultwarden wuzapi unoapi yourls"
-  ["Data Storage"]="supabase clickhouse redis redisinsight pgvector iceberg minio mysql mariadb baserow postgres mongodb"
+  ["Data Storage"]="supabase clickhouse redis pgvector iceberg minio mysql mariadb baserow postgres mongodb"
   ["IoT"]="mosquitto nodered"
-  ["Data Management"]="pgadmin phpadmin"
+  ["Data Management"]="pgadmin phpadmin redis_commander redisinsight"
   ["Analytics"]="metabase"
   ["Project Management"]="openproject focalboard zep twentycrm evolution evolution_lite krayincrm"
   ["ERP"]="odoo"
@@ -125,16 +125,16 @@ categories_to_stacks=(
 
 # New array for categorizing tools as "stable" or "development"
 declare -A tool_status=(
-  ["affine"]="development"
+  ["affine"]="beta"
   ["clickhouse"]="stable"
   ["firecrawl"]="beta"
   ["langflow"]="beta"
-  ["monitor"]="development"
+  ["monitor"]="beta"
   ["ollama"]="beta"
   ["quepasa"]="beta"
   ["woofed"]="beta"
   ["airflow"]="beta"
-  ["dify"]="development"
+  ["dify"]="beta"
   ["flowise"]="beta"
   ["langfuse"]="beta"
   ["moodle"]="beta"
@@ -142,8 +142,8 @@ declare -A tool_status=(
   ["rabbitmq"]="stable"
   ["transcrevezap"]="stable"
   ["wordpress"]="beta"
-  ["anythingllm"]="development"
-  ["directus"]="development"
+  ["anythingllm"]="beta"
+  ["directus"]="beta"
   ["focalboard"]="stable"
   ["lowcoder"]="beta"
   ["mysql"]="stable"
@@ -152,7 +152,7 @@ declare -A tool_status=(
   ["twentycrm"]="stable"
   ["wuzapi"]="beta"
   ["appsmith"]="stable"
-  ["documenso"]="development"
+  ["documenso"]="beta"
   ["formbricks"]="stable"
   ["mariadb"]="stable"
   ["mosquitto"]="beta"
@@ -160,7 +160,8 @@ declare -A tool_status=(
   ["n8n"]="stable"
   ["pgadmin"]="stable"
   ["redisinsight"]="beta"
-  ["typebot"]="development"
+  ["redis_commander"]="beta"
+  ["typebot"]="beta"
   ["yourls"]="beta"
   ["baserow"]="beta"
   ["docuseal"]="beta"
@@ -169,7 +170,7 @@ declare -A tool_status=(
   ["nextcloud"]="beta"
   ["pgvector"]="stable"
   ["stirlingpdf"]="beta"
-  ["unoapi"]="development"
+  ["unoapi"]="beta"
   ["zep"]="stable"
   ["botpress"]="stable"
   ["easyappointments"]="beta"
@@ -190,7 +191,7 @@ declare -A tool_status=(
   ["chatwoot_nestor"]="beta"
   ["evolution_lite"]="stable"
   ["kafka"]="beta"
-  ["minio"]="development"
+  ["minio"]="beta"
   ["ntfy"]="stable"
   ["postgres"]="stable"
   ["tooljet"]="beta"
@@ -273,7 +274,8 @@ generate_stack_status_stats_percentage() {
   fi
 
   printf '%s\n' "${tool_status[@]}" | jq -R . | jq -s --arg total "$total_count" '
-    group_by(.) | map({(.[0]): { count: length, percentage: (length * 100 / ($total | tonumber)) }}) | add'
+    group_by(.) | map({(.[0]): { count: length, percentage: (length * 100 / ($total | tonumber)) }}) | add
+    | { development, beta, stable }'  # Force order of keys
 }
 
 sort_by_complexity_and_status(){
@@ -314,5 +316,6 @@ sort_by_complexity_and_status(){
 # Output the final JSON array with status
 time build_stack_objects | jq '.' > "./stacks/stacks.json"
 
-# generate_stack_status_stats
 sort_by_complexity_and_status "$1"
+
+generate_stack_status_stats_percentage

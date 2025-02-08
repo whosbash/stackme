@@ -2566,49 +2566,38 @@ create_error_item() {
 
 # Function to generate a JSON configuration for a service
 generate_schema_stack_config() {
-  local required_fields="$1"
-
-  # Start the JSON schema structure
-  local schema="{\"variables\": {"
-
-  # Generate properties for each required field
-  local first=true
-  for field in $required_fields; do
-    if [ "$first" = true ]; then
-      first=false
-    else
-      schema+="," # Add a comma between fields
-    fi
-    schema+="\"$field\": {\"type\": \"string\", \"minLength\": 1}"
-  done
-
-  # Add dependencies and actions as always-present fields
-  schema+='},
-    "dependencies": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1
+  local required_fields=($1)  # Convert input string to array
+  
+  # Initialize an empty JSON object with formatted structure
+  local schema=$(jq -n '
+    {
+      variables: {},
+      target: {
+        type: "string",
+        values: ["swarm", "portainer"]
       }
-    },
-    "actions": {
-      "type": "object",
-      "properties": {
-        "refresh": {
-          "type": "array",
-          "items": {"type": "object"}
-        },
-        "prepare": {
-          "type": "array",
-          "items": {"type": "object"}
-        },
-        "finalize": {
-          "type": "array",
-          "items": {"type": "object"}
+      dependencies: {
+        type: "array",
+        items: { type: "string", minLength: 1 }
+      },
+      actions: {
+        type: "object",
+        properties: {
+          refresh: { type: "array", items: { type: "object" } },
+          refresh: { type: "array", items: { type: "object" } },
+          prepare: { type: "array", items: { type: "object" } },
+          finalize: { type: "array", items: { type: "object" } }
         }
       }
-    }
-  }'
+    }')
+
+  # Add required fields to "variables"
+  for field in "${required_fields[@]}"; do
+    schema=$(\
+      echo "$schema" | \
+      jq --arg key "$field" '.variables[$key] = {type: "string", minLength: 1}'
+    )
+  done
 
   echo "$schema"
 }
@@ -6991,6 +6980,31 @@ manage_prometheus_config_file() {
   return 0
 }
 
+manage_this_prometheus_config_file() {
+  local urls=("$@")
+
+  prometheus_config_path="${TOOL_BASE_DIR}/prometheus/prometheus.yml"
+  manage_prometheus_config_file "$prometheus_config_path" \
+    "${urls[@]}"
+}
+
+create_prometheus_datasource(){
+  local prometheus_url="$1"
+
+  mkdir -p "${TOOL_BASE_DIR}/prometheus"
+
+  cat >"${TOOL_BASE_DIR}/prometheus/datasource.yml" <<EOL
+apiVersion: 1
+datasources:
+- name: Prometheus
+  type: prometheus
+  url: https://$prometheus_url
+  isDefault: true
+  access: proxy
+  editable: true
+EOL
+}
+
 make_airflow_folders(){
   mkdir -p "$TOOL_STACKS_DIR/airflow/"{config,logs,dags,plugins}
 }
@@ -7232,10 +7246,14 @@ generate_stack_config_portainer() {
 generate_stack_config_monitor() {
   local stack_name="monitor"
 
-  total_steps=4
-
-  step_info 1 $total_steps "Prompting required Monitor information"
   prompt_items='[
+      {
+          "name": "grafana_url",
+          "label": "Grafana Domain Name",
+          "description": "Domain name for Grafana",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      },
       {
           "name": "prometheus_url",
           "label": "Prometheus Domain Name",
@@ -7265,13 +7283,6 @@ generate_stack_config_monitor() {
           "validate_fn": "validate_url_suffix" 
       },
       {
-          "name": "grafana_url",
-          "label": "Grafana Domain Name",
-          "description": "Domain name for Grafana",
-          "required": "yes",
-          "validate_fn": "validate_url_suffix" 
-      },
-      {
         "name": "kibana_url",
         "label": "Kibana Domain Name",
         "description": "Domain name for Kibana",
@@ -7280,88 +7291,25 @@ generate_stack_config_monitor() {
       }
   ]'
 
-  display_prompt_items "$prompt_items"
-
-  collected_items="$(run_collection_process "$prompt_items")"
-
-  if [[ "$collected_items" == "[]" ]]; then
-    step_error 1 $total_steps "Unable to prompt Monitor configuration."
-    return 1
-  fi
-
-  collected_object="$(process_prompt_items "$collected_items")"
-
-  jaeger_url="$(echo "$collected_object" | jq -r '.jaeger_url')"
-  prometheus_url="$(echo "$collected_object" | jq -r '.prometheus_url')"
-  grafana_url="$(echo "$collected_object" | jq -r '.grafana_url')"
-  node_exporter_url="$(echo "$collected_object" | jq -r '.node_exporter_url')"
-  cadvisor_url="$(echo "$collected_object" | jq -r '.cadvisor_url')"
-  kibana_url="$(echo "$collected_object" | jq -r '.kibana_url')"
-
-  step_info 2 $total_steps "Retrieving network name"
-  local network_name="$(get_network_name)"
-
-  if [[ -z "$network_name" ]]; then
-    reason="Either stackme was not initialized properly or server_info.json file is corrupted."
-    step_error 2 $total_steps "Unable to retrieve network name. $reason"
-    return 1
-  fi
-
-  step_info 3 $total_steps "Add scrape_configs to prometheus.yml"
-
-  # Ensure everything is quoted correctly
-  prometheus_config_path="${TOOL_BASE_DIR}/prometheus/prometheus.yml"
-  manage_prometheus_config_file "$prometheus_config_path" \
-    "$prometheus_url" "$jaeger_url" "$node_exporter_url" "$cadvisor_url"
-
-  handle_exit "$?" 3 "$total_steps" "$message"
-
-  message="Creating file datasource.yml"
-  step_info 4 $total_steps "$message"
-
-  mkdir -p "${TOOL_BASE_DIR}/prometheus"
-
-  cat >"${TOOL_BASE_DIR}/prometheus/datasource.yml" <<EOL
-apiVersion: 1
-datasources:
-- name: Prometheus
-  type: prometheus
-  url: https://$prometheus_url
-  isDefault: true
-  access: proxy
-  editable: true
-EOL
-
-  handle_exit "$?" 4 "$total_steps" "$message"
-
   # Ensure everything is quoted correctly
   jq -n \
     --arg stack_name "$stack_name" \
-    --arg jaeger_url "$jaeger_url" \
-    --arg prometheus_url "$prometheus_url" \
-    --arg node_exporter_url "$node_exporter_url" \
-    --arg cadvisor_url "$cadvisor_url" \
-    --arg grafana_url "$grafana_url" \
-    --arg kibana_url "$kibana_url" \
-    --arg network_name "$network_name" \
+    --arg prompt_items "$prompt_items" \
     '{
         "name": $stack_name,
         "target": "portainer",
-        "variables": {
-          "jaeger_url": $jaeger_url,
-          "prometheus_url": $prometheus_url,
-          "node_exporter_url": $node_exporter_url,
-          "cadvisor_url": $cadvisor_url,
-          "grafana_url": $grafana_url,
-          "kibana_url": $kibana_url,
-          "network_name": $network_name
-        },
-        "dependencies": [],
         "actions": {
-          "refresh": [],
-          "prepare": [],
-          "finalize": []
-        }
+            "prompt": $prompt_items,
+            "prepare": [
+              {
+                "description": "Creating prometheus datasource", 
+                "command": "create_prometheus_datasource {{prometheus_url}}",
+              },
+              {
+                "description": "Creating prometheus scrape config", 
+                "command": "manage_this_prometheus_config_file {{prometheus_url}} {{jaeger_url}} {{node_exporter_url}} {{cadvisor_url}}",
+              }
+            ]
     }'
 }
 
@@ -10608,6 +10556,485 @@ generate_stack_config_krayincrm(){
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
 }
+
+generate_stack_config_affine(){
+  local stack_name="affine"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+        "name": "affine_url",
+        "label": "Affine URL",
+        "description": "URL to access Affine remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      },
+      {
+        "name": "affine_email",
+        "label": "Affine UI email",
+        "description": "E-mail to access Affine remotely",
+        "required": "yes",
+        "validate_fn": "validate_username"
+      },
+      {
+        "name": "affine_password",
+        "label": "Affine UI password",
+        "description": "Password to access Affine remotely",
+        "required": "yes",
+        "validate_fn": "validate_password"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "dependencies": ["postgres"],
+          "actions":{
+            "prompt": $prompt_items,
+            "refresh": [
+              {
+                "name": "postgres_password",
+                "description": "Fetch postgres password",
+                "command": "fetch_database_password postgres",
+              },
+              {
+                "description": "Custom smtp with identifier affine",
+                "command": "custom_smtp_information affine",
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+generate_stack_config_minio(){
+  local stack_name="minio"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+        "name": "minio_url",
+        "label": "Minio URL",
+        "description": "URL to access Minio remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      },
+      {
+        "name": "minio_username",
+        "label": "Minio username",
+        "description": "E-mail to access Minio remotely",
+        "required": "yes",
+        "validate_fn": "validate_username"
+      },
+      {
+        "name": "minio_password",
+        "label": "Minio password",
+        "description": "Password to access Minio remotely",
+        "required": "yes",
+        "validate_fn": "validate_password"
+      },
+      {
+        "name": "s3_url",
+        "label": "S3 URL",
+        "description": "URL to access S3 remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      },
+      {
+        "name": "s3_access_key_id",
+        "label": "S3 access key",
+        "description": "Access key to access S3 remotely",
+        "required": "yes",
+        "validate_fn": "validate_username"
+      },
+      {
+        "name": "s3_access_key_secret",
+        "label": "S3 secret key",
+        "description": "Secret key to access S3 remotely",
+        "required": "yes",
+        "validate_fn": "validate_password"
+      },
+      {
+        "name": "s3_region",
+        "label": "S3 region",
+        "description": "S3 region on AWS",
+        "required": "yes",
+        "validate_fn": "validate_password"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "dependencies": [],
+          "actions":{
+            "prompt": $prompt_items
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+generate_stack_config_dify(){
+  local stack_name="dify" 
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+        "name": "dify_url",
+        "label": "Dify URL",
+        "description": "URL to access Dify remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      },
+      {
+        "name": "dify_api_url",
+        "label": "Dify API URL",
+        "description": "URL to access Dify API remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      },
+      {
+        "name": "s3_url",
+        "label": "S3 URL",
+        "description": "URL to access S3 remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      },
+      {
+        "name": "s3_access_key_id",
+        "label": "S3 access key id",
+        "description": "Access key id to access S3 remotely",
+        "required": "yes",
+        "validate_fn": "validate_username"
+      },
+      {
+        "name": "s3_access_key_secret",
+        "label": "S3 secret key",
+        "description": "Secret key to access S3 remotely",
+        "required": "yes",
+        "validate_fn": "validate_password"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "dependencies": ["redis", "postgres", "weavite"],
+          "actions":{
+            "prompt": $prompt_items,
+            "refresh": [
+              {
+                "name": "postgres_password",
+                "description": "Fetch postgres password",
+                "command": "fetch_database_password postgres"
+              },
+              { 
+                "name": "dify_sandbox_api_key",
+                "description": "Sandbox API key",
+                "command": "random_string"
+              },
+              {
+                "name": "dify_secret_key",
+                "description": "Secret key",
+                "command": "random_string"
+              },
+              {
+                "name": "weavite_token",
+                "description": "Fetch weaviate token",
+                "command": "fetch_stack_variable weavite weavite_token"
+              },
+              {
+                "description": "Custom smtp with identifier dify",
+                "command": "custom_smtp_information dify"
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+generate_stack_config_unoapi(){
+  local stack_name="unoapi" 
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+        "name": "unoapi_url",
+        "label": "UnoAPI URL",
+        "description": "URL to access UnoAPI remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "dependencies": ["rabbitmq", "redis", "minio"],
+          "actions":{
+            "prompt": $prompt_items,
+            "refresh": [
+              { 
+                "name": "unoapi_token",
+                "description": "Uno API token",
+                "command": "random_string"
+              },
+              { 
+                "name": "rabbitmq_username",
+                "description": "RabbitMQ username",
+                "command": "fetch_stack_variable rabbitmq rabbitmq_username"
+              },
+              { 
+                "name": "rabbitmq_password",
+                "description": "RabbitMQ password",
+                "command": "fetch_stack_variable rabbitmq rabbitmq_password"
+              },
+              { 
+                "name": "s3_url",
+                "description": "S3 URL on AWS",
+                "command": "fetch_stack_variable minio s3_url"
+              },
+              { 
+                "name": "s3_access_key_id",
+                "description": "S3 access key id on AWS",
+                "command": "fetch_stack_variable minio s3_access_key_id"
+              },
+              { 
+                "name": "s3_access_key_secret",
+                "description": "S3 secret key on AWS",
+                "command": "fetch_stack_variable minio s3_access_key_secret"
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+} 
+
+generate_stack_config_documenso(){
+  local stack_name="documenso" 
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+        "name": "documenso_url",
+        "label": "Documenso URL",
+        "description": "URL to access Documenso remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      },
+      {
+        "name": "documenso_url",
+        "label": "Documenso URL",
+        "description": "URL to access Documenso remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "dependencies": ["rabbitmq", "redis", "minio"],
+          "actions":{
+            "prompt": $prompt_items,
+            "refresh": [
+              { 
+                "name": "rabbitmq_username",
+                "description": "RabbitMQ username",
+                "command": "fetch_stack_variable rabbitmq rabbitmq_username"
+              },
+              { 
+                "name": "rabbitmq_password",
+                "description": "RabbitMQ password",
+                "command": "fetch_stack_variable rabbitmq rabbitmq_password"
+              },
+              { 
+                "name": "s3_url",
+                "description": "S3 URL on AWS",
+                "command": "fetch_stack_variable minio s3_url"
+              },
+              { 
+                "name": "s3_access_key_id",
+                "description": "S3 access key id on AWS",
+                "command": "fetch_stack_variable minio s3_access_key_id"
+              },
+              { 
+                "name": "s3_access_key_secret",
+                "description": "S3 secret key on AWS",
+                "command": "fetch_stack_variable minio s3_access_key_secret"
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+generate_stack_config_directus(){
+  local stack_name="directus" 
+ 
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+        "name": "directus_url",
+        "label": "Directus URL",
+        "description": "URL to access Directus remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      },
+      {
+        "name": "directus_email",
+        "label": "Directus e-mail",
+        "description": "E-mail to access Directus remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      },
+      {
+        "name": "directus_password",
+        "label": "Directus password",
+        "description": "Password to access Directus remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "dependencies": ["minio", "postgres"],
+          "actions":{
+            "prompt": $prompt_items,
+            "refresh": [
+              { 
+                "name": "s3_url",
+                "description": "S3 URL on AWS",
+                "command": "fetch_stack_variable minio s3_url"
+              },
+              { 
+                "name": "s3_access_key_id",
+                "description": "S3 access key id on AWS",
+                "command": "fetch_stack_variable minio s3_access_key_id"
+              },
+              { 
+                "name": "s3_access_key_secret",
+                "description": "S3 secret key on AWS",
+                "command": "fetch_stack_variable minio s3_access_key_secret"
+              },
+              {
+                "description": "Custom smtp with identifier directus",
+                "command": "custom_smtp_information dify"
+              },
+              {
+                "name": "postgres_password",
+                "description": "Fetch postgres password",
+                "command": "fetch_database_password postgres"
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+generate_stack_config_anythingllm(){
+  local stack_name="anythingllm" 
+ 
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+        "name": "anythingllm_url",
+        "label": "AnythingLLM URL",
+        "description": "URL to access AnythingLLM remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "dependencies": ["minio", "postgres"],
+          "actions":{
+            "prompt": $prompt_items,
+            "refresh": [
+              {
+                "name": "qdrant_api_key",
+                "description": "Generate qdrant api key",
+                "command": "random_string"
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+} 
 
 #################################### END OF STACK CONFIGURATION ###################################
 

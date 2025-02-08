@@ -18,14 +18,14 @@ services:
       - UNOAPI_AUTH_TOKEN=any
 
       ## Configurações da Uno API
-      - IGNORE_GROUP_MESSAGES={{unoapi_ignore_group_messages}}
+      - IGNORE_GROUP_MESSAGES=false
       - IGNORE_BROADCAST_STATUSES=
-      - IGNORE_BROADCAST_MESSAGES={{unoapi_ignore_broadcast_messages}}
-      - IGNORE_STATUS_MESSAGE={{unoapi_ignore_status_message}}
-      - IGNORE_OWN_MESSAGES={{unoapi_ignore_own_messages}}
+      - IGNORE_BROADCAST_MESSAGES=false
+      - IGNORE_STATUS_MESSAGE=false
+      - IGNORE_OWN_MESSAGES=false
       - REJECT_CALLS=
       - REJECT_CALLS_WEBHOOK=
-      - SEND_CONNECTION_STATUS={{unoapi_send_connection_status}}
+      - SEND_CONNECTION_STATUS=true
 
       ## Sobre Webhook
       - WEBHOOK_URL=https://{{unoapi_url}}/webhooks/whatsapp
@@ -33,9 +33,9 @@ services:
       - WEBHOOK_TOKEN={{unoapi_token}}
 
       ## Dados do Minio/S3
-      - STORAGE_ENDPOINT=https://{{unoapi_s3_url}}
-      - STORAGE_ACCESS_KEY_ID={{unoapi_s3_access_key}}
-      - STORAGE_SECRET_ACCESS_KEY={{unoapi_s3_secret_key}}
+      - STORAGE_ENDPOINT=https://{{s3_url}}
+      - STORAGE_ACCESS_KEY_ID={{s3_access_key}}
+      - STORAGE_SECRET_ACCESS_KEY={{s3_secret_key}}
       - STORAGE_BUCKET_NAME=unoapi
       - STORAGE_FORCE_PATH_STYLE=true
 

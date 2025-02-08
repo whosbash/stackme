@@ -31,9 +31,9 @@
     "stack_label": "redisinsight",
     "stack_description": "A graphical interface for managing Redis databases.",
     "stack_status": "beta",
-    "category_name": "data_storage",
-    "category_label": "Data Storage",
-    "category_description": "Tools for managing and storing data, from databases to storage services."
+    "category_name": "data_management",
+    "category_label": "Data Management",
+    "category_description": "Tools for managing and administrating databases."
   },
   {
     "stack_name": "iceberg",
@@ -66,7 +66,7 @@
     "stack_name": "typebot",
     "stack_label": "typebot",
     "stack_description": "A chatbot development platform for building and managing bots.",
-    "stack_status": "development",
+    "stack_status": "beta",
     "category_name": "communication",
     "category_label": "Communication",
     "category_description": "Tools for messaging, communication, and collaboration."
@@ -120,7 +120,7 @@
     "stack_name": "documenso",
     "stack_label": "documenso",
     "stack_description": "A document management system for storing and organizing files.",
-    "stack_status": "development",
+    "stack_status": "beta",
     "category_name": "content_management",
     "category_label": "Content Management",
     "category_description": "Tools for managing documents and content in an organization."
@@ -165,7 +165,7 @@
     "stack_name": "directus",
     "stack_label": "directus",
     "stack_description": "An open-source headless CMS for managing content.",
-    "stack_status": "development",
+    "stack_status": "beta",
     "category_name": "web_development",
     "category_label": "Web Development",
     "category_description": "Tools for building and managing websites and web applications."
@@ -201,7 +201,7 @@
     "stack_name": "affine",
     "stack_label": "affine",
     "stack_description": "A data science tool for building machine learning models.",
-    "stack_status": "development",
+    "stack_status": "beta",
     "category_name": "ai",
     "category_label": "AI",
     "category_description": "AI and Natural Language Processing tools to build and deploy models."
@@ -246,7 +246,7 @@
     "stack_name": "dify",
     "stack_label": "dify",
     "stack_description": "A platform for automating and managing workflows.",
-    "stack_status": "development",
+    "stack_status": "beta",
     "category_name": "automation_and_low-code",
     "category_label": "Automation and Low-Code",
     "category_description": "Automation and low-code platforms for developing applications quickly."
@@ -282,7 +282,7 @@
     "stack_name": "anythingllm",
     "stack_label": "anythingllm",
     "stack_description": "A platform for stable with large language models.",
-    "stack_status": "development",
+    "stack_status": "beta",
     "category_name": "ai",
     "category_label": "AI",
     "category_description": "AI and Natural Language Processing tools to build and deploy models."
@@ -363,7 +363,7 @@
     "stack_name": "unoapi",
     "stack_label": "unoapi",
     "stack_description": "An API management platform.",
-    "stack_status": "development",
+    "stack_status": "beta",
     "category_name": "infrastructure",
     "category_label": "Infrastructure",
     "category_description": "Tools related to managing infrastructure and services, including monitoring, security, and more."
@@ -642,7 +642,7 @@
     "stack_name": "minio",
     "stack_label": "minio",
     "stack_description": "An open-source object storage service compatible with Amazon S3.",
-    "stack_status": "development",
+    "stack_status": "beta",
     "category_name": "data_storage",
     "category_label": "Data Storage",
     "category_description": "Tools for managing and storing data, from databases to storage services."
@@ -669,7 +669,7 @@
     "stack_name": "monitor",
     "stack_label": "monitor",
     "stack_description": "A system monitoring tool for tracking performance and uptime.",
-    "stack_status": "development",
+    "stack_status": "beta",
     "category_name": "infrastructure",
     "category_label": "Infrastructure",
     "category_description": "Tools related to managing infrastructure and services, including monitoring, security, and more."

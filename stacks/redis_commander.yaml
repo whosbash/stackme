@@ -1,0 +1,38 @@
+version: "3"
+
+services:
+  redis-commander:
+      image: ghcr.io/joeferner/redis-commander:latest
+      environment:
+        HTTP_USER: default
+        HTTP_PASSWORD: {{redis_password}}
+        VIRTUAL_PORT: 8085
+        LETSENCRYPT_HOST: {{redis_commander_url}}
+        VIRTUAL_HOST: {{redis_commander_url}}
+        REDIS_HOST: redis
+        REDIS_PASSWORD: {{redis_password}}
+      networks:
+        - {{network_name}}
+      deploy:
+        resources:
+          limits:
+            cpus: '0.50'
+            memory: 512M
+          reservations:
+            cpus: '0.25'
+            memory: 256M
+        labels:
+          - traefik.enable=true
+          - traefik.http.routers.redis_commander.rule=Host(`{{redis_commander_url}}`)
+          - traefik.http.routers.redis_commander.entrypoints=websecure
+          - traefik.http.routers.redis_commander.tls.certresolver=letsencryptresolver
+          - traefik.http.services.redis_commander.loadbalancer.server.port=8085
+          - traefik.http.routers.redis_commander.priority=1
+          - traefik.http.services.redis_commander.loadbalancer.passHostHeader=true
+          - traefik.http.routers.redis_commander.service=redis_commander 
+
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}

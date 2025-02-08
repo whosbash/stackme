@@ -18,7 +18,7 @@ services:
       - LOG_LEVEL=INFO
 
       ## Secret Key
-      - SECRET_KEY={{secret_key}}
+      - SECRET_KEY={{dify_secret_key}}
 
       ## Outras Url (vazio = mesmo do APP_WEB_URL)
       - CONSOLE_WEB_URL=https://{{dify_url}}
@@ -56,8 +56,8 @@ services:
       - STORAGE_LOCAL_PATH=storage
       - S3_ENDPOINT=https://{{s3_url}}
       - S3_BUCKET_NAME=dify
-      - S3_ACCESS_KEY={{s3_access_key}}
-      - S3_SECRET_KEY={{s3_secret_key}}
+      - S3_ACCESS_KEY={{s3_access_key_id}}
+      - S3_SECRET_KEY={{s3_access_key_secret}}
 
       ## Sandbox Settings
       - CODE_EXECUTION_ENDPOINT=http://dify_sandbox:8194
@@ -72,7 +72,7 @@ services:
 
       ## Weaviate
       - VECTOR_STORE=weaviate
-      - WEAVIATE_ENDPOINT=http://dify_weaviate:8080
+      - WEAVIATE_ENDPOINT=http://weaviate:8080
       - WEAVIATE_API_KEY={{weaviate_token}}
       - WEAVIATE_CLIENT_TIMEOUT=20
 
@@ -165,8 +165,8 @@ services:
       - STORAGE_LOCAL_PATH=storage
       - S3_ENDPOINT=https://{{s3_url}}
       - S3_BUCKET_NAME=dify
-      - S3_ACCESS_KEY={{s3_access_key}}
-      - S3_SECRET_KEY={{s3_secret_key}}
+      - S3_ACCESS_KEY={{s3_access_key_id}}
+      - S3_SECRET_KEY={{s3_access_key_secret}}
 
       ## Configurações do Sandbox
       - CODE_EXECUTION_ENDPOINT=http://dify_sandbox:8194
