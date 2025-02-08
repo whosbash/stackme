@@ -34,6 +34,7 @@ declare -A descriptions=(
   ["n8n"]="An open-source workflow automation tool."
   ["pgadmin"]="A popular web-based interface for managing PostgreSQL databases."
   ["redisinsight"]="A graphical interface for managing Redis databases."
+  ["redis_commander"]="Another graphical interface for managing Redis databases."
   ["typebot"]="A chatbot development platform for building and managing bots."
   ["yourls"]="A URL shortening service."
   ["baserow"]="A no-code platform for building collaborative databases."

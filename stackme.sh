@@ -10294,7 +10294,7 @@ generate_stack_config_chatwoot(){
             "prompt": $prompt_items,
             "refresh": [
               {
-                "name": "chatwoot_encryption_key"
+                "name": "chatwoot_encryption_key",
                 "description": "Generate chatwoot encryption key",
                 "command": "random_string"
               },
@@ -10359,7 +10359,7 @@ generate_stack_config_chatwoot_nestor(){
             "prompt": $prompt_items,
             "refresh": [
               {
-                "name": "chatwoot_encryption_key"
+                "name": "chatwoot_encryption_key",
                 "description": "Generate chatwoot encryption key",
                 "command": "random_string",
               },

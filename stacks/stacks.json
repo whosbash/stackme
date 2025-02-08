@@ -504,6 +504,15 @@
     "category_description": "AI and Natural Language Processing tools to build and deploy models."
   },
   {
+    "stack_name": "redis_commander",
+    "stack_label": "redis commander",
+    "stack_description": "Another graphical interface for managing Redis databases.",
+    "stack_status": "beta",
+    "category_name": "data_management",
+    "category_label": "Data Management",
+    "category_description": "Tools for managing and administrating databases."
+  },
+  {
     "stack_name": "weavite",
     "stack_label": "weavite",
     "stack_description": "A tool for automating website scraping and analysis.",
