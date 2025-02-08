@@ -588,7 +588,7 @@
     "stack_name": "langflow",
     "stack_label": "langflow",
     "stack_description": "An AI tool for managing workflows for large language models (LLMs).",
-    "stack_status": "stable",
+    "stack_status": "beta",
     "category_name": "ai",
     "category_label": "AI",
     "category_description": "AI and Natural Language Processing tools to build and deploy models."
@@ -606,7 +606,7 @@
     "stack_name": "chatwoot_nestor",
     "stack_label": "chatwoot nestor",
     "stack_description": "An extension of the Chatwoot platform for advanced features.",
-    "stack_status": "development",
+    "stack_status": "beta",
     "category_name": "communication",
     "category_label": "Communication",
     "category_description": "Tools for messaging, communication, and collaboration."

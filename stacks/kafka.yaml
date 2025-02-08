@@ -51,6 +51,8 @@ services:
       KAFKA_REST_HOST_NAME: kafka-rest-proxy
       KAFKA_REST_LISTENERS: http://0.0.0.0:8083
       KAFKA_REST_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - kafka
     deploy:
       replicas: 1
       labels:

@@ -10339,16 +10339,16 @@ generate_stack_config_chatwoot(){
               {
                 "name": "chatwoot_encryption_key"
                 "description": "Generate chatwoot encryption key",
-                "command": "random_string",
+                "command": "random_string"
               },
               {
                 "name": "postgres_password",
                 "description": "Fetch postgres password",
-                "command": "fetch_database_password postgres",
+                "command": "fetch_database_password postgres"
               },
               {
                 "description": "Custom smtp with identifier chatwoot",
-                "command": "custom_smtp_information chatwoot",
+                "command": "custom_smtp_information chatwoot"
               }
             ],
             "prepare": [

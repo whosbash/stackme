@@ -187,7 +187,7 @@ declare -A tool_status=(
   ["supabase"]="development"
   ["vaultwarden"]="beta"
   ["chatwoot"]="beta"
-  ["chatwoot_nestor"]="development"
+  ["chatwoot_nestor"]="beta"
   ["evolution_lite"]="stable"
   ["kafka"]="beta"
   ["minio"]="development"
@@ -314,5 +314,5 @@ sort_by_complexity_and_status(){
 # Output the final JSON array with status
 time build_stack_objects | jq '.' > "./stacks/stacks.json"
 
-# # generate_stack_status_stats
-# sort_by_complexity_and_status "$1"
+# generate_stack_status_stats
+sort_by_complexity_and_status "$1"
