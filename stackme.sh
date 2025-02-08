@@ -8320,13 +8320,13 @@ generate_stack_config_redis_commander() {
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["redis"],
-          "actions":{
+          "actions": {
             "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "redisinsight_encryption_key",
                 "description": "Fetching redisinsight encryption key",
-                "command": "fetch_stack_variable redis_password"
+                "command": "fetch_stack_variable redis redis_password"
               }
             ]
           }
@@ -10156,21 +10156,21 @@ generate_stack_config_humhub(){
           "label": "Humhub Username",
           "description": "Username to access Humhub remotely",
           "required": "yes",
-          "validate_fn": "validate_empty_value"
+          "validate_fn": "validate_username"
       },
       {
           "name": "humhub_password",
           "label": "Humhub Password",
           "description": "Password to access Humhub remotely",
           "required": "yes",
-          "validate_fn": "validate_empty_value"
+          "validate_fn": "validate_password"
       },
       {
         "name": "humhub_email",
         "label": "Humhub Email",
         "description": "Email to access Humhub remotely",
         "required": "yes",
-        "validate_fn": "validate_empty_value"
+        "validate_fn": "validate_email"
       }
   ]')
 
