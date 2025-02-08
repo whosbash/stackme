@@ -8950,7 +8950,7 @@ generate_stack_config_nocobase() {
             ],
             "prepare": [
               {
-                "name": "create_postgres_database",
+                "name": "create_flowise_database",
                 "description": "Create Flowise database",
                 "command": "create_postgres_database nocobase"
               }
@@ -10068,6 +10068,7 @@ generate_stack_config_baserow(){
             ],
             "prepare": [
               {
+                "name": "create_baserow_database",
                 "description": "Create postgres database baserow",
                 "command": "create_postgres_database baserow",
               }
@@ -10125,6 +10126,7 @@ generate_stack_config_docuseal(){
             ],
             "prepare": [
               {
+                "name": "create_docuseal_database",
                 "description": "Create postgres database docuseal",
                 "command": "create_postgres_database docuseal",
               }
@@ -10353,6 +10355,7 @@ generate_stack_config_chatwoot(){
             ],
             "prepare": [
               {
+                "name": "chatwoot_database",
                 "description": "Create database chatwoot on Postgres",
                 "command": "create_postgres_database chatwoot",
               }
@@ -10417,6 +10420,7 @@ generate_stack_config_chatwoot_nestor(){
             ],
             "prepare": [
               {
+                "name": "chatwoot_database",
                 "description": "Create database chatwoot on Postgres",
                 "command": "create_postgres_database chatwoot",
               }
@@ -10490,6 +10494,7 @@ generate_stack_config_tooljet(){
             ],
             "prepare": [
               {
+                "name": "chatwoot_database",
                 "description": "Create database chatwoot on Postgres",
                 "command": "create_postgres_database chatwoot",
               }
