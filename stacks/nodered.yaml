@@ -25,7 +25,7 @@ services:
         - traefik.enable=true
         - traefik.http.routers.nodered.rule=Host(`{{nodered_url}}`)
         - traefik.http.routers.nodered.entrypoints=websecure
-        - traefik.http.services.nodered.loadbalancer.server.port=8080
+        - traefik.http.services.nodered.loadbalancer.server.port=1880
         - traefik.http.routers.nodered.service=nodered
         - traefik.http.routers.nodered.tls.certresolver=letsencryptresolver
         - com.centurylinklabs.watchtower.enable=true

@@ -453,7 +453,7 @@
     "stack_name": "nodered",
     "stack_label": "nodered",
     "stack_description": "An open-source low-code platform for building IoT applications.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "iot",
     "category_label": "IoT",
     "category_description": "Tools for working with IoT devices and data."
