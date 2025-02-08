@@ -4,7 +4,7 @@
 stty -icanon min 1 time 0
 
 # Ensure terminal settings are restored on script exit
-trap "stty sane" EXIT
+trap 'stty sane; exit' SIGINT SIGTERM EXIT
 
 ############################### BEGIN OF DISPLAY-RELATED CONSTANTS ############################
 
