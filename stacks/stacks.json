@@ -102,7 +102,7 @@
     "stack_name": "vaultwarden",
     "stack_label": "vaultwarden",
     "stack_description": "A self-hosted password manager.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "infrastructure",
     "category_label": "Infrastructure",
     "category_description": "Tools related to managing infrastructure and services, including monitoring, security, and more."

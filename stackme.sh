@@ -5746,6 +5746,12 @@ generate_stack_config_pipeline() {
   dependencies="$(echo "$config_instructions" | jq -c '.dependencies // []')"
   actions="$(echo "$config_instructions" | jq -c '.actions // {}')"
 
+  debug "Generated stack configuration for stack '$stack_name'"
+  debug "Variables: $variables"
+  debug "Dependencies: $dependencies"
+  debug "Actions: $actions"
+  debug "Target: $target"
+
   jq -n \
     --arg stack_name "$stack_name" \
     --arg target "$target" \
@@ -9942,6 +9948,7 @@ generate_stack_config_nodered() {
             "prompt": $prompt_items,
             "prepare": [
               {
+                "name": "make_folder_data_nodered",
                 "description": "Make folder data for NodeRed",
                 "command": "make_folder_data_nodered",
               }
