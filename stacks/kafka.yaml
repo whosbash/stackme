@@ -13,6 +13,8 @@ services:
       placement:
         constraints:
           - node.role == manager
+    networks:
+      - {{network_name}}
 
   kafka:
     image: confluentinc/cp-kafka:7.5.0
