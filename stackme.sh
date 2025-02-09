@@ -7340,26 +7340,32 @@ generate_stack_config_monitor() {
   ]'
 
   # Ensure everything is quoted correctly
-  jq -n \
-    --arg stack_name "$stack_name" \
-    --arg prompt_items "$prompt_items" \
-    '{
-        "name": $stack_name,
-        "target": "portainer",
-        "actions": {
-            "prompt": $prompt_items,
-            "prepare": [
-              {
-                "description": "Creating prometheus datasource", 
-                "command": "create_prometheus_datasource {{prometheus_url}}",
-              },
-              {
-                "description": "Creating prometheus scrape config", 
-                "command": "manage_this_prometheus_config_file {{prometheus_url}} {{jaeger_url}} {{node_exporter_url}} {{cadvisor_url}}",
-              }
-            ]
-        }
-    }'
+  config_instructions=$(jq -n \
+      --arg stack_name "$stack_name" \
+      --arg prompt_items "$prompt_items" \
+      '{
+          "name": $stack_name,
+          "target": "portainer",
+          "actions": {
+              "prompt": $prompt_items,
+              "prepare": [
+                {
+                  "description": "Creating prometheus datasource", 
+                  "command": "create_prometheus_datasource {{prometheus_url}}",
+                },
+                {
+                  "description": "Creating prometheus scrape config", 
+                  "command": "manage_this_prometheus_config_file {{prometheus_url}} {{jaeger_url}} {{node_exporter_url}} {{cadvisor_url}}",
+                }
+              ]
+          }
+      }') || {
+        error "Failed to generate JSON"
+        return 1
+    }
+
+    # Pass variable correctly
+    generate_stack_config_pipeline "$config_instructions"
 }
 
 # Function to generate Whoami service configuration JSON
@@ -7566,8 +7572,7 @@ generate_stack_config_airflow() {
             "description": "Creating Airflow folders for storage",
             "command": "make_airflow_folders",
           }
-        ],
-        "finalize": []
+        ]
       }
     }'
   ) || {
@@ -8693,6 +8698,11 @@ generate_stack_config_wuzapi() {
               {
                 "name": "wuzapi_secret_key",
                 "description": "Generate Wuzapi secret key",
+                "command": "random_string"
+              },
+              {
+                "name": "wuzapi_api_key",
+                "description": "Generate Wuzapi api key",
                 "command": "random_string"
               },
               {
