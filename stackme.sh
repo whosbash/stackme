@@ -6829,7 +6829,7 @@ create_database_postgres() {
   fi
 }
 
-## Criar banco MySQL
+# Function to create a MySQL database
 create_database_mysql() {
   local db_password="$1"
   local db_name="$2"
@@ -10461,7 +10461,7 @@ generate_stack_config_chatwoot_nestor(){
           "validate_fn": "validate_url_suffix"
       },
       {
-          "name": "chatwoot_name",
+          "name": "chatwoot_company_name",
           "label": "Chatwoot app name",
           "description": "Name of app on Chatwoot",
           "required": "yes",
