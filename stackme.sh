@@ -8539,6 +8539,13 @@ generate_stack_config_langfuse() {
                 "description": "Fetching Postgres password",
                 "command": "fetch_database_password postgres"
               }
+            ],
+            "prepare": [
+              {
+                "name": "create_langfuse_database",
+                "description": "Creating Langfuse database",
+                "command": "create_database_postgres langfuse",
+              }
             ]
           }
       }'
