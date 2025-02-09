@@ -5744,6 +5744,12 @@ generate_stack_config_pipeline() {
   dependencies="$(echo "$config_instructions" | jq -c '.dependencies // []')"
   actions="$(echo "$config_instructions" | jq -c '.actions // {}')"
 
+  debug "Generated stack configuration pipeline for stack '$stack_name'"
+  debug "Target: $target"
+  debug "Variables: $variables"
+  debug "Dependencies: $dependencies"
+  debug "Actions: $actions"
+
   jq -n \
     --arg stack_name "$stack_name" \
     --arg target "$target" \
