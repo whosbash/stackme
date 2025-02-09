@@ -2575,7 +2575,7 @@ generate_schema_stack_config() {
       target: {
         type: "string",
         values: ["swarm", "portainer"]
-      }
+      },
       dependencies: {
         type: "array",
         items: { type: "string", minLength: 1 }
