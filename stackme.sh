@@ -10168,7 +10168,7 @@ generate_stack_config_docuseal(){
     '{
           "name": $stack_name,
           "target": "portainer",
-          "dependencies": ["postgres"],
+          "dependencies": ["postgres", "redis"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
@@ -10975,13 +10975,6 @@ generate_stack_config_documenso(){
 
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
-      {
-        "name": "documenso_url",
-        "label": "Documenso URL",
-        "description": "URL to access Documenso remotely",
-        "required": "yes",
-        "validate_fn": "validate_url_suffix"
-      },
       {
         "name": "documenso_url",
         "label": "Documenso URL",
