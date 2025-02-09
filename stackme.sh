@@ -5751,6 +5751,8 @@ generate_stack_config_pipeline() {
     \"dependencies\": $dependencies,
     \"actions\": $actions
   }"
+
+  echo "$instructions"
 }
 
 # Function to deploy a stack
