@@ -8828,7 +8828,7 @@ generate_stack_config_flowise() {
               {
                 "name": "create_flowise_database",
                 "description": "  ",
-                "command": "create_database_postgres flowse"
+                "command": "create_database_postgres flowise"
               }
             ]
           }
