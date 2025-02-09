@@ -8824,13 +8824,13 @@ generate_stack_config_flowise() {
                 "command": "fetch_database_password postgres"
               }
             ],
-            "prepare": {
+            "prepare": [
               {
                 "name": "create_flowise_database",
                 "description": "  ",
                 "command": "create_database_postgres flowse"
               }
-            }
+            ]
           }
       }'
   ) || {
