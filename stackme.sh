@@ -10172,7 +10172,7 @@ generate_stack_config_humhub(){
         "label": "Humhub Email",
         "description": "Email to access Humhub remotely",
         "required": "yes",
-        "validate_fn": "validate_email"
+        "validate_fn": "validate_email_value"
       }
   ]')
 
