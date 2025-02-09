@@ -1902,8 +1902,8 @@ bandwidth_usage() {
 
 # Function to check disk usage 
 check_disk_usage() {
-  local threshold="$1"
-  local mount_point="${2:DEFAULT_DISK_THREHOLD}"
+  local threshold="${1:DEFAULT_DISK_THREHOLD}"
+  local mount_point="${2:/}"
 
   if [ -z "$threshold" ]; then
     warning "Usage: check_disk_usage <threshold_percentage> [mount_point]"
