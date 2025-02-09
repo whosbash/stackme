@@ -5752,8 +5752,6 @@ generate_stack_config_pipeline() {
     \"actions\": $actions
   }"
 
-  debug "$instructions"
-
   echo "$instructions"
 }
 
@@ -8782,21 +8780,21 @@ generate_stack_config_flowise() {
       {
           "name": "flowise_url",
           "label": "OpenProject domain name",
-          "description": "URL to access OpenProject remotely",
+          "description": "URL to access Flowise remotely",
           "required": "yes",
           "validate_fn": "validate_url_suffix"
       },
       {
           "name": "flowise_username",
           "label": "OpenProject username",
-          "description": "Username to access OpenProject remotely",
+          "description": "Username to access Flowise remotely",
           "required": "yes",
           "validate_fn": "validate_username"
       },
       {
           "name": "flowise_password",
           "label": "OpenProject password",
-          "description": "Password to access OpenProject remotely",
+          "description": "Password to access Flowise remotely",
           "required": "yes",
           "validate_fn": "validate_password"
       }
@@ -10506,13 +10504,6 @@ generate_stack_config_tooljet(){
           "description": "URL to access Tooljet remotely",
           "required": "yes",
           "validate_fn": "validate_url_suffix"
-      },
-      {
-          "name": "chatwoot_name",
-          "label": "Chatwoot app name",
-          "description": "Name of app on Chatwoot",
-          "required": "yes",
-          "validate_fn": "validate_empty_value"
       }
   ]')
 
@@ -10553,9 +10544,9 @@ generate_stack_config_tooljet(){
             ],
             "prepare": [
               {
-                "name": "chatwoot_database",
-                "description": "Create database chatwoot on Postgres",
-                "command": "create_database_postgres chatwoot"
+                "name": "tooljet_database",
+                "description": "Create database tooljet on Postgres",
+                "command": "create_database_postgres tooljet"
               }
             ]
           }
