@@ -11046,14 +11046,14 @@ generate_stack_config_directus(){
         "label": "Directus e-mail",
         "description": "E-mail to access Directus remotely",
         "required": "yes",
-        "validate_fn": "validate_url_suffix"
+        "validate_fn": "validate_email_value"
       },
       {
         "name": "directus_password",
         "label": "Directus password",
         "description": "Password to access Directus remotely",
         "required": "yes",
-        "validate_fn": "validate_url_suffix"
+        "validate_fn": "validate_password"
       }
   ]')
 
