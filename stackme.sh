@@ -5861,6 +5861,20 @@ deploy_stack() {
   cleanup
   clean_screen
 
+  # Check if the stack is WIP
+  if [[ "$stack_status" == "development" ]]; then
+    warning "Stack '$stack_name' is under maintenance. Skipping deployment."
+    wait_for_input
+    return 1
+  fi
+
+  # Check if the stack is WIP
+  if [[ "$stack_status" == "beta" ]]; then
+    warn_message="It might not work properly. Deployment will continue on your own risk."
+    warning "Stack '$stack_name' is under testing. $warn_message"
+    wait_for_input
+  fi
+
   traefik_and_portainer_exist
   exit_code=$?
 
@@ -5888,20 +5902,6 @@ deploy_stack() {
     # Avoiding deploying a WIP stack with property 'stack_status' set to 'development'
     stack_status="$(echo "$stack_object" | jq -r '.stack_status // "development"')"
     stack_status="$(uppercase "$stack_status")"
-
-    # Check if the stack is WIP
-    if [[ "$stack_status" == "development" ]]; then
-      warning "Stack '$stack_name' is under maintenance. Skipping deployment."
-      wait_for_input
-      return 1
-    fi
-
-    # Check if the stack is WIP
-    if [[ "$stack_status" == "beta" ]]; then
-      warn_message="It might not work properly. Deployment will continue on your own risk."
-      warning "Stack '$stack_name' is under testing. $warn_message"
-      wait_for_input
-    fi
   fi
 
   # Check if the stack should be removed
