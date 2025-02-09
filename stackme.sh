@@ -10389,18 +10389,25 @@ generate_stack_config_chatwoot(){
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
       {
-          "name": "chatwoot_url",
-          "label": "Chatwoot URL",
-          "description": "URL to access Chatwoot remotely",
-          "required": "yes",
-          "validate_fn": "validate_url_suffix"
+        "name": "chatwoot_url",
+        "label": "Chatwoot URL",
+        "description": "URL to access Chatwoot remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
       },
       {
-          "name": "chatwoot_name",
-          "label": "Chatwoot app name",
-          "description": "Name of app on Chatwoot",
-          "required": "yes",
-          "validate_fn": "validate_empty_value"
+        "name": "chatwoot_company_name",
+        "label": "Chatwoot app name",
+        "description": "Name of app on Chatwoot",
+        "required": "yes",
+        "validate_fn": "validate_empty_value"
+      },
+      {
+        "name": "chatwoot_admin_email",
+        "label": "Chatwoot admin email",
+        "description": "Email of admin on Chatwoot",
+        "required": "yes",
+        "validate_fn": "validate_email_value"
       }
   ]')
 
@@ -10454,18 +10461,25 @@ generate_stack_config_chatwoot_nestor(){
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
       {
-          "name": "chatwoot_url",
-          "label": "Chatwoot URL",
-          "description": "URL to access Chatwoot remotely",
-          "required": "yes",
-          "validate_fn": "validate_url_suffix"
+        "name": "chatwoot_url",
+        "label": "Chatwoot URL",
+        "description": "URL to access Chatwoot remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
       },
       {
-          "name": "chatwoot_company_name",
-          "label": "Chatwoot app name",
-          "description": "Name of app on Chatwoot",
-          "required": "yes",
-          "validate_fn": "validate_empty_value"
+        "name": "chatwoot_company_name",
+        "label": "Chatwoot app name",
+        "description": "Name of app on Chatwoot",
+        "required": "yes",
+        "validate_fn": "validate_empty_value"
+      },
+      {
+        "name": "chatwoot_admin_email",
+        "label": "Chatwoot admin email",
+        "description": "Email of admin on Chatwoot",
+        "required": "yes",
+        "validate_fn": "validate_email_value"
       }
   ]')
 
