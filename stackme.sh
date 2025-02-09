@@ -138,6 +138,8 @@ DEFAULT_ARROW_OPTION='angle'
 # Default page size
 DEFAULT_PAGE_SIZE=5
 
+DEFAULT_DISK_THREHOLD=85
+
 ############################ END OF DEPLOYMENT-RELATED CONSTANTS ###############################
 
 ########################### BEGIN OF DEPLOYMENT-RELATED CONSTANTS ##############################
@@ -1896,6 +1898,34 @@ bandwidth_usage() {
     echo -e "${red}vnstat is not installed. Please install it to monitor bandwidth.${normal}"
   fi
   echo ""
+}
+
+# Function to check disk usage 
+check_disk_usage() {
+  local threshold="$1"
+  local mount_point="${2:DEFAULT_DISK_THREHOLD}"
+
+  if [ -z "$threshold" ]; then
+    warning "Usage: check_disk_usage <threshold_percentage> [mount_point]"
+    return 2
+  fi
+
+  # Get the disk usage percentage for the mount point.
+  # df output typically has the percentage in the 5th column (e.g. "80%")
+  local usage
+  usage=$(df "$mount_point" | awk 'NR==2 {gsub(/%/,""); print $5}')
+
+  if [ -z "$usage" ]; then
+    failure "Unable to determine disk usage for $mount_point."
+    return 3
+  fi
+
+  if [ "$usage" -ge "$threshold" ]; then
+    warning "Disk usage on $mount_point is ${usage}% which is above the threshold of ${threshold}%."
+    return 1
+  else
+    return 0
+  fi
 }
 
 #######################################################################################
@@ -5852,6 +5882,14 @@ deploy_stack() {
   cleanup
   clean_screen
 
+  # Check if there is space on the disk
+  check_disk_usage
+
+  if [[ $? -eq 1 ]]; then
+    warning "Disk usage is above the threshold. Deployment will continue on your own risk."
+    wait_for_input
+  fi
+
   # Check if the stack is WIP
   if [[ "$stack_status" == "development" ]]; then
     warning "Stack '$stack_name' is under maintenance. Skipping deployment."
@@ -6836,36 +6874,36 @@ create_database_mysql() {
   
   container_id=$(docker ps -q --filter "name=^mysql")
 
-  # Verificar se o banco de dados já existe
+  # Check if the database already exists using the correct variable for the database name.
   docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
-      -e "SHOW DATABASES LIKE '$1';" | grep -qw "$1"
+      -e "SHOW DATABASES LIKE '$db_name';" | grep -qw "$db_name"
 
   if [ $? -eq 0 ]; then
       prompt_message="Database '$db_name' already exists. Do you want to recreate it? (y/n)"
       confirm_var=$(request_confirmation "$prompt_message" "n")
       
       if [ "$confirm_var" == "Y" ] || [ "$confirm_var" == "y" ]; then
-          # Apagar o banco de dados
+          # Drop the database
           docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
               -e "DROP DATABASE IF EXISTS $db_name;" > /dev/null 2>&1
           if [ $? -eq 0 ]; then
-              echo "" ## Sucesso
+              echo "Database dropped successfully."
           else
-              echo "" ## Erro
+              echo "Failed to drop database."
           fi
-          # Criar o banco de dados novamente
+          # Create the database again
           docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
               -e "CREATE DATABASE $db_name;" > /dev/null 2>&1
       else
           info "Skipping database creation."
+          return 0
       fi
-      break
   else
-      # Criar o banco de dados
+      # Create the database
       docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
           -e "CREATE DATABASE $db_name;" > /dev/null 2>&1
 
-      # Verificar se o banco foi criado com sucesso
+      # Verify if the database was created successfully
       docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
           -e "SHOW DATABASES LIKE '$db_name';" | grep -qw "$db_name"
 
@@ -7342,7 +7380,7 @@ generate_stack_config_monitor() {
   # Ensure everything is quoted correctly
   config_instructions=$(jq -n \
       --arg stack_name "$stack_name" \
-      --arg prompt_items "$prompt_items" \
+      --argjson prompt_items "$prompt_items" \
       '{
           "name": $stack_name,
           "target": "portainer",
