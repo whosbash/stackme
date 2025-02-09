@@ -6912,6 +6912,25 @@ create_database_mysql() {
   fi
 }
 
+create_database(){
+  local engine="$1"
+  local db_name="$2"
+
+  case "$engine" in
+    "postgres")
+      create_database_postgres "$db_name"
+      ;;
+    "mysql")
+      create_database_mysql "$db_name"
+      ;;
+    *)
+      error "Unsupported database engine: $engine"
+      return 1
+      ;;
+  esac
+
+}
+
 get_network_name(){
   server_info_filename="${TOOL_BASE_DIR}/server_info.json"
   
@@ -9505,7 +9524,7 @@ generate_stack_config_nextcloud() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "dependencies": ["redis"],
+          "dependencies": ["redis", "postgres"],
           "actions": {
             "prompt": $prompt_items,
             "refresh": [
@@ -9513,6 +9532,13 @@ generate_stack_config_nextcloud() {
                 "name": "postgres_password",
                 "description": "Fetch postgres database password",
                 "command": "fetch_database_password postgres"
+              }
+            ],
+            "prepare": [
+              {
+                "name": "create_nextcloud_database",
+                "description": "Create NextCloud database",
+                "command": "create_database postgres nextcloud"
               }
             ]
           }
