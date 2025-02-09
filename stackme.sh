@@ -4712,9 +4712,6 @@ get_portainer_endpoint_id() {
   local portainer_url="$1"
   local token="$2"
 
-  debug "$portainer_url"
-  debug "$token"
-
   local endpoint_id
   protocol='https'
   method="GET"
@@ -4957,8 +4954,6 @@ delete_stack_on_portainer() {
   portainer_auth_token="$(
     get_portainer_auth_token "$portainer_url" "$portainer_credentials"
   )"
-
-  debug "$portainer_auth_token"
 
   if [[ -z "$portainer_auth_token" ]]; then
     error "Failed to retrieve Portainer token."
@@ -5305,7 +5300,6 @@ should_remove_stack() {
         docker stack rm "$stack_name"
       else
         portainer_config="$(load_portainer_url_and_credentials)"
-        debug "portainer_config: $portainer_config"
 
         delete_stack_on_portainer "$portainer_config" "$stack_name" 
       fi
@@ -8690,8 +8684,6 @@ generate_stack_config_wuzapi() {
           "validate_fn": "validate_url_suffix"
       }
   ]')
-
-  debug "prompt_items: $prompt_items"
 
   # Correct command substitution without unnecessary piping
   config_instructions=$(jq -n \
