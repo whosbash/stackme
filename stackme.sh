@@ -5752,6 +5752,8 @@ generate_stack_config_pipeline() {
     \"actions\": $actions
   }"
 
+  debug "$instructions"
+
   echo "$instructions"
 }
 
@@ -10690,7 +10692,7 @@ generate_stack_config_affine(){
     '{
           "name": $stack_name,
           "target": "portainer",
-          "dependencies": ["postgres"],
+          "dependencies": ["postgres", "redis"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
