@@ -8823,7 +8823,14 @@ generate_stack_config_flowise() {
                 "description": "Fetch postgres password",
                 "command": "fetch_database_password postgres"
               }
-            ]
+            ],
+            "prepare": {
+              {
+                "name": "create_flowise_database",
+                "description": "  ",
+                "command": "create_database_postgres flowse"
+              }
+            }
           }
       }'
   ) || {
@@ -10520,19 +10527,19 @@ generate_stack_config_tooljet(){
             "prompt": $prompt_items,
             "refresh": [
               {
-                "name": "tooljet_lockbox_secret_key"
+                "name": "tooljet_lockbox_secret_key",
                 "description": "Generate tooljet lockbox secret key",
-                "command": "random_string",
+                "command": "random_string"
               },
               {
                 "name": "tooljet_secret_key",
                 "description": "Generate tooljet secret key", 
-                "command": "random_string",
+                "command": "random_string"
               },
               {
                 "name": "postgrest_jwt_key",
                 "description": "Generate PostgREST JWT key", 
-                "command": "random_string",
+                "command": "random_string"
               },
               {
                 "description": "Custom smtp with identifier tooljet",
@@ -10541,14 +10548,14 @@ generate_stack_config_tooljet(){
               {
                 "name": "postgres_password",
                 "description": "Fetch postgres password",
-                "command": "fetch_database_password postgres",
+                "command": "fetch_database_password postgres"
               }
             ],
             "prepare": [
               {
                 "name": "chatwoot_database",
                 "description": "Create database chatwoot on Postgres",
-                "command": "create_database_postgres chatwoot",
+                "command": "create_database_postgres chatwoot"
               }
             ]
           }
