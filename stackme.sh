@@ -7680,6 +7680,13 @@ generate_stack_config_yourls() {
             "command": "fetch_database_password mysql",
           }
         ],
+        "prepare": [
+          {
+            "name": "create_yourls_database",
+            "description": "Create Yourls database",
+            "command": "create_database_postgres yourls",
+          }
+        ]
       }
     }'
   ) || {
