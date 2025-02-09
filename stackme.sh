@@ -4998,7 +4998,7 @@ delete_stack_on_portainer() {
   jq_filter=".EndpointId"
   local endpoint_id
 
-  endpoint_id=$(get_portainer_endpoint_id "$portainer_url" "$token")
+  endpoint_id=$(get_portainer_endpoint_id "$portainer_url" "$portainer_auth_token")
 
   if [[ -z "$endpoint_id" ]]; then
     error "Failed to retrieve Endpoint ID for stack '${stack_name}'."
