@@ -7386,6 +7386,12 @@ generate_stack_config_monitor() {
           "target": "portainer",
           "actions": {
               "prompt": $prompt_items,
+              "refresh": {
+                "name": "elasticsearch_password",
+                "description": "Elasticsearch password",
+                "command": "random_string"
+                
+              }"
               "prepare": [
                 {
                   "description": "Creating prometheus datasource", 
