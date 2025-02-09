@@ -183,7 +183,7 @@
     "stack_name": "ollama",
     "stack_label": "ollama",
     "stack_description": "A platform for deploying AI models with ease.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "ai",
     "category_label": "AI",
     "category_description": "AI and Natural Language Processing tools to build and deploy models."

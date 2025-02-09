@@ -3933,7 +3933,7 @@ handle_enter_key() {
   option_label="$(get_menu_item_label "$menu_item")"
   question="Are you sure you want to select \"$option_label\"? (Y/n)"
   message="${faded_color}$question${reset_color}"
-  if handle_confirmation_prompt "$message" 'n'; then
+  if handle_confirmation_prompt "$message" 'y'; then
     option_action=$(get_menu_item_action "$menu_item")
 
     clean_screen
@@ -10670,7 +10670,7 @@ generate_stack_config_affine(){
         "label": "Affine UI email",
         "description": "E-mail to access Affine remotely",
         "required": "yes",
-        "validate_fn": "validate_username"
+        "validate_fn": "validate_email_value"
       },
       {
         "name": "affine_password",
