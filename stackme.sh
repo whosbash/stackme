@@ -4963,11 +4963,9 @@ delete_stack_on_portainer() {
   # Check if the stack already exists
   check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"
 
-  if [[ $? -eq 0 ]]; then
-    warning "Stack $stack_name exists"
-    return 1
-  else
+  if [[ $? -eq 1 ]]; then
     warning "Stack $stack_name does not exist"
+    return 1
   fi
 
   # Upload the stack
@@ -5302,6 +5300,7 @@ should_remove_stack() {
         docker stack rm "$stack_name"
       else
         portainer_config="$(load_portainer_url_and_credentials)"
+        debug "portainer_config: $portainer_config"
 
         delete_stack_on_portainer "$portainer_config" "$stack_name" 
       fi
