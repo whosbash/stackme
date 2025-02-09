@@ -21,7 +21,7 @@
     "stack_name": "stirlingpdf",
     "stack_label": "stirlingpdf",
     "stack_description": "A tool for stable with and managing PDFs.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "content_management",
     "category_label": "Content Management",
     "category_description": "Tools for managing documents and content in an organization."
