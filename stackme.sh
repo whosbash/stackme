@@ -5750,7 +5750,7 @@ generate_stack_config_pipeline() {
     --arg stack_name "$stack_name" \
     --arg target "$target" \
     --argjson variables "$variables" \
-    --arg dependencies "$dependencies" \
+    --argjson dependencies "$dependencies" \
     --argjson actions "$actions" \
     '{
           "name": $stack_name,
