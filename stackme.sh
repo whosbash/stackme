@@ -6801,7 +6801,7 @@ initialize_server_info() {
 ############################# BEGIN OF STACK DEPLOYMENT UTILITARY FUNCTIONS #######################
 
 # Function to create a PostgreSQL database
-create_postgres_database() {
+create_database_postgres() {
   local db_name="$1"
   local db_user="postgres"
 
@@ -6835,6 +6835,56 @@ create_postgres_database() {
   else
     error "Failed to create database '$db_name'. Please check the logs for details."
     return 1
+  fi
+}
+
+## Criar banco MySQL
+create_database_mysql() {
+  local db_password="$1"
+  local db_name="$2"
+  
+  container_id=$(docker ps -q --filter "name=^mysql")
+
+  # Verificar se o banco de dados já existe
+  docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
+      -e "SHOW DATABASES LIKE '$1';" | grep -qw "$1"
+
+  if [ $? -eq 0 ]; then
+      prompt_message="Database '$db_name' already exists. Do you want to recreate it? (y/n)"
+      confirm_var=$(request_confirmation "$prompt_message" "n")
+      
+      if [ "$confirm_var" == "Y" ] || [ "$confirm_var" == "y" ]; then
+          # Apagar o banco de dados
+          docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
+              -e "DROP DATABASE IF EXISTS $db_name;" > /dev/null 2>&1
+          if [ $? -eq 0 ]; then
+              echo "" ## Sucesso
+          else
+              echo "" ## Erro
+          fi
+          # Criar o banco de dados novamente
+          docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
+              -e "CREATE DATABASE $db_name;" > /dev/null 2>&1
+      else
+          info "Skipping database creation."
+      fi
+      break
+  else
+      # Criar o banco de dados
+      docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
+          -e "CREATE DATABASE $db_name;" > /dev/null 2>&1
+
+      # Verificar se o banco foi criado com sucesso
+      docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
+          -e "SHOW DATABASES LIKE '$db_name';" | grep -qw "$db_name"
+
+      if [ $? -eq 0 ]; then
+          success "Database '$db_name' created successfully."
+          return 0
+      else
+          error "Failed to create database '$db_name'. Please check the logs for details."
+          return 1
+      fi
   fi
 }
 
@@ -7571,7 +7621,7 @@ generate_stack_config_metabase() {
         ],
         "prepare": [
           {
-            "name": "create_postgres_database_metabase",
+            "name": "create_database_postgres_metabase",
             "description": "Creating Metabase database",
             "command": "create_database_postgres metabase",
           }
@@ -7869,7 +7919,7 @@ generate_stack_config_n8n() {
           ],
           "prepare": [
             {
-              "name": "create_postgres_database_n8n",
+              "name": "create_database_postgres_n8n",
               "description": "Creating N8N database",
               "command": "create_database_postgres n8n_queue",
             }
@@ -8001,7 +8051,7 @@ generate_stack_config_botpress() {
             ],
             "prepare": [
               {
-                "name": "create_postgres_database_botpress",
+                "name": "create_database_postgres_botpress",
                 "description": "Creating botpress database",
                 "command": "create_database_postgres botpress"
               }
@@ -8949,7 +8999,7 @@ generate_stack_config_nocobase() {
               {
                 "name": "create_flowise_database",
                 "description": "Create Flowise database",
-                "command": "create_postgres_database nocobase"
+                "command": "create_database_postgres nocobase"
               }
             ]
           }
@@ -10069,7 +10119,7 @@ generate_stack_config_baserow(){
               {
                 "name": "create_baserow_database",
                 "description": "Create postgres database baserow",
-                "command": "create_postgres_database baserow",
+                "command": "create_database_postgres baserow",
               }
             ]
           }
@@ -10127,7 +10177,7 @@ generate_stack_config_docuseal(){
               {
                 "name": "create_docuseal_database",
                 "description": "Create postgres database docuseal",
-                "command": "create_postgres_database docuseal",
+                "command": "create_database_postgres docuseal",
               }
             ]
           }
@@ -10195,6 +10245,13 @@ generate_stack_config_humhub(){
               {
                 "description": "Custom smtp with identifier docuseal",
                 "command": "custom_smtp_information humhub",
+              }
+            ],
+            "prepare": [
+              {
+                "name": "create_humhub_database",
+                "description": "Create mysql database humhub",
+                "command": "create_database_mysql {{mysql_password}} humhub",
               }
             ]
           }
@@ -10356,7 +10413,7 @@ generate_stack_config_chatwoot(){
               {
                 "name": "chatwoot_database",
                 "description": "Create database chatwoot on Postgres",
-                "command": "create_postgres_database chatwoot",
+                "command": "create_database_postgres chatwoot",
               }
             ]
           }
@@ -10421,7 +10478,7 @@ generate_stack_config_chatwoot_nestor(){
               {
                 "name": "chatwoot_database",
                 "description": "Create database chatwoot on Postgres",
-                "command": "create_postgres_database chatwoot",
+                "command": "create_database_postgres chatwoot",
               }
             ]
           }
@@ -10495,7 +10552,7 @@ generate_stack_config_tooljet(){
               {
                 "name": "chatwoot_database",
                 "description": "Create database chatwoot on Postgres",
-                "command": "create_postgres_database chatwoot",
+                "command": "create_database_postgres chatwoot",
               }
             ]
           }
