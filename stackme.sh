@@ -4958,6 +4958,8 @@ delete_stack_on_portainer() {
     get_portainer_auth_token "$portainer_url" "$portainer_credentials"
   )"
 
+  debug "$portainer_auth_token"
+
   if [[ -z "$portainer_auth_token" ]]; then
     error "Failed to retrieve Portainer token."
     return 1
