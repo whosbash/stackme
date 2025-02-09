@@ -1902,7 +1902,7 @@ bandwidth_usage() {
 
 # Function to check disk usage 
 check_disk_usage() {
-local threshold="${1:-80}"
+  local threshold="${1:-80}"
   local mount_point="${2:-/}"
 
   # Get the disk usage percentage for the mount point.
@@ -8453,13 +8453,13 @@ generate_stack_config_redis_commander() {
 }
 
 # Function to generate Weavite service configuration JSON
-generate_stack_config_weavite() {
-  local stack_name="weavite"
+generate_stack_config_weaviate() {
+  local stack_name="weaviate"
 
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
       {
-          "name": "weavite_url",
+          "name": "weaviate_url",
           "label": "Weavite domain name",
           "description": "URL to access Weavite remotely",
           "required": "yes",
@@ -11201,7 +11201,7 @@ generate_stack_config_directus(){
 }
 
 generate_stack_config_anythingllm(){
-  local stack_name="anythingllm" 
+  local stack_name="anythingllm"
  
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
@@ -11240,7 +11240,96 @@ generate_stack_config_anythingllm(){
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
-} 
+}
+
+generate_stack_config_typebot(){
+  local stack_name="typebot" 
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+        "name": "typebot_url",
+        "label": "Typebot URL",
+        "description": "URL to access Typebot remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      },
+      {
+        "name": "typebot_viewer_url",
+        "label": "Typebot viewer URL",
+        "description": "URL to access Typebot viewer remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      },
+      {
+        "name": "s3_url",
+        "label": "S3 URL",
+        "description": "URL to access S3 remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      },
+      {
+        "name": "s3_access_key_id",
+        "label": "S3 access key",
+        "description": "Access key to access S3 remotely",
+        "required": "yes",
+        "validate_fn": "validate_username"
+      },
+      {
+        "name": "s3_access_key_secret",
+        "label": "S3 secret key",
+        "description": "Secret key to access S3 remotely",
+        "required": "yes",
+        "validate_fn": "validate_password"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "variables": {
+            
+          },
+          "dependencies": [],
+          "actions":{
+            "prompt": $prompt_items,
+            "refresh": [
+              {
+                "description": "Custom smtp with identifier typebot",
+                "command": "custom_smtp_information typebot"
+              },
+              {
+                "name": "typebot_secret_key",
+                "description": "Generate typebot secret key",
+                "command": "random_string"
+              },
+              {
+                "name": "typebot_image_version",
+                "description": "Get latest stable version of typebot",
+                "command": "get_latest_stable_version baptistearno/typebot-viewer"
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+
+}
+
+# typebot_image_version
+# 
+# s3_url
+# s3_access_key_id
+# s3_access_key_secret
 
 #################################### END OF STACK CONFIGURATION ###################################
 

@@ -414,6 +414,15 @@
     "category_description": "Tools for scheduling and team collaboration."
   },
   {
+    "stack_name": "weaviate",
+    "stack_label": "weaviate",
+    "stack_description": "A tool for automating website scraping and analysis.",
+    "stack_status": "beta",
+    "category_name": "automation_and_low-code",
+    "category_label": "Automation and Low-Code",
+    "category_description": "Automation and low-code platforms for developing applications quickly."
+  },
+  {
     "stack_name": "mariadb",
     "stack_label": "mariadb",
     "stack_description": "A relational database management system, a fork of MySQL.",
@@ -513,15 +522,6 @@
     "category_description": "Tools for managing and administrating databases."
   },
   {
-    "stack_name": "weavite",
-    "stack_label": "weavite",
-    "stack_description": "A tool for automating website scraping and analysis.",
-    "stack_status": "beta",
-    "category_name": "automation_and_low-code",
-    "category_label": "Automation and Low-Code",
-    "category_description": "Automation and low-code platforms for developing applications quickly."
-  },
-  {
     "stack_name": "metabase",
     "stack_label": "metabase",
     "stack_description": "An open-source business intelligence platform.",
@@ -597,7 +597,7 @@
     "stack_name": "langflow",
     "stack_label": "langflow",
     "stack_description": "An AI tool for managing workflows for large language models (LLMs).",
-    "stack_status": "stable",
+    "stack_status": "beta",
     "category_name": "ai",
     "category_label": "AI",
     "category_description": "AI and Natural Language Processing tools to build and deploy models."
