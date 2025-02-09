@@ -5911,12 +5911,8 @@ deploy_stack() {
     return 1
   fi
 
-  debug "Before validation: $stack_config"
-
   # Check required fields
   validate_stack_config "$stack_config"
-
-  debug "After validation: $stack_config"
 
   if [ $? -ne 0 ]; then
     failure "Stack \'$stack_name\' configuration validation failed."
