@@ -1905,11 +1905,6 @@ check_disk_usage() {
   local threshold="${1:DEFAULT_DISK_THREHOLD}"
   local mount_point="${2:/}"
 
-  if [ -z "$threshold" ]; then
-    warning "Usage: check_disk_usage <threshold_percentage> [mount_point]"
-    return 2
-  fi
-
   # Get the disk usage percentage for the mount point.
   # df output typically has the percentage in the 5th column (e.g. "80%")
   local usage
