@@ -4712,6 +4712,9 @@ get_portainer_endpoint_id() {
   local portainer_url="$1"
   local token="$2"
 
+  debug "$portainer_url"
+  debug "$token"
+
   local endpoint_id
   protocol='https'
   method="GET"
