@@ -9234,7 +9234,7 @@ generate_stack_config_firecrawl() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "dependencies": ["postgres", "rabbitmq"],
+          "dependencies": ["redis", "postgres", "rabbitmq"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
