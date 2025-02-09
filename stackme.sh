@@ -7371,6 +7371,7 @@ generate_stack_config_monitor() {
                 "command": "manage_this_prometheus_config_file {{prometheus_url}} {{jaeger_url}} {{node_exporter_url}} {{cadvisor_url}}",
               }
             ]
+        }
     }'
 }
 
