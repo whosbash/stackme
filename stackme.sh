@@ -5010,7 +5010,7 @@ delete_stack_on_portainer() {
   resource="stacks/${stack_id}?endpointId=${endpoint_id}"
   url="$(get_api_url $protocol $portainer_url $resource)"
 
-  request "DELETE" "$url" "$token" "application/json" &&
+  request "DELETE" "$url" "$portainer_auth_token" "application/json" &&
     success "Stack '$stack_name' deleted successfully." ||
     error "Failed to delete stack '$stack_name'."
 }
