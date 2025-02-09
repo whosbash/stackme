@@ -8,36 +8,36 @@ services:
       - {{network_name}}
     
     environment:
-    ## Hostname
+      ## Hostname
       - HOSTNAME=0.0.0.0
 
-    ## Logs
+      ## Logs
       - DEBUG=next:*
       - NEXT_PUBLIC_ENABLE_LOGS=true
       - NEXT_ANALYTICS_BACKEND_PROVIDER=postgres
 
-    ## Branding
+      ## Branding
       - DEFAULT_ORGANIZATION_NAME=stackme
       - DEFAULT_PROJECT_NAME=stackme
 
-    ## Configuração do Banco de Dados PostgreSQL
+      ## PostgreSQL
       - POSTGRES_PASSWORD={{postgres_password}}
       - STUDIO_PG_META_URL=http://meta:8080
 
-    ## Configuração do Supabase
+      ## Configuração do Supabase
       - SUPABASE_URL=http://kong:8000
       - SUPABASE_PUBLIC_URL=https://{{supabase_url}}
 
-    ## Integração com Logflare
+      ## Integração com Logflare
       - LOGFLARE_API_KEY={{logflare_key}}
       - LOGFLARE_URL=http://analytics:4000
 
-    ## Configurações de Autenticação
+      ## Authentication
       - SUPABASE_ANON_KEY={{supabase_anon_key}}
       - SUPABASE_SERVICE_KEY={{supabase_service_key}}
       - AUTH_JWT_SECRET={{supabase_jwt_secret}}
 
-    ## Configuração do OpenAI (opcional)
+    ## OpenAI (opcional)
     # - OPENAI_API_KEY=
 
     deploy:
@@ -58,26 +58,26 @@ services:
       - {{network_name}}
 
     environment:
-    ## Configuração de usuário e senha do Dashboard
+      ## Dashboard
       - DASHBOARD_USERNAME={{supabase_username}}
       - DASHBOARD_PASSWORD={{supabase_password}}
 
-    ## Configurações de Autenticação
-      - JWT_SECRET={{kong_jwt_secret}}
-      - SUPABASE_ANON_KEY={{kong_anon_key}}
-      - SUPABASE_SERVICE_KEY={{kong_service_key}}
+      ## Autenticação
+      - JWT_SECRET={{supabase_jwt_secret}}
+      - SUPABASE_ANON_KEY={{supabase_anon_key}}
+      - SUPABASE_SERVICE_KEY={{supabase_service_key}}
 
-    ## Configuração do Banco de Dados
+      ## Kong database
       - KONG_DATABASE=off
       - KONG_DECLARATIVE_CONFIG=/home/kong/kong.yml
 
-    ## Configuração de DNS
+      ## DNS
       - KONG_DNS_ORDER=LAST,A,CNAME
 
-    ## Configuração de Plugins
+      ## Plugins
       - KONG_PLUGINS=request-transformer,cors,key-auth,acl,basic-auth
 
-    ## Configurações de Buffers do NGINX
+      ## NGINX
       - KONG_NGINX_PROXY_PROXY_BUFFER_SIZE=160k
       - KONG_NGINX_PROXY_PROXY_BUFFERS=64 160k
     
@@ -103,28 +103,28 @@ services:
       - {{network_name}}
 
     environment:
-    ## API Auth
+      ## API Auth
       - GOTRUE_API_HOST=0.0.0.0
       - GOTRUE_API_PORT=9999
       - API_EXTERNAL_URL=https://{{supabase_url}}
 
-    ## Database
+      ## Database
       - GOTRUE_DB_DRIVER=postgres
       - GOTRUE_DB_DATABASE_URL=postgres://supabase_auth_admin:{{postgres_password}}@db:5432/postgres
 
-    ## Permissions
+      ## Permissions
       - GOTRUE_SITE_URL=https://{{supabase_url}}
       - GOTRUE_URI_ALLOW_LIST=
       - GOTRUE_DISABLE_SIGNUP=false
 
-    ## JWT settings
+      ## JWT settings
       - GOTRUE_JWT_ADMIN_ROLES=service_role
       - GOTRUE_JWT_AUD=authenticated
       - GOTRUE_JWT_DEFAULT_GROUP_NAME=authenticated
       - GOTRUE_JWT_EXP=31536000
-      - GOTRUE_JWT_SECRET={{jwt_secret}}
+      - GOTRUE_JWT_SECRET={{supabase_jwt_secret}}
 
-    ## Email
+      ## Email
       - GOTRUE_EXTERNAL_EMAIL_ENABLED=false
       - GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED=false
       - GOTRUE_MAILER_AUTOCONFIRM=true
@@ -135,13 +135,13 @@ services:
       - GOTRUE_SMTP_PASS={{supabase_smtp_password}}
       - GOTRUE_SMTP_SENDER_NAME={{supabase_smtp_from_email}}
 
-    ## URL settings for Emails
+      ## Emails
       - GOTRUE_MAILER_URLPATHS_INVITE=/auth/v1/verify
       - GOTRUE_MAILER_URLPATHS_CONFIRMATION=/auth/v1/verify
       - GOTRUE_MAILER_URLPATHS_RECOVERY=/auth/v1/verify
       - GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE=/auth/v1/verify
 
-    ## SMS Settings
+      ## SMS
       - GOTRUE_EXTERNAL_PHONE_ENABLED=false
       - GOTRUE_SMS_AUTOCONFIRM=false
     
@@ -160,17 +160,17 @@ services:
       - {{network_name}}
 
     environment:
-    ## Database settings
+      ## Database
       - PGRST_DB_URI=postgres://authenticator:{{postgres_password}}@db:5432/postgres
       - PGRST_DB_SCHEMAS=public,storage,graphql_public
       - PGRST_DB_ANON_ROLE=anon
 
-    ## JWT settings
-      - PGRST_JWT_SECRET={{postgrest_jwt_key}}
-      - PGRST_APP_SETTINGS_JWT_SECRET={{postgrest_jwt_key}}
+      ## JWT
+      - PGRST_JWT_SECRET={{postgrest_jwt_secret_key}}
+      - PGRST_APP_SETTINGS_JWT_SECRET={{postgrest_jwt_secret_key}}
       - PGRST_APP_SETTINGS_JWT_EXP=31536000
 
-    ## Others settings
+      ## Others settings
       - PGRST_DB_USE_LEGACY_GUCS="false"
     
     deploy:
@@ -202,12 +202,12 @@ services:
       - DB_AFTER_CONNECT_QUERY='SET search_path TO _realtime'
       - DB_ENC_KEY=supabaserealtime
 
-    ## Network and TLS
+      ## Network and TLS
       - ERL_AFLAGS=-proto_dist inet_tcp
       - DNS_NODES="''"
       - RLIMIT_NOFILE=10000
 
-    ## Environment
+      ## Environment
       - SEED_SELF_HOST=true
     
     deploy:
@@ -234,7 +234,7 @@ services:
       - PGRST_JWT_SECRET={{postgrest_jwt_secret_key}}
       - DATABASE_URL=postgres://supabase_storage_admin:{{postgres_password}}@db:5432/postgres
 
-    ## Storage on MinIO
+      ## Storage on MinIO
       - FILE_SIZE_LIMIT=52428800
       - STORAGE_BACKEND=s3
       - GLOBAL_S3_BUCKET=supabase
@@ -320,7 +320,7 @@ services:
       - {{network_name}}
 
     environment:
-    ## JWT and Supabase Settings
+      ## JWT and Supabase Settings
       - VERIFY_JWT="false"
       - JWT_SECRET={{supabase_functions_jwt_secret}}
       - SUPABASE_URL=http://kong:8000

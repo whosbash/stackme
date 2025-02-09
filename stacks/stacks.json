@@ -30,7 +30,7 @@
     "stack_name": "redisinsight",
     "stack_label": "redisinsight",
     "stack_description": "A graphical interface for managing Redis databases.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "data_management",
     "category_label": "Data Management",
     "category_description": "Tools for managing and administrating databases."
@@ -84,7 +84,7 @@
     "stack_name": "docuseal",
     "stack_label": "docuseal",
     "stack_description": "A platform for signing and managing documents.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "content_management",
     "category_label": "Content Management",
     "category_description": "Tools for managing documents and content in an organization."
