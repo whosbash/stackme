@@ -327,7 +327,7 @@
     "stack_name": "humhub",
     "stack_label": "humhub",
     "stack_description": "A social netstable platform for creating and managing communities.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "social_and_marketing",
     "category_label": "Social and Marketing",
     "category_description": "Social media management and marketing automation tools."
