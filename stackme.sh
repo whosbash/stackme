@@ -1903,7 +1903,7 @@ bandwidth_usage() {
 # Function to check disk usage 
 check_disk_usage() {
   local threshold="${1:DEFAULT_DISK_THREHOLD}"
-  local mount_point="${2:/}"
+  local mount_point="${2:-/}"
 
   # Get the disk usage percentage for the mount point.
   # df output typically has the percentage in the 5th column (e.g. "80%")
