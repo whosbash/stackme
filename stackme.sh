@@ -3973,7 +3973,7 @@ handle_quit_key() {
     fi
 
     echo -e "$message" >&2
-    sleep 0.25
+    sleep 0.1
 
     return 0
   fi
