@@ -24,7 +24,7 @@ services:
       - SECRET_KEY_BASE={{tooljet_secret_key}}
 
       ## Database settings
-      - DATABASE_URL=postgres://postgres:{{postgres_password}}@postgres:5432/tooljet?sslmode=disable
+      - DATABASE_URL=postgres://postgres:{{postgres_password}}@postgres:5432/tooljet_app?sslmode=disable
 
       ## Settings for ToolJet DB
       - ENABLE_TOOLJET_DB=true

@@ -10543,6 +10543,11 @@ generate_stack_config_tooljet(){
                 "name": "tooljet_database",
                 "description": "Create database tooljet on Postgres",
                 "command": "create_database_postgres tooljet"
+              },
+              {
+                "name": "tooljet_database",
+                "description": "Create database tooljet on Postgres",
+                "command": "create_database_postgres tooljet_app"
               }
             ]
           }
