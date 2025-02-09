@@ -10706,7 +10706,7 @@ generate_stack_config_krayincrm(){
     '{
           "name": $stack_name,
           "target": "portainer",
-          "dependencies": ["mysql"],
+          "dependencies": ["mysql", "redis"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
@@ -10723,6 +10723,13 @@ generate_stack_config_krayincrm(){
               {
                 "description": "Custom smtp with identifier krayincrm",
                 "command": "custom_smtp_information krayincrm",
+              }
+            ],
+            "prepare": [
+              {
+                "name": "create_krayincrm_database",
+                "description": "Create database krayincrm on MySQL",
+                "command": "create_database_mysql krayincrm",
               }
             ]
           }
