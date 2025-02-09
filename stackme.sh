@@ -5744,28 +5744,13 @@ generate_stack_config_pipeline() {
   dependencies="$(echo "$config_instructions" | jq -c '.dependencies // []')"
   actions="$(echo "$config_instructions" | jq -c '.actions // {}')"
 
-  debug "Generated stack configuration pipeline for stack '$stack_name'"
-  debug "Target: $target"
-  debug "Variables: $variables"
-  debug "Dependencies: $dependencies"
-  debug "Actions: $actions"
-
-  jq -n \
-    --arg stack_name "$stack_name" \
-    --arg target "$target" \
-    --argjson variables "$variables" \
-    --argjson dependencies "$dependencies" \
-    --argjson actions "$actions" \
-    '{
-          "name": $stack_name,
-          "target": $target,
-          "variables": $variables,
-          "dependencies": $dependencies,
-          "actions": $actions
-      }' || {
-        error "Failed to generate JSON"
-        return 1
-    }
+  instructions="{
+    \"name\": \"$stack_name\",
+    \"target\": \"$target\",
+    \"variables\": $variables,
+    \"dependencies\": $dependencies,
+    \"actions\": $actions
+  }"
 }
 
 # Function to deploy a stack
