@@ -32,10 +32,9 @@ services:
         - "traefik.http.routers.qdrant.rule=Host(`{{qdrant_url}}`)"
         - "traefik.http.services.qdrant.loadbalancer.server.port=6333"
         - "traefik.http.routers.qdrant.entrypoints=websecure"
-        - "traefik.http.routers.qdrant.entrypoints=qdrant"
+        - "traefik.http.routers.qdrant.service=qdrant"
         - "traefik.http.routers.qdrant.tls=true"
         - "traefik.http.routers.qdrant.tls.certresolver=letsencryptresolver"
-        - "traefik.http.routers.qdrant.tls=true"
 
     command: ./qdrant --uri 'http://qdrant_node:6335'
 
