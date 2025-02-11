@@ -8,10 +8,6 @@ services:
     networks:
       - {{network_name}}
 
-    configs:
-      - source: qdrant_config
-        target: /qdrant/config/production.yaml
-    
     volumes:
       - ./qdrant_data:/qdrant/storage
 
@@ -29,11 +25,6 @@ services:
         - "traefik.http.routers.qdrant.service=qdrant"
         - "traefik.http.routers.qdrant.tls=true"
         - "traefik.http.routers.qdrant.tls.certresolver=letsencryptresolver"
-
-configs:
-  qdrant_config:
-    content: |
-      log_level: INFO
 
 volumes:
   qdrant_data:
