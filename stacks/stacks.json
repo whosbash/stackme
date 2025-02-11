@@ -418,9 +418,9 @@
     "stack_label": "weaviate",
     "stack_description": "A tool for automating website scraping and analysis.",
     "stack_status": "beta",
-    "category_name": "automation_and_low-code",
-    "category_label": "Automation and Low-Code",
-    "category_description": "Automation and low-code platforms for developing applications quickly."
+    "category_name": "data_storage",
+    "category_label": "Data Storage",
+    "category_description": "Tools for managing and storing data, from databases to storage services."
   },
   {
     "stack_name": "mariadb",
@@ -445,9 +445,9 @@
     "stack_label": "qdrant",
     "stack_description": "A vector database for machine learning and AI applications.",
     "stack_status": "beta",
-    "category_name": "ai",
-    "category_label": "AI",
-    "category_description": "AI and Natural Language Processing tools to build and deploy models."
+    "category_name": "data_storage",
+    "category_label": "Data Storage",
+    "category_description": "Tools for managing and storing data, from databases to storage services."
   },
   {
     "stack_name": "supabase",
