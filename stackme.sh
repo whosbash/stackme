@@ -7917,7 +7917,7 @@ generate_stack_config_qdrant() {
     --argjson prompt_items "$prompt_items" \
     '{
       "name": $stack_name,
-      "target": "portainer",
+      "target": "swarm",
       "actions": {
         "prompt": $prompt_items
       }
