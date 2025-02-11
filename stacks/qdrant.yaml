@@ -5,7 +5,7 @@ services:
     image: qdrant/qdrant:latest
 
     networks:
-      - {{mynetwork_name}}
+      - {{network_name}}
 
     ports:
       - 6333:6333
@@ -36,5 +36,5 @@ volumes:
 
 networks:
   mynetwork:
-    name: {{mynetwork_name}}
+    name: {{network_name}}
     external: true
