@@ -1,23 +1,26 @@
+version: "3.7"
+
 services:
   qdrant:
     image: qdrant/qdrant:latest
+
+    networks:
+      - {{mynetwork_name}}
+
     ports:
       - 6333:6333
       - 6334:6334
-    
-    networks:
-      - {{network_name}}
 
     volumes:
       - ./qdrant_data:/qdrant/storage
 
     deploy:
       mode: replicated
-      replicas: 5
+      replicas: 1
       resources:
         limits:
           cpus: "0.3"
-    labels:
+      labels:
         - "traefik.enable=true"
         - "traefik.http.routers.qdrant.rule=Host(`{{qdrant_url}}`)"
         - "traefik.http.services.qdrant.loadbalancer.server.port=6333"
@@ -32,8 +35,6 @@ volumes:
     name: qdrant_data
 
 networks:
-  {{network_name}}:
-    name: {{network_name}}
+  mynetwork:
+    name: {{mynetwork_name}}
     external: true
-
-
