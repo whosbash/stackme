@@ -5723,6 +5723,8 @@ generate_stack_config_pipeline() {
   total_steps=2
 
   stack_name="$(echo "$config_instructions" | jq -r '.name')"
+  
+  target=$(echo "$config_instructions" | jq -r '.target // "swarm"')
 
   # Prompting step
   step_info 1 $total_steps "Prompting required $stack_name information"
