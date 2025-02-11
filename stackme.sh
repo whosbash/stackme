@@ -7117,6 +7117,10 @@ make_folders_mosquitto(){
   mkdir -p "$TOOL_STACKS_DIR/stacks/mosquitto/log"
 }
 
+make_folders_qdrant(){
+  mkdir -p "$TOOL_STACKS_DIR/stacks/qdrant/qdrant_data"  
+}
+
 # Function to generate a firecrawl string
 generate_firecrawl_api_key(){
   echo "fc-$(random_string)"
@@ -7914,9 +7918,15 @@ generate_stack_config_qdrant() {
     --argjson prompt_items "$prompt_items" \
     '{
       "name": $stack_name,
-      "target": "swarm",
+      "target": "portainer",
       "actions": {
-        "prompt": $prompt_items
+        "prompt": $prompt_items,
+        "prepare": [
+          {
+            "description": "Make folders for Qdrant volumes",
+            "command": "make_folders_qdrant"
+          }
+        ]
       }
     }'
   ) || {
