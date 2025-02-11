@@ -1,25 +1,19 @@
-version: "3.7"
-
 services:
-  qdrant_node:
+  qdrant:
     image: qdrant/qdrant:latest
-
-    volumes:
-      - qdrant_data:/qdrant/storage
-
+    ports:
+      - 6333:6333
+      - 6334:6334
+    
     networks:
       - {{network_name}}
 
-    ports:
-      - "6333:6333"
-      - "6334:6334"
-
-    environment:
-      - QDRANT__SERVICE__GRPC_PORT=6334
-      - QDRANT__CLUSTER__ENABLED=true
-      - QDRANT__CLUSTER__P2P__PORT=6335
-      - QDRANT__CLUSTER__CONSENSUS__MAX_MESSAGE_QUEUE_SIZE=5000
-      - QDRANT__LOG_LEVEL=debug,raft=info
+    configs:
+      - source: qdrant_config
+        target: /qdrant/config/production.yaml
+    
+    volumes:
+      - ./qdrant_data:/qdrant/storage
 
     deploy:
       mode: replicated
@@ -27,7 +21,7 @@ services:
       resources:
         limits:
           cpus: "0.3"
-      labels:
+    labels:
         - "traefik.enable=true"
         - "traefik.http.routers.qdrant.rule=Host(`{{qdrant_url}}`)"
         - "traefik.http.services.qdrant.loadbalancer.server.port=6333"
@@ -36,7 +30,10 @@ services:
         - "traefik.http.routers.qdrant.tls=true"
         - "traefik.http.routers.qdrant.tls.certresolver=letsencryptresolver"
 
-    command: ./qdrant --uri 'http://qdrant_node:6335'
+configs:
+  qdrant_config:
+    content: |
+      log_level: INFO
 
 volumes:
   qdrant_data:
@@ -47,3 +44,5 @@ networks:
   {{network_name}}:
     name: {{network_name}}
     external: true
+
+
