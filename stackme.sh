@@ -5839,9 +5839,9 @@ deployment_pipeline() {
   }
 
   # Step 5: Deploy the stack on the target
-  step_info 5 $total_steps "Deploying stack on target"
   local target
   target=$(echo "$config_json" | jq -r '.target // "swarm"')
+  step_info 5 $total_steps "Deploying stack on target $target"
 
   deploy_stack_on_target "$stack_name" "$compose_path" "$target" || {
     failure "Failed to deploy stack on target: $target"
