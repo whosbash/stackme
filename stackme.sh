@@ -7254,7 +7254,7 @@ generate_stack_config_traefik() {
   # Correct command substitution without unnecessary piping
   config_instructions=$(jq -n \
     --arg stack_name "$stack_name" \
-    --arg prompt_items "$prompt_items" \
+    --argjson prompt_items "$prompt_items" \
     '{
         "name": $stack_name,
         "target": "swarm",
