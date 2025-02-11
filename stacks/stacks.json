@@ -444,10 +444,10 @@
     "stack_name": "qdrant",
     "stack_label": "qdrant",
     "stack_description": "A vector database for machine learning and AI applications.",
-    "stack_status": "beta",
-    "category_name": "data_storage",
-    "category_label": "Data Storage",
-    "category_description": "Tools for managing and storing data, from databases to storage services."
+    "stack_status": "stable",
+    "category_name": "ai",
+    "category_label": "AI",
+    "category_description": "AI and Natural Language Processing tools to build and deploy models."
   },
   {
     "stack_name": "supabase",
