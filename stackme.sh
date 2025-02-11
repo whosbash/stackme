@@ -5724,15 +5724,6 @@ generate_stack_config_pipeline() {
 
   stack_name="$(echo "$config_instructions" | jq -r '.name')"
 
-  # Set target to 'swarm' if variable 'stack_name' is either 'traefik' or 'portainer'.
-  # Otherwise, set target to 'portainer'.
-  local target
-  if [ "$stack_name" == "traefik" ] || [ "$stack_name" == "portainer" ]; then
-    target="swarm"
-  else
-    target="portainer"
-  fi
-
   # Prompting step
   step_info 1 $total_steps "Prompting required $stack_name information"
 
