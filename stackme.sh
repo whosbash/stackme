@@ -5952,6 +5952,8 @@ deploy_stack() {
     return 1
   fi
 
+  debug "$stack_config"
+
   # Deploy the n8n service using the JSON
   deployment_pipeline "$stack_config"
 }
@@ -7926,6 +7928,8 @@ generate_stack_config_qdrant() {
       error "Failed to generate JSON"
       return 1
   }
+
+  debug "$config_instructions"
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
