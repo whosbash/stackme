@@ -201,7 +201,7 @@ declare -A tool_status=(
   ["krayincrm"]="beta"
   ["mongodb"]="stable"
   ["odoo"]="stable"
-  ["qdrant"]="beta"
+  ["qdrant"]="stable"
   ["traccar"]="beta"
   ["whoami"]="stable"
 )
