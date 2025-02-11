@@ -29,15 +29,15 @@ services:
       - SUPABASE_PUBLIC_URL=https://{{supabase_url}}
 
       ## Integração com Logflare
-      - LOGFLARE_API_KEY={{logflare_key}}
+      - LOGFLARE_API_KEY={{logflare_api_key}}
       - LOGFLARE_URL=http://analytics:4000
 
       ## Authentication
       - SUPABASE_ANON_KEY={{supabase_anon_key}}
       - SUPABASE_SERVICE_KEY={{supabase_service_key}}
-      - AUTH_JWT_SECRET={{supabase_jwt_secret}}
+      - AUTH_JWT_SECRET={{supabase_studio_jwt_secret}}
 
-    ## OpenAI (opcional)
+    ## OpenAI (optional)
     # - OPENAI_API_KEY=
 
     deploy:
@@ -52,7 +52,7 @@ services:
     entrypoint: bash -c 'eval "echo \"\$\$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
 
     volumes:
-      - /root/supabase/docker/volumes/api/kong.yml:/home/kong/temp.yml:ro
+      - /opt/stackme/stacks/supabase/docker/volumes/api/kong.yml:/home/kong/temp.yml:ro
 
     networks:
       - {{network_name}}
@@ -63,7 +63,7 @@ services:
       - DASHBOARD_PASSWORD={{supabase_password}}
 
       ## Autenticação
-      - JWT_SECRET={{supabase_jwt_secret}}
+      - JWT_SECRET={{_kong_jwt_secret_key}}
       - SUPABASE_ANON_KEY={{supabase_anon_key}}
       - SUPABASE_SERVICE_KEY={{supabase_service_key}}
 
@@ -122,7 +122,7 @@ services:
       - GOTRUE_JWT_AUD=authenticated
       - GOTRUE_JWT_DEFAULT_GROUP_NAME=authenticated
       - GOTRUE_JWT_EXP=31536000
-      - GOTRUE_JWT_SECRET={{supabase_jwt_secret}}
+      - GOTRUE_JWT_SECRET={{supabase_gotrue_jwt_secret}}
 
       ## Email
       - GOTRUE_EXTERNAL_EMAIL_ENABLED=false
@@ -189,7 +189,7 @@ services:
     environment:
       ## Realtime API 
       - PORT=4000
-      - API_JWT_SECRET={{realtime_jwt_secret}}
+      - API_JWT_SECRET={{realtime_jwt_secret_key}}
       - SECRET_KEY_BASE={{realtime_secret_key_base}}
       - APP_NAME=realtime
 
@@ -221,7 +221,7 @@ services:
     image: supabase/storage-api:v1.11.13
 
     volumes:
-      - /root/supabase/docker/volumes/storage:/var/lib/storage:z
+      - /opt/stackme/stacks/supabase/supabase/docker/volumes/storage:/var/lib/storage:z
 
     networks:
       - {{network_name}}
@@ -265,7 +265,7 @@ services:
     image: darthsim/imgproxy:v3.8.0
   
     volumes:
-      - /root/supabase/docker/volumes/storage:/var/lib/storage:z
+      - /opt/stackme/stacks/supabase/supabase/docker/volumes/storage:/var/lib/storage:z
 
     networks:
       - {{network_name}}
@@ -314,7 +314,7 @@ services:
       - /home/deno/functions/main
     
     volumes:
-      - /root/supabase/docker/volumes/functions:/home/deno/functions:Z
+      - /opt/stackme/stacks/supabase/supabase/docker/volumes/functions:/home/deno/functions:Z
 
     networks:
       - {{network_name}}
@@ -322,7 +322,7 @@ services:
     environment:
       ## JWT and Supabase Settings
       - VERIFY_JWT="false"
-      - JWT_SECRET={{supabase_functions_jwt_secret}}
+      - JWT_SECRET={{supabase_functions_jwt_secret_key}}
       - SUPABASE_URL=http://kong:8000
       - SUPABASE_ANON_KEY={{supabase_anon_key}}
       - SUPABASE_SERVICE_ROLE_KEY={{supabase_service_key}}
@@ -356,7 +356,7 @@ services:
     
       ## Logflare
       - LOGFLARE_NODE_HOST=127.0.0.1
-      - LOGFLARE_API_KEY={{supabase_logflare_key}}
+      - LOGFLARE_API_KEY={{logflare_api_key}}
       - LOGFLARE_SINGLE_TENANT=true
       - LOGFLARE_SUPABASE_MODE=true
       - LOGFLARE_MIN_CLUSTER_SIZE=1
@@ -402,7 +402,7 @@ services:
       - PGDATABASE=postgres
 
       ## JWT
-      - JWT_SECRET={{jwt_key}}
+      - JWT_SECRET={{postgres_jwt_key}}
       - JWT_EXP=31536000
     
     deploy:
