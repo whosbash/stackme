@@ -12,7 +12,7 @@ services:
       - 6334:6334
 
     volumes:
-      - /opt/stackme/stacks/qdrant_data:/qdrant/storage
+      - /opt/stackme/stacks/qdrant/qdrant_data:/qdrant/storage
 
     deploy:
       mode: replicated
