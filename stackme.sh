@@ -11531,6 +11531,7 @@ define_menu_utilities_docker() {
   )"
   item_2="$(
     build_menu_item "Clean" "Clean local docker environment" "clean_docker_environment"
+  )"
 
   items=(
     "$item_1" "$item_2"
