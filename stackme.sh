@@ -9839,6 +9839,49 @@ generate_stack_config_mautic() {
   generate_stack_config_pipeline "$config_instructions"
 }
 
+# Function to generate Mautic service configuration JSON
+generate_stack_config_zep() {
+  local stack_name="zep"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "zep_url",
+          "label": "Zep URL",
+          "description": "URL to access Zep remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "dependencies": ["pgvector"],
+          "actions": {
+            "prompt": $prompt_items,
+            "refresh": [
+              {
+                "name": "pgvector_password",
+                "description": "Fetch pgvector database password",
+                "command": "fetch_database_password pgvector"
+              }
+            ]
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  } 
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
 # Function to generate Woofed service configuration JSON
 generate_stack_config_woofed() {
   local stack_name="woofed"

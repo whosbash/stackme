@@ -210,7 +210,7 @@
     "stack_name": "zep",
     "stack_label": "zep",
     "stack_description": "A project management and collaboration tool.",
-    "stack_status": "stable",
+    "stack_status": "beta",
     "category_name": "project_management",
     "category_label": "Project Management",
     "category_description": "Tools for managing projects, tasks, and team collaboration."
@@ -381,7 +381,7 @@
     "stack_name": "twentycrm",
     "stack_label": "twentycrm",
     "stack_description": "A customer relationship management (CRM) platform.",
-    "stack_status": "stable",
+    "stack_status": "beta",
     "category_name": "project_management",
     "category_label": "Project Management",
     "category_description": "Tools for managing projects, tasks, and team collaboration."
