@@ -4260,7 +4260,7 @@ map_stacks_to_services() {
 }
 
 # Function to wait for all services to be healthy using docker service ps
-wait_for_services() {
+wait_for_services() {0
     local stack_name="$1"
 
     local timeout=300
@@ -10217,7 +10217,7 @@ generate_stack_config_baserow(){
     '{
           "name": $stack_name,
           "target": "portainer",
-          "dependencies": ["postgres"],
+          "dependencies": ["postgres", "redis"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
