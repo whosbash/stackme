@@ -1,0 +1,36 @@
+version: '3.7'
+
+services:
+  server:
+    image: ghcr.io/chroma-core/chroma:latest
+    environment:
+      - IS_PERSISTENT=TRUE
+    volumes:
+      # Default configuration for persist_directory in chromadb/config.py
+      # Currently it's located in "/chroma/chroma/"
+      - chroma-data:/chroma/chroma/
+    ports:
+      - 8000:8000
+    networks:
+      - {{network_name}}
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.chroma.rule=Host(`{{chromadb_url}}`)
+        - traefik.http.routers.chroma.entrypoints=websecure
+        - traefik.http.routers.chroma.tls.certresolver=letsencryptresolver
+        - traefik.http.services.chroma.loadbalancer.server.port=8000
+
+volumes:
+  chroma-data:
+    external: true
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}
