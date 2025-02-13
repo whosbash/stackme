@@ -6825,152 +6825,9 @@ initialize_server_info() {
 
 # Function to create a PostgreSQL database
 create_database_postgres() {
-  local db_name="$1"
-  local db_user="postgres"
-
-  local container_id
-  local db_exists
-
-  # Display a message about the database creation attempt
-  info "Creating PostgreSQL database: $db_name in POstgres container"
-
-  # Check if the container is running
-  container_id=$(docker ps -q --filter "name=^postgres")
-  if [ -z "$container_id" ]; then
-    error "Container '${container_name}' is not running. Cannot create database."
-    return 1
-  fi
-
-  # Check if the database already exists
-  db_exists=$(docker exec \
-    "$container_id" psql -U "$db_user" -lqt | cut -d \| -f 1 | grep -qw "$db_name")
-  if [ "$db_exists" ]; then
-    info "Database '$db_name' already exists. Skipping creation."
-    return 0
-  fi
-
-  # Create the database if it doesn't exist
-  info "Creating database '$db_name'..."
-  if docker exec "$container_id" \
-    psql -U "$db_user" -c "CREATE DATABASE \"$db_name\";" >/dev/null 2>&1; then
-    success "Database '$db_name' created successfully."
-    return 0
-  else
-    error "Failed to create database '$db_name'. Please check the logs for details."
-    return 1
-  fi
-}
-
-# Function to create a MySQL database
-create_database_mysql() {
-  local db_password="$1"
-  local db_name="$2"
-  
-  container_id=$(docker ps -q --filter "name=^mysql")
-
-  # Check if the database already exists using the correct variable for the database name.
-  docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
-      -e "SHOW DATABASES LIKE '$db_name';" | grep -qw "$db_name"
-
-  if [ $? -eq 0 ]; then
-      prompt_message="Database '$db_name' already exists. Do you want to recreate it? (y/n)"
-      confirm_var=$(request_confirmation "$prompt_message" "n")
-      
-      if [ "$confirm_var" == "Y" ] || [ "$confirm_var" == "y" ]; then
-          # Drop the database
-          docker exec -e MYSQL_PWD="$db_password" "$container_id" \
-            mysql -u root -e "DROP DATABASE IF EXISTS $db_name;" > /dev/null 2>&1
-          if [ $? -eq 0 ]; then
-              echo "Database dropped successfully."
-          else
-              echo "Failed to drop database."
-          fi
-          # Create the database again
-          docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
-              -e "CREATE DATABASE $db_name;" > /dev/null 2>&1
-      else
-          info "Skipping database creation."
-          return 0
-      fi
-  else
-      # Create the database
-      docker exec -e MYSQL_PWD="$db_password" "$container_id" \
-          mysql -u root -e "CREATE DATABASE $db_name;" > /dev/null 2>&1
-
-      # Verify if the database was created successfully
-      docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
-          -e "SHOW DATABASES LIKE '$db_name';" | grep -qw "$db_name"
-
-      if [ $? -eq 0 ]; then
-          success "Database '$db_name' created successfully."
-          return 0
-      else
-          error "Failed to create database '$db_name'. Please check the logs for details."
-          return 1
-      fi
-  fi
-}
-
-create_database(){
-  local engine="$1"
-  local db_name="$2"
-
-  case "$engine" in
-    "postgres")
-      create_database_postgres "$db_name"
-      ;;
-    "mysql")
-      create_database_mysql "$db_name"
-      ;;
-    *)
-      error "Unsupported database engine: $engine"
-      return 1
-      ;;
-  esac
-
-}
-
-get_network_name(){
-  server_info_filename="${TOOL_BASE_DIR}/server_info.json"
-  
-  if [[ ! -f "$server_info_filename" ]]; then
-    error "File $server_info_filename not found."
-    return 1
-  fi
-
-  echo "$(cat "$server_info_filename" | jq -r ".network_name")"
-
-  return 0
-}
-
-# Function to fetch stack compose file
-fetch_stack_compose(){
-  local stack_name="$1"
-  local filepath="$2"
-  
-  download_file "$(stack_url "$stack_name")" "$filepath" "docker-compose.yaml"
-
-  if [[ -f "$filepath/docker-compose.yaml" ]]; then
-    return 0
-  else
-    return 1
-  fi
-}
-
-# Function to get the database password from a configuration
-fetch_database_password() {
-  echo "$(fetch_stack_variable "$1" "db_password")"
-}
-
-# Function to get the database password from a configuration
-fetch_database_username() {
-  echo "$(fetch_stack_variable "$1" "db_username")"
-}
-
-# Function to create a PostgreSQL database
-create_database_postgres() {
-  local db_name="$1"
-  local db_user="postgres"
+  local db_user="$1"
+  local db_password="$2"
+  local db_name="$3"
 
   local container_id
   local db_exists
@@ -7046,6 +6903,115 @@ create_user_postgres() {
     error "Failed to create user '$user_name'. Please check the logs for details."
     return 1
   fi
+}
+
+# Function to create a MySQL database
+create_database_mysql() {
+  local db_user="$1"
+  local db_password="$2"
+  local db_name="$3"
+
+  container_id=$(docker ps -q --filter "name=^mysql")
+
+  # Check if the database already exists using the correct variable for the database name.
+  docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
+      -e "SHOW DATABASES LIKE '$db_name';" | grep -qw "$db_name"
+
+  if [ $? -eq 0 ]; then
+      prompt_message="Database '$db_name' already exists. Do you want to recreate it? (y/n)"
+      confirm_var=$(request_confirmation "$prompt_message" "n")
+      
+      if [ "$confirm_var" == "Y" ] || [ "$confirm_var" == "y" ]; then
+          # Drop the database
+          docker exec -e MYSQL_PWD="$db_password" "$container_id" \
+            mysql -u root -e "DROP DATABASE IF EXISTS $db_name;" > /dev/null 2>&1
+          if [ $? -eq 0 ]; then
+              echo "Database dropped successfully."
+          else
+              echo "Failed to drop database."
+          fi
+          # Create the database again
+          docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
+              -e "CREATE DATABASE $db_name;" > /dev/null 2>&1
+      else
+          info "Skipping database creation."
+          return 0
+      fi
+  else
+      # Create the database
+      docker exec -e MYSQL_PWD="$db_password" "$container_id" \
+          mysql -u root -e "CREATE DATABASE $db_name;" > /dev/null 2>&1
+
+      # Verify if the database was created successfully
+      docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
+          -e "SHOW DATABASES LIKE '$db_name';" | grep -qw "$db_name"
+
+      if [ $? -eq 0 ]; then
+          success "Database '$db_name' created successfully."
+          return 0
+      else
+          error "Failed to create database '$db_name'. Please check the logs for details."
+          return 1
+      fi
+  fi
+}
+
+create_database(){
+  local engine="$1"
+  local db_user="$2"
+  local db_password="$2"
+  local db_name="$2"
+
+  case "$engine" in
+    "postgres")
+      create_database_postgres "$db_user" "$db_password" "$db_name"
+      ;;
+    "mysql")
+      create_database_mysql "$db_user" "$db_password" "$db_name"
+      ;;
+    *)
+      error "Unsupported database engine: $engine"
+      return 1
+      ;;
+  esac
+
+}
+
+get_network_name(){
+  server_info_filename="${TOOL_BASE_DIR}/server_info.json"
+  
+  if [[ ! -f "$server_info_filename" ]]; then
+    error "File $server_info_filename not found."
+    return 1
+  fi
+
+  echo "$(cat "$server_info_filename" | jq -r ".network_name")"
+
+  return 0
+}
+
+# Function to fetch stack compose file
+fetch_stack_compose(){
+  local stack_name="$1"
+  local filepath="$2"
+  
+  download_file "$(stack_url "$stack_name")" "$filepath" "docker-compose.yaml"
+
+  if [[ -f "$filepath/docker-compose.yaml" ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# Function to get the database password from a configuration
+fetch_database_password() {
+  echo "$(fetch_stack_variable "$1" "db_password")"
+}
+
+# Function to get the database password from a configuration
+fetch_database_username() {
+  echo "$(fetch_stack_variable "$1" "db_username")"
 }
 
 # Function to get the database password from a configuration
@@ -7688,9 +7654,9 @@ generate_stack_config_metabase() {
         ],
         "prepare": [
           {
-            "name": "create_database_postgres_metabase",
+            "name": "create_metabase_database",
             "description": "Creating Metabase database",
-            "command": "create_database_postgres metabase",
+            "command": "create_database postgres postgres {{postgres_password}} metabase",
           }
         ],
         "finalize": []
@@ -7754,7 +7720,7 @@ generate_stack_config_yourls() {
           {
             "name": "create_yourls_database",
             "description": "Create Yourls database",
-            "command": "create_database_postgres yourls",
+            "command": "create_database postgres postgres {{postgres_password}} yourls",
           }
         ]
       }
@@ -7999,9 +7965,9 @@ generate_stack_config_n8n() {
           ],
           "prepare": [
             {
-              "name": "create_database_postgres_n8n",
+              "name": "create_n8n_database",
               "description": "Creating N8N database",
-              "command": "create_database_postgres n8n_queue",
+              "command": "create_database postgres postgres {{postgres_password}} n8n_queue",
             }
           ]
         }
@@ -8131,9 +8097,9 @@ generate_stack_config_botpress() {
             ],
             "prepare": [
               {
-                "name": "create_database_postgres_botpress",
+                "name": "create_botpress_database",
                 "description": "Creating botpress database",
-                "command": "create_database_postgres botpress"
+                "command": "create_database postgres postgres {{postgres_password}} botpress"
               }
             ]
           }
@@ -8620,7 +8586,7 @@ generate_stack_config_langfuse() {
               {
                 "name": "create_langfuse_database",
                 "description": "Creating Langfuse database",
-                "command": "create_database_postgres langfuse",
+                "command": "create_database postgres postgres {{postgres_password}} langfuse",
               }
             ]
           }
@@ -8745,7 +8711,7 @@ generate_stack_config_langflow() {
               {
                 "name": "create_langflow_db",
                 "description": "Create Langflow database",
-                "command": "create_database_postgres langflow"
+                "command": "create_database postgres postgres {{postgres_password}} langflow"
               }
             ]
           }
@@ -8853,7 +8819,7 @@ generate_stack_config_openproject() {
               {	
                 "name": "create_openproject_db",
                 "description": "Create OpenProject database",
-                "command": "create_database_postgres openproject"
+                "command": "create_database postgres postgres {{postgres_password}} openproject"
               }
             ]
           }
@@ -8921,8 +8887,8 @@ generate_stack_config_flowise() {
             "prepare": [
               {
                 "name": "create_flowise_database",
-                "description": "  ",
-                "command": "create_database_postgres flowise"
+                "description": "Create Flowise database",
+                "command": "create_database postgres postgres {{postgres_password}} flowise"
               }
             ]
           }
@@ -8979,7 +8945,7 @@ generate_stack_config_wordpress() {
               {
                 "name": "create_wordpress_db",
                 "description": "Create Wordpress database",
-                "command": "create_database_mysql {{mysql_password}} wordpress"
+                "command": "create_database mysql wordpress {{mysql_password}} "
               }
             ]
           }
@@ -9110,7 +9076,7 @@ generate_stack_config_nocobase() {
               {
                 "name": "create_flowise_database",
                 "description": "Create Flowise database",
-                "command": "create_database_postgres nocobase"
+                "command": "create_database postgres postgres {{postgres_password}} nocobase"
               }
             ]
           }
@@ -9305,7 +9271,7 @@ generate_stack_config_evolution_lite() {
               {
                 "name": "create_evolution_lite_db",
                 "description": "Create Evolution Lite database",
-                "command": "create_database_postgres evolution_lite"
+                "command": "create_database postgres postgres {{postgres_password}} evolution_lite"
               }
             ]
           }
@@ -9570,7 +9536,7 @@ generate_stack_config_nextcloud() {
               {
                 "name": "create_nextcloud_database",
                 "description": "Create NextCloud database",
-                "command": "create_database postgres nextcloud"
+                "command": "create_database postgres postgres {{postgres_password}} nextcloud"
               }
             ]
           }
@@ -10238,7 +10204,7 @@ generate_stack_config_baserow(){
               {
                 "name": "create_baserow_database",
                 "description": "Create postgres database baserow",
-                "command": "create_database_postgres baserow",
+                "command": "create_database postgres postgres {{postgres_password}} baserow",
               }
             ]
           }
@@ -10296,7 +10262,7 @@ generate_stack_config_docuseal(){
               {
                 "name": "create_docuseal_database",
                 "description": "Create postgres database docuseal",
-                "command": "create_database_postgres docuseal",
+                "command": "create_database postgres postgres {{postgres_password}} docuseal",
               }
             ]
           }
@@ -10370,7 +10336,7 @@ generate_stack_config_humhub(){
               {
                 "name": "create_humhub_database",
                 "description": "Create mysql database humhub",
-                "command": "create_database_mysql {{mysql_password}} humhub",
+                "command": "create_database mysql {{mysql_password}} humhub",
               }
             ]
           }
@@ -10539,7 +10505,7 @@ generate_stack_config_chatwoot(){
               {
                 "name": "chatwoot_database",
                 "description": "Create database chatwoot on Postgres",
-                "command": "create_database_postgres chatwoot",
+                "command": "create_database postgres postgres {{postgres_password}} chatwoot",
               }
             ]
           }
@@ -10611,7 +10577,7 @@ generate_stack_config_chatwoot_nestor(){
               {
                 "name": "chatwoot_database",
                 "description": "Create database chatwoot on Postgres",
-                "command": "create_database_postgres chatwoot",
+                "command": "create_database postgres postgres {{postgres_password}} chatwoot",
               }
             ]
           }
@@ -10678,12 +10644,12 @@ generate_stack_config_tooljet(){
               {
                 "name": "tooljet_database",
                 "description": "Create database tooljet on Postgres",
-                "command": "create_database_postgres tooljet"
+                "command": "create_database postgres postgres {{postgres_password}} tooljet"
               },
               {
                 "name": "tooljet_database",
                 "description": "Create database tooljet on Postgres",
-                "command": "create_database_postgres tooljet_app"
+                "command": "create_database postgres postgres {{postgres_password}} tooljet_app"
               }
             ]
           }
