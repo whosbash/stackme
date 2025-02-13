@@ -11529,9 +11529,12 @@ define_menu_utilities_docker() {
   item_1="$(
     build_menu_item "CTOP" "Run docker manager ctop on terminal" "run_ctop"
   )"
+  item_2="$(
+    build_menu_item "Clean" "Clean local docker environment" "clean_docker_environment"
 
   items=(
     "$item_1"
+    "$item_2"
   )
 
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
@@ -11656,7 +11659,6 @@ usage() {
   usage_messages=(
     "Usage: $0 [options]"
     "Options:"
-    "  -c, --clean             Clean docker environment."
     "  -a, --arrow             Arrow style: {$joined_arrows}."
     "  -h, --help              Display this help message and exit."
   )
@@ -11679,7 +11681,7 @@ startup() {
 # Parse command-line arguments
 parse_args() {
   # Get options using getopt
-  OPTIONS=$(getopt -o a:,c,h --long arrow:,clean,help -- "$@")
+  OPTIONS=$(getopt -o a:,h --long arrow:,help -- "$@")
 
   # Check if getopt failed (invalid option)
   if [ $? -ne 0 ]; then
@@ -11694,10 +11696,6 @@ parse_args() {
   # Loop through the options
   while true; do
     case "$1" in
-    -c | --clean)
-      CLEAN=true
-      shift
-      ;;
     -a | --arrow)
       USER_DEFINED_ARROW="$2"
       shift 2
@@ -11723,11 +11721,6 @@ parse_args() {
 # Main script execution
 main() {
   parse_args "$@"
-
-  if [[ $CLEAN == true ]]; then
-    clean_docker_environment
-    exit 0
-  fi
 
   set_arrow
   clear
