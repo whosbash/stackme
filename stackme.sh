@@ -7138,6 +7138,15 @@ create_traccar_volumes(){
   /opt/traccar/conf/traccar.xml > "$TOOL_STACKS_DIR/traccar/traccar.xml"
 }
 
+create_easyappointments_volumes(){
+  local host_url="$1"
+  
+  # Cria o arquivo com o conteúdo desejado
+  cat > "$TOOL_STACKS_DIR/easyappointments/apache-custom.conf" << EOL
+ServerName $host_url
+EOL
+}
+
 # Function to custom smtp information
 custom_smtp_information(){
   local identifier="$1"
@@ -9011,6 +9020,13 @@ generate_stack_config_easyappointments() {
                 "name": "mysql_password",
                 "description": "Fetch mysql password",
                 "command": "fetch_database_password mysql"
+              }
+            ],
+            "prepare": [
+              {
+                "name": "create_easyappointments_volumes",
+                "description": "Create EasyAppointments volumes",
+                "command": "make_folders_easyappointments {{easyappointments_url}}"
               }
             ]
           }
@@ -11338,11 +11354,6 @@ generate_stack_config_typebot(){
 
 }
 
-# typebot_image_version
-# 
-# s3_url
-# s3_access_key_id
-# s3_access_key_secret
 
 #################################### END OF STACK CONFIGURATION ###################################
 

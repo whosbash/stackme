@@ -63,7 +63,7 @@ services:
       - DASHBOARD_PASSWORD={{supabase_password}}
 
       ## Autenticação
-      - JWT_SECRET={{_kong_jwt_secret_key}}
+      - JWT_SECRET={{kong_jwt_secret_key}}
       - SUPABASE_ANON_KEY={{supabase_anon_key}}
       - SUPABASE_SERVICE_KEY={{supabase_service_key}}
 

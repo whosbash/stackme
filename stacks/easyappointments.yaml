@@ -5,7 +5,7 @@ services:
 
     volumes:
       - easyapointments_data:/var/www/html
-      - /root/easyappointments/apache-custom.conf:/etc/apache2/conf-enabled/custom.conf:ro
+      - /opt/stackme/stacks/easyappointments/apache-custom.conf:/etc/apache2/conf-enabled/custom.conf:ro
 
     networks:
       - {{network_name}}
