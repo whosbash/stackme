@@ -7081,8 +7081,20 @@ make_folders_mosquitto(){
   mkdir -p "$TOOL_STACKS_DIR/stacks/mosquitto/log"
 }
 
+# Function to create qdrant folders 
 make_folders_qdrant(){
   mkdir -p "$TOOL_STACKS_DIR/stacks/qdrant/qdrant_data"  
+}
+
+set_vaultwarden_ssl(){
+  local smtp_port="$1"
+  if [ "$smtp_port" -eq 465 ] || [ "$smtp_port" -eq 25 ]; then
+    ssl_vaultwarden=force_tls
+  else
+    ssl_vaultwarden=starttls
+  fi
+
+  echo "$ssl_vaultwarden"
 }
 
 # Function to generate a firecrawl string
@@ -10508,6 +10520,11 @@ generate_stack_config_vaultwarden(){
                 "name": "postgres_password",
                 "description": "Fetch postgres password",
                 "command": "fetch_database_password postgres",
+              },
+              {
+                "name": "vaultwarden_smtp_secure",
+                "description": "Vaultwarden SMTP secure",
+                "command": "set_vaultwarden_ssl {{vaultwarden_smtp_port}}"
               }
             ]
           }
