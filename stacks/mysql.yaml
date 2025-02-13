@@ -23,18 +23,10 @@ services:
 
     environment:
       ## MYSQL Password
-      - MYSQL_USER=mysql
       - MYSQL_ROOT_PASSWORD={{db_password}}
 
       ## TimeZone
       - TZ=America/Sao_Paulo
-    
-    healthcheck:
-      test: mysql --user=mysql --password={{db_password}} --silent --execute "SHOW DATABASES"
-      interval: 2m
-      timeout: 10s
-      retries: 5
-      start_period: 40s
 
     deploy:
       placement:
