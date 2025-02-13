@@ -9785,7 +9785,7 @@ generate_stack_config_mautic() {
           "label": "Mautic username",
           "description": "Username to access Mautic remotely",
           "required": "yes",
-          "validate_fn": "validate_username"
+          "validate_fn": "validate_email_value"
       },
       {
           "name": "mautic_email_password",
