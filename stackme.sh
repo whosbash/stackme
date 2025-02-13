@@ -9026,7 +9026,7 @@ generate_stack_config_easyappointments() {
               {
                 "name": "create_easyappointments_volumes",
                 "description": "Create EasyAppointments volumes",
-                "command": "make_folders_easyappointments {{easyappointments_url}}"
+                "command": "create_easyappointments_volumes {{easyappointments_url}}"
               }
             ]
           }
