@@ -4260,14 +4260,13 @@ map_stacks_to_services() {
 }
 
 # Function to wait for all services to be healthy using docker service ps
-wait_for_services() {0
+wait_for_services() {
     local stack_name="$1"
-
     local timeout=300
     local interval=5
     local elapsed=0
     
-    timout_min="$(( timeout / 60 ))"
+    local timeout_min=$(( timeout / 60 ))  # Fix typo
 
     # Get the list of service names from the docker-compose setup (in swarm mode)
     services=$(docker stack services --format '{{.Name}}' "$stack_name")
@@ -4288,8 +4287,12 @@ wait_for_services() {0
             if [[ -z "$service_state" ]]; then
                 all_healthy=false
                 current_time=$(date +%s)
-                elapsed=$(( (current_time - start_time) / 60 )) # Convert to minutes
-                time_info="elapsed time: ${elapsed} minutes (timeout: ${timeout_min} minutes)."
+                elapsed=$(( current_time - start_time ))  # Elapsed time in seconds
+                elapsed_min=$(( elapsed / 60 ))
+                elapsed_sec=$(( elapsed % 60 ))
+                elapsed_formatted=$(printf "%02d:%02d" $elapsed_min $elapsed_sec) # Format as MM:SS
+
+                time_info="elapsed time: ${elapsed_formatted} (timeout: ${timeout_min} minutes)."
                 info "Service '$service' is not healthy yet. Waiting... $time_info"
                 break
             fi
@@ -4303,7 +4306,7 @@ wait_for_services() {0
 
         # Check if we've exceeded the timeout
         current_time=$(date +%s)
-        elapsed=$((current_time - start_time))  # Elapsed time in seconds
+        elapsed=$(( current_time - start_time ))  # Elapsed time in seconds
         if (( elapsed >= timeout )); then
             failure "Timeout reached! Not all services of stack $stack_name are healthy."
             exit 1
