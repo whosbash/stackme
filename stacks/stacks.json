@@ -534,7 +534,7 @@
     "stack_name": "nextcloud",
     "stack_label": "nextcloud",
     "stack_description": "A file-sharing and collaboration platform.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "scheduling_and_collaboration",
     "category_label": "Scheduling and Collaboration",
     "category_description": "Tools for scheduling and team collaboration."
