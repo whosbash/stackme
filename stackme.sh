@@ -5939,12 +5939,8 @@ deploy_stack() {
     return 1
   fi
 
-  debug "Stack configuration: $stack_config"
-
   # Check required fields
   validate_stack_config "$stack_config"
-
-  debug "Validated stack configuration: $stack_config"
 
   if [ $? -ne 0 ]; then
     failure "Stack \'$stack_name\' configuration validation failed."
@@ -7538,6 +7534,41 @@ generate_stack_config_whoami() {
           "name": "whoami_url",
           "label": "Whoami domain name",
           "description": "URL to access Whoami remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix" 
+      }
+  ]'
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+      "name": $stack_name,
+      "target": "portainer",
+      "actions": {
+        "prompt": $prompt_items
+      }
+    }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+# Function to generate Whoami service configuration JSON
+generate_stack_config_chromadb() {
+  local stack_name="chromadb"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items='[
+      {
+          "name": "chromadb_url",
+          "label": "ChromaDB domain name",
+          "description": "URL to access ChromaDB remotely",
           "required": "yes",
           "validate_fn": "validate_url_suffix" 
       }
