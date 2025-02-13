@@ -6959,8 +6959,8 @@ create_database_mysql() {
 create_database(){
   local engine="$1"
   local db_user="$2"
-  local db_password="$2"
-  local db_name="$2"
+  local db_password="$3"
+  local db_name="$4"
 
   case "$engine" in
     "postgres")
@@ -10755,7 +10755,7 @@ generate_stack_config_krayincrm(){
               {
                 "name": "create_krayincrm_database",
                 "description": "Create database krayincrm on MySQL",
-                "command": "create_database_mysql krayincrm",
+                "command": "create_database mysql mysql {{mysql_password}} krayincrm",
               }
             ]
           }
