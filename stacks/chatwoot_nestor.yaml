@@ -20,7 +20,7 @@ services:
       - CHATWOOT_HUB_URL=https://example.com/#
 
       ## Company 
-      - INSTALLATION_NAME={{chatwoot_company_name}}
+      - INSTALLATION_NAME={{chatwoot_name}}
 
       ## Secret key
       - SECRET_KEY_BASE={{chatwoot_encryption_key}}
@@ -124,7 +124,7 @@ services:
       - CHATWOOT_HUB_URL=https://example.com/#
 
       ## Nome da Empresa
-      - INSTALLATION_NAME={{chatwoot_company_name}}
+      - INSTALLATION_NAME={{chatwoot_name}}
 
       ## Secret key
       - SECRET_KEY_BASE={{chatwoot_encryption_key}}

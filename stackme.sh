@@ -2228,7 +2228,7 @@ sanitize() {
   # Ask for confirmation before proceeding
   explanation="This will prune unused containers, networks, volumes, images, and build cache"
   confirmation_query="Are you sure you want to continue? [y/N]"
-  message="$explanation. $confirmation_query"
+  message="$explanation.\n $confirmation_query"
   formatted_message="$(format "question" "$message")"
 
   read -p "$formatted_message" confirm

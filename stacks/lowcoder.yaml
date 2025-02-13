@@ -67,6 +67,9 @@ services:
     networks:
       - {{network_name}}
 
+    depends_on:
+      - lowcoder_api
+
     environment:
       - LOWCODER_PUID=9001
       - LOWCODER_PGID=9001
@@ -88,6 +91,10 @@ services:
 
     volumes:
       - lowcoder_assets:/lowcoder/assets
+
+    depends_on:
+      - lowcoder_api
+      - lowcoder_node
 
     networks:
       - {{network_name}}
