@@ -2231,9 +2231,8 @@ sanitize() {
   message="$explanation.\n $confirmation_query"
   formatted_message="$(format "question" "$message")"
 
-  read -p "$formatted_message" confirm
 
-  if [[ "$confirm" =~ ^[Yy]$ ]]; then
+  if handle_confirmation_prompt "$formatted_message" "y"; then
     # Run commands with explicit permission for destructive operations
     message="Pruning unused containers, networks, volumes, and build cache"
     command="docker system prune --all --volumes -f"
