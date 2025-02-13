@@ -10217,6 +10217,7 @@ generate_stack_config_baserow(){
     '{
           "name": $stack_name,
           "target": "portainer",
+          "dependencies": ["postgres"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
