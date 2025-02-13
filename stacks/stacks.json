@@ -12,7 +12,7 @@
     "stack_name": "flowise",
     "stack_label": "flowise",
     "stack_description": "A low-code platform for automating workflows.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "automation_and_low-code",
     "category_label": "Automation and Low-Code",
     "category_description": "Automation and low-code platforms for developing applications quickly."
@@ -201,7 +201,7 @@
     "stack_name": "affine",
     "stack_label": "affine",
     "stack_description": "A data science tool for building machine learning models.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "ai",
     "category_label": "AI",
     "category_description": "AI and Natural Language Processing tools to build and deploy models."
@@ -597,7 +597,7 @@
     "stack_name": "langflow",
     "stack_label": "langflow",
     "stack_description": "An AI tool for managing workflows for large language models (LLMs).",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "ai",
     "category_label": "AI",
     "category_description": "AI and Natural Language Processing tools to build and deploy models."
