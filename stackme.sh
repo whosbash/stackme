@@ -6876,8 +6876,8 @@ create_database_mysql() {
       
       if [ "$confirm_var" == "Y" ] || [ "$confirm_var" == "y" ]; then
           # Drop the database
-          docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
-              -e "DROP DATABASE IF EXISTS $db_name;" > /dev/null 2>&1
+          docker exec -e MYSQL_PWD="$db_password" "$container_id" \
+            mysql -u root -e "DROP DATABASE IF EXISTS $db_name;" > /dev/null 2>&1
           if [ $? -eq 0 ]; then
               echo "Database dropped successfully."
           else
@@ -6892,8 +6892,8 @@ create_database_mysql() {
       fi
   else
       # Create the database
-      docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
-          -e "CREATE DATABASE $db_name;" > /dev/null 2>&1
+      docker exec -e MYSQL_PWD="$db_password" "$container_id" \
+          mysql -u root -e "CREATE DATABASE $db_name;" > /dev/null 2>&1
 
       # Verify if the database was created successfully
       docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
@@ -8962,6 +8962,13 @@ generate_stack_config_wordpress() {
                 "name": "mysql_password",
                 "description": "Fetch MySQL password",
                 "command": "fetch_database_password mysql"
+              }
+            ],
+            "prepare": [
+              {
+                "name": "create_wordpress_db",
+                "description": "Create Wordpress database",
+                "command": "create_database_mysql {{mysql_password}} wordpress"
               }
             ]
           }
