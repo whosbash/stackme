@@ -10475,7 +10475,7 @@ generate_stack_config_chatwoot(){
         "validate_fn": "validate_url_suffix"
       },
       {
-        "name": "chatwoot_company_name",
+        "name": "chatwoot_name",
         "label": "Chatwoot app name",
         "description": "Name of app on Chatwoot",
         "required": "yes",
@@ -10547,7 +10547,7 @@ generate_stack_config_chatwoot_nestor(){
         "validate_fn": "validate_url_suffix"
       },
       {
-        "name": "chatwoot_company_name",
+        "name": "chatwoot_name",
         "label": "Chatwoot app name",
         "description": "Name of app on Chatwoot",
         "required": "yes",
