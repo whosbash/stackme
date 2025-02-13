@@ -1,6 +1,6 @@
 version: "3.7"
 services:
-  nextcloud:
+  app:
     image: nextcloud:latest
 
     volumes:
@@ -49,7 +49,7 @@ services:
         - traefik.http.middlewares.nextcloud_redirectregex.redirectregex.regex=https://(.*)/.well-known/(?:card|cal)dav
         - traefik.http.middlewares.nextcloud_redirectregex.redirectregex.replacement=https://$$1/remote.php/dav
 
-  nextcloud_cron:
+  cron:
     image: nextcloud:latest
     entrypoint: /cron.sh
 
