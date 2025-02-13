@@ -162,7 +162,7 @@ services:
 
       ## SMTP
       - MAILER_SENDER_EMAIL={{chatwoot_smtp_from_email}} <{{chatwoot_smtp_from_email}}> ## Email SMTP
-      - SMTP_DOMAIN={{chatwoot_smtp_domain}} ## Email domain
+      - SMTP_DOMAIN={{chatwoot_smtp_host}} ## Email domain
       - SMTP_ADDRESS={{chatwoot_smtp_host}} ## SMTP host
       - SMTP_PORT={{chatwoot_smtp_port}} ## SMTP port
       - SMTP_SSL={{chatwoot_smtp_secure}} ## If port is 465 = true | if port is 587 = false
