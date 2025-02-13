@@ -10382,7 +10382,7 @@ generate_stack_config_calcom(){
               },
               {
                 "description": "Custom smtp with identifier docuseal",
-                "command": "custom_smtp_information humhub",
+                "command": "custom_smtp_information calcom",
               },
               {
                 "name": "postgres_password",
