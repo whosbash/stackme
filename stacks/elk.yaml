@@ -29,6 +29,12 @@ services:
         - "traefik.enable=true"
         - "traefik.http.routers.kibana.rule=Host(`{{kibana_url}}`)"
         - "traefik.http.services.kibana.loadbalancer.server.port=5601"
+        - traefik.http.routers.kibana.entrypoints=websecure
+        - traefik.http.routers.kibana.priority=1
+        - traefik.http.routers.kibana.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.kibana.service=kibana
+        - traefik.http.services.kibana.loadbalancer.passHostHeader=1
+
     networks:
       - {{network_name}}
 
