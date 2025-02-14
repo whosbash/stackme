@@ -30,7 +30,7 @@ services:
         - "traefik.http.routers.kibana.rule=Host(`{{kibana_url}}`)"
         - "traefik.http.services.kibana.loadbalancer.server.port=5601"
     networks:
-      - monitoring
+      - {{network_name}}
 
 networks:
   {{network_name}}:
