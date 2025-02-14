@@ -64,6 +64,28 @@ services:
       replicas: 1
     networks:
       - {{network_name}}
+  
+  # 📌 FLOWER - Celery Monitoring Tool
+  airflow-flower:
+    image: apache/airflow:latest
+    command: flower
+    environment:
+      - AIRFLOW__CELERY__BROKER_URL=redis://redis:6379/0
+      - AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://postgres:{{postgres_password}}@postgres/airflow
+    depends_on:
+      - airflow-worker
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.flower.rule=Host(`{{flower_url}}`)"
+        - "traefik.http.services.flower.loadbalancer.server.port=5555"
+        - "traefik.http.routers.flower.service=flower"
+        - "traefik.http.routers.flower.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.flower.entrypoints=websecure"
+        - "traefik.http.routers.flower.tls=true"
+    networks:
+      - {{network_name}}
 
 volumes:
   airflow-db-data:

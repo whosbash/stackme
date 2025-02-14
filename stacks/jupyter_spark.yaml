@@ -31,8 +31,7 @@ services:
     deploy:
       replicas: 2  # Adjust based on the cluster size
       placement:
-        constraints:
-          - "node.role == worker"
+        constraints: []
     networks:
       - {{network_name}}
 
