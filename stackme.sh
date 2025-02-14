@@ -10665,7 +10665,7 @@ generate_stack_config_tooljet(){
 }
 
 generate_stack_config_streaming(){
-  local stack_name="kafka"
+  local stack_name="streaming"
 
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
