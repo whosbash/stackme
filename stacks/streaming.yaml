@@ -1,0 +1,60 @@
+version: '3.7'
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    deploy:
+      replicas: 1
+    networks:
+      - {{network_name}}
+
+  kafka:
+    image: confluentinc/cp-kafka
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_BROKER_ID: 1
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    deploy:
+      replicas: 1
+    networks:
+      - {{network_name}}
+
+  flink:
+    image: flink:latest
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.flink.rule=Host(`{{flink_url}}`)"
+        - "traefik.http.services.flink.loadbalancer.server.port=8081"
+    networks:
+      - {{network_name}}
+
+  duckdb:
+    image: duckdb/duckdb
+    deploy:
+      replicas: 1
+    networks:
+      - {{network_name}}
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    depends_on:
+      - kafka
+    environment:
+      DYNAMIC_CONFIG_ENABLED: "true"
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.kafka-ui.rule=Host(`{{kafka_ui_url}}`)"
+        - "traefik.http.services.kafka-ui.loadbalancer.server.port=8080"
+    networks:
+      - {{network_name}}
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}

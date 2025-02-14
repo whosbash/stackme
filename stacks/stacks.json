@@ -405,6 +405,15 @@
     "category_description": "Tools for managing projects, tasks, and team collaboration."
   },
   {
+    "stack_name": "jupyter_spark",
+    "stack_label": "jupyter spark",
+    "stack_description": "A notebook environment for Apache Spark and Python.",
+    "stack_status": "beta",
+    "category_name": "analytics",
+    "category_label": "Analytics",
+    "category_description": "Business Intelligence and analytics tools for data analysis and reporting."
+  },
+  {
     "stack_name": "calcom",
     "stack_label": "calcom",
     "stack_description": "A scheduling platform for booking appointments.",
@@ -540,6 +549,15 @@
     "category_description": "Tools for scheduling and team collaboration."
   },
   {
+    "stack_name": "elk",
+    "stack_label": "elk",
+    "stack_description": "A collection of tools for Elasticsearch, Logstash, and Kibana.",
+    "stack_status": "beta",
+    "category_name": "infrastructure",
+    "category_label": "Infrastructure",
+    "category_description": "Tools related to managing infrastructure and services, including monitoring, security, and more."
+  },
+  {
     "stack_name": "ntfy",
     "stack_label": "ntfy",
     "stack_description": "A simple notification service for sending and receiving messages.",
@@ -549,13 +567,22 @@
     "category_description": "Tools for messaging, communication, and collaboration."
   },
   {
+    "stack_name": "delta_lake",
+    "stack_label": "delta lake",
+    "stack_description": "A columnar database for online analytical processing (OLAP).",
+    "stack_status": "beta",
+    "category_name": "data_management",
+    "category_label": "Data Management",
+    "category_description": "Tools for managing and administrating databases."
+  },
+  {
     "stack_name": "airflow",
     "stack_label": "airflow",
-    "stack_description": "An open-source workflow automation platform.",
+    "stack_description": "A workflow automation and scheduling platform.",
     "stack_status": "beta",
-    "category_name": "automation_and_low-code",
-    "category_label": "Automation and Low-Code",
-    "category_description": "Automation and low-code platforms for developing applications quickly."
+    "category_name": "analytics",
+    "category_label": "Analytics",
+    "category_description": "Business Intelligence and analytics tools for data analysis and reporting."
   },
   {
     "stack_name": "chatwoot",

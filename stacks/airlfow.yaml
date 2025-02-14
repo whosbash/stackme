@@ -1,0 +1,75 @@
+version: '3.7'
+
+services:
+  # 📌 AIRFLOW SCHEDULER
+  airflow-scheduler:
+    image: apache/airflow:latest
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://postgres:{{postgres_password}}@postgres/airflow
+      - AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://postgres:{{postgres_password}}@postgres/airflow
+      - AIRFLOW__CELERY__BROKER_URL=redis://redis:6379/0
+    deploy:
+      replicas: 1
+    networks:
+      - {{network_name}}
+
+  # 📌 AIRFLOW WEB SERVER (UI)
+  airflow-webserver:
+    image: apache/airflow:latest
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://postgres:{{postgres_password}}@postgres/airflow
+      - AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://postgres:{{postgres_password}}@postgres/airflow
+      - AIRFLOW__CELERY__BROKER_URL=redis://airflow-redis:6379/0
+    depends_on:
+      - airflow-scheduler
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.airflow.rule=Host(`{{airflow_url}}`)"
+        - "traefik.http.services.airflow.loadbalancer.server.port=8080"
+        - "traefik.http.routers.airflow.service=airflow"
+        - "traefik.http.routers.airflow.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.airflow.entrypoints=websecure"
+        - "traefik.http.routers.airflow.tls=true"
+    networks:
+      - {{network_name}}
+
+  # 📌 AIRFLOW WORKER (Celery Workers)
+  airflow-worker:
+    image: apache/airflow:latest
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://postgres:{{postgres_password}}@postgres/airflow
+      - AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://postgres:{{postgres_password}}@postgres/airflow
+      - AIRFLOW__CELERY__BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - airflow-scheduler
+    deploy:
+      replicas: 2
+    networks:
+      - {{network_name}}
+
+  # 📌 AIRFLOW TRIGGERER (For async tasks)
+  airflow-triggerer:
+    image: apache/airflow:latest
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://postgres:{{postgres_password}}@postgres/airflow
+      - AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://postgres:{{postgres_password}}@postgres/airflow
+      - AIRFLOW__CELERY__BROKER_URL=redis://redis:6379/0
+    deploy:
+      replicas: 1
+    networks:
+      - {{network_name}}
+
+volumes:
+  airflow-db-data:
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}
+

@@ -2228,11 +2228,12 @@ sanitize() {
   # Ask for confirmation before proceeding
   explanation="This will prune unused containers, networks, volumes, images, and build cache"
   confirmation_query="Are you sure you want to continue? [y/N]"
-  message="$explanation.\n $confirmation_query"
+  message="$explanation. $confirmation_query"
   formatted_message="$(format "question" "$message")"
 
+  read -p "$formatted_message" confirm
 
-  if handle_confirmation_prompt "$formatted_message" "y"; then
+  if [[ "$confirm" =~ ^[Yy]$ ]]; then
     # Run commands with explicit permission for destructive operations
     message="Pruning unused containers, networks, volumes, and build cache"
     command="docker system prune --all --volumes -f"
@@ -4262,11 +4263,12 @@ map_stacks_to_services() {
 # Function to wait for all services to be healthy using docker service ps
 wait_for_services() {
     local stack_name="$1"
+
     local timeout=300
     local interval=5
     local elapsed=0
     
-    local timeout_min=$(( timeout / 60 ))  # Fix typo
+    timout_min="$(( timeout / 60 ))"
 
     # Get the list of service names from the docker-compose setup (in swarm mode)
     services=$(docker stack services --format '{{.Name}}' "$stack_name")
@@ -4287,12 +4289,8 @@ wait_for_services() {
             if [[ -z "$service_state" ]]; then
                 all_healthy=false
                 current_time=$(date +%s)
-                elapsed=$(( current_time - start_time ))  # Elapsed time in seconds
-                elapsed_min=$(( elapsed / 60 ))
-                elapsed_sec=$(( elapsed % 60 ))
-                elapsed_formatted=$(printf "%02d:%02d" $elapsed_min $elapsed_sec) # Format as MM:SS
-
-                time_info="elapsed time: ${elapsed_formatted} (timeout: ${timeout_min} minutes)."
+                elapsed=$(( (current_time - start_time) / 60 )) # Convert to minutes
+                time_info="elapsed time: ${elapsed} minutes (timeout: ${timeout_min} minutes)."
                 info "Service '$service' is not healthy yet. Waiting... $time_info"
                 break
             fi
@@ -4306,7 +4304,7 @@ wait_for_services() {
 
         # Check if we've exceeded the timeout
         current_time=$(date +%s)
-        elapsed=$(( current_time - start_time ))  # Elapsed time in seconds
+        elapsed=$((current_time - start_time))  # Elapsed time in seconds
         if (( elapsed >= timeout )); then
             failure "Timeout reached! Not all services of stack $stack_name are healthy."
             exit 1
@@ -5725,8 +5723,15 @@ generate_stack_config_pipeline() {
   total_steps=2
 
   stack_name="$(echo "$config_instructions" | jq -r '.name')"
-  
-  target=$(echo "$config_instructions" | jq -r '.target // "swarm"')
+
+  # Set target to 'swarm' if variable 'stack_name' is either 'traefik' or 'portainer'.
+  # Otherwise, set target to 'portainer'.
+  local target
+  if [ "$stack_name" == "traefik" ] || [ "$stack_name" == "portainer" ]; then
+    target="swarm"
+  else
+    target="portainer"
+  fi
 
   # Prompting step
   step_info 1 $total_steps "Prompting required $stack_name information"
@@ -5834,9 +5839,9 @@ deployment_pipeline() {
   }
 
   # Step 5: Deploy the stack on the target
+  step_info 5 $total_steps "Deploying stack on target"
   local target
   target=$(echo "$config_json" | jq -r '.target // "swarm"')
-  step_info 5 $total_steps "Deploying stack on target $target"
 
   deploy_stack_on_target "$stack_name" "$compose_path" "$target" || {
     failure "Failed to deploy stack on target: $target"
@@ -6821,9 +6826,152 @@ initialize_server_info() {
 
 # Function to create a PostgreSQL database
 create_database_postgres() {
-  local db_user="$1"
-  local db_password="$2"
-  local db_name="$3"
+  local db_name="$1"
+  local db_user="postgres"
+
+  local container_id
+  local db_exists
+
+  # Display a message about the database creation attempt
+  info "Creating PostgreSQL database: $db_name in POstgres container"
+
+  # Check if the container is running
+  container_id=$(docker ps -q --filter "name=^postgres")
+  if [ -z "$container_id" ]; then
+    error "Container '${container_name}' is not running. Cannot create database."
+    return 1
+  fi
+
+  # Check if the database already exists
+  db_exists=$(docker exec \
+    "$container_id" psql -U "$db_user" -lqt | cut -d \| -f 1 | grep -qw "$db_name")
+  if [ "$db_exists" ]; then
+    info "Database '$db_name' already exists. Skipping creation."
+    return 0
+  fi
+
+  # Create the database if it doesn't exist
+  info "Creating database '$db_name'..."
+  if docker exec "$container_id" \
+    psql -U "$db_user" -c "CREATE DATABASE \"$db_name\";" >/dev/null 2>&1; then
+    success "Database '$db_name' created successfully."
+    return 0
+  else
+    error "Failed to create database '$db_name'. Please check the logs for details."
+    return 1
+  fi
+}
+
+# Function to create a MySQL database
+create_database_mysql() {
+  local db_password="$1"
+  local db_name="$2"
+  
+  container_id=$(docker ps -q --filter "name=^mysql")
+
+  # Check if the database already exists using the correct variable for the database name.
+  docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
+      -e "SHOW DATABASES LIKE '$db_name';" | grep -qw "$db_name"
+
+  if [ $? -eq 0 ]; then
+      prompt_message="Database '$db_name' already exists. Do you want to recreate it? (y/n)"
+      confirm_var=$(request_confirmation "$prompt_message" "n")
+      
+      if [ "$confirm_var" == "Y" ] || [ "$confirm_var" == "y" ]; then
+          # Drop the database
+          docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
+              -e "DROP DATABASE IF EXISTS $db_name;" > /dev/null 2>&1
+          if [ $? -eq 0 ]; then
+              echo "Database dropped successfully."
+          else
+              echo "Failed to drop database."
+          fi
+          # Create the database again
+          docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
+              -e "CREATE DATABASE $db_name;" > /dev/null 2>&1
+      else
+          info "Skipping database creation."
+          return 0
+      fi
+  else
+      # Create the database
+      docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
+          -e "CREATE DATABASE $db_name;" > /dev/null 2>&1
+
+      # Verify if the database was created successfully
+      docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
+          -e "SHOW DATABASES LIKE '$db_name';" | grep -qw "$db_name"
+
+      if [ $? -eq 0 ]; then
+          success "Database '$db_name' created successfully."
+          return 0
+      else
+          error "Failed to create database '$db_name'. Please check the logs for details."
+          return 1
+      fi
+  fi
+}
+
+create_database(){
+  local engine="$1"
+  local db_name="$2"
+
+  case "$engine" in
+    "postgres")
+      create_database_postgres "$db_name"
+      ;;
+    "mysql")
+      create_database_mysql "$db_name"
+      ;;
+    *)
+      error "Unsupported database engine: $engine"
+      return 1
+      ;;
+  esac
+
+}
+
+get_network_name(){
+  server_info_filename="${TOOL_BASE_DIR}/server_info.json"
+  
+  if [[ ! -f "$server_info_filename" ]]; then
+    error "File $server_info_filename not found."
+    return 1
+  fi
+
+  echo "$(cat "$server_info_filename" | jq -r ".network_name")"
+
+  return 0
+}
+
+# Function to fetch stack compose file
+fetch_stack_compose(){
+  local stack_name="$1"
+  local filepath="$2"
+  
+  download_file "$(stack_url "$stack_name")" "$filepath" "docker-compose.yaml"
+
+  if [[ -f "$filepath/docker-compose.yaml" ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# Function to get the database password from a configuration
+fetch_database_password() {
+  echo "$(fetch_stack_variable "$1" "db_password")"
+}
+
+# Function to get the database password from a configuration
+fetch_database_username() {
+  echo "$(fetch_stack_variable "$1" "db_username")"
+}
+
+# Function to create a PostgreSQL database
+create_database_postgres() {
+  local db_name="$1"
+  local db_user="postgres"
 
   local container_id
   local db_exists
@@ -6901,115 +7049,6 @@ create_user_postgres() {
   fi
 }
 
-# Function to create a MySQL database
-create_database_mysql() {
-  local db_user="$1"
-  local db_password="$2"
-  local db_name="$3"
-
-  container_id=$(docker ps -q --filter "name=^mysql")
-
-  # Check if the database already exists using the correct variable for the database name.
-  docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
-      -e "SHOW DATABASES LIKE '$db_name';" | grep -qw "$db_name"
-
-  if [ $? -eq 0 ]; then
-      prompt_message="Database '$db_name' already exists. Do you want to recreate it? (y/n)"
-      confirm_var=$(request_confirmation "$prompt_message" "n")
-      
-      if [ "$confirm_var" == "Y" ] || [ "$confirm_var" == "y" ]; then
-          # Drop the database
-          docker exec -e MYSQL_PWD="$db_password" "$container_id" \
-            mysql -u root -e "DROP DATABASE IF EXISTS $db_name;" > /dev/null 2>&1
-          if [ $? -eq 0 ]; then
-              echo "Database dropped successfully."
-          else
-              echo "Failed to drop database."
-          fi
-          # Create the database again
-          docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
-              -e "CREATE DATABASE $db_name;" > /dev/null 2>&1
-      else
-          info "Skipping database creation."
-          return 0
-      fi
-  else
-      # Create the database
-      docker exec -e MYSQL_PWD="$db_password" "$container_id" \
-          mysql -u root -e "CREATE DATABASE $db_name;" > /dev/null 2>&1
-
-      # Verify if the database was created successfully
-      docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
-          -e "SHOW DATABASES LIKE '$db_name';" | grep -qw "$db_name"
-
-      if [ $? -eq 0 ]; then
-          success "Database '$db_name' created successfully."
-          return 0
-      else
-          error "Failed to create database '$db_name'. Please check the logs for details."
-          return 1
-      fi
-  fi
-}
-
-create_database(){
-  local engine="$1"
-  local db_user="$2"
-  local db_password="$3"
-  local db_name="$4"
-
-  case "$engine" in
-    "postgres")
-      create_database_postgres "$db_user" "$db_password" "$db_name"
-      ;;
-    "mysql")
-      create_database_mysql "$db_user" "$db_password" "$db_name"
-      ;;
-    *)
-      error "Unsupported database engine: $engine"
-      return 1
-      ;;
-  esac
-
-}
-
-get_network_name(){
-  server_info_filename="${TOOL_BASE_DIR}/server_info.json"
-  
-  if [[ ! -f "$server_info_filename" ]]; then
-    error "File $server_info_filename not found."
-    return 1
-  fi
-
-  echo "$(cat "$server_info_filename" | jq -r ".network_name")"
-
-  return 0
-}
-
-# Function to fetch stack compose file
-fetch_stack_compose(){
-  local stack_name="$1"
-  local filepath="$2"
-  
-  download_file "$(stack_url "$stack_name")" "$filepath" "docker-compose.yaml"
-
-  if [[ -f "$filepath/docker-compose.yaml" ]]; then
-    return 0
-  else
-    return 1
-  fi
-}
-
-# Function to get the database password from a configuration
-fetch_database_password() {
-  echo "$(fetch_stack_variable "$1" "db_password")"
-}
-
-# Function to get the database password from a configuration
-fetch_database_username() {
-  echo "$(fetch_stack_variable "$1" "db_username")"
-}
-
 # Function to get the database password from a configuration
 fetch_stack_variable() {
   local stack_name="$1"
@@ -7081,22 +7120,6 @@ make_folders_mosquitto(){
   mkdir -p "$TOOL_STACKS_DIR/stacks/mosquitto/log"
 }
 
-# Function to create qdrant folders 
-make_folders_qdrant(){
-  mkdir -p "$TOOL_STACKS_DIR/stacks/qdrant/qdrant_data"  
-}
-
-set_vaultwarden_ssl(){
-  local smtp_port="$1"
-  if [ "$smtp_port" -eq 465 ] || [ "$smtp_port" -eq 25 ]; then
-    ssl_vaultwarden=force_tls
-  else
-    ssl_vaultwarden=starttls
-  fi
-
-  echo "$ssl_vaultwarden"
-}
-
 # Function to generate a firecrawl string
 generate_firecrawl_api_key(){
   echo "fc-$(random_string)"
@@ -7113,15 +7136,6 @@ create_traccar_volumes(){
   --entrypoint cat \
   traccar/traccar:latest \
   /opt/traccar/conf/traccar.xml > "$TOOL_STACKS_DIR/traccar/traccar.xml"
-}
-
-create_easyappointments_volumes(){
-  local host_url="$1"
-  
-  # Cria o arquivo com o conteúdo desejado
-  cat > "$TOOL_STACKS_DIR/easyappointments/apache-custom.conf" << EOL
-ServerName $host_url
-EOL
 }
 
 # Function to custom smtp information
@@ -7239,7 +7253,7 @@ generate_stack_config_traefik() {
   # Correct command substitution without unnecessary piping
   config_instructions=$(jq -n \
     --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
+    --arg prompt_items "$prompt_items" \
     '{
         "name": $stack_name,
         "target": "swarm",
@@ -7571,41 +7585,6 @@ generate_stack_config_whoami() {
   generate_stack_config_pipeline "$config_instructions"
 }
 
-# Function to generate Whoami service configuration JSON
-generate_stack_config_chromadb() {
-  local stack_name="chromadb"
-
-  # Prompting step (escaped properly for Bash)
-  local prompt_items='[
-      {
-          "name": "chromadb_url",
-          "label": "ChromaDB domain name",
-          "description": "URL to access ChromaDB remotely",
-          "required": "yes",
-          "validate_fn": "validate_url_suffix" 
-      }
-  ]'
-
-  # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
-      "name": $stack_name,
-      "target": "portainer",
-      "actions": {
-        "prompt": $prompt_items
-      }
-    }'
-  ) || {
-      error "Failed to generate JSON"
-      return 1
-  }
-
-  # Pass variable correctly
-  generate_stack_config_pipeline "$config_instructions"
-}
-
 # Function to generate Airflow service configuration JSON
 generate_stack_config_airflow() {
   local stack_name="airflow"
@@ -7697,9 +7676,9 @@ generate_stack_config_metabase() {
         ],
         "prepare": [
           {
-            "name": "create_metabase_database",
+            "name": "create_database_postgres_metabase",
             "description": "Creating Metabase database",
-            "command": "create_database postgres postgres {{postgres_password}} metabase",
+            "command": "create_database_postgres metabase",
           }
         ],
         "finalize": []
@@ -7763,7 +7742,7 @@ generate_stack_config_yourls() {
           {
             "name": "create_yourls_database",
             "description": "Create Yourls database",
-            "command": "create_database postgres postgres {{postgres_password}} yourls",
+            "command": "create_database_postgres yourls",
           }
         ]
       }
@@ -7940,13 +7919,7 @@ generate_stack_config_qdrant() {
       "name": $stack_name,
       "target": "portainer",
       "actions": {
-        "prompt": $prompt_items,
-        "prepare": [
-          {
-            "description": "Make folders for Qdrant volumes",
-            "command": "make_folders_qdrant"
-          }
-        ]
+        "prompt": $prompt_items
       }
     }'
   ) || {
@@ -8008,9 +7981,9 @@ generate_stack_config_n8n() {
           ],
           "prepare": [
             {
-              "name": "create_n8n_database",
+              "name": "create_database_postgres_n8n",
               "description": "Creating N8N database",
-              "command": "create_database postgres postgres {{postgres_password}} n8n_queue",
+              "command": "create_database_postgres n8n_queue",
             }
           ]
         }
@@ -8140,9 +8113,9 @@ generate_stack_config_botpress() {
             ],
             "prepare": [
               {
-                "name": "create_botpress_database",
+                "name": "create_database_postgres_botpress",
                 "description": "Creating botpress database",
-                "command": "create_database postgres postgres {{postgres_password}} botpress"
+                "command": "create_database_postgres botpress"
               }
             ]
           }
@@ -8629,7 +8602,7 @@ generate_stack_config_langfuse() {
               {
                 "name": "create_langfuse_database",
                 "description": "Creating Langfuse database",
-                "command": "create_database postgres postgres {{postgres_password}} langfuse",
+                "command": "create_database_postgres langfuse",
               }
             ]
           }
@@ -8754,7 +8727,7 @@ generate_stack_config_langflow() {
               {
                 "name": "create_langflow_db",
                 "description": "Create Langflow database",
-                "command": "create_database postgres postgres {{postgres_password}} langflow"
+                "command": "create_database_postgres langflow"
               }
             ]
           }
@@ -8862,7 +8835,7 @@ generate_stack_config_openproject() {
               {	
                 "name": "create_openproject_db",
                 "description": "Create OpenProject database",
-                "command": "create_database postgres postgres {{postgres_password}} openproject"
+                "command": "create_database_postgres openproject"
               }
             ]
           }
@@ -8930,8 +8903,8 @@ generate_stack_config_flowise() {
             "prepare": [
               {
                 "name": "create_flowise_database",
-                "description": "Create Flowise database",
-                "command": "create_database postgres postgres {{postgres_password}} flowise"
+                "description": "  ",
+                "command": "create_database_postgres flowise"
               }
             ]
           }
@@ -8974,7 +8947,7 @@ generate_stack_config_wordpress() {
     '{
           "name": $stack_name,
           "target": "portainer",
-          "dependencies": ["redis", "mysql"],
+          "dependencies": ["mysql", "redis"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
@@ -8982,13 +8955,6 @@ generate_stack_config_wordpress() {
                 "name": "mysql_password",
                 "description": "Fetch MySQL password",
                 "command": "fetch_database_password mysql"
-              }
-            ],
-            "prepare": [
-              {
-                "name": "create_wordpress_db",
-                "description": "Create Wordpress database",
-                "command": "create_database mysql wordpress {{mysql_password}} "
               }
             ]
           }
@@ -9032,13 +8998,6 @@ generate_stack_config_easyappointments() {
                 "name": "mysql_password",
                 "description": "Fetch mysql password",
                 "command": "fetch_database_password mysql"
-              }
-            ],
-            "prepare": [
-              {
-                "name": "create_easyappointments_volumes",
-                "description": "Create EasyAppointments volumes",
-                "command": "create_easyappointments_volumes {{easyappointments_url}}"
               }
             ]
           }
@@ -9119,7 +9078,7 @@ generate_stack_config_nocobase() {
               {
                 "name": "create_flowise_database",
                 "description": "Create Flowise database",
-                "command": "create_database postgres postgres {{postgres_password}} nocobase"
+                "command": "create_database_postgres nocobase"
               }
             ]
           }
@@ -9314,7 +9273,7 @@ generate_stack_config_evolution_lite() {
               {
                 "name": "create_evolution_lite_db",
                 "description": "Create Evolution Lite database",
-                "command": "create_database postgres postgres {{postgres_password}} evolution_lite"
+                "command": "create_database_postgres evolution_lite"
               }
             ]
           }
@@ -9579,7 +9538,7 @@ generate_stack_config_nextcloud() {
               {
                 "name": "create_nextcloud_database",
                 "description": "Create NextCloud database",
-                "command": "create_database postgres postgres {{postgres_password}} nextcloud"
+                "command": "create_database postgres nextcloud"
               }
             ]
           }
@@ -9812,7 +9771,7 @@ generate_stack_config_mautic() {
           "label": "Mautic username",
           "description": "Username to access Mautic remotely",
           "required": "yes",
-          "validate_fn": "validate_email_value"
+          "validate_fn": "validate_username"
       },
       {
           "name": "mautic_email_password",
@@ -9838,49 +9797,6 @@ generate_stack_config_mautic() {
                 "name": "mysql_password",
                 "description": "Fetch mysql database password",
                 "command": "fetch_database_password mysql"
-              }
-            ]
-          }
-      }'
-  ) || {
-      error "Failed to generate JSON"
-      return 1
-  } 
-
-  # Pass variable correctly
-  generate_stack_config_pipeline "$config_instructions"
-}
-
-# Function to generate Mautic service configuration JSON
-generate_stack_config_zep() {
-  local stack_name="zep"
-
-  # Prompting step (escaped properly for Bash)
-  local prompt_items=$(jq -n '[
-      {
-          "name": "zep_url",
-          "label": "Zep URL",
-          "description": "URL to access Zep remotely",
-          "required": "yes",
-          "validate_fn": "validate_url_suffix"
-      }
-  ]')
-
-  # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
-          "name": $stack_name,
-          "target": "portainer",
-          "dependencies": ["pgvector"],
-          "actions": {
-            "prompt": $prompt_items,
-            "refresh": [
-              {
-                "name": "pgvector_password",
-                "description": "Fetch pgvector database password",
-                "command": "fetch_database_password pgvector"
               }
             ]
           }
@@ -10272,7 +10188,6 @@ generate_stack_config_baserow(){
     '{
           "name": $stack_name,
           "target": "portainer",
-          "dependencies": ["postgres", "redis"],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
@@ -10290,7 +10205,7 @@ generate_stack_config_baserow(){
               {
                 "name": "create_baserow_database",
                 "description": "Create postgres database baserow",
-                "command": "create_database postgres postgres {{postgres_password}} baserow",
+                "command": "create_database_postgres baserow",
               }
             ]
           }
@@ -10348,7 +10263,7 @@ generate_stack_config_docuseal(){
               {
                 "name": "create_docuseal_database",
                 "description": "Create postgres database docuseal",
-                "command": "create_database postgres postgres {{postgres_password}} docuseal",
+                "command": "create_database_postgres docuseal",
               }
             ]
           }
@@ -10422,7 +10337,7 @@ generate_stack_config_humhub(){
               {
                 "name": "create_humhub_database",
                 "description": "Create mysql database humhub",
-                "command": "create_database mysql {{mysql_password}} humhub",
+                "command": "create_database_mysql {{mysql_password}} humhub",
               }
             ]
           }
@@ -10468,7 +10383,7 @@ generate_stack_config_calcom(){
               },
               {
                 "description": "Custom smtp with identifier docuseal",
-                "command": "custom_smtp_information calcom",
+                "command": "custom_smtp_information humhub",
               },
               {
                 "name": "postgres_password",
@@ -10520,11 +10435,6 @@ generate_stack_config_vaultwarden(){
                 "name": "postgres_password",
                 "description": "Fetch postgres password",
                 "command": "fetch_database_password postgres",
-              },
-              {
-                "name": "vaultwarden_smtp_secure",
-                "description": "Vaultwarden SMTP secure",
-                "command": "set_vaultwarden_ssl {{vaultwarden_smtp_port}}"
               }
             ]
           }
@@ -10551,7 +10461,7 @@ generate_stack_config_chatwoot(){
         "validate_fn": "validate_url_suffix"
       },
       {
-        "name": "chatwoot_name",
+        "name": "chatwoot_company_name",
         "label": "Chatwoot app name",
         "description": "Name of app on Chatwoot",
         "required": "yes",
@@ -10596,7 +10506,7 @@ generate_stack_config_chatwoot(){
               {
                 "name": "chatwoot_database",
                 "description": "Create database chatwoot on Postgres",
-                "command": "create_database postgres postgres {{postgres_password}} chatwoot",
+                "command": "create_database_postgres chatwoot",
               }
             ]
           }
@@ -10623,7 +10533,7 @@ generate_stack_config_chatwoot_nestor(){
         "validate_fn": "validate_url_suffix"
       },
       {
-        "name": "chatwoot_name",
+        "name": "chatwoot_company_name",
         "label": "Chatwoot app name",
         "description": "Name of app on Chatwoot",
         "required": "yes",
@@ -10668,7 +10578,7 @@ generate_stack_config_chatwoot_nestor(){
               {
                 "name": "chatwoot_database",
                 "description": "Create database chatwoot on Postgres",
-                "command": "create_database postgres postgres {{postgres_password}} chatwoot",
+                "command": "create_database_postgres chatwoot",
               }
             ]
           }
@@ -10735,12 +10645,12 @@ generate_stack_config_tooljet(){
               {
                 "name": "tooljet_database",
                 "description": "Create database tooljet on Postgres",
-                "command": "create_database postgres postgres {{postgres_password}} tooljet"
+                "command": "create_database_postgres tooljet"
               },
               {
                 "name": "tooljet_database",
                 "description": "Create database tooljet on Postgres",
-                "command": "create_database postgres postgres {{postgres_password}} tooljet_app"
+                "command": "create_database_postgres tooljet_app"
               }
             ]
           }
@@ -10846,7 +10756,7 @@ generate_stack_config_krayincrm(){
               {
                 "name": "create_krayincrm_database",
                 "description": "Create database krayincrm on MySQL",
-                "command": "create_database mysql mysql {{mysql_password}} krayincrm",
+                "command": "create_database_mysql krayincrm",
               }
             ]
           }
@@ -11384,7 +11294,6 @@ generate_stack_config_typebot(){
           "variables": {
             
           },
-          "dependencies": [],
           "actions":{
             "prompt": $prompt_items,
             "refresh": [
@@ -11406,15 +11315,175 @@ generate_stack_config_typebot(){
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
-
 }
 
+generate_stack_config_jupyter_spark(){
+  local stack_name="jupyter_spark" 
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+        "name": "spark_url",
+        "label": "PySpark URL",
+        "description": "URL to access PySpark remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      },
+      {
+        "name": "jupyter_url",
+        "label": "JupyterLab viewer URL",
+        "description": "URL to access JupyterLab remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "variables": {
+            
+          },
+          "actions":{
+            "prompt": $prompt_items
+          }
+      }'
+  ) || {
+    error "Failed to generate JSON"
+    return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+generate_stack_config_airflow(){
+  local stack_name="airflow" 
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+        "name": "airflow_url",
+        "label": "Airflow URL",
+        "description": "URL to access Airflow remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "variables": {
+            
+          },
+          "actions":{
+            "prompt": $prompt_items,
+            "refresh": [
+              {
+                "name": "postgres_password",
+                "description": "Fetch postgres password",
+                "command": "fetch_database_password postgres"
+              }
+            ]
+          }
+      }'
+  ) || {
+    error "Failed to generate JSON"
+    return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+generate_stack_config_elk(){
+  local stack_name="elk" 
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+        "name": "kibana_url",
+        "label": "Kibana URL",
+        "description": "URL to access Kibana remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "variables": {
+            
+          },
+          "actions":{
+            "prompt": $prompt_items
+          }
+      }'
+  ) || {
+    error "Failed to generate JSON"
+    return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
+generate_stack_config_superset(){
+  local stack_name="superset" 
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+        "name": "superset_url",
+        "label": "Superset URL",
+        "description": "URL to access Superset remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "variables": {
+            
+          },
+          "actions":{
+            "prompt": $prompt_items
+          }
+      }'
+  ) || {
+    error "Failed to generate JSON"
+    return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
 
 #################################### END OF STACK CONFIGURATION ###################################
 
@@ -11600,12 +11669,9 @@ define_menu_utilities_docker() {
   item_1="$(
     build_menu_item "CTOP" "Run docker manager ctop on terminal" "run_ctop"
   )"
-  item_2="$(
-    build_menu_item "Clean" "Clean local docker environment" "clean_docker_environment"
-  )"
 
   items=(
-    "$item_1" "$item_2"
+    "$item_1"
   )
 
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
@@ -11730,6 +11796,7 @@ usage() {
   usage_messages=(
     "Usage: $0 [options]"
     "Options:"
+    "  -c, --clean             Clean docker environment."
     "  -a, --arrow             Arrow style: {$joined_arrows}."
     "  -h, --help              Display this help message and exit."
   )
@@ -11752,7 +11819,7 @@ startup() {
 # Parse command-line arguments
 parse_args() {
   # Get options using getopt
-  OPTIONS=$(getopt -o a:,h --long arrow:,help -- "$@")
+  OPTIONS=$(getopt -o a:,c,h --long arrow:,clean,help -- "$@")
 
   # Check if getopt failed (invalid option)
   if [ $? -ne 0 ]; then
@@ -11767,6 +11834,10 @@ parse_args() {
   # Loop through the options
   while true; do
     case "$1" in
+    -c | --clean)
+      CLEAN=true
+      shift
+      ;;
     -a | --arrow)
       USER_DEFINED_ARROW="$2"
       shift 2
@@ -11792,6 +11863,11 @@ parse_args() {
 # Main script execution
 main() {
   parse_args "$@"
+
+  if [[ $CLEAN == true ]]; then
+    clean_docker_environment
+    exit 0
+  fi
 
   set_arrow
   clear
