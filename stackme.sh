@@ -11367,50 +11367,6 @@ generate_stack_config_jupyter_spark(){
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_airflow(){
-  local stack_name="airflow" 
-
-  # Prompting step (escaped properly for Bash)
-  local prompt_items=$(jq -n '[
-      {
-        "name": "airflow_url",
-        "label": "Airflow URL",
-        "description": "URL to access Airflow remotely",
-        "required": "yes",
-        "validate_fn": "validate_url_suffix"
-      }
-  ]')
-
-  # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
-          "name": $stack_name,
-          "target": "portainer",
-          "variables": {
-            
-          },
-          "actions":{
-            "prompt": $prompt_items,
-            "refresh": [
-              {
-                "name": "postgres_password",
-                "description": "Fetch postgres password",
-                "command": "fetch_database_password postgres"
-              }
-            ]
-          }
-      }'
-  ) || {
-    error "Failed to generate JSON"
-    return 1
-  }
-
-  # Pass variable correctly
-  generate_stack_config_pipeline "$config_instructions"
-}
-
 generate_stack_config_elk(){
   local stack_name="elk" 
 
