@@ -2231,9 +2231,7 @@ sanitize() {
   message="$explanation. $confirmation_query"
   formatted_message="$(format "question" "$message")"
 
-  read -p "$formatted_message" confirm
-
-  if [[ "$confirm" =~ ^[Yy]$ ]]; then
+  if handle_confirmation_prompt "$formatted_message" 'y' 5; then
     # Run commands with explicit permission for destructive operations
     message="Pruning unused containers, networks, volumes, and build cache"
     command="docker system prune --all --volumes -f"
@@ -3478,13 +3476,13 @@ clear_below_line() {
 get_arrow_position() {
   local current_idx="$1"
   local page_size="$2"
-  local header_row_count="$3"
+  local header_height="$3"
 
   # Calculate the start index for the current page
   local start=$((current_idx / page_size * page_size))
 
   # Calculate the arrow row position based on header lines and current item
-  local arrow_row=$((header_row_count + (current_idx - start)))
+  local arrow_row=$((header_height + (current_idx - start)))
 
   echo "$arrow_row"
 }
@@ -3584,8 +3582,9 @@ shift_message() {
 run_shift_message() {
   local current_idx="$1"
   local page_size="$2"
-  local header_row_count="$3"
-  local menu_options=("${@:4}")
+  local header_height="$3"
+  local page_width="$4"
+  local menu_options=("${@:5}")
 
   # Start the scrolling message for the selected option
   kill_current_pid
@@ -3597,15 +3596,13 @@ run_shift_message() {
   item_label_length="${#item_label}"
 
   # Calculate the arrow row position based on header lines and current item
-  # FIXME: Hard-coded, Try a dynamic approach
-  header_row_count="2"
   arrow_position="$(get_arrow_position "$current_idx" "$page_size" "2")"
-  horizontal_shift=$((header_row_count + item_label_length + 2))
+  horizontal_shift=$((2 + item_label_length + 2))
+  
+  local pad=2
+  shift_length="$((page_width - horizontal_shift + pad))"
 
-  shift_length="$TRUNCATED_DEFAULT_LENGTH"
-
-  shift_message \
-    "$item_description " "$shift_length" "$horizontal_shift" "$arrow_position" &
+  shift_message "$item_description " "$shift_length" "$horizontal_shift" "$arrow_position" &
   current_pid=$! # Store the background process ID
 }
 
@@ -3627,7 +3624,7 @@ render_options() {
   local start="$1"
   local end="$2"
   local current_idx="$3"
-  local header_row_count="$4"
+  local header_height="$4"
   local page_width="$5"
   local menu_options=("${@:6}")
 
@@ -3637,7 +3634,9 @@ render_options() {
     option_label=$(get_menu_item_label "${menu_options[i]}")
     option_desc=$(get_menu_item_description "${menu_options[i]}")
 
-    truncated_desc="$(truncate_option "$option_desc")"
+    truncation_length="$((page_width - 2 - ${#option_label}))"
+
+    truncated_desc="$(truncate_option "$option_desc" "$truncation_length")" 
 
     if [[ -z "$option_desc" ]]; then
       option="${option_label}"
@@ -3656,7 +3655,7 @@ render_options() {
 
   # Render each menu line
   for i in "${!menu_lines[@]}"; do
-    tput cup $((i + header_row_count)) 0
+    tput cup $((i + header_height)) 0
     local menu_line="${menu_lines[$i]}"
     if [[ $((start + i)) -eq $current_idx ]]; then
       echo -e "${COLORED_ARROW} ${menu_line}" >&2
@@ -3791,6 +3790,7 @@ render_menu() {
   [[ -n "$quit_option" ]] && keyboard_options+=("$quit_option")
 
   local keyboard_options_string=$(join_array ", " "${keyboard_options[@]}")
+  local keyboard_options_length=${#keyboard_options_string}
 
   local tmp="$(strip_ansi "$keyboard_options_string")"
   local page_width="${#tmp}"
@@ -3811,17 +3811,25 @@ render_menu() {
   read -r start end <<<"$range"
 
   # Render menu options
-  local header_row_count=2
-  render_options "$start" "$end" "$current_idx" "$header_row_count" "$page_width" "${menu_options[@]}"
+  # FIXME: Hard-coded, Try a dynamic approach
+  local header_height=2
+  render_options "$start" "$end" "$current_idx" "$header_height" "$page_width" "${menu_options[@]}"
 
   # Render footer
   render_footer "$current_idx" "$page_size" "$page_width" "$num_options" "$keyboard_options_string"
 
   # Handle option-specific description
   local current_option_desc
-  current_option_desc=$(get_menu_item_description "${menu_options[$current_idx]}")
-  if [[ ${#current_option_desc} -gt $TRUNCATED_DEFAULT_LENGTH ]]; then
-    run_shift_message "$current_idx" "$page_size" "$header_row_count" "${menu_options[@]}"
+  current_item_description=$(get_menu_item_description "${menu_options[$current_idx]}")
+  current_item_label=$(get_menu_item_label "${menu_options[$current_idx]}")
+
+  local desc_length=${#current_item_description}
+  local label_length=${#current_item_label}
+
+  menu_width=$((2 + desc_length + 2 + label_length))
+
+  if [[ "$menu_width" -gt "$page_width" ]]; then
+    run_shift_message "$current_idx" "$page_size" "$header_height" "$page_width" "${menu_options[@]}"
   else
     kill_current_pid
   fi
@@ -3925,9 +3933,7 @@ go_to_specific_page() {
 
   # Update current index to new page
   current_idx=$((page_number * page_size))
-  render_menu \
-    "$title" "$current_idx" \
-    "$page_size" "$is_new_page" "${menu_options[@]}"
+  render_menu "$title" "$current_idx" "$page_size" "$is_new_page" "${menu_options[@]}"
 
   # Prompt to return to the previous menu
   while true; do
@@ -3989,6 +3995,7 @@ handle_quit_key() {
     pop_menu_from_history
     previous_menu=$(get_current_menu)
 
+    
     if [[ "$current_menu" == "Main" ]]; then
       message="${faded_color}Exiting program.${reset_color}"
     else
@@ -4032,13 +4039,13 @@ transition_to_menu() {
     echo -ne "\r${colors[color_index]}$message${reset_color}" >&2
 
     # Delay to create the animation effect
-    sleep 0.05
+    sleep 0.04
   done
 
   # Finalize the transition with a fade-in effect
   message="${spin_char} Transitioning to ${new_menu}... [${progress_bar}] Done!"
   echo -ne "\r${highlight_color}$message${reset_color}\n" >&2
-  sleep 0.3
+  sleep 0.1
 }
 
 # Function to navigate to a specific menu
@@ -4086,10 +4093,7 @@ navigate_menu() {
   fi
 
   while true; do
-
-    render_menu \
-      "$title" "$current_idx" \
-      "$page_size" "$is_new_page" "${menu_options[@]}"
+    render_menu "$title" "$current_idx" "$page_size" "$is_new_page" "${menu_options[@]}"
 
     # Locking the keyboard input to avoid unnecessary display of captured characters
     read -rsn1 user_key
@@ -4211,7 +4215,7 @@ navigate_menu() {
       keyboard_options="Please use ↑/↓ to navigate, ←/→ to switch pages, or Enter to select."
       message="${error_color}$shoutout $keyboard_options${reset_color}"
       echo -e "$message" >&2
-      sleep 1
+      sleep 0.5
       ;;
     esac
 
@@ -6503,7 +6507,7 @@ update_and_check_packages() {
 # Function to prepare the environment
 prepare_environment() {
   # Function constants
-  local total_steps=4
+  local total_steps=6
 
   highlight "Preparing environment"
 
@@ -6538,7 +6542,16 @@ prepare_environment() {
   install_all_packages "snap" "${snap_packages[@]}"
   handle_exit $? 4 $total_steps "$step_message"
 
-  success "Packages installed successfully."
+  step_message="Create stackme folder"
+  step_progress 5 $total_steps "$step_message"
+  mkdir -p "$TOOL_BASE_DIR"
+
+  handle_exit $? 5 $total_steps "$step_message"
+
+  step_message="Download stacks templates"
+  step_progress 6 $total_steps "$step_message"
+  download_stack_compose_templates &
+  handle_exit $? 6 $total_steps "$step_message"
 
   wait_for_input
 }
@@ -6729,9 +6742,12 @@ fetch_and_save_server_info() {
 # Function to initialize the server information
 initialize_server_info() {
   total_steps=8
-  
-  # Step 1: Check if server_info.json exists and is valid
+
   message="Initialization of server information"
+
+  highlight "$message"
+
+  # Step 1: Check if server_info.json exists and is valid
   step_progress 1 $total_steps "$message"
   server_info_json="$(fetch_and_save_server_info)"
 
@@ -6746,74 +6762,63 @@ initialize_server_info() {
 
   step_success 1 $total_steps "Server information saved to file $server_filename"
 
-  step_message="Create stackme folder"
-  step_progress 2 $total_steps "$step_message"
-  mkdir -p "$TOOL_BASE_DIR"
-
-  handle_exit $? 2 $total_steps "$step_message"
-
-  step_message="Download stacks templates"
-  step_progress 3 $total_steps "$step_message"
-  download_stack_compose_templates &
-  handle_exit $? 3 $total_steps "$step_message"
-
   # Update /etc/hosts
   step_message="Add name to server name in hosts file at path /etc/hosts"
-  step_progress 4 $total_steps "$step_message"
+  step_progress 2 $total_steps "$step_message"
   # Ensure /etc/hosts has the correct entry
   if ! grep -q "^127.0.0.1[[:space:]]$server_name" /etc/hosts; then
     sed -i "/^127.0.0.1[[:space:]]/d" /etc/hosts # Remove old entries
     echo "127.0.0.1 $server_name" >>/etc/hosts
   else
-    step_info 4 $total_steps "$server_name is already present in /etc/hosts"
+    step_info 2 $total_steps "$server_name is already present in /etc/hosts"
   fi
-  handle_exit $? 5 $total_steps "$step_message"
+  handle_exit $? 2 $total_steps "$step_message"
 
   # Set Hostname
   step_message="Set Hostname"
-  step_progress 5 $total_steps "$step_message"
+  step_progress 3 $total_steps "$step_message"
 
   current_hostname="$(hostnamectl --static)"
 
   if [[ "$current_hostname" != "$server_name" ]]; then
     hostnamectl set-hostname "$server_name"
-    handle_exit $? 5 $total_steps "Set Hostname"
+    handle_exit $? 3 $total_steps "Set Hostname"
 
-    step_success 5 $total_steps "Hostname set to $server_name"
+    step_success 3 $total_steps "Hostname set to $server_name"
 
     # Allow a brief delay for changes to propagate
     sleep 1
   else
-    step_info 5 $total_steps "Hostname is already set to $server_name"
+    step_info 3 $total_steps "Hostname is already set to $server_name"
   fi
 
   # Install docker
   step_message="Installing Docker"
-  step_progress 6 $total_steps "$step_message"
+  step_progress 4 $total_steps "$step_message"
   install_docker
-  handle_exit $? 6 $total_steps "$step_message"
+  handle_exit $? 4 $total_steps "$step_message"
 
   # Initialize Docker Swarm
   step_message="Docker Swarm initialization"
-  step_progress 7 $total_steps "$step_message"
+  step_progress 5 $total_steps "$step_message"
 
   read -r ip _ <<<$(
     hostname -I | tr ' ' '\n' | grep -v '^127\.0\.0\.1' | tr '\n' ' '
   )
   if is_swarm_active; then
-    step_warning 7 $total_steps "Swarm is already active"
+    step_warning 5 $total_steps "Swarm is already active"
   else
     # server_ip=$(curl ipinfo.io/ip)
     docker swarm init --advertise-addr $ip 2>&1
 
-    handle_exit $? 7 $total_steps "$step_message"
+    handle_exit $? 5 $total_steps "$step_message"
   fi
 
   # Initialize Network
   message="Network initialization"
-  step_progress 8 $total_steps "$message"
+  step_progress 6 $total_steps "$message"
   create_network_if_not_exists "$network_name"
-  handle_exit $? 8 $total_steps "$step_message"
+  handle_exit $? 6 $total_steps "$step_message"
 
   success "Server initialization complete"
 
@@ -11618,9 +11623,12 @@ define_menu_utilities_docker() {
   item_1="$(
     build_menu_item "CTOP" "Run docker manager ctop on terminal" "run_ctop"
   )"
+  item_2="$(
+    build_menu_item "Clean" "Remove unused images, volumes and containers" "sanitize"
+  )"
 
   items=(
-    "$item_1"
+    "$item_1" "$item_2"
   )
 
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
