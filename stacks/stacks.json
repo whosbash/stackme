@@ -216,6 +216,15 @@
     "category_description": "Tools for managing projects, tasks, and team collaboration."
   },
   {
+    "stack_name": "streaming",
+    "stack_label": "streaming",
+    "stack_description": "An assemble of Zookeeper, Kafka and Flink.",
+    "stack_status": "beta",
+    "category_name": "communication",
+    "category_label": "Communication",
+    "category_description": "Tools for messaging, communication, and collaboration."
+  },
+  {
     "stack_name": "uptimekuma",
     "stack_label": "uptimekuma",
     "stack_description": "An open-source status monitoring tool for websites and services.",
@@ -223,15 +232,6 @@
     "category_name": "infrastructure",
     "category_label": "Infrastructure",
     "category_description": "Tools related to managing infrastructure and services, including monitoring, security, and more."
-  },
-  {
-    "stack_name": "kafka",
-    "stack_label": "kafka",
-    "stack_description": "A distributed streaming platform for handling real-time data feeds.",
-    "stack_status": "beta",
-    "category_name": "communication",
-    "category_label": "Communication",
-    "category_description": "Tools for messaging, communication, and collaboration."
   },
   {
     "stack_name": "excalidraw",
@@ -300,7 +300,7 @@
     "stack_name": "firecrawl",
     "stack_label": "firecrawl",
     "stack_description": "A web scraping tool for crawling and extracting data from websites.",
-    "stack_status": "stable",
+    "stack_status": "beta",
     "category_name": "automation_and_low-code",
     "category_label": "Automation and Low-Code",
     "category_description": "Automation and low-code platforms for developing applications quickly."
@@ -624,7 +624,7 @@
     "stack_name": "langflow",
     "stack_label": "langflow",
     "stack_description": "An AI tool for managing workflows for large language models (LLMs).",
-    "stack_status": "stable",
+    "stack_status": "beta",
     "category_name": "ai",
     "category_label": "AI",
     "category_description": "AI and Natural Language Processing tools to build and deploy models."

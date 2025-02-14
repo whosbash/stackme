@@ -10664,22 +10664,15 @@ generate_stack_config_tooljet(){
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_kafka(){
+generate_stack_config_streaming(){
   local stack_name="kafka"
 
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
       {
-        "name": "kafka_broker_url",
-        "label": "Tooljet URL",
-        "description": "URL to access Tooljet remotely",
-        "required": "yes",
-        "validate_fn": "validate_url_suffix"
-      },
-      {
-        "name": "kafka_rest_url",
-        "label": "Chatwoot app name",
-        "description": "Name of app on Chatwoot",
+        "name": "flink_url",
+        "label": "Flink URL",
+        "description": "URL to access Flink remotely",
         "required": "yes",
         "validate_fn": "validate_url_suffix"
       },
