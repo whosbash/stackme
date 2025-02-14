@@ -8,7 +8,7 @@ services:
     deploy:
       replicas: 1
     networks:
-      - monitoring
+      - {{network_name}}
 
   logstash:
     image: logstash:8.6.2
