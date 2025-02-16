@@ -6514,12 +6514,14 @@ prepare_environment() {
   # Step 1: Update the system
   step_message="Updating system and upgrading packages"
   step_progress 1 $total_steps "$step_message"
-  command "apt-get update -yq" 1 $total_steps "$step_message"
+  command "apt-get update -yq" 1 $total_steps "$step_message" >/dev/null 2>&1 &
+  show_progress $!
 
   # Step 3: Autoclean the system
   step_message="Cleaning up package cache"
   step_progress 2 $total_steps "$step_message"
-  command "apt-get autoclean -yq --allow-downgrades" 2 $total_steps "$step_message"
+  command "apt-get autoclean -yq --allow-downgrades" 2 $total_steps "$step_message" >/dev/null 2>&1 &
+  show_progress $!
 
   # Check for apt locks on installation
   wait_apt_lock 5 60
@@ -6531,7 +6533,9 @@ prepare_environment() {
   )
   step_message="Installing required apt-get packages"
   step_progress 3 $total_steps "$step_message"
-  install_all_packages "apt-get -yq" "${apt_packages[@]}"
+  install_all_packages "apt-get -yq" "${apt_packages[@]}" >/dev/null 2>&1 &
+  show_progress $!
+
   handle_exit $? 3 $total_steps "$step_message"
 
   snap_packages=(
@@ -6539,7 +6543,8 @@ prepare_environment() {
   )
   step_message="Installing required snap packages"
   step_progress 4 $total_steps "$step_message"
-  install_all_packages "snap" "${snap_packages[@]}"
+  install_all_packages "snap" "${snap_packages[@]}" >/dev/null 2>&1 &
+  show_progress $!
   handle_exit $? 4 $total_steps "$step_message"
 
   step_message="Create stackme folder"
@@ -6750,6 +6755,8 @@ initialize_server_info() {
   # Step 1: Check if server_info.json exists and is valid
   step_progress 1 $total_steps "$message"
   server_info_json="$(fetch_and_save_server_info)"
+
+  debug "$server_info_json"
 
   # Output results
   if [[ -z "$server_info_json" ]]; then
