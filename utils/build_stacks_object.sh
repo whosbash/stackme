@@ -88,7 +88,7 @@ declare -A categories_to_stacks
 categories_to_stacks=(
   ["Infrastructure"]="monitor elk uptimekuma glpi vaultwarden wuzapi unoapi yourls"
   ["IoT"]="mosquitto nodered"
-  ["Data Management"]="pgadmin phpadmin redis_commander redisinsight delta_lake"
+  ["Data Management"]="pgadmin phpadmin redis_commander delta_lake redisinsight"
   ["Data Storage"]="supabase clickhouse redis pgvector iceberg minio mysql mariadb baserow postgres mongodb weaviate qdrant"
   ["Analytics"]="metabase jupyter_spark airflow"
   ["Project Management"]="openproject focalboard zep twentycrm evolution evolution_lite krayincrm"
@@ -136,7 +136,7 @@ declare -A tool_status=(
   ["airflow"]="beta"
   ["firecrawl"]="beta"
   ["langflow"]="beta"
-  ["jupyter_spark"]="beta"
+  ["jupyter_spark"]="stable"
   ["monitor"]="beta"
   ["ollama"]="stable"
   ["quepasa"]="stable"

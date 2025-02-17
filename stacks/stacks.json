@@ -408,7 +408,7 @@
     "stack_name": "jupyter_spark",
     "stack_label": "jupyter spark",
     "stack_description": "A notebook environment for Apache Spark and Python.",
-    "stack_status": "beta",
+    "stack_status": "stable",
     "category_name": "analytics",
     "category_label": "Analytics",
     "category_description": "Business Intelligence and analytics tools for data analysis and reporting."
