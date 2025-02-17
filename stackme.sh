@@ -1853,7 +1853,7 @@ disk_usage() {
 }
 
 # Function to display network usage
-network_usage() {
+show_interface_stats() {
   echo ""
   ip -s link
   echo ""
@@ -6243,7 +6243,7 @@ generate_machine_specs_html() {
 
 # Function to request SMTP information
 prompt_smtp_information() {
-  items='[
+  local items='[
       {
           "name": "smtp_host",
           "label": "SMTP host",
@@ -6285,21 +6285,25 @@ prompt_smtp_information() {
 
   collected_items="$(run_collection_process "$items")"
 
-  echo "$collected_items"
-}
-
-# Function to save SMTP information
-prompt_and_save_smtp_information() {
-  filename="$TOOL_BASE_DIR/smtp_info.json"
-
-  collected_items="$(prompt_smtp_information)"
-
   if [[ "$collected_items" == "[]" ]]; then
-    error "Unable to retrieve SMTP configuration."
+    error "Unable to retrieve server and network names."
     return 1
   fi
 
-  smtp_json=$(process_prompt_items "$collected_items")
+  collected_object="$(process_prompt_items "$collected_items")"
+
+  echo "$collected_object"
+}
+
+# Function to save SMTP information
+save_smtp_information() {
+  local filename="$TOOL_BASE_DIR/smtp_info.json"
+  local smtp_json="$1"
+
+  if [[ -z "$smtp_json" || "$smtp_json" == "[]" ]]; then
+    error "Invalid SMTP configuration."
+    return 1
+  fi
 
   info "Saving SMTP configuration to file: $filename"
   write_json "$filename" "$smtp_json"
@@ -6307,28 +6311,16 @@ prompt_and_save_smtp_information() {
   echo "$smtp_json"
 }
 
-# Centralized function to retrieve and process SMTP configuration
-get_smtp_configuration() {
-  # First, try to load SMTP configuration from file
-  smtp_json=$(load_smtp_information)
-
-  # If loading fails, request the configuration and save it
-  if [[ $? -ne 0 ]]; then
-    smtp_json="$(prompt_and_save_smtp_information)"
-
-    if [[ $? -ne 0 ]]; then
-      error "Unable to retrieve or save SMTP configuration."
-      return 1
-    fi
-  fi
-
-  echo "$smtp_json"
-  return 0
-}
-
 # Function to load SMTP configuration from file
 load_smtp_information() {
-  filename="$TOOL_BASE_DIR/smtp_info.json"
+  local filename="$TOOL_BASE_DIR/smtp_info.json"
+
+  if [[ ! -f "$filename" ]]; then
+    error "SMTP configuration file not found: $filename"
+    return 1
+  fi
+
+  local smtp_json
   smtp_json=$(load_json "$filename")
 
   if [[ -z "$smtp_json" ]]; then
@@ -6337,8 +6329,43 @@ load_smtp_information() {
   fi
 
   info "Loaded SMTP configuration from file: $filename"
+  echo "$smtp_json"
+}
+
+# Unified function to handle SMTP retrieval
+get_or_request_smtp_configuration() {
+  local smtp_json
+
+  smtp_json=$(load_smtp_information 2>/dev/null)
+  if [[ $? -ne 0 ]]; then
+    smtp_json=$(prompt_smtp_information)
+    save_smtp_information "$smtp_json" || return 1
+  fi
 
   echo "$smtp_json"
+}
+
+# Function to confirm and possibly overwrite SMTP configuration
+overwrite_or_request_smtp_information() {
+  local smtp_json
+
+  smtp_json=$(load_smtp_information 2>/dev/null)
+  if [[ $? -ne 0 ]]; then
+    error "SMTP configuration not found."
+    local question="Would you like to add tool SMTP configuration?"
+  else
+    info "Current SMTP configuration:"
+    info "$(echo "$smtp_json" | jq -r '. | to_entries | map("\(.key): \(.value)") | join("\n")')"
+    local question="Would you like to overwrite the current SMTP configuration?"
+  fi
+
+  local confirmation_message="${faded_color}$question [y/N]${reset_color}"
+  if handle_confirmation_prompt "$confirmation_message" "y"; then
+    smtp_json=$(prompt_smtp_information)
+    save_smtp_information "$smtp_json" || return 1
+  fi
+
+  wait_for_input
 }
 
 custom_send_email(){
@@ -6347,7 +6374,7 @@ custom_send_email(){
   local body="$3"
 
   # Retrieve SMTP configuration (load from file or request and save)
-  smtp_json=$(get_smtp_configuration)
+  smtp_json=$(get_or_request_smtp_configuration) >/dev/null 2>&1
 
   if [[ $? -ne 0 ]]; then
     error "Unable to retrieve SMTP configuration."
@@ -6364,6 +6391,8 @@ custom_send_email(){
   send_email \
     "$smtp_from_email" "$to_email" "$smtp_host" "$smtp_port" \
     "$smtp_username" "$smtp_password" "$subject" "$body"
+  
+  wait_for_input
 }
 
 # Function to send a test SMTP email
@@ -6372,7 +6401,7 @@ send_smtp_test_email() {
   body="$(generate_test_smtp_hmtl)"
 
   # Retrieve SMTP configuration (load from file or request and save)
-  smtp_json=$(get_smtp_configuration) >/dev/null 2>&1
+  smtp_json=$(get_or_request_smtp_configuration) >/dev/null 2>&1
 
   if [[ $? -ne 0 ]]; then
     error "Unable to retrieve SMTP configuration."
@@ -6382,6 +6411,8 @@ send_smtp_test_email() {
   smtp_username="$(echo "$smtp_json" | jq -r ".smtp_username")"
 
   custom_send_email "$smtp_username" "$subject" "$body"
+
+  wait_for_input
 }
 
 # Function to send machine specs email
@@ -6390,7 +6421,7 @@ send_machine_specs_email() {
   body="$(generate_machine_specs_html)"
 
   # Retrieve SMTP configuration (load from file or request and save)
-  smtp_json="$(get_smtp_configuration)" >/dev/null 2>&1
+  smtp_json="$(get_or_request_smtp_configuration)" >/dev/null 2>&1
 
   if [[ $? -ne 0 ]]; then
     error "Unable to retrieve SMTP configuration."
@@ -6755,18 +6786,15 @@ fetch_and_save_server_info() {
 }
 
 # Function to initialize the server information
-initialize_server_info() {
+initialize_server() {
   total_steps=8
 
   message="Initialization of server information"
-
   highlight "$message"
 
   # Step 1: Check if server_info.json exists and is valid
   step_progress 1 $total_steps "$message"
   server_info_json="$(fetch_and_save_server_info)"
-
-  debug "$server_info_json"
 
   # Output results
   if [[ -z "$server_info_json" ]]; then
@@ -7164,7 +7192,7 @@ create_traccar_volumes(){
 custom_smtp_information(){
   local identifier="$1"
   
-  smtp_json="$(get_smtp_configuration)"
+  smtp_json="$(get_or_request_smtp_configuration)"
 
   # Add/update field smtp_secure to smtp_json
   smtp_secure="$(is_smtp_port_secure "$(echo "$smtp_json" | jq -r ".smtp_port")")"
@@ -11559,7 +11587,9 @@ define_stacks_category_menu() {
       else
         item_label="$stack_label"
       fi
-      menu_item="$(build_menu_item "$item_label" "$stack_description" "deploy_stack $stack_name")"
+      menu_item="$(\
+        build_menu_item "$item_label" "$stack_description" "deploy_stack $stack_name"\
+      )"
       
       menu_items+=("$menu_item")
     fi
@@ -11614,13 +11644,11 @@ define_menu_stacks() {
   stacks_json=$(curl -s "$TOOL_STACKS_OBJECT_URL")
 
   # Convert the JSON array to an associative array
-  for row in $(echo "$stacks_json" | jq -r '.[] | @base64'); do
-      # Decode the JSON object
-      stack_name=$(echo "${row}" | base64 --decode | jq -r '.stack_name')
-
-      # Build key-value pairs using the stack_name as the key
-      STACKS["$stack_name"]="$(echo "${row}" | base64 --decode)"
-  done
+  declare -A STACKS
+  while IFS= read -r row; do
+      stack_name=$(jq -r '.stack_name' <<< "$row")
+      STACKS["$stack_name"]="$row"
+  done < <(jq -c '.[]' <<< "$stacks_json")
 
   # Extract unique category objects in an array
   local menu_stack_categories=("$startup_item")  # Start with startup item
@@ -11682,7 +11710,9 @@ define_menu_utilities_smtp() {
     "$item_1" "$item_2"
   )
 
-  menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
+  menu_object="$(\
+    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}"\
+  )"
 
   define_menu "$menu_object"
 }
@@ -11703,19 +11733,21 @@ define_menu_utilities_docker() {
     "$item_1" "$item_2"
   )
 
-  menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
+  menu_object="$(\
+    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}"\
+  )"
 
   define_menu "$menu_object"
 }
 
-# main:network
-define_menu_network() {
+# main:utilities:network
+define_menu_utilities_network() {
   menu_key="main:utilities:network"
   menu_title="Network"
 
   # Define menu items in an array
   menu_items=(
-    "Network:describe:network_usage"
+    "Interfaces:describe:show_interface_stats"
     "Security:diagnose:security_diagnostics"
     "Bandwidth:describe:bandwidth_usage"
   )
@@ -11728,14 +11760,16 @@ define_menu_network() {
   done
 
   # Build and define menu
-  menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
+  menu_object="$(\
+    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}"
+  )"
   define_menu "$menu_object"
 }
 
-# main:system
-define_menu_system() {
-  menu_key="main:utilities:system"
-  menu_title="System"
+# Function to define the main settings menu
+define_menu_settings_system_information() {
+  menu_key="main:settings:system_info"
+  menu_title="System information"
 
   # Define menu items in an array
   menu_items=(
@@ -11756,8 +11790,36 @@ define_menu_system() {
   done
 
   # Build and define menu
-  menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
+  menu_object="$(\
+    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}"
+  )"
   define_menu "$menu_object"
+}
+
+# main:settings
+define_menu_settings() {
+  menu_key="main:settings"
+  menu_title="Settings"
+
+  item_1="$(
+    build_menu_item "System information" "" "navigate_menu 'main:settings:system_info'"
+  )"
+  item_2="$(
+    build_menu_item "SMTP" "Overwrite SMTP information" "overwrite_or_request_smtp_information"
+  )"
+
+  items=(
+    "$item_1" "$item_2"
+  )
+
+  menu_object="$(\
+    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}"\
+  )"
+
+  define_menu "$menu_object"
+
+  # Define sub-menus
+  define_menu_settings_system_information
 }
 
 # main:utilities
@@ -11772,20 +11834,23 @@ define_menu_utilities() {
     build_menu_item "Docker" "Tools" "navigate_menu 'main:utilities:docker'"
   )"
   item_3="$(
-    build_menu_item "Network" "" "navigate_menu 'main:utilities:network'"
+    build_menu_item "Network" "Tools" "navigate_menu 'main:utilities:network'"
   )"
 
   items=(
-    "$item_1" "$item_2"
+    "$item_1" "$item_2" "$item_3"
   )
 
-  menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
+  menu_object="$(\
+    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}"\
+  )"
 
   define_menu "$menu_object"
 
   # Define sub-menus
   define_menu_utilities_docker
   define_menu_utilities_smtp
+  define_menu_utilities_network
 }
 
 # main
@@ -11797,12 +11862,15 @@ define_menu_main() {
 
   item_1="$(build_menu_item "Stacks" "explore" "navigate_menu 'main:stacks'")"
   item_2="$(build_menu_item "Utilities" "explore" "navigate_menu 'main:utilities'")"
+  item_3="$(build_menu_item "Settings" "explore" "navigate_menu 'main:settings'")"
 
   items=(
-    "$item_1" "$item_2"
+    "$item_1" "$item_2" "$item_3"
   )
 
-  menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
+  menu_object="$(\
+    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}"\
+  )"
 
   define_menu "$menu_object"
 
@@ -11812,6 +11880,9 @@ define_menu_main() {
 
   info "Defining menu Utilities..."
   define_menu_utilities
+
+  info "Defining menu Settings..."
+  define_menu_settings
 
   wait_for_input
 }
@@ -11853,7 +11924,7 @@ startup() {
   clear
 
   # Perform initialization
-  initialize_server_info
+  initialize_server
   clear
 }
 
