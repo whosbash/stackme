@@ -1,0 +1,21 @@
+name: Build Stacks Object
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Make Script Executable (If Needed)
+        run: chmod +x ./utils/build_stacks_array.sh && chmod +x ./utils/build_categories_array.sh
+
+      - name: Run build_stacks_object.sh
+        run: ./utils/build_stacks_object.sh && ./utils/build_categories_array.sh
