@@ -19,16 +19,16 @@ jobs:
 
       - name: Ensure Scripts Exist
         run: |
-          if [[ ! -f "$GITHUB_WORKSPACE/utils/build_stacks_object.sh" || ! -f "$GITHUB_WORKSPACE/utils/build_categories_array.sh" ]]; then
+          if [[ ! -f "$GITHUB_WORKSPACE/utils/build_stacks_array.sh" || ! -f "$GITHUB_WORKSPACE/utils/build_categories_array.sh" ]]; then
             echo "Error: One or both scripts are missing in utils/ directory!"
             exit 1
           fi
 
       - name: Make Scripts Executable
-        run: chmod +x "$GITHUB_WORKSPACE/utils/build_stacks_object.sh" "$GITHUB_WORKSPACE/utils/build_categories_array.sh"
+        run: chmod +x "$GITHUB_WORKSPACE/utils/build_stacks_array.sh" "$GITHUB_WORKSPACE/utils/build_categories_array.sh"
 
       - name: Run Scripts
         run: |
           set -e  # Stop if any command fails
-          "$GITHUB_WORKSPACE/utils/build_stacks_object.sh"
+          "$GITHUB_WORKSPACE/utils/build_stacks_array.sh"
           "$GITHUB_WORKSPACE/utils/build_categories_array.sh"
