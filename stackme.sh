@@ -9944,6 +9944,61 @@ generate_stack_config_iceberg() {
   generate_stack_config_pipeline "$config_instructions"
 }
 
+generate_stack_config_delta_lake() {
+  local stack_name="delta_lake"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+          "name": "minio_url",
+          "label": "Iceberg broker URL",
+          "description": "URL to access Iceberg broker remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      },
+      {
+          "name": "minio_username",
+          "label": "Minio username",
+          "description": "Username to access Minio remotely",
+          "required": "yes",
+          "validate_fn": "validate_username"
+      },
+      {
+          "name": "minio_password",
+          "label": "Iceberg broker URL",
+          "description": "Password to access Iceberg broker remotely",
+          "required": "yes",
+          "validate_fn": "validate_password"
+      },
+      {
+          "name": "superset_url",
+          "label": "URL to access Superset remotely",
+          "description": "URL to access Superset remotely",
+          "required": "yes",
+          "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(jq -n \
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
+          "name": $stack_name,
+          "target": "portainer",
+          "actions": {
+            "prompt": $prompt_items
+          }
+      }'
+  ) || {
+      error "Failed to generate JSON"
+      return 1
+  } 
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
 # Function to generate Moodle service configuration JSON
 generate_stack_config_moodle() {
   local stack_name="moodle"
