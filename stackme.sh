@@ -2535,7 +2535,7 @@ validate_yn_response(){
 show_progress() {
   local pid=$1
   local message=${2:-""}
-  local spinner='|/-\'
+  local spinner='|/-\\'
   local delay=0.1
   echo -n "$message "
   
@@ -5229,7 +5229,7 @@ add_scrape_config_object() {
     fi
 
     info "File $filename does not exist. Initializing with default content."
-    cat <<EOF >"$filename"
+    tee "$filename" > /dev/null <<EOF
 global:
   scrape_interval: 15s
   scrape_timeout: 10s
@@ -5238,7 +5238,7 @@ alerting:
   alertmanagers:
     - static_configs:
         - targets: []
-scrape_configs: 
+scrape_configs:
 EOF
   fi
 
