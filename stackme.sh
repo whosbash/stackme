@@ -1403,6 +1403,16 @@ is_command_available() {
   command -v "$command" >/dev/null 2>&1
 }
 
+# Function to run a command
+run_command() {
+  local title="$1"
+  local command="$2"
+  diplay_header "$title"
+  eval "$command"
+  wait_for_input
+}
+
+# Function to assert domain and IP
 assert_domain_and_ip() {
   items='[
       {
@@ -11698,43 +11708,34 @@ define_menu_utilities_docker() {
   define_menu "$menu_object"
 }
 
-# main:utilities
-define_menu_utilities() {
-  menu_key="main:utilities"
-  menu_title="Utilities"
+# main:network
+define_menu_network() {
+  menu_key="main:utilities:network"
+  menu_title="Network"
 
-  item_1="$(
-    build_menu_item "SMTP" "Test and tools" "navigate_menu 'main:utilities:smtp'"
-  )"
-  item_2="$(
-    build_menu_item "Docker" "Tools" "navigate_menu 'main:utilities:docker'"
-  )"
-
-  items=(
-    "$item_1" "$item_2"
+  # Define menu items in an array
+  menu_items=(
+    "Network:describe:network_usage"
+    "Security:diagnose:security_diagnostics"
+    "Bandwidth:describe:bandwidth_usage"
   )
 
+  items=()
+  for item in "${menu_items[@]}"; do
+    IFS=":" read -r title action cmd <<< "$item"
+    command="run_command '$title' '$cmd'"
+    items+=("$(build_menu_item "$title" "$action" "$command")")
+  done
+
+  # Build and define menu
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
-
   define_menu "$menu_object"
-
-  # Define sub-menus
-  define_menu_utilities_docker
-  define_menu_utilities_smtp
 }
 
-# main:health
-define_menu_health() {
-  menu_key="main:health"
-  menu_title="Health"
-
-  run_command() {
-    local title="$1"
-    local command="$2"
-    diplay_header "$title"
-    eval "$command"
-    wait_for_input
-  }
+# main:system
+define_menu_system() {
+  menu_key="main:utilities:system"
+  menu_title="System"
 
   # Define menu items in an array
   menu_items=(
@@ -11742,11 +11743,8 @@ define_menu_health() {
     "Awake Usage:describe:uptime_usage"
     "Memory Usage:describe:memory_usage"
     "Disk Usage:describe:disk_usage"
-    "Network:describe:network_usage"
     "Top Processes:list:top_processes"
-    "Security:diagnose:security_diagnostics"
     "Load Average:describe:load_average"
-    "Bandwidth:describe:bandwidth_usage"
     "Package Updates:install:update_and_check_packages"
   )
 
@@ -11762,6 +11760,34 @@ define_menu_health() {
   define_menu "$menu_object"
 }
 
+# main:utilities
+define_menu_utilities() {
+  menu_key="main:utilities"
+  menu_title="Utilities"
+
+  item_1="$(
+    build_menu_item "SMTP" "Test and tools" "navigate_menu 'main:utilities:smtp'"
+  )"
+  item_2="$(
+    build_menu_item "Docker" "Tools" "navigate_menu 'main:utilities:docker'"
+  )"
+  item_3="$(
+    build_menu_item "Network" "" "navigate_menu 'main:utilities:network'"
+  )"
+
+  items=(
+    "$item_1" "$item_2"
+  )
+
+  menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
+
+  define_menu "$menu_object"
+
+  # Define sub-menus
+  define_menu_utilities_docker
+  define_menu_utilities_smtp
+}
+
 # main
 define_menu_main() {
   highlight "Building main menu..."
@@ -11771,10 +11797,9 @@ define_menu_main() {
 
   item_1="$(build_menu_item "Stacks" "explore" "navigate_menu 'main:stacks'")"
   item_2="$(build_menu_item "Utilities" "explore" "navigate_menu 'main:utilities'")"
-  item_3="$(build_menu_item "Health" "diagnose" "navigate_menu 'main:health'")"
 
   items=(
-    "$item_1" "$item_2" "$item_3"
+    "$item_1" "$item_2"
   )
 
   menu_object="$(build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}")"
@@ -11787,9 +11812,6 @@ define_menu_main() {
 
   info "Defining menu Utilities..."
   define_menu_utilities
-
-  info "Defining menu Health..."
-  define_menu_health
 
   wait_for_input
 }
