@@ -1,0 +1,46 @@
+version: '3.7'
+
+services:
+  trino:
+    image: trinodb/trino:latest
+    deploy:
+      replicas: 1
+    networks:
+      - lakehouse
+
+  minio:
+    image: quay.io/minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ACCESS_KEY: {{minio_username}}
+      MINIO_SECRET_KEY: {{minio_password}}
+    volumes:
+      - minio-data:/data
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.minio.rule=Host(`{{minio_url}}`)"
+        - "traefik.http.services.minio.loadbalancer.server.port=9000"
+    networks:
+      - {{network_name}}
+
+  superset:
+    image: apache/superset:latest
+    depends_on:
+      - trino
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.superset.rule=Host(`{{superset_url}}`)"
+        - "traefik.http.services.superset.loadbalancer.server.port=8088"
+    networks:
+      - {{network_name}}
+
+volumes:
+  minio-data:
+
+networks:
+  {{network_name}}:
+    external: true
