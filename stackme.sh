@@ -11733,19 +11733,38 @@ define_menu_stacks() {
   local category_name category_label category_description category_key category_item
 
   # Iterate over JSON array
-  while IFS= read -r category_object; do
-    category_name=$(jq -r '.category_name' <<<"$category_object")
-    category_label=$(jq -r '.category_label' <<<"$category_object")
-    category_description=$(jq -r '.category_description' <<<"$category_object")
-    category_emoji=$(jq -r '.category_emoji' <<<"$category_object")
+  declare -A categories_array
 
+  # Convert JSON array into an associative array
+  convert_json_to_array "$category_list" categories_array
+
+  # Iterate over categories in the associative array
+  for category_name in "${!categories_array[@]}"; do
+    category_json="${categories_array[$category_name]}"
+
+    
+    # Get the corresponding values
+    category_label="$(\
+      echo $category_json | jq -r '.category_label'
+    )"
+    category_description="$(\
+      echo $category_json | jq -r '.category_description'
+    )"
+    category_emoji="$(\
+      echo $category_json | jq -r '.category_emoji'
+    )"
+
+    # Construct the key for navigation
     category_key="main:stacks:$category_name"
+
+    # Build the menu item for this category
     category_item="$(
       build_menu_item "$category_emoji $category_label" "$category_description" "navigate_menu $category_key"
     )"
 
+    # Add the category item to the menu
     menu_stack_categories+=("$category_item")
-  done < <(jq -r '.[] | @json' <<<"$category_list")
+  done
 
   # Build and define the main stacks menu
   local menu_object
