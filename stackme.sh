@@ -971,10 +971,10 @@ add_json_objects() {
 }
 
 filter_json_object_by_keys() {
-  local json="$1"         # Input JSON string
-  local keys=("${@:2}")   # Array of keys (after the first argument)
-  local missing_keys=()   # Array to store missing keys
-  local filtered_json="{}"  # Resultant JSON object
+  local json="$1"          # Input JSON string
+  local keys=("${@:2}")    # Array of keys (after the first argument)
+  local missing_keys=()    # Array to store missing keys
+  local filtered_json="{}" # Resultant JSON object
 
   # Loop through each key
   for key in "${keys[@]}"; do
@@ -1099,15 +1099,14 @@ convert_array_to_json() {
 
 # Function to convert a JSON string to an associative array
 convert_json_to_array() {
-  local json_string="$1"    # JSON input as a string
-  declare -n array_ref=$2   # Reference to the associative array
+  local json_string="$1"  # JSON input as a string
+  declare -n array_ref=$2 # Reference to the associative array
 
   # Parse JSON and fill the associative array
   while IFS="=" read -r key value; do
     array_ref["$key"]="$value"
   done < <(echo "$json_string" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"')
 }
-
 
 # Function to save an associative array to a JSON file
 save_array_to_json() {
@@ -1185,27 +1184,27 @@ custom_json_keys_with_identifier() {
 
   # Iterate through JSON keys and build a new JSON object with updated keys
   local modified_json
-  modified_json=$(\
-    echo "$json_object" | \
-    jq --arg id "$identifier" 'with_entries(.key |= "\($id)_\(.)")'
+  modified_json=$(
+    echo "$json_object" |
+      jq --arg id "$identifier" 'with_entries(.key |= "\($id)_\(.)")'
   )
 
   # Print the modified JSON
   echo "$modified_json"
 }
 
-# Function 
+# Function
 is_valid_json() {
   local input="$1"
 
-  if jq empty <<< "$input" 2>/dev/null; then
+  if jq empty <<<"$input" 2>/dev/null; then
     return 0 # Valid JSON
   else
     return 1 # Invalid JSON
   fi
 }
 
-# Function to check if a json object has fields  
+# Function to check if a json object has fields
 has_fields() {
   local json_data="$1"
   shift
@@ -1219,7 +1218,7 @@ has_fields() {
 
   # Check if all required fields exist
   for key in "${required_fields[@]}"; do
-    if ! jq -e --arg key "$key" 'has($key)' <<< "$json_data" > /dev/null; then
+    if ! jq -e --arg key "$key" 'has($key)' <<<"$json_data" >/dev/null; then
       return 1
     fi
   done
@@ -1237,7 +1236,7 @@ clean_screen() {
   echo -ne "\033[H\033[J" >&2
 }
 
-get_date(){
+get_date() {
   date '+%Y-%m-%d %H:%M:%S'
 }
 
@@ -1262,24 +1261,24 @@ uppercase() {
 # Function to cast a port to the 'smtp_secure' variable
 cast_port_to_smtp_secure() {
   local port="$1"
-  
+
   # Determine smtp_secure value based on port
   case "$port" in
-    465)
-      echo "true"  # Secure (implicit TLS)
-      ;;
-    587)
-      echo "false" # Not secure (requires STARTTLS to be secure)
-      ;;
-    25)
-      echo "false" # Default SMTP port, not secure
-      ;;
-    2525)
-      echo "false" # Alternative SMTP port, not secure
-      ;;
-    *)
-      echo "unknown" # For any undefined port
-      ;;
+  465)
+    echo "true" # Secure (implicit TLS)
+    ;;
+  587)
+    echo "false" # Not secure (requires STARTTLS to be secure)
+    ;;
+  25)
+    echo "false" # Default SMTP port, not secure
+    ;;
+  2525)
+    echo "false" # Alternative SMTP port, not secure
+    ;;
+  *)
+    echo "unknown" # For any undefined port
+    ;;
   esac
 }
 
@@ -1301,16 +1300,16 @@ to_boolean() {
 
 # Function to display a progress bar
 progress_bar() {
-  local current="$1"         # Current item
-  local total="$2"           # Total items
-  local elapsed_ns="$3"      # Elapsed time in nanoseconds
-  local total_width="${4:-50}"  # Total width of the progress bar (default: 50)
-  local marker="${5:-#}"     # Custom marker character (default: #)
-  local space_char="${6:- }" # Character for remaining space (default: space)
-  
-  local percentage=$((current * 100 / total))  # Calculate percentage
-  local elapsed_seconds=$(echo "scale=2; $elapsed_ns / 1000000000" | bc)  # Convert ns to seconds
-  
+  local current="$1"           # Current item
+  local total="$2"             # Total items
+  local elapsed_ns="$3"        # Elapsed time in nanoseconds
+  local total_width="${4:-50}" # Total width of the progress bar (default: 50)
+  local marker="${5:-#}"       # Custom marker character (default: #)
+  local space_char="${6:- }"   # Character for remaining space (default: space)
+
+  local percentage=$((current * 100 / total))                            # Calculate percentage
+  local elapsed_seconds=$(echo "scale=2; $elapsed_ns / 1000000000" | bc) # Convert ns to seconds
+
   # Clamp the percentage to valid ranges
   percentage=$((percentage > 100 ? 100 : percentage))
 
@@ -1320,14 +1319,14 @@ progress_bar() {
 
   # Calculate speed (items per second)
   local speed=0
-  if (( $(echo "$elapsed_seconds > 0" | bc -l) )); then
+  if (($(echo "$elapsed_seconds > 0" | bc -l))); then
     speed=$(echo "scale=2; $current / $elapsed_seconds" | bc)
   fi
 
   # Display speed as secs/item if less than 1 item/sec
   local speed_display="0"
-  if (( $(echo "$speed > 0" | bc -l) )); then
-    if (( $(echo "$speed < 1" | bc -l) )); then
+  if (($(echo "$speed > 0" | bc -l))); then
+    if (($(echo "$speed < 1" | bc -l))); then
       speed_display=$(echo "scale=2; 1 / $speed" | bc)
       speed_display="${speed_display} secs/item"
     else
@@ -1337,7 +1336,7 @@ progress_bar() {
 
   # Estimate time remaining
   local time_remaining="0"
-  if (( current < total && $(echo "$speed > 0" | bc -l) )); then
+  if ((current < total && $(echo "$speed > 0" | bc -l))); then
     time_remaining=$(echo "scale=2; ($total - $current) / $speed" | bc 2>/dev/null)
   fi
 
@@ -1360,7 +1359,7 @@ progress_bar() {
     "$formatted_elapsed_time" "$formatted_final_time"
 }
 
-hash_credentials(){
+hash_credentials() {
   local username="$1"
   local password="$2"
 
@@ -1371,7 +1370,7 @@ hash_credentials(){
   echo "$hashed_credentials"
 }
 
-build_json_credentials(){
+build_json_credentials() {
   local username="$1"
   local password="$2"
 
@@ -1446,53 +1445,27 @@ assert_domain_and_ip() {
   check_domain_ip "$domain_url" "$ip"
 }
 
-# Function to install ctop
-install_ctop(){
-  step_info 1 $total_steps "Installing CTOP"
-
-    # Download ctop binary
-    wget https://github.com/bcicen/ctop/releases/download/v0.7.7/ctop-0.7.7-linux-amd64 \
-      -O /usr/local/bin/ctop
-    exit_code=$?
-    message="Failed to download CTOP"
-    handle_exit $exit_code 1 $total_steps "$message"
-    if [[ $exit_code -ne 0 ]]; then
-        return 1
-    fi
-
-    step_info 2 $total_steps "Changing permissions"
-
-    # Set executable permissions for ctop
-    chmod +x /usr/local/bin/ctop
-    exit_code=$?
-    message="Failed to set permissions for CTOP"
-    handle_exit $exit_code 2 $total_steps "$message"
-    if [[ $exit_code -ne 0 ]]; then
-        return 1
-    fi
-}
-
-# Function to run ctop 
+# Function to run ctop
 run_ctop() {
-    total_steps=2
+  total_steps=2
 
-    # Check if ctop is already installed
-    if command -v ctop &> /dev/null; then
-        success "CTOP is already installed. Type 'ctop' in the terminal to use it."
-    else
-        # Install ctop if not already installed
-        install_ctop
-        exit_code=$?
+  # Check if ctop is already installed
+  if command -v ctop &>/dev/null; then
+    success "CTOP is already installed. Type 'ctop' in the terminal to use it."
+  else
+    # Install ctop if not already installed
+    install_ctop
+    exit_code=$?
 
-        if [[ $exit_code -ne 0 ]]; then
-            message="Failed to install CTOP"
-            handle_exit $exit_code 2 $total_steps "$message"
-            return 1
-        fi
+    if [[ $exit_code -ne 0 ]]; then
+      message="Failed to install CTOP"
+      handle_exit $exit_code 2 $total_steps "$message"
+      return 1
     fi
+  fi
 
-    # Run ctop after ensuring installation
-    ctop
+  # Run ctop after ensuring installation
+  ctop
 }
 
 # Function to generate a UUID
@@ -1508,9 +1481,9 @@ generate_uuid() {
     printf '%s-%s-%s-%s-%s\n' \
       "$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c8)" \
       "$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c4)" \
-      "$(printf '4%x' $(( RANDOM % 16 )))$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c3)" \
-      "$(printf '%x%x' $(( RANDOM % 4 + 8 )) $(( RANDOM % 16 )))$(cat /dev/urandom | \
-      tr -dc 'a-f0-9' | head -c3)" \
+      "$(printf '4%x' $((RANDOM % 16)))$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c3)" \
+      "$(printf '%x%x' $((RANDOM % 4 + 8)) $((RANDOM % 16)))$(cat /dev/urandom |
+        tr -dc 'a-f0-9' | head -c3)" \
       "$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c12)"
   fi
 }
@@ -1520,23 +1493,23 @@ is_smtp_port_secure() {
   local port="$1"
 
   case "$port" in
-    465|587)
-      echo "true"  # Secure ports
-      ;;
-    25)
-      echo "false" # Not secure by default
-      ;;
-    *)
-      echo "false" # Unknown port; assume not secure
-      ;;
+  465 | 587)
+    echo "true" # Secure ports
+    ;;
+  25)
+    echo "false" # Not secure by default
+    ;;
+  *)
+    echo "false" # Unknown port; assume not secure
+    ;;
   esac
 }
 
 # Function to download a file from a URL
 download_file() {
   local url="$1"
-  local dest_dir="${2:-.}"         # Default to the current directory if not specified
-  local file_name="${3:-}"         # Optional custom file name
+  local dest_dir="${2:-.}" # Default to the current directory if not specified
+  local file_name="${3:-}" # Optional custom file name
 
   # Check if the URL is provided
   if [[ -z "$url" ]]; then
@@ -1585,8 +1558,6 @@ send_email() {
   local pass=$6
   local subject=$7
   local body=$8
-
-  info "Sending test email..."
 
   # Attempt to send the email using swaks and capture output and error details
   local output
@@ -1646,30 +1617,40 @@ generate_machine_specs() {
 
   # Machine Specifications
   print_spec "Hostname" "$(hostname)"
-  print_spec "Operating System" "$(\
-    safe_exec "lsb_release -d | cut -f2")"
-  print_spec "Kernel Version" "$(\
-    safe_exec "uname -r")"
-  print_spec "Processor Model" "$(\
-    safe_exec "lscpu | awk -F ':' '/^Model name/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
-  print_spec "Processor Cores" "$(\
-    safe_exec "lscpu | awk -F ':' '/^CPU\\(s\\):/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
-  print_spec "Processor Threads" "$(\
+  print_spec "Operating System" "$(
+    safe_exec "lsb_release -d | cut -f2"
+  )"
+  print_spec "Kernel Version" "$(
+    safe_exec "uname -r"
+  )"
+  print_spec "Processor Model" "$(
+    safe_exec "lscpu | awk -F ':' '/^Model name/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'"
+  )"
+  print_spec "Processor Cores" "$(
+    safe_exec "lscpu | awk -F ':' '/^CPU\\(s\\):/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'"
+  )"
+  print_spec "Processor Threads" "$(
     safe_exec \
-    "lscpu | awk -F ':' '/^Thread\\(s\\) per core:/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
-  print_spec "Clock Speed" "$(\
-    safe_exec "lscpu | grep 'Model name' | grep -o '@ [0-9.]\+GHz' || echo 'N/A'")"
-  print_spec "Total Memory" "$(\
-    safe_exec "free -h | awk '/^Mem:/ {print \$2}'")"
-  print_spec "GPU Details" "$(\
-    safe_exec "lspci | grep -i 'vga\\|3d\\|2d' || echo 'GPU information unavailable.'")"
-  print_spec "Docker Version" "$(\
-    safe_exec "docker --version || echo 'Not installed'")"
-  
+      "lscpu | awk -F ':' '/^Thread\\(s\\) per core:/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'"
+  )"
+  print_spec "Clock Speed" "$(
+    safe_exec "lscpu | grep 'Model name' | grep -o '@ [0-9.]\+GHz' || echo 'N/A'"
+  )"
+  print_spec "Total Memory" "$(
+    safe_exec "free -h | awk '/^Mem:/ {print \$2}'"
+  )"
+  print_spec "GPU Details" "$(
+    safe_exec "lspci | grep -i 'vga\\|3d\\|2d' || echo 'GPU information unavailable.'"
+  )"
+  print_spec "Docker Version" "$(
+    safe_exec "docker --version || echo 'Not installed'"
+  )"
+
   echo
   if command -v upower &>/dev/null; then
-    upower -i $(\
-      upower -e | grep BAT) | \
+    upower -i $(
+      upower -e | grep BAT
+    ) |
       grep -E 'state|to full|percentage' |
       awk -F ':' '{gsub(/^[ \t]+|[ \t]+$/, "", $1); gsub(/^[ \t]+|[ \t]+$/, "", $2); printf "%-15s: %s\n", $1, $2}'
   else
@@ -1727,43 +1708,43 @@ generate_machine_specs_table() {
     generate_table_row "Hostname" \
       "$(hostname)"
   )
-   machine_specs_rows+=$(
-     generate_table_row "Operating System" \
-       "$(safe_exec "lsb_release -d | cut -f2")"
-   )
-   machine_specs_rows+=$(
-     generate_table_row "Kernel Version" \
-       "$(safe_exec "uname -r")"
-   )
-   machine_specs_rows+=$(
-     generate_table_row "Processor Model" \
-       "$(safe_exec "lscpu | awk -F ':' '/Model name/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
-   )
-   machine_specs_rows+=$(
-     generate_table_row "Processor Cores" \
-       "$(safe_exec "lscpu | awk -F ':' '/^CPU\(s\):/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
-   )
+  machine_specs_rows+=$(
+    generate_table_row "Operating System" \
+      "$(safe_exec "lsb_release -d | cut -f2")"
+  )
+  machine_specs_rows+=$(
+    generate_table_row "Kernel Version" \
+      "$(safe_exec "uname -r")"
+  )
+  machine_specs_rows+=$(
+    generate_table_row "Processor Model" \
+      "$(safe_exec "lscpu | awk -F ':' '/Model name/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
+  )
+  machine_specs_rows+=$(
+    generate_table_row "Processor Cores" \
+      "$(safe_exec "lscpu | awk -F ':' '/^CPU\(s\):/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'")"
+  )
 
-   command="lscpu | awk -F ':' '/^Thread\(s\) per core:/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'"
-   machine_specs_rows+=$(
-     generate_table_row "Processor Threads" "$(safe_exec "$command")"
-   )
-   machine_specs_rows+=$(
-     generate_table_row "Clock Speed" \
-       "$(safe_exec "lscpu | grep 'Model name' | grep -o '@ [0-9.]\+GHz' || echo 'N/A'")"
-   )
-   machine_specs_rows+=$(
-     generate_table_row "Total Memory" \
-       "$(safe_exec "free -h | awk '/^Mem:/ {print \$2}'")"
-   )
-   machine_specs_rows+=$(
-     generate_table_row "GPU Details" \
-       "$(safe_exec "lspci | grep -i 'vga\|3d\|2d' || echo 'GPU information unavailable.'")"
-   )
-   machine_specs_rows+=$(
-     generate_table_row "Docker Version" \
-       "$(safe_exec "docker --version || echo 'Not installed'")"
-   )
+  command="lscpu | awk -F ':' '/^Thread\(s\) per core:/ {gsub(/^[ \t]+/, \"\", \$2); print \$2}'"
+  machine_specs_rows+=$(
+    generate_table_row "Processor Threads" "$(safe_exec "$command")"
+  )
+  machine_specs_rows+=$(
+    generate_table_row "Clock Speed" \
+      "$(safe_exec "lscpu | grep 'Model name' | grep -o '@ [0-9.]\+GHz' || echo 'N/A'")"
+  )
+  machine_specs_rows+=$(
+    generate_table_row "Total Memory" \
+      "$(safe_exec "free -h | awk '/^Mem:/ {print \$2}'")"
+  )
+  machine_specs_rows+=$(
+    generate_table_row "GPU Details" \
+      "$(safe_exec "lspci | grep -i 'vga\|3d\|2d' || echo 'GPU information unavailable.'")"
+  )
+  machine_specs_rows+=$(
+    generate_table_row "Docker Version" \
+      "$(safe_exec "docker --version || echo 'Not installed'")"
+  )
 
   html_content+=$(create_table "Machine Specifications" "<th>Attribute</th><th>Details</th>" "$machine_specs_rows")
 
@@ -1773,10 +1754,11 @@ generate_machine_specs_table() {
       grep -E '^/dev' |
       awk '{printf "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", $1, $2, $3, $4, $5, $6}'
   )
-  html_content+=$(\
+  html_content+=$(
     create_table "Disk Usage" \
       "<th>Source</th><th>Filesystem Type</th><th>Total Size</th><th>Used</th><th>Available</th><th>Use%</th>" \
-      "$disk_usage_rows")
+      "$disk_usage_rows"
+  )
 
   # Battery Status Table (only if upower is available)
   if command -v upower &>/dev/null; then
@@ -1785,30 +1767,30 @@ generate_machine_specs_table() {
         awk -F ':' '{gsub(/^[ \t]+|[ \t]+$/, "", $1); gsub(/^[ \t]+|[ \t]+$/, "", $2); print "<tr><td>" $1 "</td><td>" $2 "</td></tr>"}'
     )
     if [[ -n "$battery_rows" ]]; then
-      html_content+=$(\
+      html_content+=$(
         create_table "Battery Status" \
-        "<th>Status</th><th>Details</th>" "$battery_rows"
+          "<th>Status</th><th>Details</th>" "$battery_rows"
       )
     else
-      html_content+=$(\
+      html_content+=$(
         create_table "Battery Status" \
-        "<th>Status</th><th>Details</th>" "<tr><td colspan='2'>No battery information available.</td></tr>"
+          "<th>Status</th><th>Details</th>" "<tr><td colspan='2'>No battery information available.</td></tr>"
       )
     fi
   fi
 
   # Network Information Table (Ethernet and Wi-Fi)
-  local ethernet_info=$(\
+  local ethernet_info=$(
     safe_exec "ip -4 addr show | grep 'state UP' -A2 | grep inet | awk '{print \$2}' || echo 'No Ethernet connection.'"
   )
-  local wifi_info=$(\
-    safe_exec "nmcli device status | grep wifi | awk '{print \$1, \$3, \$4}' || echo 'No Wi-Fi connection.'"\
+  local wifi_info=$(
+    safe_exec "nmcli device status | grep wifi | awk '{print \$1, \$3, \$4}' || echo 'No Wi-Fi connection.'"
   )
   local network_rows=""
   network_rows+=$(generate_table_row "Ethernet" "$ethernet_info")
   network_rows+=$(generate_table_row "Wi-Fi" "$wifi_info")
-  html_content+=$(\
-    create_table "Network Information" "<th>Type</th><th>Details</th>" "$network_rows" \
+  html_content+=$(
+    create_table "Network Information" "<th>Type</th><th>Details</th>" "$network_rows"
   )
 
   # Return the complete HTML content
@@ -1910,7 +1892,7 @@ bandwidth_usage() {
   echo ""
 }
 
-# Function to check disk usage 
+# Function to check disk usage
 check_disk_usage() {
   local threshold="${1:-80}"
   local mount_point="${2:-/}"
@@ -2347,7 +2329,7 @@ validate_email_value() {
   return 0
 }
 
-validate_smtp_port(){
+validate_smtp_port() {
   local port=$1
 
   # Check valid smpt ports: 25, 587, 465
@@ -2501,7 +2483,7 @@ validate_password() {
 }
 
 # Function to validate boolean
-validate_boolean(){
+validate_boolean() {
   local value="$1"
 
   # Check if the value is a valid boolean
@@ -2514,14 +2496,14 @@ validate_boolean(){
 }
 
 # Function to validate yes-no reponse
-validate_yn_response(){
+validate_yn_response() {
   local value="$1"
 
   # Check if the value is a valid yes/no response
   if [[ 
-    "$value" != "y" && "$value" != "n" && \
-    "$value" != "Y" && "$value" != "N"
-  ]]; then
+    "$value" != "y" && "$value" != "n" &&
+    "$value" != "Y" && "$value" != "N" ]] \
+    ; then
     echo "The value '$value' is not a valid yes/no response."
     return 1
   fi
@@ -2538,7 +2520,7 @@ show_progress() {
   local spinner='|/-\\'
   local delay=0.1
   echo -n "$message "
-  
+
   while kill -0 $pid 2>/dev/null; do
     for i in $(seq 0 3); do
       echo -ne "\b${spinner:i:1}"
@@ -2599,8 +2581,8 @@ create_error_item() {
 
 # Function to generate a JSON configuration for a service
 generate_schema_stack_config() {
-  local required_fields=($1)  # Convert input string to array
-  
+  local required_fields=($1) # Convert input string to array
+
   # Initialize an empty JSON object with formatted structure
   local schema=$(jq -n '
     {
@@ -2626,9 +2608,9 @@ generate_schema_stack_config() {
 
   # Add required fields to "variables"
   for field in "${required_fields[@]}"; do
-    schema=$(\
-      echo "$schema" | \
-      jq --arg key "$field" '.variables[$key] = {type: "string", minLength: 1}'
+    schema=$(
+      echo "$schema" |
+        jq --arg key "$field" '.variables[$key] = {type: "string", minLength: 1}'
     )
   done
 
@@ -3027,7 +3009,7 @@ wait_for_input() {
     done
     # Erasing the line content
     echo -e "\r${prompt_message}" >&2 # Timeout message
-    return 1                                      # Timeout
+    return 1                          # Timeout
   else
     # Wait for key press without a timeout
     read -n 1 -s user_input
@@ -3608,7 +3590,7 @@ run_shift_message() {
   # Calculate the arrow row position based on header lines and current item
   arrow_position="$(get_arrow_position "$current_idx" "$page_size" "2")"
   horizontal_shift=$((2 + item_label_length + 2))
-  
+
   local pad=2
   shift_length="$((page_width - horizontal_shift + pad))"
 
@@ -3646,7 +3628,7 @@ render_options() {
 
     truncation_length="$((page_width - 2 - ${#option_label}))"
 
-    truncated_desc="$(truncate_option "$option_desc" "$truncation_length")" 
+    truncated_desc="$(truncate_option "$option_desc" "$truncation_length")"
 
     if [[ -z "$option_desc" ]]; then
       option="${option_label}"
@@ -3703,19 +3685,19 @@ print_centered_header() {
 # Render breadcrumb trail with each node separated by ' > '
 render_breadcrumb() {
   local breadcrumb=""
-  
+
   # Loop through each menu node in the history
   for menu in "${menu_navigation_history[@]}"; do
     # Extract the last part after the last colon
     last_part="${menu##*:}"
-    
+
     # Append it to the breadcrumb with ' > ' separator
     breadcrumb+="$last_part > "
   done
 
   # Remove the trailing ' > ' from the breadcrumb
   breadcrumb=${breadcrumb% > }
-  
+
   # Display the breadcrumb
   echo -e "${highlight_color}Current Path: ${breadcrumb}${reset_color}" >&2
 }
@@ -3755,7 +3737,7 @@ render_menu() {
 
   # Disable keyboard input temporarily
   stty -echo -icanon
-  trap "stty echo icanon; tput cnorm; exit" SIGINT SIGTERM EXIT # Ensure cleanup
+  trap "stty echo icanon; tput cnorm; exit" SIGINT SIGTERM EXIT
 
   local num_options=${#menu_options[@]}
 
@@ -4005,7 +3987,6 @@ handle_quit_key() {
     pop_menu_from_history
     previous_menu=$(get_current_menu)
 
-    
     if [[ "$current_menu" == "Main" ]]; then
       message="${faded_color}Exiting program.${reset_color}"
     else
@@ -4276,134 +4257,134 @@ map_stacks_to_services() {
 
 # Function to wait for all services to be healthy using docker service ps
 wait_for_services() {
-    local stack_name="$1"
+  local stack_name="$1"
 
-    local timeout=300
-    local interval=5
-    local elapsed=0
-    
-    timout_min="$(( timeout / 60 ))"
+  local timeout=300
+  local interval=5
+  local elapsed=0
 
-    # Get the list of service names from the docker-compose setup (in swarm mode)
-    services=$(docker stack services --format '{{.Name}}' "$stack_name")
+  timout_min="$((timeout / 60))"
 
-    start_time=$(date +%s)  # Record the start time
-    while true; do
-        all_healthy=true
-        for service in $services; do
-            # Get the current state of the service using docker service ps
-            service_state=$(
-              docker service ps \
-              --filter "desired-state=running" \
-              --format "{{.CurrentState}}" "$service" | \
-              grep -o "Running"
-            )
+  # Get the list of service names from the docker-compose setup (in swarm mode)
+  services=$(docker stack services --format '{{.Name}}' "$stack_name")
 
-            # If the service is not running or not in the "Running" state
-            if [[ -z "$service_state" ]]; then
-                all_healthy=false
-                current_time=$(date +%s)
-                elapsed=$(( (current_time - start_time) / 60 )) # Convert to minutes
-                time_info="elapsed time: ${elapsed} minutes (timeout: ${timeout_min} minutes)."
-                info "Service '$service' is not healthy yet. Waiting... $time_info"
-                break
-            fi
-        done
+  start_time=$(date +%s) # Record the start time
+  while true; do
+    all_healthy=true
+    for service in $services; do
+      # Get the current state of the service using docker service ps
+      service_state=$(
+        docker service ps \
+          --filter "desired-state=running" \
+          --format "{{.CurrentState}}" "$service" |
+          grep -o "Running"
+      )
 
-        # If all services are healthy, exit the loop
-        if [[ "$all_healthy" == true ]]; then
-            success "All services of stack $stack_name are healthy!"
-            break
-        fi
-
-        # Check if we've exceeded the timeout
+      # If the service is not running or not in the "Running" state
+      if [[ -z "$service_state" ]]; then
+        all_healthy=false
         current_time=$(date +%s)
-        elapsed=$((current_time - start_time))  # Elapsed time in seconds
-        if (( elapsed >= timeout )); then
-            failure "Timeout reached! Not all services of stack $stack_name are healthy."
-            exit 1
-        fi
-
-        # Sleep for the interval before checking again
-        sleep "$interval"
+        elapsed=$(((current_time - start_time) / 60)) # Convert to minutes
+        time_info="elapsed time: ${elapsed} minutes (timeout: ${timeout_min} minutes)."
+        info "Service '$service' is not healthy yet. Waiting... $time_info"
+        break
+      fi
     done
+
+    # If all services are healthy, exit the loop
+    if [[ "$all_healthy" == true ]]; then
+      success "All services of stack $stack_name are healthy!"
+      break
+    fi
+
+    # Check if we've exceeded the timeout
+    current_time=$(date +%s)
+    elapsed=$((current_time - start_time)) # Elapsed time in seconds
+    if ((elapsed >= timeout)); then
+      failure "Timeout reached! Not all services of stack $stack_name are healthy."
+      exit 1
+    fi
+
+    # Sleep for the interval before checking again
+    sleep "$interval"
+  done
 }
 
 # Function to download stack compose templates with progress bar
 download_stack_compose_templates() {
-    local destination_folder="$TOOL_TEMPLATES_DIR"
-    
-    # Ensure the destination folder is provided
-    if [[ -z "$destination_folder" ]]; then
-        error "Destination folder not specified."
-        return 1
-    fi
+  local destination_folder="$TOOL_TEMPLATES_DIR"
 
-    # Remove the destination folder if it already exists
-    rm -rf "$destination_folder"
+  # Ensure the destination folder is provided
+  if [[ -z "$destination_folder" ]]; then
+    error "Destination folder not specified."
+    return 1
+  fi
 
-    # Create the destination folder if it doesn't exist
-    mkdir -p "$destination_folder" || {
-        error "Failed to create destination folder $destination_folder."
-        return 1
-    }
+  # Remove the destination folder if it already exists
+  rm -rf "$destination_folder"
 
-    info "Fetching file list from GitHub API..."
-    # Fetch the file information from the API
-    file_urls=$(\
-        curl -s -H "Accept: application/vnd.github.v3+json" "$TOOL_STACKS_TEMPLATE_URL" | \
-        jq -r '.[] | select(.type == "file") | .download_url'
-    )
+  # Create the destination folder if it doesn't exist
+  mkdir -p "$destination_folder" || {
+    error "Failed to create destination folder $destination_folder."
+    return 1
+  }
 
-    # Check if files were found
-    if [[ -z "$file_urls" ]]; then
-        warning "No files found at $TOOL_STACKS_TEMPLATE_URL."
-        return 1
-    fi
+  info "Fetching file list from GitHub API..."
+  # Fetch the file information from the API
+  file_urls=$(
+    curl -s -H "Accept: application/vnd.github.v3+json" "$TOOL_STACKS_TEMPLATE_URL" |
+      jq -r '.[] | select(.type == "file") | .download_url'
+  )
 
-    total_files=$(echo "$file_urls" | wc -l)
+  # Check if files were found
+  if [[ -z "$file_urls" ]]; then
+    warning "No files found at $TOOL_STACKS_TEMPLATE_URL."
+    return 1
+  fi
 
-    # Prepare a variable to track failed downloads
-    failed_downloads=()
+  total_files=$(echo "$file_urls" | wc -l)
 
-    # Initialize the progress bar
-    current=0
+  # Prepare a variable to track failed downloads
+  failed_downloads=()
 
-    # Prepare the failed download log file
-    local failed_filename="$destination_folder/failed_downloads.txt"
-    
-    # Download all files in parallel with a progress bar
-    {
-        echo "$file_urls" | while read -r url; do
-            {
-                file_name=$(basename "$url")
-                destination_file="$destination_folder/$file_name"
+  # Initialize the progress bar
+  current=0
 
-                # Download the file and handle errors
-                if ! curl -s --fail -o "$destination_file" "$url"; then
-                    # Log the failed download with HTTP error message
-                    error_message=$(curl -s -w "%{http_code}" -o /dev/null "$url")
-                    failed_downloads+=(\
-                      "$(date '+%Y-%m-%d %H:%M:%S') - $file_name - Error: HTTP $error_message"\
-                    )
-                fi
-            } &
-        done
+  # Prepare the failed download log file
+  local failed_filename="$destination_folder/failed_downloads.txt"
 
-        # Wait for all background processes to complete
-        wait
-        echo # Move to a new line after progress indicators
-    } > /dev/null 2>&1
+  # Download all files in parallel with a progress bar
+  {
+    echo "$file_urls" | while read -r url; do
+      {
+        file_name=$(basename "$url")
+        destination_file="$destination_folder/$file_name"
 
-    # Wait for all background jobs to finish
+        # Download the file and handle errors
+        if ! curl -s --fail -o "$destination_file" "$url"; then
+          # Log the failed download with HTTP error message
+          error_message=$(curl -s -w "%{http_code}" -o /dev/null "$url")
+          failed_downloads+=(
+            "$(date '+%Y-%m-%d %H:%M:%S') - $file_name - Error: HTTP $error_message"
+          )
+        fi
+      } &
+    done
+
+    # Wait for all background processes to complete
     wait
+    echo # Move to a new line after progress indicators
+  } >/dev/null 2>&1
 
-    # Write failed downloads to the file
-    if [[ ${#failed_downloads[@]} -gt 0 ]]; then
-        for failed in "${failed_downloads[@]}"; do
-            echo "$failed" >> "$failed_filename"
-        done
-    fi
+  # Wait for all background jobs to finish
+  wait
+
+  # Write failed downloads to the file
+  if [[ ${#failed_downloads[@]} -gt 0 ]]; then
+    for failed in "${failed_downloads[@]}"; do
+      echo "$failed" >>"$failed_filename"
+    done
+  fi
 }
 
 # Function to list the services of a stack
@@ -4507,7 +4488,7 @@ stack_exists() {
 stacks_exist() {
   local stacks=("$@") # Array of stack names passed as arguments
   local all_exist=true
-  local stack_name 
+  local stack_name
 
   for stack_name in "${stacks[@]}"; do
     if ! stack_exists "$stack_name"; then
@@ -4524,7 +4505,7 @@ stacks_exist() {
 }
 
 # Function to get the URL of a stack
-stack_url(){
+stack_url() {
   local stack_name="$1"
   local host='raw.githubusercontent.com'
   local organization='whosbash'
@@ -4648,8 +4629,8 @@ signup_on_portainer() {
   local portainer_url="$1"
   local username="$2"
   local password="$3"
-  local max_retries=5    # Maximum number of retry attempts
-  local retry_delay=5    # Delay (in seconds) between retries
+  local max_retries=5 # Maximum number of retry attempts
+  local retry_delay=5 # Delay (in seconds) between retries
 
   # Credentials (raw, not indented)
   credentials="{\"username\": \"$username\",\"password\": \"$password\"}"
@@ -4919,18 +4900,18 @@ upload_stack_on_portainer() {
 
   response=$(
     curl -s -k -X POST \
-    -H "Authorization: Bearer $token" \
-    -F "Name=$stack_name" \
-    -F "file=@$compose_file" \
-    -F "SwarmID=$swarm_id" \
-    -F "endpointId=$endpoint_id" \
-    "$url" &&
-    success "Stack '$stack_name' uploaded successfully."
+      -H "Authorization: Bearer $token" \
+      -F "Name=$stack_name" \
+      -F "file=@$compose_file" \
+      -F "SwarmID=$swarm_id" \
+      -F "endpointId=$endpoint_id" \
+      "$url" &&
+      success "Stack '$stack_name' uploaded successfully."
   )
 
   if [[ $? -ne 0 ]]; then
-      error "Failed to upload stack: $stack_name"
-      return 1
+    error "Failed to upload stack: $stack_name"
+    return 1
   fi
 
   info "Deployment response: $response"
@@ -5017,8 +4998,8 @@ delete_stack_on_portainer() {
   local jq_filter=".[] | select(.Name == \"$stack_name\") | .Id"
   local stack_id
 
-  stack_id=$(\
-    check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"\
+  stack_id=$(
+    check_portainer_stack_exists "$portainer_url" "$portainer_auth_token" "$stack_name"
   )
 
   if [[ -z "$stack_id" ]]; then
@@ -5049,7 +5030,7 @@ delete_stack_on_portainer() {
     error "Failed to delete stack '$stack_name'."
 }
 
-load_portainer_url_and_credentials(){
+load_portainer_url_and_credentials() {
   local portainer_config_json
   portainer_config_json=$(
     load_json "$TOOL_STACKS_DIR/portainer/stack_config.json"
@@ -5064,9 +5045,10 @@ load_portainer_url_and_credentials(){
   portainer_url="$(echo "$portainer_info" | jq -r '.["variables.portainer_url"]')"
 
   # Parse the portainer_credentials string into a JSON object (using fromjson)
-  portainer_credentials="$(\
-    echo "$portainer_info" | \
-    jq -r '.["variables.portainer_credentials"] | fromjson')"
+  portainer_credentials="$(
+    echo "$portainer_info" |
+      jq -r '.["variables.portainer_credentials"] | fromjson'
+  )"
 
   # Return the filtered JSON with portainer_url and portainer_credentials
   jq -n \
@@ -5075,9 +5057,9 @@ load_portainer_url_and_credentials(){
     '{"portainer_url": $portainer_url, "portainer_credentials": $portainer_credentials}'
 }
 
-traefik_and_portainer_exist(){
+traefik_and_portainer_exist() {
   stack_names=("traefik" "portainer")
-  
+
   if ! stacks_exist "${stack_names[@]}"; then
     return 1
   fi
@@ -5097,7 +5079,7 @@ is_portainer_response_valid() {
       has("Status") and
       has("ProjectPath") and
       has("CreationDate")
-  ' > /dev/null 2>&1
+  ' >/dev/null 2>&1
 
   if [[ $? -ne 0 ]]; then
     error "Invalid Portainer response: $portainer_response"
@@ -5340,7 +5322,7 @@ should_remove_stack() {
       else
         portainer_config="$(load_portainer_url_and_credentials)"
 
-        delete_stack_on_portainer "$portainer_config" "$stack_name" 
+        delete_stack_on_portainer "$portainer_config" "$stack_name"
       fi
 
       exit_code=$?
@@ -5540,7 +5522,7 @@ execute_refresh_actions() {
 
     # Variable name or empty name
     local name
-    name="$(jq -r --arg key "name" '.[$key] // empty' <<< "$action")"
+    name="$(jq -r --arg key "name" '.[$key] // empty' <<<"$action")"
 
     # Execute the command and capture its output (must be a valid JSON)
     command_output=$(eval "$command") || {
@@ -5554,7 +5536,7 @@ execute_refresh_actions() {
       message="Refresh action command must be $constraint."
       # Validate if the output is a valid JSON object
       echo "$command_output" | jq empty >/dev/null 2>&1 || {
-        error 
+        error
         return 1
       }
 
@@ -5566,12 +5548,12 @@ execute_refresh_actions() {
       continue
     fi
 
-    variable_to_update="$(\
-      echo "\"$command_output\"" | jq -c --arg key "$name" '{($key): .}'\
+    variable_to_update="$(
+      echo "\"$command_output\"" | jq -c --arg key "$name" '{($key): .}'
     )"
 
     # Merge the command output with the existing stack variables using add_json_objects
-    updated_variables=$(\
+    updated_variables=$(
       add_json_objects "$updated_variables" "$variable_to_update"
     ) || {
       error "Failed to update stack variables after executing variable '$name'"
@@ -5621,7 +5603,7 @@ build_compose_file() {
   # Extract paths and function for template generation
   local stack_dir="${TOOL_STACKS_DIR}/${stack_name}"
   local stack_compose_template_path="${TOOL_TEMPLATES_DIR}/${stack_name}.yaml"
-  
+
   local config_path="${stack_dir}/stack_config.json"
   local compose_path="${stack_dir}/docker-compose.yaml"
   local compose_url="$(stack_url "$stack_name")"
@@ -5646,7 +5628,7 @@ build_compose_file() {
 
   # Generate the substituted template
   local substituted_template
-  substituted_template=$(\
+  substituted_template=$(
     replace_mustache_variables "$(cat "$stack_compose_template_path")" stack_variables
   )
 
@@ -5670,7 +5652,7 @@ deploy_stack_on_target() {
   swarm)
     info "Deploying stack '$stack_name' on Docker Swarm"
     docker stack deploy -c "$compose_path" "$stack_name"
-    
+
     return $?
     ;;
   portainer)
@@ -5775,9 +5757,9 @@ generate_stack_config_pipeline() {
   fi
 
   variables="$(process_prompt_items "$collected_items")"
-  variables="$(\
-    echo "$variables" | \
-    jq --arg network_name "$network_name" '. + { "network_name": $network_name }'\
+  variables="$(
+    echo "$variables" |
+      jq --arg network_name "$network_name" '. + { "network_name": $network_name }'
   )"
 
   dependencies="$(echo "$config_instructions" | jq -c '.dependencies // []')"
@@ -5830,9 +5812,9 @@ deployment_pipeline() {
   }
 
   # Update variables property on config_json
-  config_json=$(\
-    echo "$config_json" | \
-    jq --argjson stack_variables "$stack_variables" '.variables = $stack_variables'\
+  config_json=$(
+    echo "$config_json" |
+      jq --argjson stack_variables "$stack_variables" '.variables = $stack_variables'
   )
 
   # Step 3: Execute prepare actions
@@ -5925,13 +5907,13 @@ deploy_stack() {
       # Otherwise, block installation
       error "Traefik and Portainer are required before deploying $stack_name."
       error "Select option 'Startup' on menu 'Stacks' to install them."
-      wait_for_input  
+      wait_for_input
       return 1
     fi
   fi
 
   if [[ "$stack_name" != "traefik" && "$stack_name" != "portainer" ]]; then
-    # Check current stack is WIP from associative array STACKS 
+    # Check current stack is WIP from associative array STACKS
     #   object property 'stack_status' (case insensitive) is
     stack_object="${STACKS[$stack_name]}"
 
@@ -6136,7 +6118,7 @@ declare -A tool_variables=(
   [tool_repository_url]="$TOOL_REPOSITORY_URL"
   [tool_logo_url]="$TOOL_LOGO_URL"
 )
-EMAIL_TEMPLATE=$(\
+EMAIL_TEMPLATE=$(
   replace_mustache_variables "$EMAIL_TEMPLATE" tool_variables
 )
 
@@ -6173,13 +6155,13 @@ check_smtp_config() {
     --auth LOGIN \
     --auth-user "$smtp_username" \
     --auth-password "$smtp_password" \
-    --tls --quit-after=DATA > /dev/null 2>&1
+    --tls --quit-after=DATA >/dev/null 2>&1
 
   # Check if swaks command was successful (exit status 0) or failed (non-zero exit status)
   if [[ $? -eq 0 ]]; then
-    return 0  # Success
+    return 0 # Success
   else
-    return 1  # Failure
+    return 1 # Failure
   fi
 }
 
@@ -6348,7 +6330,6 @@ get_or_request_smtp_configuration() {
 }
 
 # Function to confirm and possibly overwrite SMTP configuration
-# Function to confirm and possibly overwrite SMTP configuration
 overwrite_or_request_smtp_information() {
   local smtp_json question
 
@@ -6357,7 +6338,7 @@ overwrite_or_request_smtp_information() {
     error "SMTP configuration not found."
     question="Would you like to add tool SMTP configuration?"
   else
-    info "Current SMTP configuration:\n$(\
+    info "Current SMTP configuration:\n$(
       echo "$smtp_json" | jq -r '. | to_entries | map("\(.key): \(.value)") | join("\n")'
     )"
     question="Would you like to overwrite the current SMTP configuration?"
@@ -6375,7 +6356,7 @@ overwrite_or_request_smtp_information() {
   wait_for_input
 }
 
-custom_send_email(){
+custom_send_email() {
   local to_email="$1"
   local subject="$2"
   local body="$3"
@@ -6398,7 +6379,7 @@ custom_send_email(){
   send_email \
     "$smtp_from_email" "$to_email" "$smtp_host" "$smtp_port" \
     "$smtp_username" "$smtp_password" "$subject" "$body"
-  
+
   wait_for_input
 }
 
@@ -6416,6 +6397,8 @@ send_smtp_test_email() {
   fi
 
   smtp_username="$(echo "$smtp_json" | jq -r ".smtp_username")"
+
+  info "Sending test email to $smtp_username..."
 
   custom_send_email "$smtp_username" "$subject" "$body"
 
@@ -6436,7 +6419,9 @@ send_machine_specs_email() {
   fi
 
   smtp_username="$(echo "$smtp_json" | jq -r ".smtp_username")"
-  
+
+  info "Sending Machine Specs email to $smtp_username..."
+
   custom_send_email "$smtp_username" "$subject" "$body"
 }
 
@@ -6577,7 +6562,7 @@ prepare_environment() {
   # Install required apt packages quietly
   apt_packages=(
     "sudo" "apt-utils" "apparmor-utils" "apache2-utils" "jq" "python3" "uuid"
-    "docker" "figlet" "swaks" "netcat" "vnstat" "network-manager" "upower"
+    "docker" "figlet" "swaks" "netcat" "vnstat" "network-manager" "upower" "ctop"
   )
   step_message="Installing required apt-get packages"
   step_progress 3 $total_steps "$step_message"
@@ -6620,7 +6605,7 @@ install_docker() {
 
   # Step 1: Check and install prerequisites
   info "Checking prerequisites..."
-  if dpkg -l | \
+  if dpkg -l |
     grep -qE "apt-transport-https|ca-certificates|curl|software-properties-common"; then
     success "Prerequisites are already installed."
   else
@@ -6637,7 +6622,7 @@ install_docker() {
   # Step 2: Add Docker's official GPG key and repository (if not already added)
   info "Checking Docker GPG key and repository..."
   keyring_path="/usr/share/keyrings/docker-archive-keyring.gpg"
-  if [[ -f "$keyring_path" ]] && \
+  if [[ -f "$keyring_path" ]] &&
     grep -q "download.docker.com" /etc/apt/sources.list.d/docker.list; then
     success "Docker GPG key and repository are already configured."
   else
@@ -6763,7 +6748,7 @@ save_server_info() {
     return 1
   }
 
-  echo "$content" > "$filename"
+  echo "$content" >"$filename"
 }
 
 # Function to fetch and save server, network, and IP information
@@ -6809,8 +6794,8 @@ initialize_server() {
   fi
 
   # Extract server_name and network_name
-  server_name="$(echo "$server_info_json" | jq -r  ".server_name")"
-  network_name="$(echo "$server_info_json" | jq -r ".network_name" )"
+  server_name="$(echo "$server_info_json" | jq -r ".server_name")"
+  network_name="$(echo "$server_info_json" | jq -r ".network_name")"
 
   step_success 1 $total_steps "Server information saved to file $server_filename"
 
@@ -6923,74 +6908,74 @@ create_database_postgres() {
 create_database_mysql() {
   local db_password="$1"
   local db_name="$2"
-  
+
   container_id=$(docker ps -q --filter "name=^mysql")
 
   # Check if the database already exists using the correct variable for the database name.
   docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
-      -e "SHOW DATABASES LIKE '$db_name';" | grep -qw "$db_name"
+    -e "SHOW DATABASES LIKE '$db_name';" | grep -qw "$db_name"
 
   if [ $? -eq 0 ]; then
-      prompt_message="Database '$db_name' already exists. Do you want to recreate it? (y/n)"
-      confirm_var=$(request_confirmation "$prompt_message" "n")
-      
-      if [ "$confirm_var" == "Y" ] || [ "$confirm_var" == "y" ]; then
-          # Drop the database
-          docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
-              -e "DROP DATABASE IF EXISTS $db_name;" > /dev/null 2>&1
-          if [ $? -eq 0 ]; then
-              echo "Database dropped successfully."
-          else
-              echo "Failed to drop database."
-          fi
-          # Create the database again
-          docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
-              -e "CREATE DATABASE $db_name;" > /dev/null 2>&1
-      else
-          info "Skipping database creation."
-          return 0
-      fi
-  else
-      # Create the database
-      docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
-          -e "CREATE DATABASE $db_name;" > /dev/null 2>&1
+    prompt_message="Database '$db_name' already exists. Do you want to recreate it? (y/n)"
+    confirm_var=$(request_confirmation "$prompt_message" "n")
 
-      # Verify if the database was created successfully
+    if [ "$confirm_var" == "Y" ] || [ "$confirm_var" == "y" ]; then
+      # Drop the database
       docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
-          -e "SHOW DATABASES LIKE '$db_name';" | grep -qw "$db_name"
-
+        -e "DROP DATABASE IF EXISTS $db_name;" >/dev/null 2>&1
       if [ $? -eq 0 ]; then
-          success "Database '$db_name' created successfully."
-          return 0
+        echo "Database dropped successfully."
       else
-          error "Failed to create database '$db_name'. Please check the logs for details."
-          return 1
+        echo "Failed to drop database."
       fi
+      # Create the database again
+      docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
+        -e "CREATE DATABASE $db_name;" >/dev/null 2>&1
+    else
+      info "Skipping database creation."
+      return 0
+    fi
+  else
+    # Create the database
+    docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
+      -e "CREATE DATABASE $db_name;" >/dev/null 2>&1
+
+    # Verify if the database was created successfully
+    docker exec -e MYSQL_PWD="$db_password" "$container_id" mysql -u root \
+      -e "SHOW DATABASES LIKE '$db_name';" | grep -qw "$db_name"
+
+    if [ $? -eq 0 ]; then
+      success "Database '$db_name' created successfully."
+      return 0
+    else
+      error "Failed to create database '$db_name'. Please check the logs for details."
+      return 1
+    fi
   fi
 }
 
-create_database(){
+create_database() {
   local engine="$1"
   local db_name="$2"
 
   case "$engine" in
-    "postgres")
-      create_database_postgres "$db_name"
-      ;;
-    "mysql")
-      create_database_mysql "$db_name"
-      ;;
-    *)
-      error "Unsupported database engine: $engine"
-      return 1
-      ;;
+  "postgres")
+    create_database_postgres "$db_name"
+    ;;
+  "mysql")
+    create_database_mysql "$db_name"
+    ;;
+  *)
+    error "Unsupported database engine: $engine"
+    return 1
+    ;;
   esac
 
 }
 
-get_network_name(){
+get_network_name() {
   server_info_filename="${TOOL_BASE_DIR}/server_info.json"
-  
+
   if [[ ! -f "$server_info_filename" ]]; then
     error "File $server_info_filename not found."
     return 1
@@ -7002,10 +6987,10 @@ get_network_name(){
 }
 
 # Function to fetch stack compose file
-fetch_stack_compose(){
+fetch_stack_compose() {
   local stack_name="$1"
   local filepath="$2"
-  
+
   download_file "$(stack_url "$stack_name")" "$filepath" "docker-compose.yaml"
 
   if [[ -f "$filepath/docker-compose.yaml" ]]; then
@@ -7083,9 +7068,9 @@ create_user_postgres() {
   fi
 
   # Check if the user already exists
-  user_exists=$(\
+  user_exists=$(
     docker exec "$container_id" \
-    psql -U "$db_user" -tAc "SELECT 1 FROM pg_roles WHERE rolname='$user_name';"\
+      psql -U "$db_user" -tAc "SELECT 1 FROM pg_roles WHERE rolname='$user_name';"
   )
 
   if [ "$user_exists" == "1" ]; then
@@ -7145,7 +7130,7 @@ manage_this_prometheus_config_file() {
     "${urls[@]}"
 }
 
-create_prometheus_datasource(){
+create_prometheus_datasource() {
   local prometheus_url="$1"
 
   mkdir -p "${TOOL_BASE_DIR}/prometheus"
@@ -7162,48 +7147,48 @@ datasources:
 EOL
 }
 
-make_airflow_folders(){
+make_airflow_folders() {
   mkdir -p "$TOOL_STACKS_DIR/airflow/"{config,logs,dags,plugins}
 }
 
-make_folder_data_nodered(){
+make_folder_data_nodered() {
   mkdir -p "$TOOL_STACKS_DIR/nodered/data"
   chown -R 1000:1000 "$TOOL_STACKS_DIR/nodered/data"
 }
 
-make_folders_mosquitto(){
+make_folders_mosquitto() {
   mkdir -p "$TOOL_STACKS_DIR/stacks/mosquitto"
   mkdir -p "$TOOL_STACKS_DIR/stacks/mosquitto/data"
   mkdir -p "$TOOL_STACKS_DIR/stacks/mosquitto/log"
 }
 
 # Function to generate a firecrawl string
-generate_firecrawl_api_key(){
+generate_firecrawl_api_key() {
   echo "fc-$(random_string)"
 }
 
-create_traccar_volumes(){
-  docker pull traccar/traccar:latest > /dev/null 2>&1
+create_traccar_volumes() {
+  docker pull traccar/traccar:latest >/dev/null 2>&1
 
   mkdir -p "$TOOL_STACKS_DIR/traccar"
   mkdir -p "$TOOL_STACKS_DIR/traccar/logs"
 
   docker run \
-  --rm \
-  --entrypoint cat \
-  traccar/traccar:latest \
-  /opt/traccar/conf/traccar.xml > "$TOOL_STACKS_DIR/traccar/traccar.xml"
+    --rm \
+    --entrypoint cat \
+    traccar/traccar:latest \
+    /opt/traccar/conf/traccar.xml >"$TOOL_STACKS_DIR/traccar/traccar.xml"
 }
 
 # Function to custom smtp information
-custom_smtp_information(){
+custom_smtp_information() {
   local identifier="$1"
-  
+
   smtp_json="$(get_or_request_smtp_configuration)"
 
   # Add/update field smtp_secure to smtp_json
   smtp_secure="$(is_smtp_port_secure "$(echo "$smtp_json" | jq -r ".smtp_port")")"
-  smtp_json="$(\
+  smtp_json="$(
     add_json_objects "$smtp_json" \
       "$(jq -n --arg smtp_secure "$smtp_secure" '{smtp_secure: $smtp_secure}')"
   )"
@@ -7217,7 +7202,7 @@ display_prompt_items() {
 
   # Display requested variables to the user
   highlight "We will request the following variables:"
-  
+
   # Iterate along json array
   for item in $(echo "$prompt_items" | jq -r '.[] | @base64'); do
     item=$(echo "$item" | base64 --decode)
@@ -7232,40 +7217,40 @@ display_prompt_items() {
     fi
 
     highlight "\t$name$required: $description"
-  done  
+  done
 }
 
-build_stack_objects(){
-    # Initialize an empty JSON array
-    json_output="[]"
+build_stack_objects() {
+  # Initialize an empty JSON array
+  json_output="[]"
 
-    # Iterate over each tool
-    for name in "${!descriptions[@]}"; do
-        desc="${descriptions[$name]}"
-        category="Unknown"
-        status="${tool_status[$name]:-Unknown}"  # Get status from the new tool_status array
+  # Iterate over each tool
+  for name in "${!descriptions[@]}"; do
+    desc="${descriptions[$name]}"
+    category="Unknown"
+    status="${tool_status[$name]:-Unknown}" # Get status from the new tool_status array
 
-        # Find the category for the current tool
-        for domain in "${!domains[@]}"; do
-            if [[ " ${domains[$domain]} " =~ " $name " ]]; then
-                category="$domain"
-                break
-            fi
-        done
-
-        # Append the JSON object to the array
-        mask='. + [{"name": $name, "category": $category, "description": $desc, "status": $status}]'
-        json_output=$(\
-            jq -c \
-                --arg name "$name" \
-                --arg desc "$desc" \
-                --arg category "$category" \
-                --arg status "$status" \
-                "$mask" <<< "$json_output"
-            )
+    # Find the category for the current tool
+    for domain in "${!domains[@]}"; do
+      if [[ " ${domains[$domain]} " =~ " $name " ]]; then
+        category="$domain"
+        break
+      fi
     done
 
-    echo "$json_output"
+    # Append the JSON object to the array
+    mask='. + [{"name": $name, "category": $category, "description": $desc, "status": $status}]'
+    json_output=$(
+      jq -c \
+        --arg name "$name" \
+        --arg desc "$desc" \
+        --arg category "$category" \
+        --arg status "$status" \
+        "$mask" <<<"$json_output"
+    )
+  done
+
+  echo "$json_output"
 }
 
 ############################## END OF STACK DEPLOYMENT UTILITARY FUNCTIONS ########################
@@ -7308,10 +7293,11 @@ generate_stack_config_traefik() {
   ]'
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --arg prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --arg prompt_items "$prompt_items" \
+      '{
         "name": $stack_name,
         "target": "swarm",
         "actions": {
@@ -7326,8 +7312,8 @@ generate_stack_config_traefik() {
         }
     }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -7363,9 +7349,9 @@ generate_stack_config_portainer() {
       }
   ]'
 
-  config_instructions=(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
+  config_instructions=(jq -n
+    --arg stack_name "$stack_name"
+    --argjson prompt_items "$prompt_items"
     '{  
         "name": $stack_name,
         "target": "swarm",
@@ -7392,9 +7378,9 @@ generate_stack_config_portainer() {
             ]
         }
     }') || {
-      error "Failed to generate JSON"
-      return 1
-    }
+    error "Failed to generate JSON"
+    return 1
+  }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
@@ -7450,9 +7436,9 @@ generate_stack_config_monitor() {
 
   # Ensure everything is quoted correctly
   config_instructions=$(jq -n \
-      --arg stack_name "$stack_name" \
-      --argjson prompt_items "$prompt_items" \
-      '{
+    --arg stack_name "$stack_name" \
+    --argjson prompt_items "$prompt_items" \
+    '{
           "name": $stack_name,
           "target": "portainer",
           "actions": {
@@ -7475,12 +7461,12 @@ generate_stack_config_monitor() {
               ]
           }
       }') || {
-        error "Failed to generate JSON"
-        return 1
-    }
+    error "Failed to generate JSON"
+    return 1
+  }
 
-    # Pass variable correctly
-    generate_stack_config_pipeline "$config_instructions"
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
 }
 
 # Function to generate Whoami service configuration JSON
@@ -7491,7 +7477,8 @@ generate_stack_config_generic_database() {
   local db_password="$4"
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
+  config_instructions=$(
+    jq -n \
       --arg stack_name "$stack_name" \
       --arg image_version "$image_version" \
       --arg db_password "$db_password" \
@@ -7523,8 +7510,8 @@ generate_stack_config_generic_database() {
         }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -7623,10 +7610,11 @@ generate_stack_config_whoami() {
   ]'
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
       "name": $stack_name,
       "target": "portainer",
       "actions": {
@@ -7634,8 +7622,8 @@ generate_stack_config_whoami() {
       }
     }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -7665,10 +7653,11 @@ generate_stack_config_airflow() {
 ]'
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
       "name": $stack_name,
       "target": "portainer",
       "dependencies": ["postgres", "redis"],
@@ -7691,8 +7680,8 @@ generate_stack_config_airflow() {
       }
     }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -7715,10 +7704,11 @@ generate_stack_config_metabase() {
   ]'
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
       "name": $stack_name,
       "target": "portainer",
       "dependencies": ["postgres", "redis"],
@@ -7742,8 +7732,8 @@ generate_stack_config_metabase() {
       }
     }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -7780,10 +7770,11 @@ generate_stack_config_yourls() {
   ]'
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
       "name": $stack_name,
       "target": "portainer",
       "actions": {
@@ -7805,8 +7796,8 @@ generate_stack_config_yourls() {
       }
     }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -7829,10 +7820,11 @@ generate_stack_config_appsmith() {
   ]'
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
       "name": $stack_name,
       "target": "portainer",
       "actions": {
@@ -7840,8 +7832,8 @@ generate_stack_config_appsmith() {
       }
     }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -7864,10 +7856,11 @@ generate_stack_config_focalboard() {
   ]'
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
       "name": $stack_name,
       "target": "portainer",
       "actions": {
@@ -7875,8 +7868,8 @@ generate_stack_config_focalboard() {
       }
     }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -7899,10 +7892,11 @@ generate_stack_config_excalidraw() {
   ]'
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
       "name": $stack_name,
       "target": "portainer",
       "actions": {
@@ -7910,8 +7904,8 @@ generate_stack_config_excalidraw() {
       }
     }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -7934,10 +7928,11 @@ generate_stack_config_glpi() {
   ]'
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
       "name": $stack_name,
       "target": "portainer",
       "actions": {
@@ -7945,8 +7940,8 @@ generate_stack_config_glpi() {
       }
     }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -7969,10 +7964,11 @@ generate_stack_config_qdrant() {
   ]'
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
       "name": $stack_name,
       "target": "portainer",
       "actions": {
@@ -7980,8 +7976,8 @@ generate_stack_config_qdrant() {
       }
     }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -8011,10 +8007,11 @@ generate_stack_config_n8n() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
         "name": $stack_name,
         "target": "portainer",
         "dependencies": ["postgres", "redis"],
@@ -8046,8 +8043,8 @@ generate_stack_config_n8n() {
         }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -8070,10 +8067,11 @@ generate_stack_config_uptimekuma() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "actions": {
@@ -8081,8 +8079,8 @@ generate_stack_config_uptimekuma() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -8105,10 +8103,11 @@ generate_stack_config_odoo() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "actions": {
@@ -8130,8 +8129,8 @@ generate_stack_config_odoo() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -8153,10 +8152,11 @@ generate_stack_config_botpress() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "actions": {
@@ -8178,8 +8178,8 @@ generate_stack_config_botpress() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -8215,10 +8215,11 @@ generate_stack_config_pgadmin() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "actions": {
@@ -8226,8 +8227,8 @@ generate_stack_config_pgadmin() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -8249,10 +8250,11 @@ generate_stack_config_phpadmin() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["mysql"],
@@ -8268,8 +8270,8 @@ generate_stack_config_phpadmin() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -8292,10 +8294,11 @@ generate_stack_config_nocodb() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["postgres"],
@@ -8311,8 +8314,8 @@ generate_stack_config_nocodb() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -8348,10 +8351,11 @@ generate_stack_config_ntfy() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "actions": {
@@ -8367,8 +8371,8 @@ generate_stack_config_ntfy() {
 
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -8405,10 +8409,11 @@ generate_stack_config_clickhouse() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "actions": {
@@ -8416,8 +8421,8 @@ generate_stack_config_clickhouse() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -8440,10 +8445,11 @@ generate_stack_config_redisinsight() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["redis"],
@@ -8459,8 +8465,8 @@ generate_stack_config_redisinsight() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -8482,10 +8488,11 @@ generate_stack_config_redis_commander() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["redis"],
@@ -8501,8 +8508,8 @@ generate_stack_config_redis_commander() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -8525,10 +8532,11 @@ generate_stack_config_weaviate() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": [],
@@ -8544,8 +8552,8 @@ generate_stack_config_weaviate() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -8554,7 +8562,7 @@ generate_stack_config_weaviate() {
 
 # Function to generate RabbtiMQ service configuration JSON
 generate_stack_config_rabbitmq() {
-  local stack_name="rabbitmq" 
+  local stack_name="rabbitmq"
 
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
@@ -8582,10 +8590,11 @@ generate_stack_config_rabbitmq() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "actions":{
@@ -8600,8 +8609,8 @@ generate_stack_config_rabbitmq() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -8624,10 +8633,11 @@ generate_stack_config_langfuse() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["clickhouse", "postgres"],
@@ -8665,8 +8675,8 @@ generate_stack_config_langfuse() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -8710,10 +8720,11 @@ generate_stack_config_transcrevezap() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "actions": {
@@ -8721,8 +8732,8 @@ generate_stack_config_transcrevezap() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -8759,10 +8770,11 @@ generate_stack_config_langflow() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["postgres"],
@@ -8790,8 +8802,8 @@ generate_stack_config_langflow() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -8814,10 +8826,11 @@ generate_stack_config_wuzapi() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["redis", "postgres"],
@@ -8843,8 +8856,8 @@ generate_stack_config_wuzapi() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -8867,10 +8880,11 @@ generate_stack_config_openproject() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["redis", "postgres"],
@@ -8898,8 +8912,8 @@ generate_stack_config_openproject() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -8936,10 +8950,11 @@ generate_stack_config_flowise() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["redis", "postgres"],
@@ -8967,8 +8982,8 @@ generate_stack_config_flowise() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -8998,10 +9013,11 @@ generate_stack_config_wordpress() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["mysql", "redis"],
@@ -9017,8 +9033,8 @@ generate_stack_config_wordpress() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -9041,10 +9057,11 @@ generate_stack_config_easyappointments() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["mysql"],
@@ -9060,8 +9077,8 @@ generate_stack_config_easyappointments() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -9105,10 +9122,11 @@ generate_stack_config_nocobase() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["redis", "postgres"],
@@ -9141,8 +9159,8 @@ generate_stack_config_nocobase() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -9165,10 +9183,11 @@ generate_stack_config_mattermost() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["postgres"],
@@ -9184,8 +9203,8 @@ generate_stack_config_mattermost() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -9208,10 +9227,11 @@ generate_stack_config_traccar() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "actions": {
@@ -9233,8 +9253,8 @@ generate_stack_config_traccar() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -9257,10 +9277,11 @@ generate_stack_config_evolution() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["postgres", "rabbitmq"],
@@ -9281,8 +9302,8 @@ generate_stack_config_evolution() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -9305,10 +9326,11 @@ generate_stack_config_evolution_lite() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["postgres", "rabbitmq", "redis"],
@@ -9336,8 +9358,8 @@ generate_stack_config_evolution_lite() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -9367,10 +9389,11 @@ generate_stack_config_firecrawl() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["redis", "postgres", "rabbitmq"],
@@ -9391,8 +9414,8 @@ generate_stack_config_firecrawl() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -9422,10 +9445,11 @@ generate_stack_config_ollama() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "actions":{
@@ -9440,8 +9464,8 @@ generate_stack_config_ollama() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -9478,10 +9502,11 @@ generate_stack_config_stirlingpdf() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "actions": {
@@ -9489,8 +9514,8 @@ generate_stack_config_stirlingpdf() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -9513,10 +9538,11 @@ generate_stack_config_twentycrm() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["postgres"],
@@ -9537,8 +9563,8 @@ generate_stack_config_twentycrm() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -9575,10 +9601,11 @@ generate_stack_config_nextcloud() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["redis", "postgres"],
@@ -9601,8 +9628,8 @@ generate_stack_config_nextcloud() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -9646,10 +9673,11 @@ generate_stack_config_quepasa() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["postgres"],
@@ -9670,8 +9698,8 @@ generate_stack_config_quepasa() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -9694,10 +9722,11 @@ generate_stack_config_strapi() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["mysql"],
@@ -9728,8 +9757,8 @@ generate_stack_config_strapi() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -9773,10 +9802,11 @@ generate_stack_config_outline() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["redis", "postgres"],
@@ -9802,9 +9832,9 @@ generate_stack_config_outline() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
-  } 
+    error "Failed to generate JSON"
+    return 1
+  }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
@@ -9840,10 +9870,11 @@ generate_stack_config_mautic() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["mysql"],
@@ -9859,9 +9890,9 @@ generate_stack_config_mautic() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
-  } 
+    error "Failed to generate JSON"
+    return 1
+  }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
@@ -9897,10 +9928,11 @@ generate_stack_config_woofed() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["pgvector", "evolution"],
@@ -9931,9 +9963,9 @@ generate_stack_config_woofed() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
-  } 
+    error "Failed to generate JSON"
+    return 1
+  }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
@@ -9969,10 +10001,11 @@ generate_stack_config_iceberg() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["minio"],
@@ -9981,9 +10014,9 @@ generate_stack_config_iceberg() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
-  } 
+    error "Failed to generate JSON"
+    return 1
+  }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
@@ -10025,10 +10058,11 @@ generate_stack_config_delta_lake() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "actions": {
@@ -10036,9 +10070,9 @@ generate_stack_config_delta_lake() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
-  } 
+    error "Failed to generate JSON"
+    return 1
+  }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
@@ -10085,13 +10119,14 @@ generate_stack_config_moodle() {
           "required": "yes",
           "validate_fn": "validate_email_value"
       }
-  ]') 
+  ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["mariadb"],
@@ -10111,9 +10146,9 @@ generate_stack_config_moodle() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
-  } 
+    error "Failed to generate JSON"
+    return 1
+  }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
@@ -10141,10 +10176,11 @@ generate_stack_config_mosquitto() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "actions": {
@@ -10158,8 +10194,8 @@ generate_stack_config_mosquitto() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
@@ -10181,10 +10217,11 @@ generate_stack_config_nodered() {
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "actions":{
@@ -10199,15 +10236,15 @@ generate_stack_config_nodered() {
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_lowcoder(){
+generate_stack_config_lowcoder() {
   local stack_name="lowcoder"
 
   # Prompting step (escaped properly for Bash)
@@ -10222,10 +10259,11 @@ generate_stack_config_lowcoder(){
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["mongodb"],
@@ -10271,15 +10309,15 @@ generate_stack_config_lowcoder(){
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_baserow(){
+generate_stack_config_baserow() {
   local stack_name="baserow"
 
   # Prompting step (escaped properly for Bash)
@@ -10294,10 +10332,11 @@ generate_stack_config_baserow(){
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "actions":{
@@ -10323,15 +10362,15 @@ generate_stack_config_baserow(){
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_docuseal(){
+generate_stack_config_docuseal() {
   local stack_name="docuseal"
 
   # Prompting step (escaped properly for Bash)
@@ -10346,10 +10385,11 @@ generate_stack_config_docuseal(){
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["postgres", "redis"],
@@ -10381,15 +10421,15 @@ generate_stack_config_docuseal(){
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_humhub(){
+generate_stack_config_humhub() {
   local stack_name="humhub"
 
   # Prompting step (escaped properly for Bash)
@@ -10425,10 +10465,11 @@ generate_stack_config_humhub(){
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["mysql"],
@@ -10455,15 +10496,15 @@ generate_stack_config_humhub(){
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_calcom(){
+generate_stack_config_calcom() {
   local stack_name="calcom"
 
   # Prompting step (escaped properly for Bash)
@@ -10478,10 +10519,11 @@ generate_stack_config_calcom(){
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["postgres"],
@@ -10506,15 +10548,15 @@ generate_stack_config_calcom(){
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_vaultwarden(){
+generate_stack_config_vaultwarden() {
   local stack_name="vaultwarden"
 
   # Prompting step (escaped properly for Bash)
@@ -10529,10 +10571,11 @@ generate_stack_config_vaultwarden(){
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["postgres"],
@@ -10552,15 +10595,15 @@ generate_stack_config_vaultwarden(){
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_chatwoot(){
+generate_stack_config_chatwoot() {
   local stack_name="chatwoot"
 
   # Prompting step (escaped properly for Bash)
@@ -10589,10 +10632,11 @@ generate_stack_config_chatwoot(){
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["postgres"],
@@ -10624,15 +10668,15 @@ generate_stack_config_chatwoot(){
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_chatwoot_nestor(){
+generate_stack_config_chatwoot_nestor() {
   local stack_name="chatwoot_nestor"
 
   # Prompting step (escaped properly for Bash)
@@ -10661,10 +10705,11 @@ generate_stack_config_chatwoot_nestor(){
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["postgres"],
@@ -10696,15 +10741,15 @@ generate_stack_config_chatwoot_nestor(){
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_tooljet(){
+generate_stack_config_tooljet() {
   local stack_name="tooljet"
 
   # Prompting step (escaped properly for Bash)
@@ -10719,10 +10764,11 @@ generate_stack_config_tooljet(){
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "actions":{
@@ -10768,15 +10814,15 @@ generate_stack_config_tooljet(){
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_streaming(){
+generate_stack_config_streaming() {
   local stack_name="streaming"
 
   # Prompting step (escaped properly for Bash)
@@ -10798,10 +10844,11 @@ generate_stack_config_streaming(){
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "actions":{
@@ -10809,15 +10856,15 @@ generate_stack_config_streaming(){
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_krayincrm(){
+generate_stack_config_krayincrm() {
   local stack_name="krayincrm"
 
   # Prompting step (escaped properly for Bash)
@@ -10832,10 +10879,11 @@ generate_stack_config_krayincrm(){
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["mysql", "redis"],
@@ -10867,15 +10915,15 @@ generate_stack_config_krayincrm(){
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_affine(){
+generate_stack_config_affine() {
   local stack_name="affine"
 
   # Prompting step (escaped properly for Bash)
@@ -10904,10 +10952,11 @@ generate_stack_config_affine(){
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["postgres", "redis"],
@@ -10927,15 +10976,15 @@ generate_stack_config_affine(){
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_minio(){
+generate_stack_config_minio() {
   local stack_name="minio"
 
   # Prompting step (escaped properly for Bash)
@@ -10992,10 +11041,11 @@ generate_stack_config_minio(){
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": [],
@@ -11004,16 +11054,16 @@ generate_stack_config_minio(){
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_dify(){
-  local stack_name="dify" 
+generate_stack_config_dify() {
+  local stack_name="dify"
 
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
@@ -11055,10 +11105,11 @@ generate_stack_config_dify(){
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["redis", "postgres", "weavite"],
@@ -11093,16 +11144,16 @@ generate_stack_config_dify(){
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_unoapi(){
-  local stack_name="unoapi" 
+generate_stack_config_unoapi() {
+  local stack_name="unoapi"
 
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
@@ -11116,10 +11167,11 @@ generate_stack_config_unoapi(){
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["rabbitmq", "redis", "minio"],
@@ -11160,16 +11212,16 @@ generate_stack_config_unoapi(){
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
-} 
+}
 
-generate_stack_config_documenso(){
-  local stack_name="documenso" 
+generate_stack_config_documenso() {
+  local stack_name="documenso"
 
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
@@ -11183,10 +11235,11 @@ generate_stack_config_documenso(){
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["rabbitmq", "redis", "minio"],
@@ -11222,17 +11275,17 @@ generate_stack_config_documenso(){
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_directus(){
-  local stack_name="directus" 
- 
+generate_stack_config_directus() {
+  local stack_name="directus"
+
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
       {
@@ -11259,10 +11312,11 @@ generate_stack_config_directus(){
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["minio", "postgres"],
@@ -11297,17 +11351,17 @@ generate_stack_config_directus(){
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_anythingllm(){
+generate_stack_config_anythingllm() {
   local stack_name="anythingllm"
- 
+
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
       {
@@ -11320,10 +11374,11 @@ generate_stack_config_anythingllm(){
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "dependencies": ["minio", "postgres"],
@@ -11339,16 +11394,16 @@ generate_stack_config_anythingllm(){
           }
       }'
   ) || {
-      error "Failed to generate JSON"
-      return 1
+    error "Failed to generate JSON"
+    return 1
   }
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_typebot(){
-  local stack_name="typebot" 
+generate_stack_config_typebot() {
+  local stack_name="typebot"
 
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
@@ -11390,10 +11445,11 @@ generate_stack_config_typebot(){
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "variables": {
@@ -11428,8 +11484,8 @@ generate_stack_config_typebot(){
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_jupyter_spark(){
-  local stack_name="jupyter_spark" 
+generate_stack_config_jupyter_spark() {
+  local stack_name="jupyter_spark"
 
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
@@ -11450,10 +11506,11 @@ generate_stack_config_jupyter_spark(){
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "variables": {
@@ -11472,8 +11529,8 @@ generate_stack_config_jupyter_spark(){
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_elk(){
-  local stack_name="elk" 
+generate_stack_config_elk() {
+  local stack_name="elk"
 
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
@@ -11487,10 +11544,11 @@ generate_stack_config_elk(){
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "variables": {
@@ -11509,8 +11567,8 @@ generate_stack_config_elk(){
   generate_stack_config_pipeline "$config_instructions"
 }
 
-generate_stack_config_superset(){
-  local stack_name="superset" 
+generate_stack_config_superset() {
+  local stack_name="superset"
 
   # Prompting step (escaped properly for Bash)
   local prompt_items=$(jq -n '[
@@ -11524,10 +11582,11 @@ generate_stack_config_superset(){
   ]')
 
   # Correct command substitution without unnecessary piping
-  config_instructions=$(jq -n \
-    --arg stack_name "$stack_name" \
-    --argjson prompt_items "$prompt_items" \
-    '{
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
           "name": $stack_name,
           "target": "portainer",
           "variables": {
@@ -11594,18 +11653,17 @@ define_stacks_category_menu() {
       else
         item_label="$stack_label"
       fi
-      menu_item="$(\
-        build_menu_item "$item_label" "$stack_description" "deploy_stack $stack_name"\
+      menu_item="$(
+        build_menu_item "$item_label" "$stack_description" "deploy_stack $stack_name"
       )"
-      
+
       menu_items+=("$menu_item")
     fi
-  done < <(echo "$category_stacks_jarray" | \
+  done < <(echo "$category_stacks_jarray" |
     jq -r '.[] | "\(.stack_name)\t\(.stack_label)\t\(.stack_description)\t\(.stack_status)"')
 
-
   # Create menu object
-  menu_object="$(\
+  menu_object="$(
     build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${menu_items[@]}"
   )"
 
@@ -11642,7 +11700,7 @@ define_menu_stacks() {
   # Startup item (Exception to other stacks)
   local startup_item
   startup_item="$(
-    build_menu_item "Startup" \
+    build_menu_item "🌱 Startup" \
       "Deploy Traefik & Portainer" "deploy_stacks_startup"
   )"
 
@@ -11653,18 +11711,19 @@ define_menu_stacks() {
   # Convert the JSON array to an associative array
   declare -A STACKS
   while IFS= read -r row; do
-      stack_name=$(jq -r '.stack_name' <<< "$row")
-      STACKS["$stack_name"]="$row"
-  done < <(jq -c '.[]' <<< "$stacks_json")
+    stack_name=$(jq -r '.stack_name' <<<"$row")
+    STACKS["$stack_name"]="$row"
+  done < <(jq -c '.[]' <<<"$stacks_json")
 
   # Extract unique category objects in an array
-  local menu_stack_categories=("$startup_item")  # Start with startup item
+  local menu_stack_categories=("$startup_item") # Start with startup item
 
   # Read categories into an array before iterating (avoiding subshell issues)
   local category_list
   category_list=$(echo "$stacks_json" | jq -c '
     group_by(.category_name) | 
     map({
+      category_emoji: (.[0].category_emoji // ""),
       category_name: (.[0].category_name // ""),
       category_label: (.[0].category_label // ""),
       category_description: (.[0].category_description // "")
@@ -11675,17 +11734,18 @@ define_menu_stacks() {
 
   # Iterate over JSON array
   while IFS= read -r category_object; do
-      category_name=$(jq -r '.category_name' <<< "$category_object")
-      category_label=$(jq -r '.category_label' <<< "$category_object")
-      category_description=$(jq -r '.category_description' <<< "$category_object")
+    category_name=$(jq -r '.category_name' <<<"$category_object")
+    category_label=$(jq -r '.category_label' <<<"$category_object")
+    category_description=$(jq -r '.category_description' <<<"$category_object")
+    category_emoji=$(jq -r '.category_emoji' <<<"$category_object")
 
-      category_key="main:stacks:$category_name"
-      category_item="$(
-        build_menu_item "$category_label" "$category_description" "navigate_menu $category_key"
-      )"
+    category_key="main:stacks:$category_name"
+    category_item="$(
+      build_menu_item "$category_emoji $category_label" "$category_description" "navigate_menu $category_key"
+    )"
 
-      menu_stack_categories+=("$category_item")
-  done < <(jq -r '.[] | @json' <<< "$category_list")
+    menu_stack_categories+=("$category_item")
+  done < <(jq -r '.[] | @json' <<<"$category_list")
 
   # Build and define the main stacks menu
   local menu_object
@@ -11717,8 +11777,8 @@ define_menu_utilities_smtp() {
     "$item_1" "$item_2"
   )
 
-  menu_object="$(\
-    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}"\
+  menu_object="$(
+    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}"
   )"
 
   define_menu "$menu_object"
@@ -11730,7 +11790,7 @@ define_menu_utilities_docker() {
   menu_title="Docker utilities"
 
   item_1="$(
-    build_menu_item "CTOP" "Run docker manager ctop on terminal" "run_ctop"
+    build_menu_item "CTOP" "Run docker manager ctop on terminal" "ctop"
   )"
   item_2="$(
     build_menu_item "Clean" "Remove unused images, volumes and containers" "sanitize"
@@ -11740,8 +11800,8 @@ define_menu_utilities_docker() {
     "$item_1" "$item_2"
   )
 
-  menu_object="$(\
-    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}"\
+  menu_object="$(
+    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}"
   )"
 
   define_menu "$menu_object"
@@ -11761,13 +11821,13 @@ define_menu_utilities_network() {
 
   items=()
   for item in "${menu_items[@]}"; do
-    IFS=":" read -r title action cmd <<< "$item"
+    IFS=":" read -r title action cmd <<<"$item"
     command="run_command '$title' '$cmd'"
     items+=("$(build_menu_item "$title" "$action" "$command")")
   done
 
   # Build and define menu
-  menu_object="$(\
+  menu_object="$(
     build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}"
   )"
   define_menu "$menu_object"
@@ -11790,13 +11850,13 @@ define_menu_settings_system_information() {
 
   items=()
   for item in "${menu_items[@]}"; do
-    IFS=":" read -r title action cmd <<< "$item"
+    IFS=":" read -r title action cmd <<<"$item"
     command="run_command '$title' '$cmd'"
     items+=("$(build_menu_item "$title" "$action" "$command")")
   done
 
   # Build and define menu
-  menu_object="$(\
+  menu_object="$(
     build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}"
   )"
   define_menu "$menu_object"
@@ -11808,21 +11868,21 @@ define_menu_settings() {
   menu_title="Settings"
 
   item_1="$(
-    build_menu_item "System information" "" "navigate_menu 'main:settings:system_info'"
+    build_menu_item "💻 System information" "" "navigate_menu 'main:settings:system_info'"
   )"
   item_2="$(
-    build_menu_item "SMTP" "Overwrite SMTP information" "overwrite_or_request_smtp_information"
+    build_menu_item "✉️ SMTP" "Overwrite SMTP information" "overwrite_or_request_smtp_information"
   )"
   item_3="$(
-    build_menu_item "Update" "Packages" "update_and_check_packages"
+    build_menu_item "🔄 Update" "Packages" "update_and_check_packages"
   )"
 
   items=(
     "$item_1" "$item_2" "$item_3"
   )
 
-  menu_object="$(\
-    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}"\
+  menu_object="$(
+    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}"
   )"
 
   define_menu "$menu_object"
@@ -11837,21 +11897,21 @@ define_menu_utilities() {
   menu_title="Utilities"
 
   item_1="$(
-    build_menu_item "SMTP" "Test and tools" "navigate_menu 'main:utilities:smtp'"
+    build_menu_item "✉️ SMTP" "Test and tools" "navigate_menu 'main:utilities:smtp'"
   )"
   item_2="$(
-    build_menu_item "Docker" "Tools" "navigate_menu 'main:utilities:docker'"
+    build_menu_item "📦 Docker" "Tools" "navigate_menu 'main:utilities:docker'"
   )"
   item_3="$(
-    build_menu_item "Network" "Tools" "navigate_menu 'main:utilities:network'"
+    build_menu_item "🌐 Network" "Tools" "navigate_menu 'main:utilities:network'"
   )"
 
   items=(
     "$item_1" "$item_2" "$item_3"
   )
 
-  menu_object="$(\
-    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}"\
+  menu_object="$(
+    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}"
   )"
 
   define_menu "$menu_object"
@@ -11869,16 +11929,16 @@ define_menu_main() {
   menu_key="main"
   menu_title="main"
 
-  item_1="$(build_menu_item "Stacks" "" "navigate_menu 'main:stacks'")"
-  item_2="$(build_menu_item "Utilities" "" "navigate_menu 'main:utilities'")"
-  item_3="$(build_menu_item "Settings" "" "navigate_menu 'main:settings'")"
+  item_1="$(build_menu_item "📚 Stacks" "" "navigate_menu 'main:stacks'")"
+  item_2="$(build_menu_item "🔧 Utilities" "" "navigate_menu 'main:utilities'")"
+  item_3="$(build_menu_item "⚙️ Settings" "" "navigate_menu 'main:settings'")"
 
   items=(
     "$item_1" "$item_2" "$item_3"
   )
 
-  menu_object="$(\
-    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}"\
+  menu_object="$(
+    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${items[@]}"
   )"
 
   define_menu "$menu_object"
@@ -11898,13 +11958,13 @@ define_menu_main() {
 
 start_main_menu() {
   navigate_menu "main"
-  
+
   cleanup
   clean_screen
-  
+
   farewell_message
   wait_for_input 5
-  
+
   clean_screen
 }
 

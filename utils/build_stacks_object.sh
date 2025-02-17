@@ -84,6 +84,26 @@ declare -A descriptions=(
   ["whoami"]="A simple identity service for determining the current user."
 )
 
+declare -A categories_to_emojis=(
+  ["Infrastructure"]="🏗️"
+  ["IoT"]="📶"
+  ["Data Management"]="🗃️"
+  ["Data Storage"]="🗄️"
+  ["Analytics"]="📊"
+  ["Project Management"]="🗂️"
+  ["ERP"]="🏢"
+  ["AI"]="👾"
+  ["Communication"]="💬"
+  ["Content Management"]="📚"
+  ["Web Development"]="🌐"
+  ["Automation and Low-Code"]="🤖"
+  ["Scheduling and Collaboration"]="📅"
+  ["Social and Marketing"]="📣"
+  ["Location Services"]="📍"
+  ["Design and Prototyping"]="🎨"
+  ["Miscellaneous"]="🧩"
+)
+
 declare -A categories_to_stacks
 categories_to_stacks=(
   ["Infrastructure"]="monitor elk uptimekuma glpi vaultwarden wuzapi unoapi yourls"
@@ -219,9 +239,8 @@ build_stack_objects(){
 
     # Iterate over each tool
     for name in "${!descriptions[@]}"; do
-        desc="${descriptions[$name]}"  # Tool description
-        category="Unknown"
-        status="${tool_status[$name]:-Unknown}"  # Get status from the tool_status array (assumed to be populated)
+        description="${descriptions[$name]}"  # Tool description
+        stack_status="${tool_status[$name]:-Unknown}"
 
         # Find the category for the current tool
         for cat in "${!categories_to_stacks[@]}"; do
@@ -238,27 +257,31 @@ build_stack_objects(){
 
         # Create transformed labels
         category_name=$(lowercase_transform "$category")
+        
+        category_description="${categories_descriptions[$category]:-No description available}"
         category_label="${category//_/ }"  # Convert underscores to spaces
+        category_emoji="${categories_to_emojis[$category]:-Unknown}"
+
         stack_name=$(lowercase_transform "$name")
         stack_label="${name//_/ }"  # Convert underscores to spaces
-
-        # Fetch the description for the category from the categories_descriptions array
-        category_description="${categories_descriptions[$category]:-No description available}"
 
         # Create the stack object with the category_description
         stack_item=$(jq -n \
             --arg category_name "$category_name" \
             --arg category_label "$category_label" \
-            --arg stack_name "$stack_name" \
-            --arg stack_label "$stack_label" \
-            --arg desc "$desc" \
+            --arg category_emoji "$category_emoji" \
             --arg category_description "$category_description" \
+            --arg stack_name "$stack_name" \
+            --arg stack_status "$stack_status" \
+            --arg stack_label "$stack_label" \
+            --arg stack_description "$description" \
             --arg status "$status" \
             '{
                 "stack_name": $stack_name,
                 "stack_label": $stack_label,
-                "stack_description": $desc,
-                "stack_status": $status,
+                "stack_description": $stack_description,
+                "stack_status": $stack_status,
+                "category_emoji": $category_emoji,
                 "category_name": $category_name,
                 "category_label": $category_label,
                 "category_description": $category_description,                
