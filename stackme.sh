@@ -3104,15 +3104,15 @@ get_menu_item_action() {
 request_input() {
   local message="$1"
   local variable_name="$2"
-  local timeout="$3" # Optional timeout value in seconds
+  local timeout="$3"
 
   echo -ne "$message" >&2
 
   # Use read with or without timeout
   if [[ -n "$timeout" ]]; then
-    read -rsn1 -t "$timeout" "$variable_name" || eval "$variable_name=''" # Timeout or empty input
+    read -rsn1 -t "$timeout" "$variable_name" || eval "$variable_name=''"
   else
-    read -rsn1 "$variable_name" # No timeout
+    read -rsn1 "$variable_name"
   fi
 
   # Trim leading/trailing spaces
@@ -5924,6 +5924,8 @@ deploy_stack() {
     else
       # Otherwise, block installation
       error "Traefik and Portainer are required before deploying $stack_name."
+      error "Select option 'Startup' on menu 'Stacks' to install them."
+      wait_for_input  
       return 1
     fi
   fi
@@ -6346,23 +6348,28 @@ get_or_request_smtp_configuration() {
 }
 
 # Function to confirm and possibly overwrite SMTP configuration
+# Function to confirm and possibly overwrite SMTP configuration
 overwrite_or_request_smtp_information() {
-  local smtp_json
+  local smtp_json question
 
   smtp_json=$(load_smtp_information 2>/dev/null)
   if [[ $? -ne 0 ]]; then
     error "SMTP configuration not found."
-    local question="Would you like to add tool SMTP configuration?"
+    question="Would you like to add tool SMTP configuration?"
   else
-    info "Current SMTP configuration:"
-    info "$(echo "$smtp_json" | jq -r '. | to_entries | map("\(.key): \(.value)") | join("\n")')"
-    local question="Would you like to overwrite the current SMTP configuration?"
+    info "Current SMTP configuration:\n$(\
+      echo "$smtp_json" | jq -r '. | to_entries | map("\(.key): \(.value)") | join("\n")'
+    )"
+    question="Would you like to overwrite the current SMTP configuration?"
   fi
 
   local confirmation_message="${faded_color}$question [y/N]${reset_color}"
   if handle_confirmation_prompt "$confirmation_message" "y"; then
     smtp_json=$(prompt_smtp_information)
     save_smtp_information "$smtp_json" || return 1
+
+    # Place the next messages here, after the confirmation prompt
+    info "SMTP configuration successfully updated!"
   fi
 
   wait_for_input
@@ -6519,8 +6526,7 @@ update_and_check_packages() {
 
         # Upgrade packages with feedback
         holdon "Upgrading packages..."
-        apt-get upgrade -y >/dev/null 2>&1 &
-        show_progress $!
+        apt-get upgrade -y
 
         # Remove unused packages with feedback
         holdon "Removing unused packages..."
@@ -6543,6 +6549,7 @@ update_and_check_packages() {
   fi
 
   echo ""
+  wait_for_input
 }
 
 # Function to prepare the environment
@@ -11779,7 +11786,6 @@ define_menu_settings_system_information() {
     "Disk Usage:describe:disk_usage"
     "Top Processes:list:top_processes"
     "Load Average:describe:load_average"
-    "Package Updates:install:update_and_check_packages"
   )
 
   items=()
@@ -11807,9 +11813,12 @@ define_menu_settings() {
   item_2="$(
     build_menu_item "SMTP" "Overwrite SMTP information" "overwrite_or_request_smtp_information"
   )"
+  item_3="$(
+    build_menu_item "Update" "Packages" "update_and_check_packages"
+  )"
 
   items=(
-    "$item_1" "$item_2"
+    "$item_1" "$item_2" "$item_3"
   )
 
   menu_object="$(\
@@ -11860,9 +11869,9 @@ define_menu_main() {
   menu_key="main"
   menu_title="main"
 
-  item_1="$(build_menu_item "Stacks" "explore" "navigate_menu 'main:stacks'")"
-  item_2="$(build_menu_item "Utilities" "explore" "navigate_menu 'main:utilities'")"
-  item_3="$(build_menu_item "Settings" "explore" "navigate_menu 'main:settings'")"
+  item_1="$(build_menu_item "Stacks" "" "navigate_menu 'main:stacks'")"
+  item_2="$(build_menu_item "Utilities" "" "navigate_menu 'main:utilities'")"
+  item_3="$(build_menu_item "Settings" "" "navigate_menu 'main:settings'")"
 
   items=(
     "$item_1" "$item_2" "$item_3"
