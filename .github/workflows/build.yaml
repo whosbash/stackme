@@ -1,9 +1,6 @@
 name: Build Stacks and Categories
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
   schedule:
     - cron: '0 0 * * *'  # Runs at midnight UTC every day
