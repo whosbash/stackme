@@ -5,6 +5,8 @@ on:
     branches:
       - main
   workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'  # Runs at midnight UTC every day
 
 jobs:
   build:
@@ -14,21 +16,30 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Verify Directory Structure
-        run: ls -R $GITHUB_WORKSPACE
-
-      - name: Ensure Scripts Exist
+      - name: Verify and Prepare Scripts
         run: |
-          if [[ ! -f "$GITHUB_WORKSPACE/utils/build_stacks_array.sh" || ! -f "$GITHUB_WORKSPACE/utils/build_categories_array.sh" ]]; then
-            echo "Error: One or both scripts are missing in utils/ directory!"
+          if [[ ! -f "utils/build_stacks_array.sh" || ! -f "utils/build_categories_array.sh" ]]; then
+            echo "Error: Scripts missing in utils/ directory!"
             exit 1
           fi
+          chmod +x "utils/build_stacks_array.sh" "utils/build_categories_array.sh"
 
-      - name: Make Scripts Executable
-        run: chmod +x "$GITHUB_WORKSPACE/utils/build_stacks_array.sh" "$GITHUB_WORKSPACE/utils/build_categories_array.sh"
-
-      - name: Run Scripts
+      - name: Run Scripts and Check Outputs
         run: |
-          set -e  # Stop if any command fails
-          "$GITHUB_WORKSPACE/utils/build_stacks_array.sh" > "$GITHUB_WORKSPACE/stacks/stacks.json"
-          "$GITHUB_WORKSPACE/utils/build_categories_array.sh" > "$GITHUB_WORKSPACE/stacks/categories.json"
+          set -e
+          "utils/build_stacks_array.sh" > "stacks/stacks.json"
+          "utils/build_categories_array.sh" > "stacks/categories.json"
+          for file in "stacks/stacks.json" "stacks/categories.json"; do
+            if [[ ! -s "$file" ]]; then
+              echo "Error: $file is empty or not updated!"
+              exit 1
+            fi
+          done
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add "stacks/stacks.json" "stacks/categories.json"
+          git commit -m "Update stacks.json and categories.json"
+          git push
