@@ -39,18 +39,12 @@ StackMe is a comprehensive shell script designed to manage Docker Swarm deployme
 
 ### Command-Line Options
 
-- `-c, --clean`: Clean the Docker environment.
 - `-a, --arrow`: Choose the application arrow.
 - `-h, --help` : Display the help message and exit.
 
 ### Examples
 
-1. **Clean the Docker environment:**
-    ```bash
-    ./stackme.sh --clean
-    ```
-
-2. **Change the default arrow:**
+**Change the default arrow:**
     ```bash
     ./stackme.sh --arrow 'diamond' 
     ```
