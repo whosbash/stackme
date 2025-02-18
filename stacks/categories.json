@@ -1,0 +1,811 @@
+[
+  {
+    "name": "infrastructure",
+    "type": "category",
+    "category_label": "Infrastructure",
+    "emoji": "🏗️",
+    "description": "Tools related to managing infrastructure and services, including monitoring, security, and more.",
+    "stacks": [
+      {
+        "name": "monitor",
+        "type": "stack",
+        "category_name": "infrastructure",
+        "stack_label": "monitor",
+        "description": "A system monitoring tool for tracking performance and uptime.",
+        "status": "beta"
+      },
+      {
+        "name": "elk",
+        "type": "stack",
+        "category_name": "infrastructure",
+        "stack_label": "elk",
+        "description": "A collection of tools for Elasticsearch, Logstash, and Kibana.",
+        "status": "beta"
+      },
+      {
+        "name": "uptimekuma",
+        "type": "stack",
+        "category_name": "infrastructure",
+        "stack_label": "uptimekuma",
+        "description": "An open-source status monitoring tool for websites and services.",
+        "status": "stable"
+      },
+      {
+        "name": "glpi",
+        "type": "stack",
+        "category_name": "infrastructure",
+        "stack_label": "glpi",
+        "description": "An IT asset management software.",
+        "status": "stable"
+      },
+      {
+        "name": "vaultwarden",
+        "type": "stack",
+        "category_name": "infrastructure",
+        "stack_label": "vaultwarden",
+        "description": "A self-hosted password manager.",
+        "status": "stable"
+      },
+      {
+        "name": "wuzapi",
+        "type": "stack",
+        "category_name": "infrastructure",
+        "stack_label": "wuzapi",
+        "description": "An API management tool for routing and controlling APIs.",
+        "status": "stable"
+      },
+      {
+        "name": "unoapi",
+        "type": "stack",
+        "category_name": "infrastructure",
+        "stack_label": "unoapi",
+        "description": "An API management platform.",
+        "status": "beta"
+      },
+      {
+        "name": "yourls",
+        "type": "stack",
+        "category_name": "infrastructure",
+        "stack_label": "yourls",
+        "description": "A URL shortening service.",
+        "status": "beta"
+      }
+    ]
+  },
+  {
+    "name": "social_and_marketing",
+    "type": "category",
+    "category_label": "Social and Marketing",
+    "emoji": "📣",
+    "description": "Social media management and marketing automation tools.",
+    "stacks": [
+      {
+        "name": "humhub",
+        "type": "stack",
+        "category_name": "social_and_marketing",
+        "stack_label": "humhub",
+        "description": "A social netstable platform for creating and managing communities.",
+        "status": "stable"
+      },
+      {
+        "name": "mautic",
+        "type": "stack",
+        "category_name": "social_and_marketing",
+        "stack_label": "mautic",
+        "description": "An open-source marketing automation platform.",
+        "status": "beta"
+      }
+    ]
+  },
+  {
+    "name": "erp",
+    "type": "category",
+    "category_label": "ERP",
+    "emoji": "🏢",
+    "description": "Enterprise Resource Planning and other solutions for managing business operations.",
+    "stacks": [
+      {
+        "name": "odoo",
+        "type": "stack",
+        "category_name": "erp",
+        "stack_label": "odoo",
+        "description": "An open-source ERP and business management platform.",
+        "status": "stable"
+      }
+    ]
+  },
+  {
+    "name": "design_and_prototyping",
+    "type": "category",
+    "category_label": "Design and Prototyping",
+    "emoji": "🎨",
+    "description": "Design and prototyping tools for visualizing ideas.",
+    "stacks": [
+      {
+        "name": "excalidraw",
+        "type": "stack",
+        "category_name": "design_and_prototyping",
+        "stack_label": "excalidraw",
+        "description": "A virtual whiteboard for collaborative drawing.",
+        "status": "stable"
+      }
+    ]
+  },
+  {
+    "name": "iot",
+    "type": "category",
+    "category_label": "IoT",
+    "emoji": "📶",
+    "description": "Tools for working with IoT devices and data.",
+    "stacks": [
+      {
+        "name": "mosquitto",
+        "type": "stack",
+        "category_name": "iot",
+        "stack_label": "mosquitto",
+        "description": "An open-source message broker for handling MQTT messages.",
+        "status": "beta"
+      },
+      {
+        "name": "nodered",
+        "type": "stack",
+        "category_name": "iot",
+        "stack_label": "nodered",
+        "description": "An open-source low-code platform for building IoT applications.",
+        "status": "stable"
+      }
+    ]
+  },
+  {
+    "name": "project_management",
+    "type": "category",
+    "category_label": "Project Management",
+    "emoji": "🗂️",
+    "description": "Tools for managing projects, tasks, and team collaboration.",
+    "stacks": [
+      {
+        "name": "openproject",
+        "type": "stack",
+        "category_name": "project_management",
+        "stack_label": "openproject",
+        "description": "A project management tool for collaboration and tracking.",
+        "status": "stable"
+      },
+      {
+        "name": "focalboard",
+        "type": "stack",
+        "category_name": "project_management",
+        "stack_label": "focalboard",
+        "description": "A task and project management tool.",
+        "status": "stable"
+      },
+      {
+        "name": "zep",
+        "type": "stack",
+        "category_name": "project_management",
+        "stack_label": "zep",
+        "description": "A project management and collaboration tool.",
+        "status": "beta"
+      },
+      {
+        "name": "twentycrm",
+        "type": "stack",
+        "category_name": "project_management",
+        "stack_label": "twentycrm",
+        "description": "A customer relationship management (CRM) platform.",
+        "status": "beta"
+      },
+      {
+        "name": "evolution",
+        "type": "stack",
+        "category_name": "project_management",
+        "stack_label": "evolution",
+        "description": "A CRM and sales platform.",
+        "status": "stable"
+      },
+      {
+        "name": "evolution_lite",
+        "type": "stack",
+        "category_name": "project_management",
+        "stack_label": "evolution lite",
+        "description": "A lightweight version of the Evolution CRM platform.",
+        "status": "stable"
+      },
+      {
+        "name": "krayincrm",
+        "type": "stack",
+        "category_name": "project_management",
+        "stack_label": "krayincrm",
+        "description": "A CRM platform for managing customer relationships.",
+        "status": "beta"
+      }
+    ]
+  },
+  {
+    "name": "analytics",
+    "type": "category",
+    "category_label": "Analytics",
+    "emoji": "📊",
+    "description": "Business Intelligence and analytics tools for data analysis and reporting.",
+    "stacks": [
+      {
+        "name": "metabase",
+        "type": "stack",
+        "category_name": "analytics",
+        "stack_label": "metabase",
+        "description": "An open-source business intelligence platform.",
+        "status": "stable"
+      },
+      {
+        "name": "jupyter_spark",
+        "type": "stack",
+        "category_name": "analytics",
+        "stack_label": "jupyter spark",
+        "description": "A notebook environment for Apache Spark and Python.",
+        "status": "stable"
+      },
+      {
+        "name": "airflow",
+        "type": "stack",
+        "category_name": "analytics",
+        "stack_label": "airflow",
+        "description": "A workflow automation and scheduling platform.",
+        "status": "beta"
+      }
+    ]
+  },
+  {
+    "name": "miscellaneous",
+    "type": "category",
+    "category_label": "Miscellaneous",
+    "emoji": "🧩",
+    "description": "Other useful or unique tools.",
+    "stacks": [
+      {
+        "name": "whoami",
+        "type": "stack",
+        "category_name": "miscellaneous",
+        "stack_label": "whoami",
+        "description": "A simple identity service for determining the current user.",
+        "status": "stable"
+      }
+    ]
+  },
+  {
+    "name": "automation_and_low-code",
+    "type": "category",
+    "category_label": "Automation and Low-Code",
+    "emoji": "🤖",
+    "description": "Automation and low-code platforms for developing applications quickly.",
+    "stacks": [
+      {
+        "name": "firecrawl",
+        "type": "stack",
+        "category_name": "automation_and_low-code",
+        "stack_label": "firecrawl",
+        "description": "A web scraping tool for crawling and extracting data from websites.",
+        "status": "beta"
+      },
+      {
+        "name": "n8n",
+        "type": "stack",
+        "category_name": "automation_and_low-code",
+        "stack_label": "n8n",
+        "description": "An open-source workflow automation tool.",
+        "status": "stable"
+      },
+      {
+        "name": "dify",
+        "type": "stack",
+        "category_name": "automation_and_low-code",
+        "stack_label": "dify",
+        "description": "A platform for automating and managing workflows.",
+        "status": "beta"
+      },
+      {
+        "name": "flowise",
+        "type": "stack",
+        "category_name": "automation_and_low-code",
+        "stack_label": "flowise",
+        "description": "A low-code platform for automating workflows.",
+        "status": "stable"
+      },
+      {
+        "name": "lowcoder",
+        "type": "stack",
+        "category_name": "automation_and_low-code",
+        "stack_label": "lowcoder",
+        "description": "A low-code platform for building applications.",
+        "status": "beta"
+      },
+      {
+        "name": "appsmith",
+        "type": "stack",
+        "category_name": "automation_and_low-code",
+        "stack_label": "appsmith",
+        "description": "A platform for building internal apps with low code.",
+        "status": "stable"
+      },
+      {
+        "name": "nocobase",
+        "type": "stack",
+        "category_name": "automation_and_low-code",
+        "stack_label": "nocobase",
+        "description": "A no-code platform for building business applications.",
+        "status": "stable"
+      },
+      {
+        "name": "nocodb",
+        "type": "stack",
+        "category_name": "automation_and_low-code",
+        "stack_label": "nocodb",
+        "description": "An open-source no-code platform for building applications.",
+        "status": "stable"
+      },
+      {
+        "name": "tooljet",
+        "type": "stack",
+        "category_name": "automation_and_low-code",
+        "stack_label": "tooljet",
+        "description": "An open-source low-code platform for building internal tools.",
+        "status": "beta"
+      }
+    ]
+  },
+  {
+    "name": "ai",
+    "type": "category",
+    "category_label": "AI",
+    "emoji": "👾",
+    "description": "AI and Natural Language Processing tools to build and deploy models.",
+    "stacks": [
+      {
+        "name": "affine",
+        "type": "stack",
+        "category_name": "ai",
+        "stack_label": "affine",
+        "description": "A data science tool for building machine learning models.",
+        "status": "stable"
+      },
+      {
+        "name": "ollama",
+        "type": "stack",
+        "category_name": "ai",
+        "stack_label": "ollama",
+        "description": "A platform for deploying AI models with ease.",
+        "status": "stable"
+      },
+      {
+        "name": "anythingllm",
+        "type": "stack",
+        "category_name": "ai",
+        "stack_label": "anythingllm",
+        "description": "A platform for stable with large language models.",
+        "status": "beta"
+      },
+      {
+        "name": "woofed",
+        "type": "stack",
+        "category_name": "ai",
+        "stack_label": "woofed",
+        "description": "A machine learning framework or platform for model training.",
+        "status": "beta"
+      },
+      {
+        "name": "langflow",
+        "type": "stack",
+        "category_name": "ai",
+        "stack_label": "langflow",
+        "description": "An AI tool for managing workflows for large language models (LLMs).",
+        "status": "beta"
+      },
+      {
+        "name": "langfuse",
+        "type": "stack",
+        "category_name": "ai",
+        "stack_label": "langfuse",
+        "description": "A platform for integrating large language models into workflows.",
+        "status": "beta"
+      }
+    ]
+  },
+  {
+    "name": "scheduling_and_collaboration",
+    "type": "category",
+    "category_label": "Scheduling and Collaboration",
+    "emoji": "📅",
+    "description": "Tools for scheduling and team collaboration.",
+    "stacks": [
+      {
+        "name": "easyappointments",
+        "type": "stack",
+        "category_name": "scheduling_and_collaboration",
+        "stack_label": "easyappointments",
+        "description": "An online scheduling tool for booking appointments.",
+        "status": "beta"
+      },
+      {
+        "name": "calcom",
+        "type": "stack",
+        "category_name": "scheduling_and_collaboration",
+        "stack_label": "calcom",
+        "description": "A scheduling platform for booking appointments.",
+        "status": "stable"
+      },
+      {
+        "name": "nextcloud",
+        "type": "stack",
+        "category_name": "scheduling_and_collaboration",
+        "stack_label": "nextcloud",
+        "description": "A file-sharing and collaboration platform.",
+        "status": "stable"
+      }
+    ]
+  },
+  {
+    "name": "data_management",
+    "type": "category",
+    "category_label": "Data Management",
+    "emoji": "🗃️",
+    "description": "Tools for managing and administrating databases.",
+    "stacks": [
+      {
+        "name": "pgadmin",
+        "type": "stack",
+        "category_name": "data_management",
+        "stack_label": "pgadmin",
+        "description": "A popular web-based interface for managing PostgreSQL databases.",
+        "status": "stable"
+      },
+      {
+        "name": "phpadmin",
+        "type": "stack",
+        "category_name": "data_management",
+        "stack_label": "phpadmin",
+        "description": "A web-based interface for managing MySQL and MariaDB databases.",
+        "status": "beta"
+      },
+      {
+        "name": "redis_commander",
+        "type": "stack",
+        "category_name": "data_management",
+        "stack_label": "redis commander",
+        "description": "Another graphical interface for managing Redis databases.",
+        "status": "beta"
+      },
+      {
+        "name": "delta_lake",
+        "type": "stack",
+        "category_name": "data_management",
+        "stack_label": "delta lake",
+        "description": "A columnar database for online analytical processing (OLAP).",
+        "status": "beta"
+      },
+      {
+        "name": "redisinsight",
+        "type": "stack",
+        "category_name": "data_management",
+        "stack_label": "redisinsight",
+        "description": "A graphical interface for managing Redis databases.",
+        "status": "stable"
+      }
+    ]
+  },
+  {
+    "name": "content_management",
+    "type": "category",
+    "category_label": "Content Management",
+    "emoji": "📚",
+    "description": "Tools for managing documents and content in an organization.",
+    "stacks": [
+      {
+        "name": "documenso",
+        "type": "stack",
+        "category_name": "content_management",
+        "stack_label": "documenso",
+        "description": "A document management system for storing and organizing files.",
+        "status": "beta"
+      },
+      {
+        "name": "docuseal",
+        "type": "stack",
+        "category_name": "content_management",
+        "stack_label": "docuseal",
+        "description": "A platform for signing and managing documents.",
+        "status": "stable"
+      },
+      {
+        "name": "stirlingpdf",
+        "type": "stack",
+        "category_name": "content_management",
+        "stack_label": "stirlingpdf",
+        "description": "A tool for stable with and managing PDFs.",
+        "status": "stable"
+      },
+      {
+        "name": "formbricks",
+        "type": "stack",
+        "category_name": "content_management",
+        "stack_label": "formbricks",
+        "description": "A tool for creating and managing forms.",
+        "status": "stable"
+      },
+      {
+        "name": "moodle",
+        "type": "stack",
+        "category_name": "content_management",
+        "stack_label": "moodle",
+        "description": "An open-source learning management system (LMS).",
+        "status": "beta"
+      },
+      {
+        "name": "outline",
+        "type": "stack",
+        "category_name": "content_management",
+        "stack_label": "outline",
+        "description": "A knowledge base and wiki platform.",
+        "status": "beta"
+      }
+    ]
+  },
+  {
+    "name": "communication",
+    "type": "category",
+    "category_label": "Communication",
+    "emoji": "💬",
+    "description": "Tools for messaging, communication, and collaboration.",
+    "stacks": [
+      {
+        "name": "mosquitto",
+        "type": "stack",
+        "category_name": "communication",
+        "stack_label": "mosquitto",
+        "description": "An open-source message broker for handling MQTT messages.",
+        "status": "beta"
+      },
+      {
+        "name": "rabbitmq",
+        "type": "stack",
+        "category_name": "communication",
+        "stack_label": "rabbitmq",
+        "description": "An open-source message broker for handling queues.",
+        "status": "stable"
+      },
+      {
+        "name": "transcrevezap",
+        "type": "stack",
+        "category_name": "communication",
+        "stack_label": "transcrevezap",
+        "description": "A tool for managing WhatsApp message automation.",
+        "status": "stable"
+      },
+      {
+        "name": "streaming",
+        "type": "stack",
+        "category_name": "communication",
+        "stack_label": "streaming",
+        "description": "An assemble of Zookeeper, Kafka and Flink.",
+        "status": "beta"
+      },
+      {
+        "name": "quepasa",
+        "type": "stack",
+        "category_name": "communication",
+        "stack_label": "quepasa",
+        "description": "A chatbot and customer support tool for automating conversations.",
+        "status": "stable"
+      },
+      {
+        "name": "typebot",
+        "type": "stack",
+        "category_name": "communication",
+        "stack_label": "typebot",
+        "description": "A chatbot development platform for building and managing bots.",
+        "status": "beta"
+      },
+      {
+        "name": "botpress",
+        "type": "stack",
+        "category_name": "communication",
+        "stack_label": "botpress",
+        "description": "An open-source platform for building chatbots.",
+        "status": "stable"
+      },
+      {
+        "name": "chatwoot",
+        "type": "stack",
+        "category_name": "communication",
+        "stack_label": "chatwoot",
+        "description": "An open-source customer support and engagement platform.",
+        "status": "beta"
+      },
+      {
+        "name": "chatwoot_nestor",
+        "type": "stack",
+        "category_name": "communication",
+        "stack_label": "chatwoot nestor",
+        "description": "An extension of the Chatwoot platform for advanced features.",
+        "status": "beta"
+      },
+      {
+        "name": "mattermost",
+        "type": "stack",
+        "category_name": "communication",
+        "stack_label": "mattermost",
+        "description": "An open-source messaging platform for teams.",
+        "status": "stable"
+      },
+      {
+        "name": "ntfy",
+        "type": "stack",
+        "category_name": "communication",
+        "stack_label": "ntfy",
+        "description": "A simple notification service for sending and receiving messages.",
+        "status": "stable"
+      }
+    ]
+  },
+  {
+    "name": "location_services",
+    "type": "category",
+    "category_label": "Location Services",
+    "emoji": "📍",
+    "description": "Tools for location-based services and geospatial data.",
+    "stacks": [
+      {
+        "name": "traccar",
+        "type": "stack",
+        "category_name": "location_services",
+        "stack_label": "traccar",
+        "description": "A GPS tracking platform for managing vehicle or asset location.",
+        "status": "beta"
+      }
+    ]
+  },
+  {
+    "name": "web_development",
+    "type": "category",
+    "category_label": "Web Development",
+    "emoji": "🌐",
+    "description": "Tools for building and managing websites and web applications.",
+    "stacks": [
+      {
+        "name": "wordpress",
+        "type": "stack",
+        "category_name": "web_development",
+        "stack_label": "wordpress",
+        "description": "A popular content management system (CMS) for building websites.",
+        "status": "beta"
+      },
+      {
+        "name": "directus",
+        "type": "stack",
+        "category_name": "web_development",
+        "stack_label": "directus",
+        "description": "An open-source headless CMS for managing content.",
+        "status": "beta"
+      },
+      {
+        "name": "strapi",
+        "type": "stack",
+        "category_name": "web_development",
+        "stack_label": "strapi",
+        "description": "An open-source headless CMS for content management.",
+        "status": "beta"
+      }
+    ]
+  },
+  {
+    "name": "data_storage",
+    "type": "category",
+    "category_label": "Data Storage",
+    "emoji": "🗄️",
+    "description": "Tools for managing and storing data, from databases to storage services.",
+    "stacks": [
+      {
+        "name": "supabase",
+        "type": "stack",
+        "category_name": "data_storage",
+        "stack_label": "supabase",
+        "description": "An open-source alternative to Firebase for building backend services.",
+        "status": "development"
+      },
+      {
+        "name": "clickhouse",
+        "type": "stack",
+        "category_name": "data_storage",
+        "stack_label": "clickhouse",
+        "description": "A columnar database for online analytical processing (OLAP).",
+        "status": "stable"
+      },
+      {
+        "name": "redis",
+        "type": "stack",
+        "category_name": "data_storage",
+        "stack_label": "redis",
+        "description": "An open-source in-memory data structure store.",
+        "status": "stable"
+      },
+      {
+        "name": "pgvector",
+        "type": "stack",
+        "category_name": "data_storage",
+        "stack_label": "pgvector",
+        "description": "A PostgreSQL extension for stable with vector data.",
+        "status": "stable"
+      },
+      {
+        "name": "iceberg",
+        "type": "stack",
+        "category_name": "data_storage",
+        "stack_label": "iceberg",
+        "description": "A high-performance table format for large analytical datasets.",
+        "status": "beta"
+      },
+      {
+        "name": "minio",
+        "type": "stack",
+        "category_name": "data_storage",
+        "stack_label": "minio",
+        "description": "An open-source object storage service compatible with Amazon S3.",
+        "status": "beta"
+      },
+      {
+        "name": "mysql",
+        "type": "stack",
+        "category_name": "data_storage",
+        "stack_label": "mysql",
+        "description": "A relational database management system.",
+        "status": "stable"
+      },
+      {
+        "name": "mariadb",
+        "type": "stack",
+        "category_name": "data_storage",
+        "stack_label": "mariadb",
+        "description": "A relational database management system, a fork of MySQL.",
+        "status": "stable"
+      },
+      {
+        "name": "baserow",
+        "type": "stack",
+        "category_name": "data_storage",
+        "stack_label": "baserow",
+        "description": "A no-code platform for building collaborative databases.",
+        "status": "beta"
+      },
+      {
+        "name": "postgres",
+        "type": "stack",
+        "category_name": "data_storage",
+        "stack_label": "postgres",
+        "description": "An open-source relational database management system.",
+        "status": "stable"
+      },
+      {
+        "name": "mongodb",
+        "type": "stack",
+        "category_name": "data_storage",
+        "stack_label": "mongodb",
+        "description": "An open-source NoSQL document database.",
+        "status": "stable"
+      },
+      {
+        "name": "weaviate",
+        "type": "stack",
+        "category_name": "data_storage",
+        "stack_label": "weaviate",
+        "description": "A tool for automating website scraping and analysis.",
+        "status": "beta"
+      },
+      {
+        "name": "qdrant",
+        "type": "stack",
+        "category_name": "data_storage",
+        "stack_label": "qdrant",
+        "description": "A vector database for machine learning and AI applications.",
+        "status": "stable"
+      }
+    ]
+  }
+]
