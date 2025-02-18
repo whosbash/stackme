@@ -7,12 +7,12 @@ StackMe is a comprehensive shell script designed to manage Docker Swarm deployme
 
 ## Features
 
-- **Error Handling and Logging**: Robust error handling and logging mechanisms.
-- **Color and Style Definitions**: Consistent use of colors and text styles for better readability.
-- **Utility Functions**: JSON decoding, base64 decoding, random string generation, masking strings, sending emails, and more.
-- **Docker Management**: Check Docker Swarm status, deploy stacks, list services, and manage Docker networks.
-- **SMTP Email Testing**: Configure and send test emails using the `swaks` tool.
-- **Configuration Management**: Generate and validate configurations for various services like Traefik, Portainer, Redis, Postgres, and n8n.
+- **Error Handling and Logging**: Robust error handling and logging mechanisms;
+- **Color and Style Definitions**: Consistent use of colors and text styles for better readability;
+- **Utility Functions**: JSON decoding, base64 decoding, random string generation, masking strings, sending emails, and more;
+- **Docker Management**: Check Docker Swarm status, deploy stacks, list services, and manage Docker networks;
+- **SMTP Email Testing**: Configure and send test emails using the `swaks` tool;
+- **Configuration Management**: Generate and validate configurations for various services like Traefik, Portainer, Redis, Postgres, n8n and others;
 - **User Interaction**: Prompt the user for input, collect and validate information, and display messages with formatted text.
 
 ## Prerequisites
