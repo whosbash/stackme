@@ -74,4 +74,4 @@ build_categories_array() {
 }
 
 # Output the final JSON array with status
-time build_categories_array | jq '.' > "./stacks/categories.json"
+build_categories_array | jq '.'

@@ -65,5 +65,5 @@ build_stack_array(){
 }
 
 # Output the final JSON array with status
-time build_stack_array | jq '.' > "./stacks/stacks.json"
+time build_stack_array | jq '.'
 
