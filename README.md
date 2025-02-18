@@ -65,6 +65,10 @@ Contributions are welcome! Please fork the repository and submit a pull request 
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
+## To do
+
+Take a look at [these stacks](https://github.com/awesome-selfhosted/awesome-selfhosted) and be creative.
+
 ## Acknowledgments
 
 - Inspired by [SetupOrion](https://github.com/oriondesign2015/SetupOrion).
