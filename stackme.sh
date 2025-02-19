@@ -591,6 +591,7 @@ boxed_text() {
   local border_style=${3:-"simple"}            # Default border style
   local font=${4:-"slant"}                     # Default font
   local min_width=${5:-$(($(tput cols) - 28))} # Default minimum width
+  local has_timestamp=${6:-$HAS_TIMESTAMP}
 
   # Ensure `figlet` exists
   if ! command -v figlet &>/dev/null; then
@@ -636,12 +637,12 @@ boxed_text() {
   local top_border="${top_left_corner}$(
     printf "%-${total_width}s" | tr ' ' "$top_fence"
   )${top_right_corner}"
-  fmt_top_border="$(format "$text_style" "$top_border")"
+  fmt_top_border="$(format "$text_style" "$top_border" $has_timestamp)"
 
   local bottom_border="${bottom_left_corner}$(
     printf "%-${total_width}s" | tr ' ' "$bottom_fence"
   )${bottom_right_corner}"
-  fmt_bottom_border="$(format "$text_style" "$bottom_border")"
+  fmt_bottom_border="$(format "$text_style" "$bottom_border" $has_timestamp)"
 
   # Buffer all lines to an array
   local -a lines=()
@@ -649,20 +650,22 @@ boxed_text() {
   # Add the top border
   lines+=("$fmt_top_border")
 
-  # Add the ASCII art with borders
   while IFS= read -r line; do
-    local padding=$(((total_width - ${#line}) / 2))
-    line="$(
-      printf "%s%*s%s%*s%s" \
-        "$left_fence" "$padding" "" "$line" "$padding" "" "$right_fence"
-    )"
-    fmt_line="$(format "$text_style" "$line")"
-    lines+=("$fmt_line")
+      local total_padding=$((total_width - ${#line}))
+      local left_padding=$((total_padding / 2))
+      local right_padding=$((total_padding - left_padding))  # Ensures total_padding is fully distributed
+
+      line="$(
+        printf "%s%*s%s%*s%s" \
+          "$left_fence" "$left_padding" "" "$line" "$right_padding" "" "$right_fence"
+      )"
+      fmt_line="$(format "$text_style" "$line" $has_timestamp)"
+      lines+=("$fmt_line")
   done <<<"$ascii_art"
 
   # Add the bottom border
   fmt_bottom_border=$(
-    format "$text_style" "$bottom_border"
+    format "$text_style" "$bottom_border" $has_timestamp
   )
   lines+=("$fmt_bottom_border")
 
@@ -676,11 +679,40 @@ header() {
   local border_style=${3:-"simple"}            # Default border style
   local font=${4:-"slant"}                     # Default font
   local min_width=${5:-$(($(tput cols) - 28))} # Default minimum width
+  local has_timestamp=${6:-false}              # Default has_timestamp
 
-  boxed_text "$word" "$text_style" "$border_style" "$font" "$min_width"
+  boxed_text "$word" "$text_style" "$border_style" "$font" "$min_width" "$has_timestamp"
 }
 
-diplay_header() {
+rows_count(){
+  local text="$1"
+  echo "$text" | awk 'END {print NR}'
+}
+
+get_header_height() {
+  local title="$1"
+  local page_width="$2"
+
+  header_string=$(\
+    header "$title" "highlight" "simple" "slant" "$page_width" false
+  )
+
+  # Height of the header
+  rows_count "$header_string"
+}
+
+render_header() {
+  local title="$1"
+  local page_width="$2"
+
+  header_string=$(\
+    header "$title" "highlight" "simple" "slant" "$page_width" false
+  )
+
+  echo -e "$header_string" >&2
+}
+
+display_header() {
   local title="$1"
   display_text "$title" 40 --center --style "${bold_color}${green}"
 }
@@ -1406,7 +1438,7 @@ is_command_available() {
 run_command() {
   local title="$1"
   local command="$2"
-  diplay_header "$title"
+  display_header "$title"
   eval "$command"
   wait_for_input
 }
@@ -3657,15 +3689,15 @@ render_options() {
   done
 }
 
-# Helper: Render the header with title and keyboard shortcuts
-render_header() {
-  local title="$1"
-  local page_width="$2"
-
-  tput cup 0 0
-  echo "$(display_text "$title" "$page_width" --center)" >&2
-  echo >&2
-}
+## Helper: Render the header with title and keyboard shortcuts
+#render_header() {
+#  local title="$1"
+#  local page_width="$2"
+#
+#  tput cup 0 0
+#  echo "$(display_text "$title" "$page_width" --center)" >&2
+#  echo >&2
+#}
 
 # Function to print a centered header with customizable width
 print_centered_header() {
@@ -3735,13 +3767,13 @@ render_menu() {
   local is_new_page="$4"
   local menu_options=("${@:5}")
 
+  local menu_height=0
+
   # Disable keyboard input temporarily
   stty -echo -icanon
   trap "stty echo icanon; tput cnorm; exit" SIGINT SIGTERM EXIT
 
   local num_options=${#menu_options[@]}
-
-  current_menu_name="$(get_current_menu)"
 
   # Prepare keyboard shortcuts
   local ud_nav_option="${highlight_color}↗↘${reset_color}: Nav"
@@ -3761,7 +3793,8 @@ render_menu() {
     goto_nav_option="${goto_color}g${reset_color}: Go to Page"
   fi
 
-  if [[ $current_menu_name == "Main" ]]; then
+  current_menu_name="$(get_current_menu)"
+  if [[ $current_menu_name == "main" ]]; then
     quit_option="${quit_color}q${reset_color}: Quit"
   else
     quit_option="${quit_color}q${reset_color}: Back"
@@ -3787,6 +3820,8 @@ render_menu() {
   local tmp="$(strip_ansi "$keyboard_options_string")"
   local page_width="${#tmp}"
 
+  header_height="$(get_header_height "$title" "$page_width")"
+  
   # Handle new page rendering
   if [[ "$is_new_page" == "1" ]]; then
     clear
@@ -3794,24 +3829,30 @@ render_menu() {
 
   # Render header
   render_header "$title" "$page_width"
-  echo >&2
+  menu_height+="$header_height"
 
   # Determine the range of options to display
   local range
-  range=$(calculate_display_range "$current_idx" "$page_size" "$num_options")
+  range=$(\
+    calculate_display_range "$current_idx" "$page_size" "$num_options"\
+  )
   local start end
   read -r start end <<<"$range"
 
   # Render menu options
-  # FIXME: Hard-coded, Try a dynamic approach
-  local header_height=2
-  render_options "$start" "$end" "$current_idx" "$header_height" "$page_width" "${menu_options[@]}"
+  render_options "$start" "$end" "$current_idx" \
+    "$header_height" "$page_width" "${menu_options[@]}"
+
+  menu_height+="$page_size"
 
   # Render footer
-  render_footer "$current_idx" "$page_size" "$page_width" "$num_options" "$keyboard_options_string"
+  render_footer "$current_idx" "$page_size" "$page_width" \
+    "$num_options" "$keyboard_options_string"
+
+  menu_height+="4"
 
   # Handle option-specific description
-  local current_option_desc
+  local current_item_description
   current_item_description=$(get_menu_item_description "${menu_options[$current_idx]}")
   current_item_label=$(get_menu_item_label "${menu_options[$current_idx]}")
 
@@ -3830,6 +3871,8 @@ render_menu() {
   stty echo icanon
 
   trap - SIGINT SIGTERM EXIT # Clear trap
+
+  echo $menu_height
 }
 
 # Helper: Handle arrow key input
@@ -3987,7 +4030,7 @@ handle_quit_key() {
     pop_menu_from_history
     previous_menu=$(get_current_menu)
 
-    if [[ "$current_menu" == "Main" ]]; then
+    if [[ "$current_menu" == "main" ]]; then
       message="${faded_color}Exiting program.${reset_color}"
     else
       last_menu_label="${previous_menu##*:}"
@@ -4078,21 +4121,19 @@ navigate_menu() {
   local total_pages is_new_page=1 previous_idx=0 current_idx=0
 
   if [[ $num_options -eq 0 ]]; then
-    message="${error_color}Error: No options provided to the menu!${reset_color}"
-    echo -e "$message" >&2
+    error "No options provided to the menu!"
     exit 1
   fi
 
   while true; do
-    render_menu "$title" "$current_idx" "$page_size" "$is_new_page" "${menu_options[@]}"
+    menu_height=$(render_menu "$title" "$current_idx" "$page_size" "$is_new_page" "${menu_options[@]}")
 
     # Locking the keyboard input to avoid unnecessary display of captured characters
     read -rsn1 user_key
 
-    # FIXME: Header, keyboard shortcuts and page counting may be dynamic
-    menu_line_count=$((page_size + 7))
+    # Stop the background process
     kill_current_pid
-    move_cursor $menu_line_count 0
+    move_cursor $menu_height 0
 
     # Dynamically calculate the vertical position for the message
     num_options=${#menu_options[@]}
@@ -4104,6 +4145,7 @@ navigate_menu() {
     case "$user_key" in
     $'\x1B') # Detect escape sequences (e.g., arrow keys)
       read -rsn2 -t "$debounce_time" user_key
+
       is_new_page=$(is_new_page_handler "$user_key" "$current_idx" "$num_options" "$page_size")
 
       # Call the function to handle arrow key input
@@ -4171,7 +4213,9 @@ navigate_menu() {
       else
         # Update filtered options and reset index
         menu_options=("${filtered_options[@]}")
-        current_idx=0 # Reset the index after filtering
+
+        # Reset the index after filtering
+        current_idx=0
       fi
 
       is_new_page=1
@@ -4204,13 +4248,12 @@ navigate_menu() {
       echo >&2
       shoutout="Invalid key pressed!"
       keyboard_options="Please use ↑/↓ to navigate, ←/→ to switch pages, or Enter to select."
-      message="${error_color}$shoutout $keyboard_options${reset_color}"
-      echo -e "$message" >&2
+      error "$shoutout $keyboard_options"
       sleep 0.5
       ;;
     esac
 
-    clear_below_line $menu_line_count
+    clear_below_line $menu_height
   done
 
   return 0
@@ -11946,7 +11989,7 @@ define_menu_main() {
   highlight "Building main menu..."
 
   menu_key="main"
-  menu_title="main"
+  menu_title="Main"
 
   item_1="$(build_menu_item "📚 Stacks" "" "navigate_menu 'main:stacks'")"
   item_2="$(build_menu_item "🔧 Utilities" "" "navigate_menu 'main:utilities'")"
@@ -12088,5 +12131,5 @@ main() {
   start_main_menu
 }
 
-# Call the main function
+# # Call the main function
 main "$@"
