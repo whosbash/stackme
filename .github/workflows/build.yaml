@@ -37,6 +37,14 @@ jobs:
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
+
+          # Check for changes
+          if git diff --quiet; then
+            echo "No changes detected. Skipping commit."
+            exit 0
+          fi
+
           git add "stacks/stacks.json" "stacks/categories.json"
           git commit -m "Update stacks.json and categories.json"
           git push
+
