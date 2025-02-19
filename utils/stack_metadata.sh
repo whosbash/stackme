@@ -1,25 +1,24 @@
 #!/bin/bash
 
 declare -A categories_order=(
-  ["Infrastructure"]=""
-  ["Data Management"]=""
-  ["Data Storage"]=""
-  ["IoT"]=""
-  ["Analytics"]=""
-  ["Project Management"]=""
-  ["ERP"]="" 
-  ["AI"]=""
-  ["Communication"]=""
-  ["Content Management"]=""
-  ["Web Development"]=""
-  ["Automation and Low-Code"]=""
-  ["Scheduling and Collaboration"]=""
-  ["Social and Marketing"]=""
-  ["Location Services"]=""
-  ["Design and Prototyping"]=""
-  ["Miscellaneous"]=""
+  ["Infrastructure"]="1"
+  ["Data Management"]="2"
+  ["Data Storage"]="3"
+  ["IoT"]="4"
+  ["Analytics"]="5"
+  ["AI"]="6"
+  ["Automation and Low-Code"]="7"
+  ["ERP"]="8"
+  ["Project Management"]="9"
+  ["Scheduling and Collaboration"]="10"
+  ["Communication"]="11"
+  ["Social and Marketing"]="12"
+  ["Web Development"]="13"
+  ["Design and Prototyping"]="14"
+  ["Location Services"]="15"
+  ["Content Management"]="16"
+  ["Miscellaneous"]="17"
 )
-
 
 declare -A categories_to_emojis=(
   ["Infrastructure"]="🏗️"
