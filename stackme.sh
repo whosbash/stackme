@@ -6,6 +6,8 @@ stty -icanon min 1 time 0
 # Ensure terminal settings are restored on script exit
 trap 'stty sane; exit' SIGINT SIGTERM EXIT
 
+export TERM=xterm-256color
+
 ############################### BEGIN OF DISPLAY-RELATED CONSTANTS ############################
 
 # Define colors with consistent names
@@ -85,14 +87,7 @@ declare -A ARROWS=(
   ["circle_empty_filled"]="⊚"
 )
 
-# Define a global associative array for storing menu items and stacks
-declare -A MENUS
-declare -A STACKS
-
-# Define a global array for storing navigation history
-menu_navigation_history=()
-
-# Highlight and color variables for styling
+# Highlight and color variables for styling keyboard options
 highlight_color="\033[1;32m" # Highlight color (Bright Green)
 faded_color="\033[2m"        # Faded color (Dark gray)
 select_color="\033[1;34m"    # Blue for select (↵)
@@ -117,9 +112,6 @@ magenta="\033[35m"
 cyan="\033[35m"
 normal="\033[0m"
 
-# Cleanup
-current_pid=0
-
 # Define arrow keys for navigation
 up_key="[A"    # Up Arrow
 down_key="[B"  # Down Arrow
@@ -131,6 +123,16 @@ TRUNCATED_DEFAULT_LENGTH=50
 HAS_TIMESTAMP=true
 HEADER_LENGTH=120
 
+# Define a global associative array for storing menu items and stacks
+declare -A MENUS
+declare -A STACKS
+
+# Define a global array for storing navigation history
+menu_navigation_history=()
+
+# PID of the currently running process
+current_pid=0
+
 # Default arrow
 USER_DEFINED_ARROW=""
 DEFAULT_ARROW_OPTION='angle'
@@ -140,7 +142,7 @@ DEFAULT_PAGE_SIZE=5
 
 DEFAULT_DISK_THREHOLD=85
 
-############################ END OF DEPLOYMENT-RELATED CONSTANTS ###############################
+############################## END OF DISPLAY-RELATED CONSTANTS ################################
 
 ########################### BEGIN OF DEPLOYMENT-RELATED CONSTANTS ##############################
 
@@ -156,7 +158,7 @@ TOOL_BASE_DIR="/opt/stackme"
 TOOL_STACKS_DIR="$TOOL_BASE_DIR/stacks"
 TOOL_TEMPLATES_DIR="$TOOL_BASE_DIR/templates"
 
-############################## END OF DISPLAY-RELATED FUNCTIONS ##############################
+############################ END OF DEPLOYMENT-RELATED CONSTANTS #############################
 
 ############################# BEGIN OF DISPLAY-RELATED FUNCTIONS #############################
 
@@ -176,7 +178,7 @@ colorize() {
   local style_name=$(echo "$3" | tr '[:upper:]' '[:lower:]')
 
   # Remove any existing ANSI escape sequences (colors or styles) from the text
-  text=$(strip_ansi "$text")
+  text=$(strip_color "$text")
 
   # Get color code, default to reset if not found
   local color_code="${COLORS[$color_name]:-${COLORS[reset]}}"
@@ -205,7 +207,7 @@ get_status_icon() {
   "critical") echo "💀" ;;  # Skull for critical
   "note") echo "📌" ;;      # Pushpin for note
   "important") echo "⚡" ;; # Rocket for important
-  "wait") echo "⌛" ;;      # Hourglass for waiting
+  "hold_on") echo "⌛" ;;      # Hourglass for waiting
   "question") echo "🤔" ;;  # Thinking face for question
   "celebrate") echo "🎉" ;; # Party popper for celebration
   "progress") echo "📈" ;;  # Upwards chart for progress
@@ -229,7 +231,7 @@ get_status_color() {
   "critical") echo "light_magenta" ;; # Light Magenta for critical
   "note") echo "pink" ;;              # Gray for note
   "important") echo "gold" ;;         # Orange for important
-  "wait") echo "light_yellow" ;;      # Light Yellow for waiting
+  "hold_on") echo "light_yellow" ;;      # Light Yellow for waiting
   "question") echo "purple" ;;        # Purple for question
   "celebrate") echo "green" ;;        # Green for celebration
   "progress") echo "lime" ;;          # Blue for progress
@@ -250,7 +252,7 @@ get_status_style() {
   "critical") echo "bold,underline" ;;           # Bold and underline for critical
   "warning") echo "italic" ;;                    # Underline for warnings
   "highlight") echo "bold,underline" ;;          # Bold and underline for highlights
-  "wait") echo "dim,italic" ;;                   # Dim and italic for pending
+  "hold_on") echo "dim,italic" ;;                   # Dim and italic for pending
   "important") echo "bold,underline,overline" ;; # Bold, underline, overline for important
   "question") echo "italic,underline" ;;         # Italic and underline for questions
   "celebrate") echo "bold" ;;                    # Bold for celebration
@@ -266,7 +268,10 @@ colorize_by_type() {
   local type="$1"
   local text="$2"
 
-  colorize "$text" "$(get_status_color "$type")" "$(get_status_style "$type")"
+  local color="$(get_status_color "$type")"
+  local style="$(get_status_style "$type")"
+
+  colorize "$text" "$color" "$style"
 }
 
 # Function to format a message
@@ -279,12 +284,15 @@ format() {
   local icon
   icon=$(get_status_icon "$type")
 
+  local color
+  color=$(get_status_color "$type")
+
   # Add timestamp if enabled
   local timestamp=""
   if [ "$has_timestamp" = true ]; then
     timestamp="[$(date '+%Y-%m-%d %H:%M:%S')] "
     # Only colorize the timestamp
-    timestamp="$(colorize "$timestamp" "$(get_status_color "$type")" "normal")"
+    timestamp="$(colorize "$timestamp" "$color" "normal")"
   fi
 
   # Colorize the main message
@@ -342,7 +350,7 @@ display_text() {
 
   # Ensure padding is valid
   if ((padding < 0)); then
-    echo "Padding must be non-negative." >&2
+    error "Padding must be non-negative."
     return 1
   fi
 
@@ -352,8 +360,7 @@ display_text() {
 
   # Ensure the custom width is at least the length of the text
   if ((custom_width < text_length)); then
-    message="Custom width ($custom_width) is smaller than text length ($text_length)."
-    echo "Error: $message" >&2
+    error "Custom width ($custom_width) is smaller than text length ($text_length)."
     return 1
   fi
 
@@ -441,7 +448,7 @@ important() {
 holdon() {
   local message="$1"                     # Step message
   local timestamp="${2:-$HAS_TIMESTAMP}" # Optional timestamp flag
-  display 'wait' "$message" $timestamp >&2
+  display 'hold_on' "$message" $timestamp >&2
 }
 
 # Function to display wait formatted messages
@@ -637,12 +644,12 @@ boxed_text() {
   local top_border="${top_left_corner}$(
     printf "%-${total_width}s" | tr ' ' "$top_fence"
   )${top_right_corner}"
-  fmt_top_border="$(format "$text_style" "$top_border" $has_timestamp)"
+  fmt_top_border="$(colorize_by_type "$text_style" "$top_border")"
 
   local bottom_border="${bottom_left_corner}$(
     printf "%-${total_width}s" | tr ' ' "$bottom_fence"
   )${bottom_right_corner}"
-  fmt_bottom_border="$(format "$text_style" "$bottom_border" $has_timestamp)"
+  fmt_bottom_border="$(colorize_by_type "$text_style" "$bottom_border")"
 
   # Buffer all lines to an array
   local -a lines=()
@@ -659,13 +666,13 @@ boxed_text() {
         printf "%s%*s%s%*s%s" \
           "$left_fence" "$left_padding" "" "$line" "$right_padding" "" "$right_fence"
       )"
-      fmt_line="$(format "$text_style" "$line" $has_timestamp)"
+      fmt_line="$(colorize_by_type "$text_style" "$line")"
       lines+=("$fmt_line")
   done <<<"$ascii_art"
 
   # Add the bottom border
   fmt_bottom_border=$(
-    format "$text_style" "$bottom_border" $has_timestamp
+    colorize_by_type "$text_style" "$bottom_border" 
   )
   lines+=("$fmt_bottom_border")
 
@@ -698,7 +705,9 @@ get_header_height() {
   )
 
   # Height of the header
-  rows_count "$header_string"
+  header_height=$(rows_count "$header_string")
+
+  echo "$header_height"
 }
 
 render_header() {
@@ -1315,9 +1324,15 @@ cast_port_to_smtp_secure() {
 }
 
 # Function to strip ANSI escape sequences from a string
-strip_ansi() {
+strip_color() {
   pattern='s/\x1b\[[0-9;]*[mK]//g'
   echo -e "$1" | sed "$pattern"
+}
+
+# Function to strip ANSI escape sequences from a string
+strip_ansi() {
+  operation="s/\x1b\[[?0-9;]*[a-zA-Z]//g"
+  echo -e "$1" | sed "$operation"
 }
 
 # Function to convert "true"/"false" to integer 1/0
@@ -3480,9 +3495,7 @@ index_to_page() {
 
 # Function to move the cursor
 move_cursor() {
-  # $1 is the row (line) position
-  # $2 is the column position
-  echo -e "\033[$1;${2}H"
+  tput cup "$1" "$2" > /dev/tty
 }
 
 # Function to clear everything below a specific line
@@ -3494,6 +3507,16 @@ clear_below_line() {
 
   # Clear everything below the current line
   tput ed
+}
+
+# Function to clear everything between two lines
+clear_between_lines() {
+  local start_line=$1
+  local end_line=$2
+  for (( line=start_line; line<=end_line; line++ )); do
+    # Move the cursor to the beginning of the specified line and clear that line entirely.
+    printf "\033[%d;1H\033[2K" "$line"
+  done
 }
 
 # Function to calculate the arrow position in the terminal
@@ -3566,6 +3589,7 @@ farewell_message() {
   display_parallel farewell_messages
 }
 
+# Function to finish the session
 finish_session() {
   cleanup
   clean_screen
@@ -3589,8 +3613,10 @@ shift_message() {
     rotated_message="${rotated_message:0:$max_width}"
 
     # Move cursor to the specified position and print the message
+    tput cnorm
     tput cup "$y_position" "$x_position"
-    printf "%-*s" "$max_width" "$rotated_message"
+    printf "%-*s" "$max_width" "$rotated_message" > /dev/tty
+    tput civis
 
     # Increment the shift offset
     ((shift_offset++))
@@ -3760,7 +3786,6 @@ render_footer() {
 
 # Main: Render the menu with the given parameters
 render_menu() {
-  tput civis
   local title="$1"
   local current_idx="$2"
   local page_size="$3"
@@ -3771,7 +3796,11 @@ render_menu() {
 
   # Disable keyboard input temporarily
   stty -echo -icanon
+  tput civis
+
   trap "stty echo icanon; tput cnorm; exit" SIGINT SIGTERM EXIT
+
+  move_cursor 0 0
 
   local num_options=${#menu_options[@]}
 
@@ -3817,19 +3846,22 @@ render_menu() {
   local keyboard_options_string=$(join_array ", " "${keyboard_options[@]}")
   local keyboard_options_length=${#keyboard_options_string}
 
-  local tmp="$(strip_ansi "$keyboard_options_string")"
+  local tmp="$(strip_color "$keyboard_options_string")"
   local page_width="${#tmp}"
 
   header_height="$(get_header_height "$title" "$page_width")"
-  
+  header_height="$(strip_color "$header_height")"
+
   # Handle new page rendering
   if [[ "$is_new_page" == "1" ]]; then
     clear
+    render_header "$title" "$page_width"
+  else
+    move_cursor "$header_height" 0
   fi
 
   # Render header
-  render_header "$title" "$page_width"
-  menu_height+="$header_height"
+  ((menu_height+=$header_height))
 
   # Determine the range of options to display
   local range
@@ -3843,13 +3875,13 @@ render_menu() {
   render_options "$start" "$end" "$current_idx" \
     "$header_height" "$page_width" "${menu_options[@]}"
 
-  menu_height+="$page_size"
+  ((menu_height+=$page_size))
 
   # Render footer
   render_footer "$current_idx" "$page_size" "$page_width" \
     "$num_options" "$keyboard_options_string"
 
-  menu_height+="4"
+  ((menu_height+=4))
 
   # Handle option-specific description
   local current_item_description
@@ -3861,14 +3893,18 @@ render_menu() {
 
   menu_width=$((2 + desc_length + 2 + label_length))
 
-  if [[ "$menu_width" -gt "$page_width" ]]; then
-    run_shift_message "$current_idx" "$page_size" "$header_height" "$page_width" "${menu_options[@]}"
-  else
-    kill_current_pid
-  fi
+  # FIXME: Shift message is not working :-(
+  #if [[ "$menu_width" -gt "$page_width" ]]; then
+  #  run_shift_message "$current_idx" "$page_size" "$header_height" "$page_width" "${menu_options[@]}"
+  #else
+  #  kill_current_pid
+  #fi
 
   # Re-enable keyboard input
   stty echo icanon
+  
+  # Restores the cursor visibility
+  tput cnorm
 
   trap - SIGINT SIGTERM EXIT # Clear trap
 
@@ -4126,14 +4162,24 @@ navigate_menu() {
   fi
 
   while true; do
-    menu_height=$(render_menu "$title" "$current_idx" "$page_size" "$is_new_page" "${menu_options[@]}")
+    menu_height=$(\
+      render_menu "$title" "$current_idx" "$page_size" "$is_new_page" "${menu_options[@]}"\
+    )
 
     # Locking the keyboard input to avoid unnecessary display of captured characters
     read -rsn1 user_key
 
+    # Remove ANSI escape sequences (matches sequences like ESC [ ... m)
+    menu_height=$(strip_ansi "$menu_height")
+
+    # Now remove any non-digit characters
+    menu_height="${menu_height//[!0-9]/}"
+
     # Stop the background process
     kill_current_pid
-    move_cursor $menu_height 0
+
+    ## Place cursor below menu
+    #move_cursor $menu_height 0
 
     # Dynamically calculate the vertical position for the message
     num_options=${#menu_options[@]}
@@ -4231,6 +4277,7 @@ navigate_menu() {
     "")
       echo >&2
       handle_enter_key "${menu_options[current_idx]}"
+      is_new_page=1
       ;;
 
       # Exit menu
@@ -4253,6 +4300,7 @@ navigate_menu() {
       ;;
     esac
 
+    move_cursor 0 0 
     clear_below_line $menu_height
   done
 
@@ -6548,21 +6596,21 @@ update_and_check_packages() {
         echo ""
 
         # Update packages with feedback
-        holdon "Updating package list..."
+        hold_on "Updating package list..."
         apt-get update -y >/dev/null 2>&1 &
         show_progress $!
 
         # Upgrade packages with feedback
-        holdon "Upgrading packages..."
+        hold_on "Upgrading packages..."
         apt-get upgrade -y
 
         # Remove unused packages with feedback
-        holdon "Removing unused packages..."
+        hold_on "Removing unused packages..."
         apt-get autoremove -y >/dev/null 2>&1 &
         show_progress $!
 
         # Clean package cache with feedback
-        holdon "Cleaning up package cache..."
+        hold_on "Cleaning up package cache..."
         apt-get clean >/dev/null 2>&1 &
         show_progress $!
 
@@ -11852,10 +11900,12 @@ define_menu_utilities_docker() {
   menu_title="Docker utilities"
 
   item_1="$(
-    build_menu_item "CTOP" "Run docker manager ctop on terminal" "ctop"
+    build_menu_item "CTOP" "Run docker manager ctop on terminal" \
+      "ctop"
   )"
   item_2="$(
-    build_menu_item "Clean" "Remove unused images, volumes and containers" "sanitize"
+    build_menu_item "Clean" "Remove unused images, volumes and containers" \
+      "sanitize & wait_for_input 5"
   )"
 
   items=(
