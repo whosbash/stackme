@@ -40,7 +40,7 @@ build_categories_array() {
                     "name": $name,
                     "type": "stack",
                     "category_name": $category_name,
-                    "stack_label": $stack_label,
+                    "label": $stack_label,
                     "description": $description,
                     "status": $status
                 }')
@@ -59,7 +59,7 @@ build_categories_array() {
             '{
                 "name": $name,
                 "type": "category",
-                "category_label": $category_label,
+                "label": $category_label,
                 "emoji": $emoji,
                 "description": $description,
                 "stacks": $stacks
