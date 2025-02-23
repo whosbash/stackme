@@ -445,7 +445,7 @@ important() {
 }
 
 # Function to display wait formatted messages
-holdon() {
+hold_on() {
   local message="$1"                     # Step message
   local timestamp="${2:-$HAS_TIMESTAMP}" # Optional timestamp flag
   display 'hold_on' "$message" $timestamp >&2
@@ -3513,6 +3513,7 @@ clear_below_line() {
 clear_between_lines() {
   local start_line=$1
   local end_line=$2
+
   for (( line=start_line; line<=end_line; line++ )); do
     # Move the cursor to the beginning of the specified line and clear that line entirely.
     printf "\033[%d;1H\033[2K" "$line"
@@ -3715,16 +3716,6 @@ render_options() {
   done
 }
 
-## Helper: Render the header with title and keyboard shortcuts
-#render_header() {
-#  local title="$1"
-#  local page_width="$2"
-#
-#  tput cup 0 0
-#  echo "$(display_text "$title" "$page_width" --center)" >&2
-#  echo >&2
-#}
-
 # Function to print a centered header with customizable width
 print_centered_header() {
   local text="$1"
@@ -3850,15 +3841,16 @@ render_menu() {
   local page_width="${#tmp}"
 
   header_height="$(get_header_height "$title" "$page_width")"
+  header_height="$(strip_ansi "$header_height")"
   header_height="$(strip_color "$header_height")"
 
   # Handle new page rendering
   if [[ "$is_new_page" == "1" ]]; then
     clear
-    render_header "$title" "$page_width"
-  else
-    move_cursor "$header_height" 0
+    render_header "$title" "$page_width"  
   fi
+
+  move_cursor "$header_height" 0
 
   # Render header
   ((menu_height+=$header_height))
@@ -3872,6 +3864,10 @@ render_menu() {
   read -r start end <<<"$range"
 
   # Render menu options
+  if [[ "$is_new_page" == "1" ]]; then
+    clear_between_lines "$((header_height + start))" "$((header_height + end))"
+  fi
+
   render_options "$start" "$end" "$current_idx" \
     "$header_height" "$page_width" "${menu_options[@]}"
 
@@ -3880,8 +3876,6 @@ render_menu() {
   # Render footer
   render_footer "$current_idx" "$page_size" "$page_width" \
     "$num_options" "$keyboard_options_string"
-
-  ((menu_height+=4))
 
   # Handle option-specific description
   local current_item_description
@@ -11726,7 +11720,7 @@ deploy_stacks_startup() {
 ##################################### BEGIN OF MENU DEFINITIONS ####################################
 
 # Function to define menu stacks category
-define_stacks_category_menu() {
+define_menu_stacks_category() {
   local category_stacks_jarray="$1"
 
   # Extract first element details only once
@@ -11744,6 +11738,7 @@ define_stacks_category_menu() {
       else
         item_label="$stack_label"
       fi
+
       menu_item="$(
         build_menu_item "$item_label" "$stack_description" "deploy_stack $stack_name"
       )"
@@ -11779,7 +11774,7 @@ define_menu_stacks_categories() {
     filtered_stacks=$(filter_items "$stacks_json" "$filter_fn")
 
     # Define the menu for this category
-    define_stacks_category_menu "$filtered_stacks"
+    define_menu_stacks_category "$filtered_stacks"
   done
 }
 
@@ -11830,11 +11825,13 @@ define_menu_stacks() {
   convert_json_to_array "$category_list" categories_array
 
   # Iterate over categories in the associative array
-  for category_name in "${!categories_array[@]}"; do
-    category_json="${categories_array[$category_name]}"
-
+  for category_index in "${!categories_array[@]}"; do    
+    category_json="${categories_array[$category_index]}"
     
     # Get the corresponding values
+    category_name="$(\
+      echo $category_json | jq -r '.category_name'
+    )"
     category_label="$(\
       echo $category_json | jq -r '.category_label'
     )"
@@ -11920,8 +11917,8 @@ define_menu_utilities_docker() {
 }
 
 # main:utilities:network
-define_menu_utilities_network() {
-  menu_key="main:utilities:network"
+define_menu_settings_network() {
+  menu_key="main:settings:network"
   menu_title="Network"
 
   # Define menu items in an array
@@ -11983,14 +11980,17 @@ define_menu_settings() {
     build_menu_item "💻 System information" "" "navigate_menu 'main:settings:system_info'"
   )"
   item_2="$(
-    build_menu_item "✉️ SMTP" "Overwrite SMTP information" "overwrite_or_request_smtp_information"
+    build_menu_item "🌐 Network information" "" "navigate_menu 'main:settings:network'"
   )"
   item_3="$(
+    build_menu_item "✉️ SMTP" "Overwrite SMTP information" "overwrite_or_request_smtp_information"
+  )"
+  item_4="$(
     build_menu_item "🔄 Update" "Packages" "update_and_check_packages"
   )"
 
   items=(
-    "$item_1" "$item_2" "$item_3"
+    "$item_1" "$item_2" "$item_3" "$item_4"
   )
 
   menu_object="$(
@@ -12001,6 +12001,7 @@ define_menu_settings() {
 
   # Define sub-menus
   define_menu_settings_system_information
+  define_menu_settings_network
 }
 
 # main:utilities
@@ -12014,12 +12015,9 @@ define_menu_utilities() {
   item_2="$(
     build_menu_item "📦 Docker" "Tools" "navigate_menu 'main:utilities:docker'"
   )"
-  item_3="$(
-    build_menu_item "🌐 Network" "Tools" "navigate_menu 'main:utilities:network'"
-  )"
 
   items=(
-    "$item_1" "$item_2" "$item_3"
+    "$item_1" "$item_2"
   )
 
   menu_object="$(
@@ -12031,7 +12029,6 @@ define_menu_utilities() {
   # Define sub-menus
   define_menu_utilities_docker
   define_menu_utilities_smtp
-  define_menu_utilities_network
 }
 
 # main
@@ -12168,7 +12165,6 @@ main() {
   # Check if the script is running as root
   if [ "$EUID" -ne 0 ]; then
     failure "Please run this script as root or use sudo."
-    sleep 2
     exit 1
   fi
 
