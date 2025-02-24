@@ -3847,7 +3847,9 @@ render_menu() {
   # Handle new page rendering
   if [[ "$is_new_page" == "1" ]]; then
     clear
-    render_header "$title" "$page_width"  
+    render_header "$title" "$page_width"
+  else
+    move_cursor "$header_height" 0
   fi
 
   move_cursor "$header_height" 0
@@ -3864,18 +3866,21 @@ render_menu() {
   read -r start end <<<"$range"
 
   # Render menu options
-  if [[ "$is_new_page" == "1" ]]; then
-    clear_between_lines "$((header_height + start))" "$((header_height + end))"
-  fi
-
-  render_options "$start" "$end" "$current_idx" \
-    "$header_height" "$page_width" "${menu_options[@]}"
+  clear_between_lines "$((header_height + start))" "$((header_height + end))"
+    render_options "$start" "$end" "$current_idx" \
+      "$header_height" "$page_width" "${menu_options[@]}"
 
   ((menu_height+=$page_size))
 
   # Render footer
-  render_footer "$current_idx" "$page_size" "$page_width" \
-    "$num_options" "$keyboard_options_string"
+  if [[ "$is_new_page" == "1" ]]; then
+    render_footer "$current_idx" "$page_size" "$page_width" \
+      "$num_options" "$keyboard_options_string"
+  else
+    move_cursor $((header_height + page_size + 4)) 0
+  fi
+  
+  ((menu_height+=4))
 
   # Handle option-specific description
   local current_item_description
