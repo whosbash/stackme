@@ -1,6 +1,6 @@
 #!/bin/bash
 
-declare -A categories_order=(
+declare -A categories_to_indexes=(
   ["Infrastructure"]="1"
   ["Data Management"]="2"
   ["Data Storage"]="3"

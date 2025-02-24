@@ -16,6 +16,7 @@ build_categories_array() {
         # Category attributes
         category_name=$(lowercase_transform "$category")
         category_label="${category//_/ }"  # Convert underscores to spaces
+        category_index=${categories_to_indexes[$category]:-Unknown}
         category_emoji="${categories_to_emojis[$category]:-Unknown}"
         category_description="${categories_descriptions[$category]:-No description available}"
 
@@ -53,12 +54,14 @@ build_categories_array() {
         category_item=$(jq -n \
             --arg name "$category_name" \
             --arg category_label "$category_label" \
+            --arg category_index "$category_index" \
             --arg description "$category_description" \
             --arg emoji "$category_emoji" \
             --argjson stacks "$stacks_json" \
             '{
                 "name": $name,
                 "type": "category",
+                "index": $category_index,
                 "label": $category_label,
                 "emoji": $emoji,
                 "description": $description,
