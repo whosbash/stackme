@@ -11720,6 +11720,38 @@ deploy_stacks_startup() {
 ##################################### BEGIN OF MENU DEFINITIONS ####################################
 
 # Function to define menu stacks category
+define_menu_stacks_category_stack() {
+  local stack_json="$1"
+
+  # Extract first element details only once
+  menu_key="main:stacks:$stack_category:$stack_name"
+  menu_title=$(echo "$stack_json" | jq -r '.[0].label')
+  
+  stack_category=$(echo "$stack_json" | jq -r '.[0].category_name')
+  stack_name=$(echo "$stack_json" | jq -r '.[0].name')
+  stack_description=$(echo "$stack_json" | jq -r '.[0].description')
+  
+  item_1="$(
+    build_menu_item "Dependencies" "Show dependencies" "stack_dependencies $stack_name"
+  )"
+  item_2="$(
+    build_menu_item "Variables" "Show dependencies" "stack_variables $stack_name"
+  )"
+  item_3="$(
+    build_menu_item "Deploy" "Show dependencies" "deploy_stack $stack_name"
+  )"
+
+  menu_items=("$item_1" "$item_2" "$item_3")
+
+  # Create menu object
+  menu_object="$(
+    build_menu "$menu_key" "$menu_title" $DEFAULT_PAGE_SIZE "${menu_items[@]}"
+  )"
+
+  define_menu "$menu_object"
+}
+
+# Function to define menu stacks category
 define_menu_stacks_category() {
   local category_stacks_jarray="$1"
 
