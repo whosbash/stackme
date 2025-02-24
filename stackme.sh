@@ -3503,10 +3503,10 @@ clear_below_line() {
   local line=$1
 
   # Move the cursor to the desired line (line is zero-indexed)
-  tput cup "$line" 0
+  move_cursor "$line" 0
 
   # Clear everything below the current line
-  tput ed
+  tput ed > /dev/tty
 }
 
 # Function to clear everything between two lines
@@ -3515,8 +3515,8 @@ clear_between_lines() {
   local end_line=$2
 
   for (( line=start_line; line<=end_line; line++ )); do
-    # Move the cursor to the beginning of the specified line and clear that line entirely.
-    printf "\033[%d;1H\033[2K" "$line"
+    move_cursor "$line" 0
+    tput el > /dev/tty
   done
 }
 
@@ -3686,7 +3686,6 @@ render_options() {
     option_desc=$(get_menu_item_description "${menu_options[i]}")
 
     truncation_length="$((page_width - 2 - ${#option_label}))"
-
     truncated_desc="$(truncate_option "$option_desc" "$truncation_length")"
 
     if [[ -z "$option_desc" ]]; then
@@ -3698,8 +3697,9 @@ render_options() {
     menu_lines+=("$option")
   done
 
+
   # Fill remaining space if fewer items than page size
-  local remaining_space=$((end - start))
+  local remaining_space=$((page_size - end + start))
   for _ in $(seq 1 $remaining_space); do
     menu_lines+=(" ")
   done
@@ -3755,7 +3755,7 @@ render_breadcrumb() {
 render_footer() {
   local current_idx="$1"
   local page_size="$2"
-  local page_width="$3"
+  local menu_width="$3"
   local num_options="$4"
   local keyboard_options_string="$5"
 
@@ -3767,12 +3767,13 @@ render_footer() {
   tput cup $((page_size + 3)) 0
   echo -e "$keyboard_options_string" >&2
 
-  render_breadcrumb
   tput cup $((page_size + 4)) 0
+  render_breadcrumb
 
   # Display page text
   tput cup $((page_size + 5)) 0
-  echo -e "\n$(display_text "$page_text" "$page_width" --center)" >&2
+  echo -e "\n$(display_text "$page_text" "$menu_width" --center)" >&2
+  tput cup $((page_size + 6)) 0
 }
 
 # Main: Render the menu with the given parameters
@@ -3840,44 +3841,50 @@ render_menu() {
   local tmp="$(strip_color "$keyboard_options_string")"
   local page_width="${#tmp}"
 
-  header_height="$(get_header_height "$title" "$page_width")"
-  header_height="$(strip_ansi "$header_height")"
-  header_height="$(strip_color "$header_height")"
-
   # Handle new page rendering
   if [[ "$is_new_page" == "1" ]]; then
     clear
     render_header "$title" "$page_width"
-  else
-    move_cursor "$header_height" 0
   fi
 
-  move_cursor "$header_height" 0
+  header_height="$(get_header_height "$title" "$page_width")"
+  header_height="$(strip_ansi "$header_height")"
+  header_height="$(strip_color "$header_height")"
 
   # Render header
-  ((menu_height+=$header_height))
+  ((menu_height+= (header_height+1)))
 
   # Determine the range of options to display
   local range
   range=$(\
     calculate_display_range "$current_idx" "$page_size" "$num_options"\
   )
+
   local start end
   read -r start end <<<"$range"
 
   # Render menu options
-  clear_between_lines "$((header_height + start))" "$((header_height + end))"
-    render_options "$start" "$end" "$current_idx" \
-      "$header_height" "$page_width" "${menu_options[@]}"
+  start_index="$((header_height+1))"
+  end_index="$((header_height + 1 + page_size))"
+
+  if [[ "$is_new_page" == "1" ]]; then
+    clear_between_lines "$start_index" "$end_index"
+  fi
+  move_cursor "$start_index" 0
+
+  render_options "$start" "$end" "$current_idx" \
+    "$header_height" "$page_width" "${menu_options[@]}"
 
   ((menu_height+=$page_size))
+
+  move_cursor "$((menu_height + 1))" 0
 
   # Render footer
   if [[ "$is_new_page" == "1" ]]; then
     render_footer "$current_idx" "$page_size" "$page_width" \
-      "$num_options" "$keyboard_options_string"
+        "$num_options" "$keyboard_options_string"
   else
-    move_cursor $((header_height + page_size + 4)) 0
+    move_cursor "$((menu_height + 4))" 0
   fi
   
   ((menu_height+=4))
@@ -4164,6 +4171,8 @@ navigate_menu() {
     menu_height=$(\
       render_menu "$title" "$current_idx" "$page_size" "$is_new_page" "${menu_options[@]}"\
     )
+
+    menu_height="$(strip_ansi "$menu_height")"
 
     # Locking the keyboard input to avoid unnecessary display of captured characters
     read -rsn1 user_key
