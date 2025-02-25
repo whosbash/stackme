@@ -1,0 +1,52 @@
+version: "3.7"
+
+services:
+  boltai:
+    image: hipnologo/bolt.diy:latest
+    # Alternative image: ghcr.io/stackblitz-labs/bolt.diy:latest
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=production
+      - VITE_HMR_PROTOCOL=ws
+      - VITE_HMR_HOST={{boltai_url}}
+      - VITE_HMR_PORT=5173
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      - PORT=5173
+      - VITE_LOG_LEVEL=debug
+      - DEFAULT_NUM_CTX=32768
+      - RUNNING_IN_DOCKER=true
+      - NODE_OPTIONS="--max-old-space-size=4096"
+    volumes:
+      - boltai_data:/app/data
+    networks:
+      - {{network_name}}
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 2048M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.boltai.rule=Host(\`{{boltai_url}}\`)
+        - traefik.http.routers.boltai.entrypoints=websecure
+        - traefik.http.routers.boltai.tls.certresolver=letsencryptresolver
+        - traefik.http.services.boltai.loadBalancer.server.port=5173
+        - traefik.http.routers.boltai.service=boltai
+        - traefik.http.routers.boltai.tls=true
+
+volumes:
+  boltai_data:
+    external: true
+    name: boltai_data
+
+networks:
+  {{network_name}}:
+    external: true
+    name: {{network_name}}

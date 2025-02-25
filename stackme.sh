@@ -4186,9 +4186,6 @@ navigate_menu() {
     # Stop the background process
     kill_current_pid
 
-    ## Place cursor below menu
-    #move_cursor $menu_height 0
-
     # Dynamically calculate the vertical position for the message
     num_options=${#menu_options[@]}
     total_pages="$(calculate_total_pages "$num_options" "$page_size")"
@@ -5972,8 +5969,6 @@ deploy_stack() {
   cleanup
   clean_screen
 
-  debug "Teste 1"
-
   # Check if there is space on the disk
   check_disk_usage
 
@@ -5989,8 +5984,6 @@ deploy_stack() {
     return 1
   fi
 
-    debug "Teste 2"
-
   # Check if the stack is WIP
   if [[ "$stack_status" == "beta" ]]; then
     warn_message="It might not work properly. Deployment will continue on your own risk."
@@ -6000,8 +5993,6 @@ deploy_stack() {
 
   traefik_and_portainer_exist
   exit_code=$?
-
-  debug "Teste 3"
 
   # If Traefik or Portainer do not exist:
   if [[ $exit_code -ne 0 ]]; then
@@ -6017,15 +6008,10 @@ deploy_stack() {
     fi
   fi
 
-  debug "Teste 4"
-
   if [[ "$stack_name" != "traefik" && "$stack_name" != "portainer" ]]; then
     # Check current stack is WIP from associative array STACKS
     #   object property 'stack_status' (case insensitive) is
     stack_object="${STACKS[$stack_name]}"
-
-    debug "Teste 4.1"
-    debug "$stack_name"
 
     if [[ -z "$stack_object" ]]; then
       return 1
@@ -6035,8 +6021,6 @@ deploy_stack() {
     stack_status="$(echo "$stack_object" | jq -r '.stack_status // "development"')"
     stack_status="$(uppercase "$stack_status")"
   fi
-
-  debug "Teste 5"
 
   # Check if the stack should be removed
   should_remove_stack "$stack_name"
@@ -7497,8 +7481,6 @@ generate_stack_config_portainer() {
     error "Failed to generate JSON"
     return 1
   }
-
-  debug "$config_instructions"
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
@@ -11723,6 +11705,44 @@ generate_stack_config_superset() {
   generate_stack_config_pipeline "$config_instructions"
 }
 
+generate_stack_config_boltai() {
+  local stack_name="boltai"
+
+  # Prompting step (escaped properly for Bash)
+  local prompt_items=$(jq -n '[
+      {
+        "name": "boltai_url",
+        "label": "BoltAI URL",
+        "description": "URL to access BoltAI remotely",
+        "required": "yes",
+        "validate_fn": "validate_url_suffix"
+      }
+  ]')
+
+  # Correct command substitution without unnecessary piping
+  config_instructions=$(
+    jq -n \
+      --arg stack_name "$stack_name" \
+      --argjson prompt_items "$prompt_items" \
+      '{
+          "name": $stack_name,
+          "target": "portainer",
+          "variables": {
+            
+          },
+          "actions":{
+            "prompt": $prompt_items
+          }
+      }'
+  ) || {
+    error "Failed to generate JSON"
+    return 1
+  }
+
+  # Pass variable correctly
+  generate_stack_config_pipeline "$config_instructions"
+}
+
 #################################### END OF STACK CONFIGURATION ###################################
 
 ################################ BEGIN OF STACK DEPLOYMENT FUNCTIONS ##############################
@@ -11839,8 +11859,6 @@ define_menu_stacks() {
 
     STACKS["$stack_name"]="$stack_json"
   done
-
-  debug "$STACKS"
 
   # Extract unique category objects in an array
   local menu_stack_categories=("$startup_item") # Start with startup item
