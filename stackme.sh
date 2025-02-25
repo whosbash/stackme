@@ -5972,6 +5972,8 @@ deploy_stack() {
   cleanup
   clean_screen
 
+  debug "Teste 1"
+
   # Check if there is space on the disk
   check_disk_usage
 
@@ -5987,6 +5989,8 @@ deploy_stack() {
     return 1
   fi
 
+    debug "Teste 2"
+
   # Check if the stack is WIP
   if [[ "$stack_status" == "beta" ]]; then
     warn_message="It might not work properly. Deployment will continue on your own risk."
@@ -5996,6 +6000,8 @@ deploy_stack() {
 
   traefik_and_portainer_exist
   exit_code=$?
+
+  debug "Teste 3"
 
   # If Traefik or Portainer do not exist:
   if [[ $exit_code -ne 0 ]]; then
@@ -6020,12 +6026,12 @@ deploy_stack() {
       return 1
     fi
 
+    debug "Teste 4"
+
     # Avoiding deploying a WIP stack with property 'stack_status' set to 'development'
     stack_status="$(echo "$stack_object" | jq -r '.stack_status // "development"')"
     stack_status="$(uppercase "$stack_status")"
   fi
-
-  debug "$stack_object"
 
   # Check if the stack should be removed
   should_remove_stack "$stack_name"
