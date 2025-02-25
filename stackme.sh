@@ -5815,6 +5815,8 @@ save_stack_configuration() {
 generate_stack_config_pipeline() {
   local config_instructions="$1"
 
+  debug "Teste"
+
   total_steps=2
 
   stack_name="$(echo "$config_instructions" | jq -r '.name')"
@@ -7395,7 +7397,7 @@ generate_stack_config_traefik() {
   config_instructions=$(
     jq -n \
       --arg stack_name "$stack_name" \
-      --arg prompt_items "$prompt_items" \
+      --argjson prompt_items "$prompt_items" \
       '{
         "name": $stack_name,
         "target": "swarm",
@@ -7414,6 +7416,8 @@ generate_stack_config_traefik() {
     error "Failed to generate JSON"
     return 1
   }
+
+  debug "$config_instructions"
 
   # Pass variable correctly
   generate_stack_config_pipeline "$config_instructions"
