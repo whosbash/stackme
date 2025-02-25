@@ -5815,9 +5815,6 @@ save_stack_configuration() {
 generate_stack_config_pipeline() {
   local config_instructions="$1"
 
-  debug "$config_instructions"
-
-
   total_steps=2
 
   stack_name="$(echo "$config_instructions" | jq -r '.name')"
@@ -6027,6 +6024,8 @@ deploy_stack() {
     stack_status="$(echo "$stack_object" | jq -r '.stack_status // "development"')"
     stack_status="$(uppercase "$stack_status")"
   fi
+
+  debug "$stack_object"
 
   # Check if the stack should be removed
   should_remove_stack "$stack_name"
