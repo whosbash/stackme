@@ -6017,6 +6017,8 @@ deploy_stack() {
     fi
   fi
 
+  debug "Teste 4"
+
   if [[ "$stack_name" != "traefik" && "$stack_name" != "portainer" ]]; then
     # Check current stack is WIP from associative array STACKS
     #   object property 'stack_status' (case insensitive) is
@@ -6026,12 +6028,12 @@ deploy_stack() {
       return 1
     fi
 
-    debug "Teste 4"
-
     # Avoiding deploying a WIP stack with property 'stack_status' set to 'development'
     stack_status="$(echo "$stack_object" | jq -r '.stack_status // "development"')"
     stack_status="$(uppercase "$stack_status")"
   fi
+
+  debug "Teste 5"
 
   # Check if the stack should be removed
   should_remove_stack "$stack_name"
