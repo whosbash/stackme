@@ -6024,6 +6024,9 @@ deploy_stack() {
     #   object property 'stack_status' (case insensitive) is
     stack_object="${STACKS[$stack_name]}"
 
+    debug "Teste 4.1"
+    debug "$stack_object"
+
     if [[ -z "$stack_object" ]]; then
       return 1
     fi
