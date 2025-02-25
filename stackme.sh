@@ -11827,6 +11827,8 @@ define_menu_stacks() {
   local stacks_json
   stacks_json=$(curl -s "$TOOL_STACKS_OBJECT_URL")
 
+  debug "$stacks_json"
+
   # Convert the JSON array to an associative array
   declare -A STACKS
   while IFS= read -r row; do
