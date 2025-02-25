@@ -5416,7 +5416,7 @@ should_remove_stack() {
       echo "" >&2
       warning "Proceeding to remove stack '$stack_name'."
 
-      if [[ "$stack_name" == "traefik" && "$stack_name" == "portainer" ]]; then
+      if [[ "$stack_name" == "traefik" || "$stack_name" == "portainer" ]]; then
         docker stack rm "$stack_name"
       else
         portainer_config="$(load_portainer_url_and_credentials)"
@@ -7452,28 +7452,31 @@ generate_stack_config_portainer() {
     jq -n \
     --arg stack_name "$stack_name" \
     --argjson prompt_items "$prompt_items" \
+    --arg portainer_url "{{portainer_url}}" \
+    --arg portainer_username "{{portainer_username}}" \
+    --arg portainer_password "{{portainer_password}}" \
     '{  
         "name": $stack_name,
         "target": "swarm",
         "actions": {
-            "prompt_items": $prompt_items,
+            "prompt": $prompt_items,
             "refresh": [
               {
                 "name": "portainer_agent_version",
-                "description": "Portainer agent version", get_latest_stable_version 
-                "command": ("get_latest_stable_version \"" + portainer/agent + "\"")
+                "description": "Portainer agent version",
+                "command": ("get_latest_stable_version \"portainer/agent\"")
               },
               {
                 "name": "portainer_ce_version",
-                "description": "Portainer ce version", get_latest_stable_version 
-                "command": ("get_latest_stable_version \"" + portainer/portainer-ce + "\"")
+                "description": "Portainer ce version", 
+                "command": ("get_latest_stable_version \"portainer/portainer-ce\"")
               }
-            ]
+            ],
             "finalize": [
                 {
                     "name": "signup_on_portainer",
                     "description": "Signup on portainer",
-                    "command": ("signup_on_portainer \"" + {{portainer_url}} + "\" \"" + {{portainer_username}} + "\" \"" + {{portainer_password}} + "\"")
+                    "command": ("signup_on_portainer \"" + $portainer_url + "\" \"" + $portainer_username + "\" \"" + $portainer_password + "\"")
                 }
             ]
         }
