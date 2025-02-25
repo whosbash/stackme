@@ -11834,6 +11834,8 @@ define_menu_stacks() {
   # Iterate over categories in the associative array
   for stack_index in "${!stacks_array[@]}"; do
     stack_json="${stacks_array[$stack_index]}"
+    debug "stack_json: $stack_json"
+    
     stack_name=$(jq -r '.stack_name' <<<"$stack_json")
 
     STACKS["$stack_name"]="$stack_json"
