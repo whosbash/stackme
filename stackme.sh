@@ -5817,6 +5817,7 @@ generate_stack_config_pipeline() {
 
   debug "$config_instructions"
 
+
   total_steps=2
 
   stack_name="$(echo "$config_instructions" | jq -r '.name')"
