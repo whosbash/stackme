@@ -11824,23 +11824,27 @@ define_menu_stacks() {
   )"
 
   # Download stacks.json once
-  local stacks_json
-  stacks_json=$(curl -s "$TOOL_STACKS_OBJECT_URL")
+  local stacks_list
 
-  # Convert the JSON array to an associative array
-  declare -A STACKS
-  while IFS= read -r row; do
-    stack_name=$(jq -r '.stack_name' <<<"$row")
-    debug "$row"
-    STACKS["$stack_name"]="$row"
-  done < <(jq -c '.[]' <<<"$stacks_json")
+  stacks_list=$(curl -s "$TOOL_STACKS_OBJECT_URL")
+
+  declare -A stacks_array
+  convert_json_to_array "$stacks_list" stacks_array
+
+  # Iterate over categories in the associative array
+  for stack_index in "${!stacks_array[@]}"; do
+    stack_json="${stacks_array[$stack_index]}"
+    stack_name=$(jq -r '.stack_name' <<<"$stack_json")
+
+    STACKS["$stack_name"]="$stack_json"
+  done
 
   # Extract unique category objects in an array
   local menu_stack_categories=("$startup_item") # Start with startup item
 
   # Read categories into an array before iterating (avoiding subshell issues)
   local category_list
-  category_list=$(echo "$stacks_json" | jq -c '
+  category_list=$(echo "$stacks_list" | jq -c '
     group_by(.category_name) | 
     map({
       category_emoji: (.[0].category_emoji // ""),
