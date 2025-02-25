@@ -6025,7 +6025,7 @@ deploy_stack() {
     stack_object="${STACKS[$stack_name]}"
 
     debug "Teste 4.1"
-    debug "$stack_object"
+    debug "$stack_name"
 
     if [[ -z "$stack_object" ]]; then
       return 1
