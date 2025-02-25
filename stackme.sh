@@ -11841,6 +11841,8 @@ define_menu_stacks() {
     STACKS["$stack_name"]="$stack_json"
   done
 
+  debug "$STACKS"
+
   # Extract unique category objects in an array
   local menu_stack_categories=("$startup_item") # Start with startup item
 
