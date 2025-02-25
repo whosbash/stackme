@@ -11904,7 +11904,7 @@ define_menu_stacks() {
   define_menu "$menu_object"
 
   # Process stack categories in a single pass
-  define_menu_stacks_categories "$stacks_json"
+  define_menu_stacks_categories "$stacks_list"
 }
 
 # main:utilities:smtp
