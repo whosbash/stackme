@@ -220,6 +220,16 @@
     "category_description": "Automation and low-code platforms for developing applications quickly."
   },
   {
+    "stack_name": "chromadb",
+    "stack_label": "chromadb",
+    "stack_description": "A platform for managing and analyzing genomic data.",
+    "stack_status": "beta",
+    "category_emoji": "🗄️",
+    "category_name": "data_storage",
+    "category_label": "Data Storage",
+    "category_description": "Tools for managing and storing data, from databases to storage services."
+  },
+  {
     "stack_name": "affine",
     "stack_label": "affine",
     "stack_description": "A data science tool for building machine learning models.",
@@ -298,6 +308,16 @@
     "category_name": "data_management",
     "category_label": "Data Management",
     "category_description": "Tools for managing and administrating databases."
+  },
+  {
+    "stack_name": "boltai",
+    "stack_label": "boltai",
+    "stack_description": "A platform for deploying AI models with ease.",
+    "stack_status": "beta",
+    "category_emoji": "👾",
+    "category_name": "ai",
+    "category_label": "AI",
+    "category_description": "AI and Natural Language Processing tools to build and deploy models."
   },
   {
     "stack_name": "nocodb",

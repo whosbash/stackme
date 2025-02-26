@@ -416,6 +416,14 @@
         "label": "langfuse",
         "description": "A platform for integrating large language models into workflows.",
         "status": "beta"
+      },
+      {
+        "name": "boltai",
+        "type": "stack",
+        "category_name": "ai",
+        "label": "boltai",
+        "description": "A platform for deploying AI models with ease.",
+        "status": "beta"
       }
     ]
   },
@@ -822,6 +830,14 @@
         "label": "qdrant",
         "description": "A vector database for machine learning and AI applications.",
         "status": "stable"
+      },
+      {
+        "name": "chromadb",
+        "type": "stack",
+        "category_name": "data_storage",
+        "label": "chromadb",
+        "description": "A platform for managing and analyzing genomic data.",
+        "status": "beta"
       }
     ]
   }
