@@ -292,8 +292,8 @@
         "type": "stack",
         "category_name": "automation_and_low-code",
         "label": "firecrawl",
-        "description": "A web scraping tool for crawling and extracting data from websites.",
-        "status": "beta"
+        "description": "A web scraping API for crawling and extracting data from websites.",
+        "status": "stable"
       },
       {
         "name": "n8n",

@@ -352,8 +352,8 @@
   {
     "stack_name": "firecrawl",
     "stack_label": "firecrawl",
-    "stack_description": "A web scraping tool for crawling and extracting data from websites.",
-    "stack_status": "beta",
+    "stack_description": "A web scraping API for crawling and extracting data from websites.",
+    "stack_status": "stable",
     "category_emoji": "🤖",
     "category_name": "automation_and_low-code",
     "category_label": "Automation and Low-Code",
