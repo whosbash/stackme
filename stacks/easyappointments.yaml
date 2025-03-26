@@ -17,7 +17,7 @@ services:
 
       ## Dados do banco de dados
       - DB_HOST=mysql
-      - DB_NAME=easyapointments
+      - DB_NAME=easyappointments
       - DB_USERNAME=root
       - DB_PASSWORD={{mysql_password}}
 
