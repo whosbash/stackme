@@ -6634,7 +6634,7 @@ update_and_check_packages() {
 }
 
 # Function to prepare the environment
-prepare_environment() {
+prepare_shell_environment() {
   # Function constants
   local total_steps=6
 
@@ -12124,7 +12124,7 @@ define_menu_main() {
   wait_for_input
 }
 
-start_main_menu() {
+start_menu_main() {
   navigate_menu "main"
 
   cleanup
@@ -12156,8 +12156,18 @@ usage() {
 }
 
 startup() {
+  # Check if the user requested to clean the environment
+  if [[ $CLEAN == true ]]; then
+    clean_docker_environment
+    clear
+  fi
+
+  # Set the arrow style
+  set_arrow
+  clear
+
   # Install required packages
-  prepare_environment
+  prepare_shell_environment
   clear
 
   # Perform initialization
@@ -12211,21 +12221,14 @@ parse_args() {
 
 # Main script execution
 main() {
-  parse_args "$@"
-
-  if [[ $CLEAN == true ]]; then
-    clean_docker_environment
-    exit 0
-  fi
-
-  set_arrow
-  clear
-
   # Check if the script is running as root
   if [ "$EUID" -ne 0 ]; then
     failure "Please run this script as root or use sudo."
     exit 1
   fi
+
+  # Parse command-line arguments
+  parse_args "$@"
 
   # Perform startup tasks
   startup
@@ -12233,7 +12236,8 @@ main() {
   # Define menus on registry
   define_menu_main
 
-  start_main_menu
+  # Start menu main 
+  start_menu_main
 }
 
 # # Call the main function
