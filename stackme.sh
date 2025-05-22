@@ -151,7 +151,7 @@ TOOL_NAME="StackMe"
 
 TOOL_LOGO_URL="https://raw.githubusercontent.com/whosbash/stackme/main/assets/images/stackme_tiny.png"
 TOOL_REPOSITORY_URL='https://github.com/whosbash/stackme'
-TOOL_STACKS_TEMPLATE_URL="https://api.github.com/repos/whosbash/stackme/contents/stacks"
+TOOL_STACKS_TEMPLATE_URL="https://api.github.com/repos/whosbash/stackme/contents/assets/stacks"
 TOOL_STACKS_OBJECT_URL="https://raw.githubusercontent.com/whosbash/stackme/main/assets/stacks.json"
 
 TOOL_BASE_DIR="/opt/stackme"
