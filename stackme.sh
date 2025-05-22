@@ -149,7 +149,7 @@ DEFAULT_DISK_THREHOLD=85
 # Tools constants
 TOOL_NAME="StackMe"
 
-TOOL_LOGO_URL="https://raw.githubusercontent.com/whosbash/stackme/main/images/stackme_tiny.png"
+TOOL_LOGO_URL="https://raw.githubusercontent.com/whosbash/stackme/main/assets/images/stackme_tiny.png"
 TOOL_REPOSITORY_URL='https://github.com/whosbash/stackme'
 TOOL_STACKS_TEMPLATE_URL="https://api.github.com/repos/whosbash/stackme/contents/stacks"
 TOOL_STACKS_OBJECT_URL="https://raw.githubusercontent.com/whosbash/stackme/main/assets/stacks.json"
