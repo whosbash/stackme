@@ -3,7 +3,7 @@ name: Build Stacks and Categories
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * *'  # Runs at midnight UTC every day
+    - cron: '0 0 * * *'
 
 jobs:
   build:
@@ -11,40 +11,38 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.1.0
 
-      - name: Verify and Prepare Scripts
+      - name: Verify Scripts Exist
         run: |
-          if [[ ! -f "utils/build_stacks_array.sh" || ! -f "utils/build_categories_array.sh" ]]; then
-            echo "Error: Scripts missing in utils/ directory!"
-            exit 1
-          fi
-          chmod +x "utils/build_stacks_array.sh" "utils/build_categories_array.sh"
+          for script in utils/build_stacks_array.sh utils/build_categories_array.sh; do
+            [[ -f "$script" ]] || { echo "Error: Missing $script"; exit 1; }
+          done
 
-      - name: Run Scripts and Check Outputs
+      - name: Make Scripts Executable
+        run: chmod +x utils/build_*.sh
+
+      - name: Run Scripts and Validate Outputs
         run: |
           set -e
-          "utils/build_stacks_array.sh" > "stacks/stacks.json"
-          "utils/build_categories_array.sh" > "stacks/categories.json"
-          for file in "stacks/stacks.json" "stacks/categories.json"; do
-            if [[ ! -s "$file" ]]; then
-              echo "Error: $file is empty or not updated!"
-              exit 1
-            fi
+          utils/build_stacks_array.sh > assets/stacks.json
+          utils/build_categories_array.sh > assets/categories.json
+
+          for file in assets/*.json; do
+            [[ -s "$file" ]] || { echo "Error: $file is empty!"; exit 1; }
           done
+
+      - name: Configure Git
+        run: |
+          git config --local user.name "${{ github.actor }}"
+          git config --local user.email "${{ github.actor }}@users.noreply.github.com"
 
       - name: Commit and Push Changes
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
-
-          # Check for changes
-          if git diff --quiet; then
-            echo "No changes detected. Skipping commit."
+          if [[ -z "$(git status --porcelain)" ]]; then
+            echo "No changes to commit."
             exit 0
           fi
-
-          git add "stacks/stacks.json" "stacks/categories.json"
+          git add assets/*.json
           git commit -m "Update stacks.json and categories.json"
           git push
-

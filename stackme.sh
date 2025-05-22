@@ -152,7 +152,7 @@ TOOL_NAME="StackMe"
 TOOL_LOGO_URL="https://raw.githubusercontent.com/whosbash/stackme/main/images/stackme_tiny.png"
 TOOL_REPOSITORY_URL='https://github.com/whosbash/stackme'
 TOOL_STACKS_TEMPLATE_URL="https://api.github.com/repos/whosbash/stackme/contents/stacks"
-TOOL_STACKS_OBJECT_URL="https://raw.githubusercontent.com/whosbash/stackme/main/stacks/stacks.json"
+TOOL_STACKS_OBJECT_URL="https://raw.githubusercontent.com/whosbash/stackme/main/assets/stacks.json"
 
 TOOL_BASE_DIR="/opt/stackme"
 TOOL_STACKS_DIR="$TOOL_BASE_DIR/stacks"
@@ -252,7 +252,7 @@ get_status_style() {
   "critical") echo "bold,underline" ;;           # Bold and underline for critical
   "warning") echo "italic" ;;                    # Underline for warnings
   "highlight") echo "bold,underline" ;;          # Bold and underline for highlights
-  "hold_on") echo "dim,italic" ;;                   # Dim and italic for pending
+  "hold_on") echo "dim,italic" ;;                # Dim and italic for pending
   "important") echo "bold,underline,overline" ;; # Bold, underline, overline for important
   "question") echo "italic,underline" ;;         # Italic and underline for questions
   "celebrate") echo "bold" ;;                    # Bold for celebration
