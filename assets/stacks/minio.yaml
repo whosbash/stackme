@@ -8,9 +8,7 @@ services:
       - minio_data:/data
 
     networks:
-      - {{network_name}}:
-        aliases:
-          - warehouse.minio
+      {{network_name}}
 
     environment:
       ## Access Key and Secret Key
@@ -43,38 +41,38 @@ services:
         - traefik.http.services.minio_console.loadbalancer.passHostHeader=true
         - traefik.http.routers.minio_console.service=minio_console
 
-    minio_console:
-      image: minio/mc
-      container_name: mc
-      networks:
-        iceberg_net:
-      environment:
-        - AWS_ACCESS_KEY_ID=admin
-        - AWS_SECRET_ACCESS_KEY=password
-        - AWS_REGION=us-east-1
-      entrypoint: >
-        /bin/sh -c "
-        until (/usr/bin/mc config host add minio http://minio:9000 {{s3_access_key_id}} {{s3_access_key_secret}}) do echo '...waiting...' && sleep 1; done;
-        /usr/bin/mc rm -r --force minio/warehouse;
-        /usr/bin/mc mb minio/warehouse;
-        /usr/bin/mc policy set public minio/warehouse;
-        tail -f /dev/null
-        "
-      deploy:
-        mode: replicated
-        replicas: 1
-        placement:
-          constraints:
-            - node.role == manager
-        labels:
-          - traefik.enable=true
-          - traefik.http.routers.mc_public.rule=Host(`{{minio_url}}`)
-          - traefik.http.routers.mc_public.entrypoints=websecure
-          - traefik.http.routers.mc_public.tls.certresolver=letsencryptresolver
-          - traefik.http.services.mc_public.loadbalancer.server.port=9000
-          - traefik.http.services.mc_public.loadbalancer.passHostHeader=true
-          - traefik.http.routers.mc_public.service=minio_public
-      
+  minio_console:
+    image: minio/mc
+    container_name: mc
+    networks:
+      {{network_name}}:
+    environment:
+      - AWS_ACCESS_KEY_ID={{s3_access_key_id}}
+      - AWS_SECRET_ACCESS_KEY={{s3_access_key_secret}})
+      - AWS_REGION=us-east-1
+    entrypoint: >
+      /bin/sh -c "
+      until (/usr/bin/mc config host add minio http://minio:9000 {{s3_access_key_id}} {{s3_access_key_secret}}) do echo '...waiting...' && sleep 1; done;
+      /usr/bin/mc rm -r --force minio/warehouse;
+      /usr/bin/mc mb minio/warehouse;
+      /usr/bin/mc policy set public minio/warehouse;
+      tail -f /dev/null
+      "
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.mc_public.rule=Host(`{{minio_url}}`)
+        - traefik.http.routers.mc_public.entrypoints=websecure
+        - traefik.http.routers.mc_public.tls.certresolver=letsencryptresolver
+        - traefik.http.services.mc_public.loadbalancer.server.port=9000
+        - traefik.http.services.mc_public.loadbalancer.passHostHeader=true
+        - traefik.http.routers.mc_public.service=minio_public
+    
 
 volumes:
   minio_data:
